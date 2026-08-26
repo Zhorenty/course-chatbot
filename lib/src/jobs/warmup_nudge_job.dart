@@ -5,6 +5,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/telegram_errors.dart';
 import 'package:l/l.dart';
 
 final class WarmupNudgeJob {
@@ -62,6 +63,9 @@ final class WarmupNudgeJob {
           await paceOutboundBatch(sent);
         }
       } on Object catch (error, stackTrace) {
+        if (isUserBlockedError(error)) {
+          _course.setBotBlocked(userId: candidate.userId, blocked: true);
+        }
         l.w('Warmup candidate ${candidate.userId} failed: $error', stackTrace);
       }
     }

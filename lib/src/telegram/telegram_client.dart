@@ -33,7 +33,14 @@ final class TelegramClient implements MessageSender, ChannelApi {
             body: jsonEncode(body),
           )
           .timeout(timeout),
-      shouldRetry: (error) => error is! TelegramApiException,
+      shouldRetry: (error) => error is! TelegramApiException || error.statusCode == 429,
+      delayForError: (error, currentDelay) {
+        if (error is TelegramApiException && error.retryAfterSeconds != null) {
+          final wait = Duration(seconds: error.retryAfterSeconds!);
+          return wait > currentDelay ? wait : currentDelay;
+        }
+        return currentDelay;
+      },
     );
 
     return _decodeResponse(response);
@@ -50,17 +57,32 @@ final class TelegramClient implements MessageSender, ChannelApi {
       );
     }
 
-    if (response.statusCode != 200) {
-      final description = payload['description']?.toString() ?? 'HTTP error';
-      throw TelegramApiException(description, statusCode: response.statusCode);
-    }
-
-    if (payload['ok'] != true) {
-      final description = payload['description']?.toString() ?? 'Telegram response is not ok';
-      throw TelegramApiException(description, statusCode: response.statusCode);
+    if (response.statusCode != 200 || payload['ok'] != true) {
+      final description = payload['description']?.toString() ??
+          (response.statusCode != 200 ? 'HTTP error' : 'Telegram response is not ok');
+      throw TelegramApiException(
+        description,
+        statusCode: response.statusCode,
+        retryAfterSeconds: _retryAfterSeconds(payload),
+      );
     }
 
     return payload;
+  }
+
+  int? _retryAfterSeconds(Map<String, dynamic> payload) {
+    final parameters = payload['parameters'];
+    if (parameters is! Map) {
+      return null;
+    }
+    final raw = parameters['retry_after'];
+    if (raw is int) {
+      return raw;
+    }
+    if (raw is num) {
+      return raw.toInt();
+    }
+    return int.tryParse(raw?.toString() ?? '');
   }
 
   Future<List<Map<String, dynamic>>> getUpdates({
@@ -263,40 +285,6 @@ final class TelegramClient implements MessageSender, ChannelApi {
     );
   }
 
-  @override
-  Future<int> sendVideo(
-    int chatId, {
-    required String video,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) {
-    return _sendFileMessage(
-      method: 'sendVideo',
-      chatId: chatId,
-      fileField: 'video',
-      fileId: video,
-      disableNotification: disableNotification,
-      replyMarkup: replyMarkup,
-    );
-  }
-
-  @override
-  Future<int> sendVideoNote(
-    int chatId, {
-    required String videoNote,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) {
-    return _sendFileMessage(
-      method: 'sendVideoNote',
-      chatId: chatId,
-      fileField: 'video_note',
-      fileId: videoNote,
-      disableNotification: disableNotification,
-      replyMarkup: replyMarkup,
-    );
-  }
-
   Future<int> _sendFileMessage({
     required String method,
     required int chatId,
@@ -319,49 +307,6 @@ final class TelegramClient implements MessageSender, ChannelApi {
       throw const TelegramApiException('Telegram did not return message_id');
     }
     return result['message_id'] as int;
-  }
-
-  @override
-  Future<int> copyMessage(
-    int chatId, {
-    required int fromChatId,
-    required int messageId,
-    bool disableNotification = true,
-  }) async {
-    final payload = await _post(
-      'copyMessage',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'from_chat_id': fromChatId,
-        'message_id': messageId,
-        'disable_notification': disableNotification,
-      },
-    );
-
-    final result = payload['result'];
-    if (result is! Map || result['message_id'] is! int) {
-      throw const TelegramApiException('Telegram did not return message_id');
-    }
-
-    return result['message_id'] as int;
-  }
-
-  @override
-  Future<void> deleteMessage(
-    int chatId, {
-    required int messageId,
-  }) async {
-    final payload = await _post(
-      'deleteMessage',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'message_id': messageId,
-      },
-    );
-    final result = payload['result'];
-    if (result != true) {
-      throw const TelegramApiException('Telegram did not confirm message deletion');
-    }
   }
 
   @override
@@ -449,25 +394,6 @@ final class TelegramClient implements MessageSender, ChannelApi {
     }
   }
 
-  Future<void> pinMessage(
-    int chatId, {
-    required int messageId,
-    bool disableNotification = true,
-  }) async {
-    final payload = await _post(
-      'pinChatMessage',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'message_id': messageId,
-        'disable_notification': disableNotification,
-      },
-    );
-    final result = payload['result'];
-    if (result != true) {
-      throw const TelegramApiException('Telegram did not confirm message pin');
-    }
-  }
-
   @override
   Future<void> answerCallbackQuery(
     String callbackQueryId, {
@@ -502,25 +428,6 @@ final class TelegramClient implements MessageSender, ChannelApi {
         if (replyMarkup != null) 'reply_markup': replyMarkup,
       },
     );
-  }
-
-  /// Raw Telegram `getChatMember` result (`ChatMember` object).
-  Future<Map<String, dynamic>> getChatMember({
-    required int chatId,
-    required int userId,
-  }) async {
-    final payload = await _post(
-      'getChatMember',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'user_id': userId,
-      },
-    );
-    final result = payload['result'];
-    if (result is! Map) {
-      throw const TelegramApiException('Telegram did not return chat member');
-    }
-    return Map<String, dynamic>.from(result);
   }
 
   void close() {

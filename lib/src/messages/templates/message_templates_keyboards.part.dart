@@ -202,4 +202,23 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
     );
   }
+
+  Map<String, Object?> guideConfirmKeyboard() {
+    return inlineKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': 'Сохранить гайд',
+            'callback_data': MessageTemplates.cbGuideSave,
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': 'Не сохранять',
+            'callback_data': MessageTemplates.cbGuideDiscard,
+          },
+        ],
+      ],
+    );
+  }
 }

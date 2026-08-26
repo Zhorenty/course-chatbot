@@ -39,6 +39,12 @@ final class AppConfig {
     this.googleSheetsSpreadsheetId,
     this.googleSheetsWriteSheetTitle = 'FUNNEL',
     this.googleSheetsWriteIntervalSeconds = 300,
+    this.paymentWebhookSecret,
+    this.paymentWebhookPath = '/payments/callback',
+    this.sqliteBackupEnabled = true,
+    this.sqliteBackupDir = 'data/backups',
+    this.sqliteBackupKeep = 7,
+    this.sqliteBackupIntervalHours = 24,
   });
 
   final String botToken;
@@ -74,6 +80,38 @@ final class AppConfig {
   final String? googleSheetsSpreadsheetId;
   final String googleSheetsWriteSheetTitle;
   final int googleSheetsWriteIntervalSeconds;
+  final String? paymentWebhookSecret;
+  final String paymentWebhookPath;
+  final bool sqliteBackupEnabled;
+  final String sqliteBackupDir;
+  final int sqliteBackupKeep;
+  final int sqliteBackupIntervalHours;
+
+  bool get usesLiveKassa {
+    switch (paymentProvider) {
+      case PaymentProvider.leadpay:
+        return leadpayToken != null && leadpayToken!.trim().isNotEmpty;
+      case PaymentProvider.yookassa:
+        return (yookassaShopId?.trim().isNotEmpty ?? false) &&
+            (yookassaSecretKey?.trim().isNotEmpty ?? false);
+      case PaymentProvider.manual:
+        return false;
+    }
+  }
+
+  List<String> validationErrors() {
+    final errors = <String>[];
+    if (adminUserIds.isEmpty) {
+      errors.add('ADMIN_USER_IDS is required (comma-separated Telegram user ids).');
+    }
+    if (usesLiveKassa && (paymentWebhookSecret == null || paymentWebhookSecret!.trim().isEmpty)) {
+      errors.add(
+        'PAYMENT_WEBHOOK_SECRET is required when a kassa is configured. '
+        'Put the secret in the callback URL or X-Webhook-Secret header.',
+      );
+    }
+    return errors;
+  }
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -104,6 +142,15 @@ final class AppConfig {
       ..addOption('yookassa-shop-id', help: 'YooKassa shop id')
       ..addOption('yookassa-secret-key', help: 'YooKassa secret key')
       ..addOption('payment-webhook-bind', help: 'Local bind for payment callbacks')
+      ..addOption('payment-webhook-secret', help: 'Shared secret for kassa callbacks')
+      ..addOption('payment-webhook-path', help: 'Callback path (default: /payments/callback)')
+      ..addOption('sqlite-backup-enabled', help: 'Periodic VACUUM INTO backups (default: true)')
+      ..addOption('sqlite-backup-dir', help: 'Directory for SQLite backups')
+      ..addOption('sqlite-backup-keep', help: 'How many backup files to keep (default: 7)')
+      ..addOption(
+        'sqlite-backup-interval-hours',
+        help: 'Hours between SQLite backups (default: 24)',
+      )
       ..addOption('google-sheets-write-enabled', help: 'Export funnel slice (default: false)')
       ..addOption('google-sheets-credentials-path', help: 'Service-account JSON path')
       ..addOption('google-sheets-credentials-json', help: 'Inline service-account JSON')
@@ -140,6 +187,15 @@ final class AppConfig {
     final token = resolve('BOT_TOKEN', 'token');
     if (token == null || token.isEmpty) {
       stderr.writeln('Missing bot token. Use --token or BOT_TOKEN.');
+      exit(2);
+    }
+
+    final providerRaw = resolve('PAYMENT_PROVIDER', 'payment-provider');
+    final paymentProvider = _parsePaymentProvider(providerRaw);
+    if (paymentProvider == null) {
+      stderr.writeln(
+        'Unknown PAYMENT_PROVIDER="$providerRaw". Use leadpay, yookassa, or manual.',
+      );
       exit(2);
     }
 
@@ -184,7 +240,7 @@ final class AppConfig {
                   ?.clamp(2, 168) ??
               24,
       yookassaReturnUrl: resolve('YOOKASSA_RETURN_URL', 'yookassa-return-url'),
-      paymentProvider: _parsePaymentProvider(resolve('PAYMENT_PROVIDER', 'payment-provider')),
+      paymentProvider: paymentProvider,
       leadpayToken: resolve('LEADPAY_TOKEN', 'leadpay-token'),
       yookassaShopId: resolve('YOOKASSA_SHOP_ID', 'yookassa-shop-id'),
       yookassaSecretKey: resolve('YOOKASSA_SECRET_KEY', 'yookassa-secret-key'),
@@ -207,6 +263,21 @@ final class AppConfig {
                 '',
           )?.clamp(30, 86400) ??
           300,
+      paymentWebhookSecret: resolve('PAYMENT_WEBHOOK_SECRET', 'payment-webhook-secret'),
+      paymentWebhookPath:
+          resolve('PAYMENT_WEBHOOK_PATH', 'payment-webhook-path') ?? '/payments/callback',
+      sqliteBackupEnabled: _toBool(
+        resolve('SQLITE_BACKUP_ENABLED', 'sqlite-backup-enabled'),
+        defaultValue: true,
+      ),
+      sqliteBackupDir: resolve('SQLITE_BACKUP_DIR', 'sqlite-backup-dir') ?? 'data/backups',
+      sqliteBackupKeep:
+          int.tryParse(resolve('SQLITE_BACKUP_KEEP', 'sqlite-backup-keep') ?? '')?.clamp(1, 30) ??
+              7,
+      sqliteBackupIntervalHours: int.tryParse(
+            resolve('SQLITE_BACKUP_INTERVAL_HOURS', 'sqlite-backup-interval-hours') ?? '',
+          )?.clamp(1, 168) ??
+          24,
     );
   }
 }
@@ -266,7 +337,7 @@ bool _toBool(String? value, {required bool defaultValue}) {
   }
 }
 
-PaymentProvider _parsePaymentProvider(String? raw) {
+PaymentProvider? _parsePaymentProvider(String? raw) {
   switch (raw?.trim().toLowerCase()) {
     case 'yookassa':
     case 'yoo_kassa':
@@ -278,7 +349,7 @@ PaymentProvider _parsePaymentProvider(String? raw) {
     case '':
       return PaymentProvider.leadpay;
     default:
-      return PaymentProvider.leadpay;
+      return null;
   }
 }
 

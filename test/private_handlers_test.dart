@@ -101,4 +101,19 @@ void main() {
     expect(handled, isFalse);
     expect(harness.sender.messages, isEmpty);
   });
+
+  test('guide delivery does not downgrade a paid user', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.paid);
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.paid);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
+  });
 }

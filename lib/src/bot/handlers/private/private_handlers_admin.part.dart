@@ -19,8 +19,15 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     final fileId = extractDocumentFileId(context.message);
     if (fileId != null && text == null) {
-      _course.setLeadMagnetFileId(fileId);
-      return _send(context, _templates.adminGuideSaved(fileId));
+      _flowByUserId[userId] = PrivateFlowState(
+        step: PrivateFlowStep.adminGuideConfirm,
+        pendingGuideFileId: fileId,
+      );
+      return _send(
+        context,
+        _templates.adminGuideConfirm(fileId),
+        replyMarkup: _templates.guideConfirmKeyboard(),
+      );
     }
     if (flow?.step == PrivateFlowStep.adminSearch && text != null) {
       return _showAdminCard(context, text);
@@ -151,5 +158,18 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         total: result.total,
       ),
     );
+  }
+
+  Future<bool> _savePendingGuide(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final fileId = _flowByUserId[context.userId!]?.pendingGuideFileId;
+    _flowByUserId.remove(context.userId);
+    if (fileId == null || fileId.isEmpty) {
+      return _send(context, _templates.adminGuideDiscarded());
+    }
+    _course.setLeadMagnetFileId(fileId);
+    return _send(context, _templates.adminGuideSaved(fileId));
   }
 }

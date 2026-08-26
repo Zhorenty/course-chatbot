@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
@@ -16,7 +18,9 @@ import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
+import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
+import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -39,6 +43,17 @@ final class CourseBotRuntime {
   bool _closed = false;
 
   static Future<CourseBotRuntime> compose(AppConfig config) async {
+    final errors = config.validationErrors();
+    if (errors.isNotEmpty) {
+      for (final error in errors) {
+        stderr.writeln(error);
+      }
+      exit(2);
+    }
+    if (config.priceFullRub <= 0) {
+      l.w('PRICE_FULL_RUB is 0; checkout will be refused until a price is set.');
+    }
+
     final client = TelegramClient(token: config.botToken);
     String? botUsername;
     try {
@@ -82,6 +97,10 @@ final class CourseBotRuntime {
       conversationLog: CourseConversationLog(course),
     );
     final paymentGateway = createPaymentGateway(config);
+    l.i(
+      'Payment gateway in use: ${paymentGateway.providerId} '
+      '(config=${config.paymentProvider.name})',
+    );
     final funnel = FunnelService(course: course);
     final access = AccessService(course: course, telegram: client);
     final checkout = CheckoutService(
@@ -109,17 +128,22 @@ final class CourseBotRuntime {
       fromHour: config.quietHoursFrom,
       toHour: config.quietHoursTo,
     );
+    final jobScheduler = JobScheduler();
     final webhook = PaymentWebhookServer(
       bind: config.paymentWebhookBind,
       gateway: paymentGateway,
       checkout: checkout,
       course: course,
       notifier: handlers,
+      secret: config.paymentWebhookSecret,
+      callbackPath: config.paymentWebhookPath,
+      scheduler: jobScheduler,
     );
     final runner = BotRunner(
       config: config,
       client: client,
       privateHandlers: handlers,
+      jobScheduler: jobScheduler,
       warmupNudgeJob: config.warmupEnabled
           ? WarmupNudgeJob(
               course: course,
@@ -152,6 +176,16 @@ final class CourseBotRuntime {
               writer: sheetsWriter,
               sheetTitle: config.googleSheetsWriteSheetTitle,
             ),
+      maintenanceJob: SqliteMaintenanceJob(
+        databaseHandle: databaseHandle,
+        course: course,
+        dedupe: jobDedupe,
+        sqlitePath: config.sqlitePath,
+        backupDir: config.sqliteBackupDir,
+        keep: config.sqliteBackupKeep,
+        interval: Duration(hours: config.sqliteBackupIntervalHours),
+        backupEnabled: config.sqliteBackupEnabled,
+      ),
       googleSheetsWriter: sheetsWriter,
       paymentWebhookServer: webhook,
     );

@@ -110,6 +110,8 @@ final class LeadPayPaymentGateway implements PaymentGateway {
 
   @override
   Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async {
+    // LeadPay has no documented payment-status fetch for this BotHelp link.
+    // Authenticity is the webhook secret on PaymentWebhookServer.
     return callback;
   }
 

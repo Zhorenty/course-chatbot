@@ -9,4 +9,5 @@ secrets/*.json
 !secrets/*.example
 data/*.sqlite
 data/*.sqlite-*
+data/backups/
 

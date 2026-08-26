@@ -59,14 +59,16 @@ mixin _SqlitePaymentsStore on _SqliteCourseStore {
     return mapPayment(rows.first);
   }
 
-  PaymentRecord? latestPendingPayment(int orderId) {
+  PaymentRecord? latestPendingPayment(int orderId, {PaymentKind? kind}) {
+    final kindFilter = kind == null ? '' : ' AND kind = ?';
+    final params = <Object?>[orderId, if (kind != null) kind.storageValue];
     final rows = _db.select(
       '''
       SELECT * FROM payments
-      WHERE order_id = ? AND status = 'pending'
+      WHERE order_id = ? AND status = 'pending'$kindFilter
       ORDER BY id DESC LIMIT 1;
       ''',
-      <Object?>[orderId],
+      params,
     );
     if (rows.isEmpty) {
       return null;

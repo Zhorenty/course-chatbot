@@ -142,4 +142,39 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('Первое касание')), isTrue);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
+
+  test('warmup job skips users who already received every step', () async {
+    final now = DateTime.utc(2026, 1, 10, 12);
+    harness.course.ensureUser(userId: 1, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(
+      userId: 1,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+    );
+    for (final step in harness.course.listWarmupSteps()) {
+      harness.course.recordWarmupSent(userId: 1, stepKey: step.stepKey, sentAt: now);
+    }
+    harness.course.ensureUser(userId: 2, now: DateTime.utc(2026, 1, 9));
+    harness.course.setFunnelPhase(
+      userId: 2,
+      phase: FunnelPhase.magnetIssued,
+      magnetIssuedAt: DateTime.utc(2026, 1, 9),
+    );
+
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      ),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => now,
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    expect(harness.sender.messages.where((m) => m.chatId == 1), isEmpty);
+    expect(harness.sender.messages.where((m) => m.chatId == 2), isNotEmpty);
+  });
 }

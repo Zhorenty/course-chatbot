@@ -85,4 +85,18 @@ void main() {
     expect(verified.orderId, 3);
     gateway.close();
   });
+
+  test('YooKassa amount is parsed in kopecks without float rounding', () {
+    final gateway = YooKassaPaymentGateway(shopId: 's', secretKey: 'k');
+    final callback = gateway.parseCallback(<String, Object?>{
+      'event': 'payment.succeeded',
+      'object': <String, Object?>{
+        'id': 'pay-3',
+        'status': 'succeeded',
+        'paid': true,
+        'amount': <String, Object?>{'value': '19.99', 'currency': 'RUB'},
+      },
+    });
+    expect(callback!.amountKopecks, 1999);
+  });
 }

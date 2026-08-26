@@ -77,6 +77,12 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       case MessageTemplates.cbBroadcastCancel:
         _flowByUserId.remove(context.userId);
         return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
+      case MessageTemplates.cbGuideSave:
+        return _savePendingGuide(context);
+      case MessageTemplates.cbGuideDiscard:
+        _flowByUserId.remove(context.userId);
+        return _send(context, _templates.adminGuideDiscarded(),
+            replyMarkup: _templates.adminMenuKeyboard());
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
       return _continuePay(

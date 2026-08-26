@@ -52,7 +52,8 @@ mixin _SqliteConversationStore on _SqliteCourseStore {
     if (trimmed == null || trimmed.isEmpty) {
       return null;
     }
-    final plain = trimmed.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final redacted = _redactInviteLinks(trimmed);
+    final plain = redacted.replaceAll(RegExp(r'<[^>]*>'), '').trim();
     if (plain.isEmpty) {
       return null;
     }
@@ -60,5 +61,38 @@ mixin _SqliteConversationStore on _SqliteCourseStore {
       return plain;
     }
     return '${String.fromCharCodes(plain.runes.take(_SqliteCourseStore.previewMaxLength))}…';
+  }
+
+  String _redactInviteLinks(String text) {
+    return text
+        .replaceAll(RegExp(r'https://t\.me/\+[A-Za-z0-9_-]+'), '[invite]')
+        .replaceAll(RegExp(r'https://t\.me/joinchat/[A-Za-z0-9_-]+'), '[invite]');
+  }
+
+  void pruneConversationLog({
+    required DateTime olderThan,
+    int keepPerUser = 200,
+  }) {
+    _db.execute(
+      'DELETE FROM conversation_log WHERE occurred_at < ?;',
+      <Object?>[olderThan.toUtc().toIso8601String()],
+    );
+    _db.execute(
+      '''
+      DELETE FROM conversation_log
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY peer_user_id
+                   ORDER BY occurred_at DESC, id DESC
+                 ) AS rn
+          FROM conversation_log
+        )
+        WHERE rn > ?
+      );
+      ''',
+      <Object?>[keepPerUser],
+    );
   }
 }

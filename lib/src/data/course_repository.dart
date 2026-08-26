@@ -31,4 +31,9 @@ abstract interface class CourseRepository
   });
 
   List<ConversationLogEntry> dialogForUser(int userId, {int limit = 30});
+
+  void pruneConversationLog({
+    required DateTime olderThan,
+    int keepPerUser = 200,
+  });
 }

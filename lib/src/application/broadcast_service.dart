@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
+import 'package:course_chatbot/src/telegram/telegram_errors.dart';
 import 'package:l/l.dart';
 
 final class BroadcastResult {
@@ -46,6 +47,9 @@ final class BroadcastService {
         sent++;
       } on TelegramApiException catch (error) {
         failed++;
+        if (isUserBlockedError(error)) {
+          _course.setBotBlocked(userId: userId, blocked: true);
+        }
         l.w('Broadcast failed for $userId: $error');
       } on Object catch (error, stackTrace) {
         failed++;

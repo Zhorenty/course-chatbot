@@ -40,18 +40,20 @@ abstract interface class OrderRepository {
     required String providerPaymentId,
   });
 
-  PaymentRecord? latestPendingPayment(int orderId);
+  PaymentRecord? latestPendingPayment(int orderId, {PaymentKind? kind});
 
   void updatePayment(PaymentRecord payment);
 
   List<CourseOrder> listAbandonedCheckout({
     required DateTime now,
     required Duration minAge,
+    String? excludeDedupeSuffix,
     int limit = 100,
   });
 
   List<CourseOrder> listRemainderDue({
     required DateTime now,
+    String? excludeDedupeDayKey,
     int limit = 100,
   });
 }

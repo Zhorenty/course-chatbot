@@ -13,13 +13,22 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       final payment = await _checkout.createCheckout(
         order: order,
         kind: kind,
-        amountKopecks: amount <= 0 ? launch.priceFullKopecks : amount,
+        amountKopecks: amount,
       );
       final url = payment.confirmationUrl;
       if (url == null || url.isEmpty) {
         return _send(context, _templates.payManualFallback());
       }
       return _send(context, _templates.payButton(url), replyMarkup: _templates.payUrlKeyboard(url));
+    } on CheckoutBlockedException catch (error) {
+      if (error.reason == CheckoutBlockReason.alreadyPaid) {
+        return _send(
+          context,
+          _templates.alreadyHasAccess(),
+          replyMarkup: _templates.accessKeyboard(),
+        );
+      }
+      return _send(context, _templates.payManualFallback());
     } on PaymentUnavailableException catch (error, stackTrace) {
       l.w('Checkout unavailable: $error', stackTrace);
       return _send(context, _templates.payManualFallback());
@@ -65,7 +74,19 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
   }
 
   Future<void> _notifyPaymentResult(PaymentApplyResult result) async {
-    if (result.alreadyApplied) {
+    if (result.alreadyApplied && !result.repairedInvite) {
+      return;
+    }
+    if (result.repairedInvite) {
+      final link = result.inviteLink;
+      if (link != null) {
+        await _sender.sendMessage(
+          result.order.userId,
+          _templates.inviteMessage(link),
+          parseMode: 'HTML',
+          replyMarkup: _templates.accessKeyboard(),
+        );
+      }
       return;
     }
     if (result.depositOnly) {
@@ -96,6 +117,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
           result.order.userId,
           _templates.inviteUnavailable(),
           parseMode: 'HTML',
+          replyMarkup: _templates.accessKeyboard(),
         );
       }
     }

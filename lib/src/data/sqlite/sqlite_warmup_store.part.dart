@@ -66,6 +66,7 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
 
   @override
   List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 100}) {
+    final nowIso = now.toUtc().toIso8601String();
     final rows = _db.select(
       '''
       SELECT u.user_id, u.magnet_issued_at, u.first_started_at,
@@ -75,11 +76,23 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
       WHERE u.bot_blocked = 0
         AND u.warmup_opt_out = 0
         AND u.funnel_phase IN ('magnet_issued', 'warming')
+        AND EXISTS (
+          SELECT 1 FROM warmup_steps s
+          WHERE s.enabled = 1
+            AND NOT EXISTS (
+              SELECT 1 FROM warmup_sent sent
+              WHERE sent.user_id = u.user_id AND sent.step_key = s.step_key
+            )
+            AND (
+              strftime('%s', ?)
+              - strftime('%s', COALESCE(u.magnet_issued_at, u.first_started_at))
+            ) >= s.delay_seconds
+        )
       GROUP BY u.user_id
       ORDER BY u.first_started_at
       LIMIT ?;
       ''',
-      <Object?>[limit],
+      <Object?>[nowIso, limit],
     );
     return [
       for (final row in rows)

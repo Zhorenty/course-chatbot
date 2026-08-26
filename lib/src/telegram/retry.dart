@@ -4,6 +4,7 @@ Future<T> retry<T>(
   Duration delay = const Duration(milliseconds: 500),
   double backoffFactor = 1.5,
   bool Function(Object error)? shouldRetry,
+  Duration Function(Object error, Duration currentDelay)? delayForError,
 }) async {
   assert(attempts > 0, 'attempts must be greater than zero');
   if (attempts == 1) {
@@ -19,7 +20,8 @@ Future<T> retry<T>(
       if (attempt == attempts || !canRetry) {
         rethrow;
       }
-      await Future<void>.delayed(currentDelay);
+      final wait = delayForError?.call(error, currentDelay) ?? currentDelay;
+      await Future<void>.delayed(wait);
       currentDelay = Duration(
         milliseconds: (currentDelay.inMilliseconds * backoffFactor).round(),
       );

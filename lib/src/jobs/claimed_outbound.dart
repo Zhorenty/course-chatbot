@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
+import 'package:course_chatbot/src/telegram/telegram_errors.dart';
 import 'package:l/l.dart';
 
 const int outboundBatchSize = 50;
@@ -18,6 +20,8 @@ Future<void> sendClaimedBatch<T>({
   required JobDedupeRepository dedupe,
   required Future<void> Function(T item) send,
   required String Function(T item) errorLabel,
+  required int Function(T item) userId,
+  required CourseRepository course,
 }) async {
   var sent = 0;
   for (final item in items) {
@@ -31,6 +35,9 @@ Future<void> sendClaimedBatch<T>({
       await paceOutboundBatch(sent);
     } on Object catch (error, stackTrace) {
       dedupe.release(key);
+      if (isUserBlockedError(error)) {
+        course.setBotBlocked(userId: userId(item), blocked: true);
+      }
       l.w('${errorLabel(item)}: $error', stackTrace);
     }
   }

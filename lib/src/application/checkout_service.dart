@@ -16,6 +16,7 @@ final class PaymentApplyResult {
     this.inviteLink,
     this.grantedAccess = false,
     this.depositOnly = false,
+    this.repairedInvite = false,
   });
 
   final CourseOrder order;
@@ -23,6 +24,18 @@ final class PaymentApplyResult {
   final String? inviteLink;
   final bool grantedAccess;
   final bool depositOnly;
+  final bool repairedInvite;
+}
+
+enum CheckoutBlockReason { alreadyPaid, priceNotSet }
+
+final class CheckoutBlockedException implements Exception {
+  const CheckoutBlockedException(this.reason);
+
+  final CheckoutBlockReason reason;
+
+  @override
+  String toString() => 'CheckoutBlockedException: $reason';
 }
 
 abstract interface class PaymentResultNotifier {
@@ -53,6 +66,7 @@ final class CheckoutService {
     required Launch launch,
     required PaymentKind kind,
   }) {
+    _assertCanStartCharge(userId: userId, kind: kind);
     final existing = _course.latestOpenOrder(userId);
     if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
       return existing;
@@ -76,6 +90,17 @@ final class CheckoutService {
     );
   }
 
+  void _assertCanStartCharge({required int userId, required PaymentKind kind}) {
+    final user = _course.getUser(userId);
+    if (user != null && user.funnelPhase.isPaidOrAccess && kind != PaymentKind.remainder) {
+      throw const CheckoutBlockedException(CheckoutBlockReason.alreadyPaid);
+    }
+    final latest = _course.latestOrder(userId);
+    if (latest != null && latest.status.isFullyPaid && kind != PaymentKind.remainder) {
+      throw const CheckoutBlockedException(CheckoutBlockReason.alreadyPaid);
+    }
+  }
+
   /// Reuse an open checkout for the same charge type.
   /// A deposit-paid order is only reused for remainder; a new full charge
   /// starts a separate order so the remainder path stays intact.
@@ -92,6 +117,20 @@ final class CheckoutService {
     required PaymentKind kind,
     required int amountKopecks,
   }) async {
+    if (amountKopecks <= 0) {
+      throw const CheckoutBlockedException(CheckoutBlockReason.priceNotSet);
+    }
+    _assertCanStartCharge(userId: order.userId, kind: kind);
+    final reusable = _course.latestPendingPayment(order.id, kind: kind);
+    if (reusable != null &&
+        reusable.confirmationUrl != null &&
+        reusable.confirmationUrl!.isNotEmpty) {
+      return reusable;
+    }
+    if (reusable != null) {
+      _course.updatePayment(reusable.copyWith(status: PaymentRecordStatus.canceled));
+    }
+
     final now = _nowProvider();
     var payment = _course.insertPayment(
       orderId: order.id,
@@ -121,19 +160,38 @@ final class CheckoutService {
         stackTrace,
       );
     }
-    payment = payment.copyWith(
+
+    final currentPayment = _course.getPayment(payment.id) ?? payment;
+    if (currentPayment.status == PaymentRecordStatus.succeeded) {
+      return currentPayment;
+    }
+    final currentOrder = _course.getOrder(order.id) ?? order;
+    if (currentOrder.status.isFullyPaid || currentOrder.accessGranted) {
+      return currentPayment.copyWith(
+        provider: session.provider,
+        providerPaymentId: session.providerPaymentId,
+        confirmationUrl: session.confirmationUrl,
+      );
+    }
+
+    payment = currentPayment.copyWith(
       provider: session.provider,
       providerPaymentId: session.providerPaymentId,
       confirmationUrl: session.confirmationUrl,
     );
     _course.updatePayment(payment);
-    _course.updateOrder(
-      order.copyWith(
-        status: OrderStatus.awaitingPayment,
-        kind: kind,
-      ),
-    );
-    _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
+    if (!currentOrder.status.isFullyPaid && currentOrder.status != OrderStatus.depositPaid) {
+      _course.updateOrder(
+        currentOrder.copyWith(
+          status: OrderStatus.awaitingPayment,
+          kind: kind,
+        ),
+      );
+    }
+    final user = _course.getUser(order.userId);
+    if (user == null || !user.funnelPhase.excludeSellingDrip) {
+      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
+    }
     return payment;
   }
 
@@ -154,20 +212,27 @@ final class CheckoutService {
     required Launch launch,
   }) async {
     final result = _course.transaction(() => _applyLocked(callback, launch: launch));
-    if (result.alreadyApplied || !result.grantedAccess) {
+    if (result.depositOnly) {
       return result;
     }
+    final paid = result.grantedAccess || result.order.status.isFullyPaid;
+    if (!paid) {
+      return result;
+    }
+    final hadAccess = result.order.accessGranted;
     try {
       final link = await _access.issueInvite(
         userId: result.order.userId,
         orderId: result.order.id,
         launch: launch,
       );
+      final repaired = result.alreadyApplied && !hadAccess && link != null;
       return PaymentApplyResult(
-        order: result.order,
-        alreadyApplied: false,
+        order: _course.getOrder(result.order.id) ?? result.order,
+        alreadyApplied: result.alreadyApplied && !repaired,
         inviteLink: link,
         grantedAccess: true,
+        repairedInvite: repaired,
       );
     } on Object catch (error, stackTrace) {
       l.w('Paid but invite failed for order ${result.order.id}: $error', stackTrace);
@@ -210,7 +275,7 @@ final class CheckoutService {
         return PaymentApplyResult(
           order: order,
           alreadyApplied: true,
-          grantedAccess: order.accessGranted,
+          grantedAccess: order.accessGranted || order.status.isFullyPaid,
         );
       }
     }
@@ -238,6 +303,9 @@ final class CheckoutService {
     if (order == null) {
       throw StateError('Payment callback has no matching order.');
     }
+    if (callback.userId != null && callback.userId != order.userId) {
+      throw StateError('Payment callback user does not match the order.');
+    }
     final kind = callback.kind ?? payment?.kind ?? order.kind;
     final amount = callback.amountKopecks ?? payment?.amountKopecks ?? order.amountDueKopecks;
     final now = _nowProvider();
@@ -256,6 +324,14 @@ final class CheckoutService {
         succeededAt: now,
       ),
     );
+
+    if (order.status.isFullyPaid || order.accessGranted) {
+      return PaymentApplyResult(
+        order: order,
+        alreadyApplied: true,
+        grantedAccess: order.accessGranted || order.status.isFullyPaid,
+      );
+    }
 
     final paidTotal = order.amountPaidKopecks + amount;
     final due = (order.priceFullKopecks - paidTotal).clamp(0, order.priceFullKopecks);

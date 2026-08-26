@@ -62,66 +62,6 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
-  Future<int> sendVideo(
-    int chatId, {
-    required String video,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) async {
-    return _inner.sendVideo(
-      chatId,
-      video: video,
-      disableNotification: disableNotification,
-      replyMarkup: replyMarkup,
-    );
-  }
-
-  @override
-  Future<int> sendVideoNote(
-    int chatId, {
-    required String videoNote,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) {
-    return _inner.sendVideoNote(
-      chatId,
-      videoNote: videoNote,
-      disableNotification: disableNotification,
-      replyMarkup: replyMarkup,
-    );
-  }
-
-  @override
-  Future<int> copyMessage(
-    int chatId, {
-    required int fromChatId,
-    required int messageId,
-    bool disableNotification = true,
-  }) async {
-    final copiedId = await _inner.copyMessage(
-      chatId,
-      fromChatId: fromChatId,
-      messageId: messageId,
-      disableNotification: disableNotification,
-    );
-    await _safeAppend(
-      chatId: chatId,
-      telegramMessageId: copiedId,
-      contentType: ConversationContentType.copy,
-      textPreview: 'copy from $fromChatId#$messageId',
-    );
-    return copiedId;
-  }
-
-  @override
-  Future<void> deleteMessage(
-    int chatId, {
-    required int messageId,
-  }) {
-    return _inner.deleteMessage(chatId, messageId: messageId);
-  }
-
-  @override
   Future<void> answerCallbackQuery(
     String callbackQueryId, {
     String? text,

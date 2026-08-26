@@ -99,9 +99,11 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
   List<CourseOrder> listAbandonedCheckout({
     required DateTime now,
     required Duration minAge,
+    String? excludeDedupeSuffix,
     int limit = 100,
   }) {
     final threshold = now.toUtc().subtract(minAge).toIso8601String();
+    final suffix = excludeDedupeSuffix;
     final rows = _db.select(
       '''
       SELECT o.*
@@ -110,19 +112,27 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
       WHERE o.status = 'awaiting_payment'
         AND o.checkout_started_at <= ?
         AND u.bot_blocked = 0
+        AND (
+          ? IS NULL OR NOT EXISTS (
+            SELECT 1 FROM job_dedupe_log d
+            WHERE d.dedupe_key = 'abandon:' || o.id || ':' || ?
+          )
+        )
       ORDER BY o.id
       LIMIT ?;
       ''',
-      <Object?>[threshold, limit],
+      <Object?>[threshold, suffix, suffix ?? '', limit],
     );
     return rows.map(mapOrder).toList(growable: false);
   }
 
   List<CourseOrder> listRemainderDue({
     required DateTime now,
+    String? excludeDedupeDayKey,
     int limit = 100,
   }) {
     final nowIso = now.toUtc().toIso8601String();
+    final dayKey = excludeDedupeDayKey;
     final rows = _db.select(
       '''
       SELECT o.*
@@ -132,10 +142,16 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
         AND o.due_at IS NOT NULL
         AND o.due_at <= ?
         AND u.bot_blocked = 0
+        AND (
+          ? IS NULL OR NOT EXISTS (
+            SELECT 1 FROM job_dedupe_log d
+            WHERE d.dedupe_key = 'remainder:' || o.id || ':' || ?
+          )
+        )
       ORDER BY o.due_at
       LIMIT ?;
       ''',
-      <Object?>[nowIso, limit],
+      <Object?>[nowIso, dayKey, dayKey ?? '', limit],
     );
     return rows.map(mapOrder).toList(growable: false);
   }

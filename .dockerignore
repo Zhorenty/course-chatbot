@@ -1,0 +1,13 @@
+.git
+.dart_tool
+.env
+data
+secrets
+test
+docs
+coverage
+build
+*.md
+AGENTS.md
+Makefile
+compose.yaml

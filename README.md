@@ -24,21 +24,25 @@ make bot
 
 ```bash
 cp .env.example .env
-# для контейнера: PAYMENT_WEBHOOK_BIND=0.0.0.0:8080
+# BOT_TOKEN, ADMIN_USER_IDS
+# для контейнера compose сам ставит PAYMENT_WEBHOOK_BIND=0.0.0.0:8080
+# порт на хосте только 127.0.0.1:8080
 docker compose up -d --build
 ```
 
-SQLite живёт в `./data`. Бэкап — копия файла `data/course.sqlite` (и `-wal`/`-shm`, если есть).
+SQLite живёт в `./data`. Бэкап — периодический `VACUUM INTO` в `data/backups/` и копия файла `data/course.sqlite` (и `-wal`/`-shm`, если есть).
 
 ## Касса
 
 `PAYMENT_PROVIDER=leadpay | yookassa | manual`.
 
-- LeadPay — первый заход. Нужен токен «для внешних систем». Пока токена нет, бот работает как `manual` (ссылку не отдаёт, админ отмечает оплату).
-- ЮKassa — запасной шлюз, webhook `POST /` на `PAYMENT_WEBHOOK_BIND`.
+- LeadPay — первый заход. Нужен токен «для внешних систем» и `PAYMENT_WEBHOOK_SECRET`. Пока токена нет, бот работает как `manual` (ссылку не отдаёт, админ отмечает оплату).
+- ЮKassa — запасной шлюз. Callback: `POST /payments/callback` (секрет в query `?secret=`, заголовке `X-Webhook-Secret` или в path). Бот дополнительно перечитывает платёж из API ЮKassa.
+- `GET /health` — liveness для Docker.
 - Sidecar HTTP не заменяет long polling Telegram.
+- Не публикуй 8080 в интернет. Compose слушает только `127.0.0.1` на хосте; снаружи нужен reverse proxy.
 
-Повторы `succeeded` идемпотентны: второй callback не создаёт второй invite. Предоплата канал не открывает.
+Повторы `succeeded` идемпотентны: второй callback не создаёт второй invite и не затирает уже оплаченный заказ. Если invite не выдался, повтор webhook чинит ссылку. Предоплата канал не открывает.
 
 ## Google Sheets
 

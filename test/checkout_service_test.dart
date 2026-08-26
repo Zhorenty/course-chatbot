@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
@@ -223,5 +224,186 @@ void main() {
       throwsA(isA<PaymentUnavailableException>()),
     );
     expect(harness.course.latestPendingPayment(order.id), isNull);
+  });
+
+  test('webhook during createPayment does not revert paid status', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    harness.gateway.onCreated = (session, paymentDbId) async {
+      await harness.checkout.applyCallback(
+        PaymentCallback(
+          provider: 'fake',
+          providerPaymentId: session.providerPaymentId,
+          succeeded: true,
+          charged: true,
+          kind: PaymentKind.full,
+          orderId: order.id,
+          paymentDbId: paymentDbId,
+          userId: 42,
+          amountKopecks: launch.priceFullKopecks,
+        ),
+        launch: launch,
+      );
+    };
+
+    final created = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
+    expect(harness.course.getPayment(created.id)?.status, PaymentRecordStatus.succeeded);
+    expect(
+      harness.course.getUser(42)?.funnelPhase,
+      anyOf(FunnelPhase.paid, FunnelPhase.accessGranted),
+    );
+  });
+
+  test('second checkout after paid is refused', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+
+    expect(
+      () => harness.checkout.startOrReuseOrder(
+        userId: 42,
+        launch: launch,
+        kind: PaymentKind.full,
+      ),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.alreadyPaid,
+        ),
+      ),
+    );
+  });
+
+  test('repeated checkout reuses the pending payment URL', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final first = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    final second = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    expect(second.id, first.id);
+    expect(harness.gateway.creates, 1);
+  });
+
+  test('failed invite is repaired on a repeated succeeded callback', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    harness.channel.createError = StateError('telegram down');
+    final first = await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+    expect(first.inviteLink, isNull);
+    expect(harness.course.getOrder(order.id)?.accessGranted, isFalse);
+
+    harness.channel.createError = null;
+    final second = await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+    expect(second.inviteLink, isNotNull);
+    expect(second.repairedInvite, isTrue);
+    expect(harness.channel.created, isNotEmpty);
+  });
+
+  test('zero amount checkout is refused', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    await expectLater(
+      harness.checkout.createCheckout(
+        order: order,
+        kind: PaymentKind.full,
+        amountKopecks: 0,
+      ),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.priceNotSet,
+        ),
+      ),
+    );
   });
 }

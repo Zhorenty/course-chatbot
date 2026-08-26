@@ -33,6 +33,34 @@ extension FunnelPhaseX on FunnelPhase {
       this == FunnelPhase.accessGranted ||
       this == FunnelPhase.cancelled;
 
+  /// Selling/payment phases only move forward. `cancelled` is a side door:
+  /// admin override may return to deposit/paid/access.
+  int get rank => switch (this) {
+        FunnelPhase.lead => 0,
+        FunnelPhase.magnetIssued => 1,
+        FunnelPhase.warming => 2,
+        FunnelPhase.checkout => 3,
+        FunnelPhase.depositPaid => 4,
+        FunnelPhase.paid => 5,
+        FunnelPhase.accessGranted => 6,
+        FunnelPhase.cancelled => -1,
+      };
+
+  bool canTransitionTo(FunnelPhase next) {
+    if (this == next) {
+      return true;
+    }
+    if (next == FunnelPhase.cancelled) {
+      return true;
+    }
+    if (this == FunnelPhase.cancelled) {
+      return next == FunnelPhase.depositPaid ||
+          next == FunnelPhase.paid ||
+          next == FunnelPhase.accessGranted;
+    }
+    return next.rank >= rank;
+  }
+
   static FunnelPhase parse(String? raw, {FunnelPhase fallback = FunnelPhase.lead}) {
     return parseStoredEnum(
       raw,

@@ -13,7 +13,7 @@
 - [ ] VPS (SmartApe или аналог), Docker + Compose, постоянный диск под `./data`
 - [ ] Домен или IP с HTTPS **только если** касса шлёт webhook (ЮKassa почти наверняка; LeadPay — по итогам спайка). Long polling Telegram на webhook не переводим
 - [ ] Прописать `.env` на сервере из `.env.example` (токен, админы, канал, цены, касса, Sheets)
-- [ ] Для контейнера: `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` и проброс порта / reverse proxy на sidecar
+- [ ] Для контейнера: compose ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` и публикует только `127.0.0.1:8080` на хосте. Снаружи — reverse proxy. Задай `PAYMENT_WEBHOOK_SECRET` до включения живой кассы.
 - [ ] После сдачи: доступы VPS, `.env`, бэкапы SQLite — заказчице, копии бота себе не оставлять
 
 ### Google Sheets (срез `FUNNEL`)

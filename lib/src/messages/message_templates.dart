@@ -48,6 +48,8 @@ final class MessageTemplates {
   static const String cbAdminInvite = 'ai:';
   static const String cbBroadcastGuide = 'bg';
   static const String cbBroadcastCancel = 'bx';
+  static const String cbGuideSave = 'gs';
+  static const String cbGuideDiscard = 'gx';
 
   String startGuideOffer({String? source}) {
     final mark = source == null ? 'без метки' : escapeHtml(source);
@@ -231,6 +233,13 @@ final class MessageTemplates {
   String adminGuideSaved(String fileId) {
     return 'Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';
   }
+
+  String adminGuideConfirm(String fileId) {
+    return 'Сохранить этот файл как гайд запуска?\n'
+        'file_id: <code>${escapeHtml(fileId)}</code>';
+  }
+
+  String adminGuideDiscarded() => 'Файл не сохранён как гайд.';
 
   String adminBroadcastConfirm() {
     return 'Отправить этот текст сегменту «получили гайд и не купили»?';

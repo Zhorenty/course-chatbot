@@ -80,6 +80,10 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
     required FunnelPhase phase,
     DateTime? magnetIssuedAt,
   }) {
+    final existing = getUser(userId);
+    final nextPhase = existing == null || existing.funnelPhase.canTransitionTo(phase)
+        ? phase
+        : existing.funnelPhase;
     if (magnetIssuedAt != null) {
       _db.execute(
         '''
@@ -88,12 +92,15 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
         WHERE user_id = ?;
         ''',
         <Object?>[
-          phase.storageValue,
+          nextPhase.storageValue,
           magnetIssuedAt.toUtc().toIso8601String(),
           _nowProvider().toUtc().toIso8601String(),
           userId,
         ],
       );
+      return;
+    }
+    if (existing != null && !existing.funnelPhase.canTransitionTo(phase)) {
       return;
     }
     _db.execute(
@@ -102,7 +109,7 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
       SET funnel_phase = ?, updated_at = ?
       WHERE user_id = ?;
       ''',
-      <Object?>[phase.storageValue, _nowProvider().toUtc().toIso8601String(), userId],
+      <Object?>[nextPhase.storageValue, _nowProvider().toUtc().toIso8601String(), userId],
     );
   }
 

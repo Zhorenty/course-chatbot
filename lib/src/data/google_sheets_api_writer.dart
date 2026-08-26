@@ -101,14 +101,22 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     for (final obsolete in dashboard.obsoleteSheetTitles) {
       sheets = await _deleteNamed(sheets, obsolete, keepTitle: dashboard.sheetTitle);
     }
-    sheets = await _deleteNamed(sheets, dashboard.sheetTitle, keepTitle: null);
-    await _gateway.addSheet(dashboard.sheetTitle).timeout(_requestTimeout);
+    final stagingTitle = '${dashboard.sheetTitle}__next';
+    final prevTitle = '${dashboard.sheetTitle}__prev';
+    sheets = await _recoverMissingLiveTab(
+      sheets,
+      liveTitle: dashboard.sheetTitle,
+      stagingTitle: stagingTitle,
+      prevTitle: prevTitle,
+    );
+    sheets = await _deleteNamed(sheets, stagingTitle, keepTitle: dashboard.sheetTitle);
+    await _gateway.addSheet(stagingTitle).timeout(_requestTimeout);
     sheets = await _gateway.describeSheets().timeout(_requestTimeout);
-    final target = _named(sheets, dashboard.sheetTitle);
-    if (target == null) {
-      throw StateError('Failed to create Google Sheets tab ${dashboard.sheetTitle}.');
+    final staging = _named(sheets, stagingTitle);
+    if (staging == null) {
+      throw StateError('Failed to create staging tab $stagingTitle.');
     }
-    final quoted = quoteA1SheetTitle(dashboard.sheetTitle);
+    final quoted = quoteA1SheetTitle(stagingTitle);
     if (dashboard.rows.isNotEmpty) {
       await _gateway
           .updateValues(
@@ -119,8 +127,43 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
           .timeout(_requestTimeout);
     }
     await _gateway
-        .applyDashboardLook(sheetId: target.sheetId, dashboard: dashboard)
+        .applyDashboardLook(sheetId: staging.sheetId, dashboard: dashboard)
         .timeout(_requestTimeout);
+    sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    sheets = await _deleteNamed(sheets, prevTitle, keepTitle: null);
+    final live = _named(sheets, dashboard.sheetTitle);
+    if (live != null) {
+      await _gateway.renameSheet(sheetId: live.sheetId, title: prevTitle).timeout(_requestTimeout);
+    }
+    await _gateway
+        .renameSheet(sheetId: staging.sheetId, title: dashboard.sheetTitle)
+        .timeout(_requestTimeout);
+    sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    await _deleteNamed(sheets, prevTitle, keepTitle: dashboard.sheetTitle);
+  }
+
+  Future<List<GoogleSheetsSheetInfo>> _recoverMissingLiveTab(
+    List<GoogleSheetsSheetInfo> sheets, {
+    required String liveTitle,
+    required String stagingTitle,
+    required String prevTitle,
+  }) async {
+    if (_named(sheets, liveTitle) != null) {
+      return sheets;
+    }
+    final staging = _named(sheets, stagingTitle);
+    if (staging != null) {
+      await _gateway
+          .renameSheet(sheetId: staging.sheetId, title: liveTitle)
+          .timeout(_requestTimeout);
+      return _gateway.describeSheets().timeout(_requestTimeout);
+    }
+    final prev = _named(sheets, prevTitle);
+    if (prev != null) {
+      await _gateway.renameSheet(sheetId: prev.sheetId, title: liveTitle).timeout(_requestTimeout);
+      return _gateway.describeSheets().timeout(_requestTimeout);
+    }
+    return sheets;
   }
 
   Future<List<GoogleSheetsSheetInfo>> _deleteNamed(
@@ -225,6 +268,23 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                 ),
                 tabColor: Color(red: 0.12, green: 0.23, blue: 0.18),
               ),
+            ),
+          ),
+        ],
+      ),
+      _spreadsheetId,
+    );
+  }
+
+  @override
+  Future<void> renameSheet({required int sheetId, required String title}) async {
+    await _api.spreadsheets.batchUpdate(
+      BatchUpdateSpreadsheetRequest(
+        requests: <Request>[
+          Request(
+            updateSheetProperties: UpdateSheetPropertiesRequest(
+              properties: SheetProperties(sheetId: sheetId, title: title),
+              fields: 'title',
             ),
           ),
         ],

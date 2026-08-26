@@ -18,6 +18,8 @@ abstract interface class GoogleSheetsSpreadsheetGateway {
 
   Future<void> addSheet(String title);
 
+  Future<void> renameSheet({required int sheetId, required String title});
+
   Future<void> deleteSheet(int sheetId);
 
   Future<void> clearRange(String a1Range);

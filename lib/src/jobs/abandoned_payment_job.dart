@@ -58,10 +58,16 @@ final class AbandonedPaymentJob {
     required String text,
   }) {
     return sendClaimedBatch(
-      items: _course.listAbandonedCheckout(now: now, minAge: minAge),
+      items: _course.listAbandonedCheckout(
+        now: now,
+        minAge: minAge,
+        excludeDedupeSuffix: keySuffix,
+      ),
       claimKey: (order) => 'abandon:${order.id}:$keySuffix',
       dedupe: _dedupe,
       errorLabel: (order) => 'Abandoned payment reminder failed for order ${order.id}',
+      userId: (order) => order.userId,
+      course: _course,
       send: (order) async {
         if (order.status.isFullyPaid) {
           return;

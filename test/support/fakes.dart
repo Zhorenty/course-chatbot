@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/telegram/message_sender.dart';
 final class FakeMessageSender implements MessageSender {
   final List<SentMessage> messages = <SentMessage>[];
   final List<String> documents = <String>[];
+  Object? throwOnSend;
 
   @override
   Future<int> sendMessage(
@@ -17,6 +18,10 @@ final class FakeMessageSender implements MessageSender {
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
+    final error = throwOnSend;
+    if (error != null) {
+      throw error;
+    }
     messages.add(
       SentMessage(
         chatId: chatId,
@@ -38,42 +43,6 @@ final class FakeMessageSender implements MessageSender {
     documents.add(document);
     return 100 + documents.length;
   }
-
-  @override
-  Future<int> sendVideo(
-    int chatId, {
-    required String video,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) async {
-    return 0;
-  }
-
-  @override
-  Future<int> sendVideoNote(
-    int chatId, {
-    required String videoNote,
-    bool disableNotification = true,
-    Map<String, Object?>? replyMarkup,
-  }) async {
-    return 0;
-  }
-
-  @override
-  Future<int> copyMessage(
-    int chatId, {
-    required int fromChatId,
-    required int messageId,
-    bool disableNotification = true,
-  }) async {
-    return 0;
-  }
-
-  @override
-  Future<void> deleteMessage(
-    int chatId, {
-    required int messageId,
-  }) async {}
 
   @override
   Future<void> answerCallbackQuery(
@@ -110,6 +79,7 @@ final class FakePaymentGateway implements PaymentGateway {
   final String? url;
   Object? createError;
   int creates = 0;
+  Future<void> Function(CheckoutSession session, int paymentDbId)? onCreated;
 
   @override
   String get providerId => 'fake';
@@ -128,11 +98,16 @@ final class FakePaymentGateway implements PaymentGateway {
       throw error;
     }
     creates += 1;
-    return CheckoutSession(
+    final session = CheckoutSession(
       provider: providerId,
       providerPaymentId: 'fake-$paymentDbId',
       confirmationUrl: url,
     );
+    final hook = onCreated;
+    if (hook != null) {
+      await hook(session, paymentDbId);
+    }
+    return session;
   }
 
   @override
@@ -169,6 +144,7 @@ final class FakeChannelApi implements ChannelApi {
   final List<String> created = <String>[];
   final List<String> revoked = <String>[];
   int _n = 0;
+  Object? createError;
 
   @override
   Future<String> createChatInviteLink({
@@ -177,6 +153,10 @@ final class FakeChannelApi implements ChannelApi {
     String? name,
     int? expireDate,
   }) async {
+    final error = createError;
+    if (error != null) {
+      throw error;
+    }
     _n += 1;
     final link = 'https://t.me/+invite$_n';
     created.add(link);

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/http_json.dart';
@@ -147,7 +148,7 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     if (amountRaw is Map) {
       final value = amountRaw['value']?.toString();
       if (value != null) {
-        amountKopecks = ((double.tryParse(value) ?? 0) * 100).round();
+        amountKopecks = parseRubStringToKopecks(value);
       }
     }
     final succeeded = event == 'payment.succeeded' || status == 'succeeded' || paid;

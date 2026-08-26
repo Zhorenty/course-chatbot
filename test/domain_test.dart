@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -31,5 +32,21 @@ void main() {
     expect(MessageTemplates.idFromCallback('ap:99', MessageTemplates.cbAdminPaid), 99);
     expect(MessageTemplates.idFromCallback('cp:12', MessageTemplates.cbContinuePay), 12);
     expect(MessageTemplates.idFromCallback('g', MessageTemplates.cbAdminPaid), isNull);
+  });
+
+  test('funnel phases do not move backwards except cancel/admin override', () {
+    expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.magnetIssued), isFalse);
+    expect(FunnelPhase.accessGranted.canTransitionTo(FunnelPhase.checkout), isFalse);
+    expect(FunnelPhase.warming.canTransitionTo(FunnelPhase.checkout), isTrue);
+    expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.accessGranted), isTrue);
+    expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.cancelled), isTrue);
+    expect(FunnelPhase.cancelled.canTransitionTo(FunnelPhase.paid), isTrue);
+  });
+
+  test('parseRubStringToKopecks avoids binary float drift', () {
+    expect(parseRubStringToKopecks('10000.00'), 1000000);
+    expect(parseRubStringToKopecks('19.99'), 1999);
+    expect(parseRubStringToKopecks('0.10'), 10);
+    expect(parseRubStringToKopecks('7'), 700);
   });
 }

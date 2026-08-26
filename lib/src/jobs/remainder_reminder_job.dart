@@ -32,14 +32,14 @@ final class RemainderReminderJob {
       return;
     }
     final now = _nowProvider();
+    final dayKey = now.toUtc().toIso8601String().substring(0, 10);
     await sendClaimedBatch(
-      items: _course.listRemainderDue(now: now),
-      claimKey: (order) {
-        final dayKey = now.toUtc().toIso8601String().substring(0, 10);
-        return 'remainder:${order.id}:$dayKey';
-      },
+      items: _course.listRemainderDue(now: now, excludeDedupeDayKey: dayKey),
+      claimKey: (order) => 'remainder:${order.id}:$dayKey',
       dedupe: _dedupe,
       errorLabel: (order) => 'Remainder reminder failed for order ${order.id}',
+      userId: (order) => order.userId,
+      course: _course,
       send: (order) {
         return _sender.sendMessage(
           order.userId,

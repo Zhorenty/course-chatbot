@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
+import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/payments/payment_webhook_server.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
@@ -18,10 +19,12 @@ final class BotRunner {
     required AppConfig config,
     required TelegramClient client,
     required PrivateHandlers privateHandlers,
+    JobScheduler? jobScheduler,
     WarmupNudgeJob? warmupNudgeJob,
     AbandonedPaymentJob? abandonedPaymentJob,
     RemainderReminderJob? remainderReminderJob,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
+    SqliteMaintenanceJob? maintenanceJob,
     GoogleSheetsWriter? googleSheetsWriter,
     PaymentWebhookServer? paymentWebhookServer,
   })  : _config = config,
@@ -31,9 +34,10 @@ final class BotRunner {
         _abandonedPaymentJob = abandonedPaymentJob,
         _remainderReminderJob = remainderReminderJob,
         _sheetsExportJob = sheetsExportJob,
+        _maintenanceJob = maintenanceJob,
         _googleSheetsWriter = googleSheetsWriter,
         _paymentWebhookServer = paymentWebhookServer,
-        _jobScheduler = JobScheduler();
+        _jobScheduler = jobScheduler ?? JobScheduler();
 
   final AppConfig _config;
   final TelegramClient _client;
@@ -42,6 +46,7 @@ final class BotRunner {
   final AbandonedPaymentJob? _abandonedPaymentJob;
   final RemainderReminderJob? _remainderReminderJob;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
+  final SqliteMaintenanceJob? _maintenanceJob;
   final GoogleSheetsWriter? _googleSheetsWriter;
   final PaymentWebhookServer? _paymentWebhookServer;
   final JobScheduler _jobScheduler;
@@ -50,11 +55,14 @@ final class BotRunner {
   static const int _maxConflictRetries = 3;
 
   bool _stopping = false;
+  bool _finalized = false;
   int _exitCode = 0;
   int _conflictRetries = 0;
   int _offset = 0;
   bool _clientClosed = false;
   bool _sheetsClosed = false;
+
+  JobScheduler get jobScheduler => _jobScheduler;
 
   int get exitCode => _exitCode;
 
@@ -122,10 +130,7 @@ final class BotRunner {
         await Future<void>.delayed(const Duration(seconds: 2));
       }
     }
-    await _jobScheduler.waitForIdle();
-    _closeClient();
-    await _closeSheets();
-    await _paymentWebhookServer?.stop();
+    await _finalizeShutdown();
   }
 
   Future<void> _handleUpdate(Map<String, dynamic> update) async {
@@ -139,11 +144,19 @@ final class BotRunner {
         timer.cancel();
       }
       _timers.clear();
-      _closeClient();
-      await _jobScheduler.waitForIdle();
     }
-    await _closeSheets();
+    await _finalizeShutdown();
+  }
+
+  Future<void> _finalizeShutdown() async {
+    if (_finalized) {
+      return;
+    }
+    _finalized = true;
     await _paymentWebhookServer?.stop();
+    await _jobScheduler.waitForIdle(timeout: const Duration(seconds: 45));
+    await _closeSheets();
+    _closeClient();
   }
 
   void _scheduleJobs() {
@@ -164,6 +177,11 @@ final class BotRunner {
       final interval = Duration(seconds: _config.googleSheetsWriteIntervalSeconds);
       _schedulePeriodic(interval, 'sheets', sheets.run);
       _jobScheduler.launch('sheets', sheets.run);
+    }
+    final maintenance = _maintenanceJob;
+    if (maintenance != null) {
+      _schedulePeriodic(const Duration(hours: 1), 'maintenance', maintenance.run);
+      _jobScheduler.launch('maintenance', maintenance.run);
     }
   }
 

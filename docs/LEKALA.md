@@ -297,13 +297,15 @@ LEADPAY_TOKEN=
 YOOKASSA_SHOP_ID=
 YOOKASSA_SECRET_KEY=
 PAYMENT_WEBHOOK_BIND=127.0.0.1:8080
+PAYMENT_WEBHOOK_PATH=/payments/callback
+PAYMENT_WEBHOOK_SECRET=
 
 GOOGLE_SHEETS_WRITE_ENABLED=true
 GOOGLE_SHEETS_CREDENTIALS_PATH=
 GOOGLE_SHEETS_SPREADSHEET_ID=
 ```
 
-Секреты кассы и JSON сервис-аккаунта — не в git. После сдачи — её сервер и её `.env`.
+Секреты кассы и JSON сервис-аккаунта — не в git. После сдачи — её сервер и её `.env`. Webhook кассы — только с секретом; порт на хосте не торчать в интернет.
 
 ---
 
