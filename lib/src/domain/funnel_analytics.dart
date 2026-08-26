@@ -1,0 +1,46 @@
+final class FunnelAnalytics {
+  const FunnelAnalytics({
+    required this.generatedAt,
+    required this.startedUsersTotal,
+    required this.funnelUsers,
+    required this.guideTaken,
+    required this.checkoutStarted,
+    required this.paidUsers,
+    required this.startedLast7Days,
+    required this.startedLast30Days,
+    required this.paidLast7Days,
+    required this.paidLast30Days,
+    required this.phaseCounts,
+    required this.sourceCounts,
+  });
+
+  final DateTime generatedAt;
+  final int startedUsersTotal;
+  final int funnelUsers;
+  final int guideTaken;
+  final int checkoutStarted;
+  final int paidUsers;
+  final int startedLast7Days;
+  final int startedLast30Days;
+  final int paidLast7Days;
+  final int paidLast30Days;
+  final Map<String, int> phaseCounts;
+  final Map<String, int> sourceCounts;
+
+  double? get paidConversion {
+    if (startedUsersTotal <= 0) {
+      return null;
+    }
+    return paidUsers / startedUsersTotal;
+  }
+}
+
+final class FunnelStepCount {
+  const FunnelStepCount({
+    required this.label,
+    required this.count,
+  });
+
+  final String label;
+  final int count;
+}

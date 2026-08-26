@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/config/app_config.dart';
+import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
+import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
+import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
+import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
+import 'package:course_chatbot/src/payments/payment_webhook_server.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:course_chatbot/src/telegram/telegram_client.dart';
 import 'package:l/l.dart';
@@ -12,15 +18,34 @@ final class BotRunner {
     required AppConfig config,
     required TelegramClient client,
     required PrivateHandlers privateHandlers,
+    WarmupNudgeJob? warmupNudgeJob,
+    AbandonedPaymentJob? abandonedPaymentJob,
+    RemainderReminderJob? remainderReminderJob,
+    GoogleSheetsFunnelExportJob? sheetsExportJob,
+    GoogleSheetsWriter? googleSheetsWriter,
+    PaymentWebhookServer? paymentWebhookServer,
   })  : _config = config,
         _client = client,
         _privateHandlers = privateHandlers,
+        _warmupNudgeJob = warmupNudgeJob,
+        _abandonedPaymentJob = abandonedPaymentJob,
+        _remainderReminderJob = remainderReminderJob,
+        _sheetsExportJob = sheetsExportJob,
+        _googleSheetsWriter = googleSheetsWriter,
+        _paymentWebhookServer = paymentWebhookServer,
         _jobScheduler = JobScheduler();
 
   final AppConfig _config;
   final TelegramClient _client;
   final PrivateHandlers _privateHandlers;
+  final WarmupNudgeJob? _warmupNudgeJob;
+  final AbandonedPaymentJob? _abandonedPaymentJob;
+  final RemainderReminderJob? _remainderReminderJob;
+  final GoogleSheetsFunnelExportJob? _sheetsExportJob;
+  final GoogleSheetsWriter? _googleSheetsWriter;
+  final PaymentWebhookServer? _paymentWebhookServer;
   final JobScheduler _jobScheduler;
+  final List<Timer> _timers = <Timer>[];
 
   static const int _maxConflictRetries = 3;
 
@@ -29,19 +54,28 @@ final class BotRunner {
   int _conflictRetries = 0;
   int _offset = 0;
   bool _clientClosed = false;
+  bool _sheetsClosed = false;
 
   int get exitCode => _exitCode;
 
   Future<void> start() async {
     await _initializeLongPolling();
+    await _paymentWebhookServer?.start();
+    _scheduleJobs();
 
     while (!_stopping) {
       try {
         final updates = await _client.getUpdates(
           offset: _offset,
           timeoutSeconds: _config.pollTimeoutSeconds,
-          allowedUpdates: const {'message', 'callback_query', 'chat_member'},
+          allowedUpdates: const {
+            'message',
+            'callback_query',
+            'chat_member',
+            'my_chat_member',
+          },
         );
+        _conflictRetries = 0;
         for (final update in updates) {
           if (_stopping) {
             break;
@@ -90,6 +124,8 @@ final class BotRunner {
     }
     await _jobScheduler.waitForIdle();
     _closeClient();
+    await _closeSheets();
+    await _paymentWebhookServer?.stop();
   }
 
   Future<void> _handleUpdate(Map<String, dynamic> update) async {
@@ -99,9 +135,51 @@ final class BotRunner {
   Future<void> stop() async {
     if (!_stopping) {
       _stopping = true;
+      for (final timer in _timers) {
+        timer.cancel();
+      }
+      _timers.clear();
       _closeClient();
       await _jobScheduler.waitForIdle();
     }
+    await _closeSheets();
+    await _paymentWebhookServer?.stop();
+  }
+
+  void _scheduleJobs() {
+    final warmup = _warmupNudgeJob;
+    if (warmup != null) {
+      _schedulePeriodic(const Duration(minutes: 5), 'warmup', warmup.run);
+    }
+    final abandon = _abandonedPaymentJob;
+    if (abandon != null) {
+      _schedulePeriodic(const Duration(minutes: 10), 'abandon', abandon.run);
+    }
+    final remainder = _remainderReminderJob;
+    if (remainder != null) {
+      _schedulePeriodic(const Duration(minutes: 15), 'remainder', remainder.run);
+    }
+    final sheets = _sheetsExportJob;
+    if (sheets != null) {
+      final interval = Duration(seconds: _config.googleSheetsWriteIntervalSeconds);
+      _schedulePeriodic(interval, 'sheets', sheets.run);
+      _jobScheduler.launch('sheets', sheets.run);
+    }
+  }
+
+  void _schedulePeriodic(
+    Duration period,
+    String name,
+    Future<void> Function() action,
+  ) {
+    _timers.add(
+      Timer.periodic(period, (_) {
+        if (_stopping) {
+          return;
+        }
+        _jobScheduler.launch(name, action);
+      }),
+    );
   }
 
   Future<void> _initializeLongPolling() async {
@@ -110,6 +188,14 @@ final class BotRunner {
     } on Object catch (error, stackTrace) {
       l.w('Failed to reset Telegram webhook before polling: $error', stackTrace);
     }
+  }
+
+  Future<void> _closeSheets() async {
+    if (_sheetsClosed) {
+      return;
+    }
+    _sheetsClosed = true;
+    await _googleSheetsWriter?.close();
   }
 
   void _closeClient() {

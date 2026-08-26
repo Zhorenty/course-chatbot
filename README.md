@@ -1,28 +1,55 @@
 # Course Telegram bot
 
-Воронка запуска курса в Telegram.
+Воронка запуска курса в Telegram: гайд → прогрев → онлайн-оплата → одноразовый invite в канал этого запуска.
 
 ## Документы
 
 - [`docs/TZ.md`](docs/TZ.md) — ТЗ, согласованное с заказчиком
-- [`docs/LEKALA.md`](docs/LEKALA.md) — лекала: что копировать из DVOR и в каком порядке собирать
+- [`docs/LEKALA.md`](docs/LEKALA.md) — лекала сборки
+- [`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md) — что осталось сделать тебе и заказчику (VPS, таблица, касса, тексты)
 - [`docs/funnel-example.png`](docs/funnel-example.png) — пример среза воронки в Google Sheets
 
-Порядок работ — раздел 10 в `docs/LEKALA.md`. Сейчас закрыт шаг 1: процесс живой, `/start` отвечает, SQLite и job dedupe на месте.
-
-## Запуск
+## Запуск локально
 
 ```bash
 cp .env.example .env
-# прописать BOT_TOKEN
+# BOT_TOKEN, ADMIN_USER_IDS
 dart pub get
 make bot
 ```
 
-Проверки:
+Админ может прислать PDF гайда в личку бота — сохранится `file_id`. Либо пропиши `LEAD_MAGNET_FILE_ID` / `LEAD_MAGNET_URL`.
+
+## Docker
+
+```bash
+cp .env.example .env
+# для контейнера: PAYMENT_WEBHOOK_BIND=0.0.0.0:8080
+docker compose up -d --build
+```
+
+SQLite живёт в `./data`. Бэкап — копия файла `data/course.sqlite` (и `-wal`/`-shm`, если есть).
+
+## Касса
+
+`PAYMENT_PROVIDER=leadpay | yookassa | manual`.
+
+- LeadPay — первый заход. Нужен токен «для внешних систем». Пока токена нет, бот работает как `manual` (ссылку не отдаёт, админ отмечает оплату).
+- ЮKassa — запасной шлюз, webhook `POST /` на `PAYMENT_WEBHOOK_BIND`.
+- Sidecar HTTP не заменяет long polling Telegram.
+
+Повторы `succeeded` идемпотентны: второй callback не создаёт второй invite. Предоплата канал не открывает.
+
+## Google Sheets
+
+Сервис-аккаунт JSON в `secrets/` (не в git). Таблице выдать доступ редактора. Бот пересобирает вкладку `FUNNEL`.
+
+## Проверки
 
 ```bash
 dart format bin lib test
 dart analyze --fatal-infos --fatal-warnings
 dart test
 ```
+
+Стартовые метки: `ig_reels_guide`, `threads_guide`, `tg_announce`, `direct_course` — `https://t.me/<bot>?start=<метка>`.

@@ -1,0 +1,320 @@
+import 'package:course_chatbot/src/application/access_service.dart';
+import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/payments/payment_gateway.dart';
+import 'package:l/l.dart';
+
+final class PaymentApplyResult {
+  const PaymentApplyResult({
+    required this.order,
+    required this.alreadyApplied,
+    this.inviteLink,
+    this.grantedAccess = false,
+    this.depositOnly = false,
+  });
+
+  final CourseOrder order;
+  final bool alreadyApplied;
+  final String? inviteLink;
+  final bool grantedAccess;
+  final bool depositOnly;
+}
+
+final class CheckoutService {
+  CheckoutService({
+    required CourseRepository course,
+    required PaymentGateway gateway,
+    required AccessService access,
+    DateTime Function()? nowProvider,
+    String? returnUrl,
+  })  : _course = course,
+        _gateway = gateway,
+        _access = access,
+        _nowProvider = nowProvider ?? DateTime.now,
+        _returnUrl = returnUrl;
+
+  final CourseRepository _course;
+  final PaymentGateway _gateway;
+  final AccessService _access;
+  final DateTime Function() _nowProvider;
+  final String? _returnUrl;
+
+  CourseOrder startOrReuseOrder({
+    required int userId,
+    required Launch launch,
+    required PaymentKind kind,
+  }) {
+    final existing = _course.latestOpenOrder(userId);
+    if (existing != null && existing.launchId == launch.id) {
+      if (kind == PaymentKind.remainder && existing.status == OrderStatus.depositPaid) {
+        return existing;
+      }
+      if (kind != PaymentKind.remainder && existing.status != OrderStatus.depositPaid) {
+        return existing;
+      }
+    }
+    final now = _nowProvider();
+    final dueAt =
+        kind == PaymentKind.deposit ? now.add(Duration(days: launch.depositDueDays)) : null;
+    final amountDue = switch (kind) {
+      PaymentKind.deposit => launch.priceFullKopecks,
+      PaymentKind.remainder => existing?.amountDueKopecks ?? launch.priceFullKopecks,
+      PaymentKind.full || PaymentKind.installment => launch.priceFullKopecks,
+    };
+    return _course.createOrder(
+      userId: userId,
+      launchId: launch.id,
+      kind: kind,
+      priceFullKopecks: launch.priceFullKopecks,
+      amountDueKopecks: amountDue,
+      now: now,
+      dueAt: dueAt,
+    );
+  }
+
+  Future<PaymentRecord> createCheckout({
+    required CourseOrder order,
+    required PaymentKind kind,
+    required int amountKopecks,
+  }) async {
+    final now = _nowProvider();
+    var payment = _course.insertPayment(
+      orderId: order.id,
+      provider: _gateway.providerId,
+      kind: kind,
+      amountKopecks: amountKopecks,
+      now: now,
+    );
+    final session = await _gateway.createPayment(
+      order: order,
+      kind: kind,
+      amountKopecks: amountKopecks,
+      paymentDbId: payment.id,
+      returnUrl: _returnUrl,
+    );
+    payment = PaymentRecord(
+      id: payment.id,
+      orderId: payment.orderId,
+      provider: session.provider,
+      providerPaymentId: session.providerPaymentId,
+      kind: payment.kind,
+      amountKopecks: payment.amountKopecks,
+      status: payment.status,
+      confirmationUrl: session.confirmationUrl,
+      createdAt: payment.createdAt,
+    );
+    _course.updatePayment(payment);
+    _course.updateOrder(
+      CourseOrder(
+        id: order.id,
+        userId: order.userId,
+        launchId: order.launchId,
+        status: OrderStatus.awaitingPayment,
+        kind: kind,
+        priceFullKopecks: order.priceFullKopecks,
+        amountPaidKopecks: order.amountPaidKopecks,
+        amountDueKopecks: order.amountDueKopecks,
+        checkoutStartedAt: order.checkoutStartedAt,
+        dueAt: order.dueAt,
+        paidAt: order.paidAt,
+        cancelledAt: order.cancelledAt,
+        accessGranted: order.accessGranted,
+      ),
+    );
+    _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
+    return payment;
+  }
+
+  int amountFor(Launch launch, CourseOrder order, PaymentKind kind) {
+    switch (kind) {
+      case PaymentKind.full:
+      case PaymentKind.installment:
+        return launch.priceFullKopecks;
+      case PaymentKind.deposit:
+        return launch.depositKopecks;
+      case PaymentKind.remainder:
+        return order.amountDueKopecks;
+    }
+  }
+
+  Future<PaymentApplyResult> applyCallback(
+    PaymentCallback callback, {
+    required Launch launch,
+  }) async {
+    final result = _course.transaction(() => _applyLocked(callback, launch: launch));
+    if (result.alreadyApplied || !result.grantedAccess) {
+      return result;
+    }
+    try {
+      final link = await _access.issueInvite(
+        userId: result.order.userId,
+        orderId: result.order.id,
+        launch: launch,
+      );
+      return PaymentApplyResult(
+        order: result.order,
+        alreadyApplied: false,
+        inviteLink: link,
+        grantedAccess: true,
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Paid but invite failed for order ${result.order.id}: $error', stackTrace);
+      return result;
+    }
+  }
+
+  Future<PaymentApplyResult> applyManualPaid({
+    required CourseOrder order,
+    required Launch launch,
+    required PaymentKind kind,
+    required int amountKopecks,
+  }) {
+    return applyCallback(
+      PaymentCallback(
+        provider: 'manual',
+        providerPaymentId: 'manual-override-${order.id}-${_nowProvider().microsecondsSinceEpoch}',
+        succeeded: true,
+        charged: true,
+        kind: kind,
+        orderId: order.id,
+        userId: order.userId,
+        amountKopecks: amountKopecks,
+      ),
+      launch: launch,
+    );
+  }
+
+  PaymentApplyResult _applyLocked(
+    PaymentCallback callback, {
+    required Launch launch,
+  }) {
+    if (callback.providerPaymentId.isNotEmpty) {
+      final existing = _course.findPaymentByProviderId(
+        provider: callback.provider,
+        providerPaymentId: callback.providerPaymentId,
+      );
+      if (existing != null && existing.status == PaymentRecordStatus.succeeded) {
+        final order = _course.getOrder(existing.orderId)!;
+        return PaymentApplyResult(
+          order: order,
+          alreadyApplied: true,
+          grantedAccess: order.accessGranted,
+        );
+      }
+    }
+    if (!callback.succeeded || !callback.charged) {
+      final orderId = callback.orderId;
+      if (orderId != null) {
+        final order = _course.getOrder(orderId);
+        if (order != null) {
+          return PaymentApplyResult(order: order, alreadyApplied: false);
+        }
+      }
+      throw StateError('Payment callback has no matching order.');
+    }
+
+    var payment = callback.paymentDbId != null
+        ? _course.getPayment(callback.paymentDbId!)
+        : _course.findPaymentByProviderId(
+            provider: callback.provider,
+            providerPaymentId: callback.providerPaymentId,
+          );
+    var order = payment != null
+        ? _course.getOrder(payment.orderId)
+        : (callback.orderId != null ? _course.getOrder(callback.orderId!) : null);
+    order ??= callback.userId != null ? _course.latestOpenOrder(callback.userId!) : null;
+    if (order == null) {
+      throw StateError('Payment callback has no matching order.');
+    }
+    final kind = callback.kind ?? payment?.kind ?? order.kind;
+    final amount = callback.amountKopecks ?? payment?.amountKopecks ?? order.amountDueKopecks;
+    final now = _nowProvider();
+    payment ??= _course.insertPayment(
+      orderId: order.id,
+      provider: callback.provider,
+      kind: kind,
+      amountKopecks: amount,
+      now: now,
+      providerPaymentId: callback.providerPaymentId,
+    );
+    _course.updatePayment(
+      PaymentRecord(
+        id: payment.id,
+        orderId: payment.orderId,
+        provider: payment.provider,
+        providerPaymentId: callback.providerPaymentId,
+        kind: payment.kind,
+        amountKopecks: payment.amountKopecks,
+        status: PaymentRecordStatus.succeeded,
+        confirmationUrl: payment.confirmationUrl,
+        createdAt: payment.createdAt,
+        succeededAt: now,
+      ),
+    );
+
+    final paidTotal = order.amountPaidKopecks + amount;
+    final due = (order.priceFullKopecks - paidTotal).clamp(0, order.priceFullKopecks);
+    final grantsAccess = kind.grantsAccessOnSuccess || due <= 0;
+    final nextStatus = grantsAccess
+        ? OrderStatus.paid
+        : (kind == PaymentKind.deposit ? OrderStatus.depositPaid : OrderStatus.awaitingPayment);
+    final updated = CourseOrder(
+      id: order.id,
+      userId: order.userId,
+      launchId: order.launchId,
+      status: nextStatus,
+      kind: kind,
+      priceFullKopecks: order.priceFullKopecks,
+      amountPaidKopecks: paidTotal,
+      amountDueKopecks: due,
+      checkoutStartedAt: order.checkoutStartedAt,
+      dueAt: kind == PaymentKind.deposit
+          ? (order.dueAt ?? now.add(Duration(days: launch.depositDueDays)))
+          : order.dueAt,
+      paidAt: grantsAccess ? now : order.paidAt,
+      cancelledAt: order.cancelledAt,
+      accessGranted: order.accessGranted,
+    );
+    _course.updateOrder(updated);
+    if (grantsAccess) {
+      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.paid);
+    } else if (nextStatus == OrderStatus.depositPaid) {
+      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.depositPaid);
+    }
+    return PaymentApplyResult(
+      order: updated,
+      alreadyApplied: false,
+      grantedAccess: grantsAccess,
+      depositOnly: nextStatus == OrderStatus.depositPaid,
+    );
+  }
+
+  Future<void> cancel({
+    required CourseOrder order,
+    required Launch launch,
+  }) async {
+    final now = _nowProvider();
+    _course.updateOrder(
+      CourseOrder(
+        id: order.id,
+        userId: order.userId,
+        launchId: order.launchId,
+        status: OrderStatus.cancelled,
+        kind: order.kind,
+        priceFullKopecks: order.priceFullKopecks,
+        amountPaidKopecks: order.amountPaidKopecks,
+        amountDueKopecks: order.amountDueKopecks,
+        checkoutStartedAt: order.checkoutStartedAt,
+        dueAt: order.dueAt,
+        paidAt: order.paidAt,
+        cancelledAt: now,
+        accessGranted: false,
+      ),
+    );
+    _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.cancelled);
+    await _access.revoke(userId: order.userId, launch: launch);
+  }
+}

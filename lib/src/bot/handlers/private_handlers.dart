@@ -1,53 +1,85 @@
+import 'dart:async';
+
+import 'package:course_chatbot/src/application/access_service.dart';
+import 'package:course_chatbot/src/application/broadcast_service.dart';
+import 'package:course_chatbot/src/application/checkout_service.dart';
+import 'package:course_chatbot/src/application/funnel_service.dart';
+import 'package:course_chatbot/src/application/warmup_service.dart';
+import 'package:course_chatbot/src/bot/handlers/private/admin_gate.dart';
+import 'package:course_chatbot/src/bot/handlers/private/private_context.dart';
+import 'package:course_chatbot/src/bot/handlers/private/private_flow_store.dart';
+import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
+import 'package:course_chatbot/src/messages/message_templates.dart';
+import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
+import 'package:l/l.dart';
+
+part 'private/private_handlers_dispatch.part.dart';
+part 'private/private_handlers_start.part.dart';
+part 'private/private_handlers_funnel.part.dart';
+part 'private/private_handlers_checkout.part.dart';
+part 'private/private_handlers_admin.part.dart';
+part 'private/private_handlers_chat_member.part.dart';
 
 final class PrivateHandlers {
   PrivateHandlers({
     required MessageSender sender,
-  }) : _sender = sender;
+    required MessageTemplates templates,
+    required CourseRepository course,
+    required FunnelService funnel,
+    required CheckoutService checkout,
+    required AccessService access,
+    required WarmupService warmup,
+    required BroadcastService broadcast,
+    required Set<int> adminUserIds,
+    DateTime Function()? nowProvider,
+  })  : _sender = sender,
+        _templates = templates,
+        _course = course,
+        _funnel = funnel,
+        _checkout = checkout,
+        _access = access,
+        _warmup = warmup,
+        _broadcast = broadcast,
+        _adminGate = AdminGate(adminUserIds),
+        _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
+  final MessageTemplates _templates;
+  final CourseRepository _course;
+  final FunnelService _funnel;
+  final CheckoutService _checkout;
+  final AccessService _access;
+  final WarmupService _warmup;
+  final BroadcastService _broadcast;
+  final AdminGate _adminGate;
+  final DateTime Function() _nowProvider;
+  final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+
+  Launch? get _launch => _course.activeLaunch();
 
   Future<bool> handle(Map<String, dynamic> update) async {
-    final messageRaw = update['message'];
-    if (messageRaw is! Map) {
+    if (await _handleChatMember(update)) {
+      return true;
+    }
+    final context = extractPrivateMessageContext(update);
+    if (context == null) {
       return false;
     }
-    final message = Map<String, dynamic>.from(messageRaw);
-    final chatRaw = message['chat'];
-    if (chatRaw is! Map) {
+    if (context.chat['type']?.toString() != 'private') {
       return false;
     }
-    final chat = Map<String, dynamic>.from(chatRaw);
-    if (chat['type']?.toString() != 'private') {
-      return false;
-    }
-    final chatId = chat['id'];
-    if (chatId is! int) {
-      return false;
-    }
-    final text = message['text']?.toString().trim();
-    if (text == null || !text.startsWith('/start')) {
-      return false;
-    }
-
-    final payload = _parseStartPayload(text);
-    final payloadNote =
-        payload == null ? 'без метки источника' : 'метка <code>${escapeHtml(payload)}</code>';
-    await _sender.sendMessage(
-      chatId,
-      'Бот курса на связи. Старт $payloadNote.\n\n'
-      'Дальше здесь будут гайд, прогрев и запись — пока это каркас.',
-      parseMode: 'HTML',
-    );
-    return true;
+    return _dispatch(context);
   }
 
-  String? _parseStartPayload(String text) {
-    final parts = text.trim().split(RegExp(r'\s+'));
-    if (parts.length < 2) {
-      return null;
-    }
-    return parts[1].trim().toLowerCase();
+  Future<void> notifyPaymentResult(PaymentApplyResult result) {
+    return _notifyPaymentResult(result);
   }
 }

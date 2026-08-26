@@ -1,11 +1,12 @@
 import 'dart:convert';
 
+import 'package:course_chatbot/src/telegram/channel_api.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:http/http.dart' as http;
 
-final class TelegramClient implements MessageSender {
+final class TelegramClient implements MessageSender, ChannelApi {
   static const int _maxTelegramMessageLength = 4096;
 
   TelegramClient({
@@ -363,6 +364,72 @@ final class TelegramClient implements MessageSender {
     }
   }
 
+  @override
+  Future<String> createChatInviteLink({
+    required int chatId,
+    int memberLimit = 1,
+    String? name,
+    int? expireDate,
+  }) async {
+    final payload = await _post(
+      'createChatInviteLink',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'member_limit': memberLimit,
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        if (expireDate != null) 'expire_date': expireDate,
+      },
+    );
+    final result = payload['result'];
+    if (result is! Map) {
+      throw const TelegramApiException('Telegram did not return an invite link object');
+    }
+    final link = result['invite_link']?.toString();
+    if (link == null || link.isEmpty) {
+      throw const TelegramApiException('Telegram did not return invite_link');
+    }
+    return link;
+  }
+
+  @override
+  Future<void> revokeChatInviteLink({
+    required int chatId,
+    required String inviteLink,
+  }) async {
+    final payload = await _post(
+      'revokeChatInviteLink',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'invite_link': inviteLink,
+      },
+    );
+    final result = payload['result'];
+    if (result is! Map) {
+      throw const TelegramApiException('Telegram did not confirm invite revoke');
+    }
+  }
+
+  @override
+  Future<void> unbanChatMember(
+    int chatId, {
+    required int userId,
+    bool onlyIfBanned = true,
+  }) async {
+    final payload = await _post(
+      'unbanChatMember',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'user_id': userId,
+        'only_if_banned': onlyIfBanned,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm chat member unban');
+    }
+  }
+
+  @override
   Future<void> banChatMember(
     int chatId, {
     required int userId,

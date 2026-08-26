@@ -23,8 +23,19 @@ final class AppConfig {
     this.yookassaShopId,
     this.yookassaSecretKey,
     this.paymentWebhookBind = '127.0.0.1:8080',
+    this.leadMagnetUrl,
+    this.offerUrl,
+    this.productCode = 'course',
+    this.launchCode = 'launch-1',
+    this.priceFullRub = 0,
+    this.depositAmountRub = 0,
+    this.depositDueDays = 7,
+    this.abandonFirstDelayHours = 6,
+    this.abandonSecondDelayHours = 24,
+    this.yookassaReturnUrl,
     this.googleSheetsWriteEnabled = false,
     this.googleSheetsCredentialsPath,
+    this.googleSheetsCredentialsJson,
     this.googleSheetsSpreadsheetId,
     this.googleSheetsWriteSheetTitle = 'FUNNEL',
     this.googleSheetsWriteIntervalSeconds = 300,
@@ -42,6 +53,16 @@ final class AppConfig {
   final bool warmupEnabled;
   final int? courseChannelId;
   final String? leadMagnetFileId;
+  final String? leadMagnetUrl;
+  final String? offerUrl;
+  final String productCode;
+  final String launchCode;
+  final int priceFullRub;
+  final int depositAmountRub;
+  final int depositDueDays;
+  final int abandonFirstDelayHours;
+  final int abandonSecondDelayHours;
+  final String? yookassaReturnUrl;
   final PaymentProvider paymentProvider;
   final String? leadpayToken;
   final String? yookassaShopId;
@@ -49,6 +70,7 @@ final class AppConfig {
   final String paymentWebhookBind;
   final bool googleSheetsWriteEnabled;
   final String? googleSheetsCredentialsPath;
+  final String? googleSheetsCredentialsJson;
   final String? googleSheetsSpreadsheetId;
   final String googleSheetsWriteSheetTitle;
   final int googleSheetsWriteIntervalSeconds;
@@ -67,6 +89,16 @@ final class AppConfig {
       ..addOption('warmup-enabled', help: 'Enable drip after lead magnet (default: true)')
       ..addOption('course-channel-id', help: 'Closed channel id for this launch')
       ..addOption('lead-magnet-file-id', help: 'Telegram file_id of the guide PDF')
+      ..addOption('lead-magnet-url', help: 'Fallback URL if PDF file_id is empty')
+      ..addOption('offer-url', help: 'Offer / terms URL shown before checkout')
+      ..addOption('product-code', help: 'Product code in SQLite (default: course)')
+      ..addOption('launch-code', help: 'Launch code in SQLite (default: launch-1)')
+      ..addOption('price-full-rub', help: 'Full course price in RUB')
+      ..addOption('deposit-amount-rub', help: 'Deposit amount in RUB (0 = no deposit)')
+      ..addOption('deposit-due-days', help: 'Days until remainder is due (default: 7)')
+      ..addOption('abandon-first-delay-hours', help: 'First abandoned-payment nudge hours')
+      ..addOption('abandon-second-delay-hours', help: 'Second abandoned-payment nudge hours')
+      ..addOption('yookassa-return-url', help: 'Redirect after YooKassa checkout')
       ..addOption('payment-provider', help: 'leadpay | yookassa | manual')
       ..addOption('leadpay-token', help: 'LeadPay token for external systems')
       ..addOption('yookassa-shop-id', help: 'YooKassa shop id')
@@ -74,6 +106,7 @@ final class AppConfig {
       ..addOption('payment-webhook-bind', help: 'Local bind for payment callbacks')
       ..addOption('google-sheets-write-enabled', help: 'Export funnel slice (default: false)')
       ..addOption('google-sheets-credentials-path', help: 'Service-account JSON path')
+      ..addOption('google-sheets-credentials-json', help: 'Inline service-account JSON')
       ..addOption('google-sheets-spreadsheet-id', help: 'Spreadsheet id')
       ..addOption('google-sheets-write-sheet-title', help: 'Dashboard tab (default: FUNNEL)')
       ..addOption('google-sheets-write-interval-seconds', help: 'Export interval (default: 300)')
@@ -131,6 +164,26 @@ final class AppConfig {
       warmupEnabled: _toBool(resolve('WARMUP_ENABLED', 'warmup-enabled'), defaultValue: true),
       courseChannelId: int.tryParse(resolve('COURSE_CHANNEL_ID', 'course-channel-id') ?? ''),
       leadMagnetFileId: resolve('LEAD_MAGNET_FILE_ID', 'lead-magnet-file-id'),
+      leadMagnetUrl: resolve('LEAD_MAGNET_URL', 'lead-magnet-url'),
+      offerUrl: resolve('OFFER_URL', 'offer-url'),
+      productCode: resolve('PRODUCT_CODE', 'product-code') ?? 'course',
+      launchCode: resolve('LAUNCH_CODE', 'launch-code') ?? 'launch-1',
+      priceFullRub:
+          int.tryParse(resolve('PRICE_FULL_RUB', 'price-full-rub') ?? '')?.clamp(0, 100000000) ?? 0,
+      depositAmountRub: int.tryParse(resolve('DEPOSIT_AMOUNT_RUB', 'deposit-amount-rub') ?? '')
+              ?.clamp(0, 100000000) ??
+          0,
+      depositDueDays:
+          int.tryParse(resolve('DEPOSIT_DUE_DAYS', 'deposit-due-days') ?? '')?.clamp(1, 365) ?? 7,
+      abandonFirstDelayHours:
+          int.tryParse(resolve('ABANDON_FIRST_DELAY_HOURS', 'abandon-first-delay-hours') ?? '')
+                  ?.clamp(1, 72) ??
+              6,
+      abandonSecondDelayHours:
+          int.tryParse(resolve('ABANDON_SECOND_DELAY_HOURS', 'abandon-second-delay-hours') ?? '')
+                  ?.clamp(2, 168) ??
+              24,
+      yookassaReturnUrl: resolve('YOOKASSA_RETURN_URL', 'yookassa-return-url'),
       paymentProvider: _parsePaymentProvider(resolve('PAYMENT_PROVIDER', 'payment-provider')),
       leadpayToken: resolve('LEADPAY_TOKEN', 'leadpay-token'),
       yookassaShopId: resolve('YOOKASSA_SHOP_ID', 'yookassa-shop-id'),
@@ -142,6 +195,8 @@ final class AppConfig {
           defaultValue: false),
       googleSheetsCredentialsPath:
           resolve('GOOGLE_SHEETS_CREDENTIALS_PATH', 'google-sheets-credentials-path'),
+      googleSheetsCredentialsJson:
+          resolve('GOOGLE_SHEETS_CREDENTIALS_JSON', 'google-sheets-credentials-json'),
       googleSheetsSpreadsheetId:
           resolve('GOOGLE_SHEETS_SPREADSHEET_ID', 'google-sheets-spreadsheet-id'),
       googleSheetsWriteSheetTitle:
