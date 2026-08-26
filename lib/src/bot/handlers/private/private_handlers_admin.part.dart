@@ -19,8 +19,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     final fileId = extractDocumentFileId(context.message);
     if (fileId != null && text == null) {
-      await _course.setLeadMagnetFileId(fileId);
-      return _send(context, 'Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>');
+      _course.setLeadMagnetFileId(fileId);
+      return _send(context, _templates.adminGuideSaved(fileId));
     }
     if (flow?.step == PrivateFlowStep.adminSearch && text != null) {
       return _showAdminCard(context, text);
@@ -32,7 +32,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       );
       return _send(
         context,
-        'Отправить этот текст сегменту «получили гайд и не купили»?',
+        _templates.adminBroadcastConfirm(),
         replyMarkup: _templates.broadcastConfirmKeyboard(),
       );
     }
@@ -73,7 +73,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
-    await _course.ensureUser(userId: targetUserId, now: _nowProvider());
+    _course.ensureUser(userId: targetUserId, now: _nowProvider());
     final order = _checkout.startOrReuseOrder(
       userId: targetUserId,
       launch: launch,
@@ -126,7 +126,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.accessKeyboard(),
       );
     }
-    return _send(context, link == null ? _templates.inviteUnavailable() : 'Invite перевыдан.');
+    return _send(
+        context, link == null ? _templates.inviteUnavailable() : _templates.adminInviteReissued());
   }
 
   Future<bool> _confirmBroadcast(PrivateMessageContext context) async {

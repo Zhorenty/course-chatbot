@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
@@ -21,6 +23,10 @@ final class PaymentApplyResult {
   final String? inviteLink;
   final bool grantedAccess;
   final bool depositOnly;
+}
+
+abstract interface class PaymentResultNotifier {
+  Future<void> notifyPaymentResult(PaymentApplyResult result);
 }
 
 final class CheckoutService {
@@ -48,13 +54,8 @@ final class CheckoutService {
     required PaymentKind kind,
   }) {
     final existing = _course.latestOpenOrder(userId);
-    if (existing != null && existing.launchId == launch.id) {
-      if (kind == PaymentKind.remainder && existing.status == OrderStatus.depositPaid) {
-        return existing;
-      }
-      if (kind != PaymentKind.remainder && existing.status != OrderStatus.depositPaid) {
-        return existing;
-      }
+    if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
+      return existing;
     }
     final now = _nowProvider();
     final dueAt =
@@ -75,6 +76,17 @@ final class CheckoutService {
     );
   }
 
+  /// Reuse an open checkout for the same charge type.
+  /// A deposit-paid order is only reused for remainder; a new full charge
+  /// starts a separate order so the remainder path stays intact.
+  bool _shouldReuse(CourseOrder existing, PaymentKind kind) {
+    final remainderOnDeposit =
+        kind == PaymentKind.remainder && existing.status == OrderStatus.depositPaid;
+    final newChargeOnOpenCheckout =
+        kind != PaymentKind.remainder && existing.status != OrderStatus.depositPaid;
+    return remainderOnDeposit || newChargeOnOpenCheckout;
+  }
+
   Future<PaymentRecord> createCheckout({
     required CourseOrder order,
     required PaymentKind kind,
@@ -88,40 +100,37 @@ final class CheckoutService {
       amountKopecks: amountKopecks,
       now: now,
     );
-    final session = await _gateway.createPayment(
-      order: order,
-      kind: kind,
-      amountKopecks: amountKopecks,
-      paymentDbId: payment.id,
-      returnUrl: _returnUrl,
-    );
-    payment = PaymentRecord(
-      id: payment.id,
-      orderId: payment.orderId,
+    late final CheckoutSession session;
+    try {
+      session = await _gateway
+          .createPayment(
+            order: order,
+            kind: kind,
+            amountKopecks: amountKopecks,
+            paymentDbId: payment.id,
+            returnUrl: _returnUrl,
+          )
+          .timeout(PaymentGateway.requestTimeout);
+    } on PaymentUnavailableException {
+      _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
+      Error.throwWithStackTrace(
+        PaymentUnavailableException('Checkout failed: $error'),
+        stackTrace,
+      );
+    }
+    payment = payment.copyWith(
       provider: session.provider,
       providerPaymentId: session.providerPaymentId,
-      kind: payment.kind,
-      amountKopecks: payment.amountKopecks,
-      status: payment.status,
       confirmationUrl: session.confirmationUrl,
-      createdAt: payment.createdAt,
     );
     _course.updatePayment(payment);
     _course.updateOrder(
-      CourseOrder(
-        id: order.id,
-        userId: order.userId,
-        launchId: order.launchId,
+      order.copyWith(
         status: OrderStatus.awaitingPayment,
         kind: kind,
-        priceFullKopecks: order.priceFullKopecks,
-        amountPaidKopecks: order.amountPaidKopecks,
-        amountDueKopecks: order.amountDueKopecks,
-        checkoutStartedAt: order.checkoutStartedAt,
-        dueAt: order.dueAt,
-        paidAt: order.paidAt,
-        cancelledAt: order.cancelledAt,
-        accessGranted: order.accessGranted,
       ),
     );
     _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
@@ -241,16 +250,9 @@ final class CheckoutService {
       providerPaymentId: callback.providerPaymentId,
     );
     _course.updatePayment(
-      PaymentRecord(
-        id: payment.id,
-        orderId: payment.orderId,
-        provider: payment.provider,
+      payment.copyWith(
         providerPaymentId: callback.providerPaymentId,
-        kind: payment.kind,
-        amountKopecks: payment.amountKopecks,
         status: PaymentRecordStatus.succeeded,
-        confirmationUrl: payment.confirmationUrl,
-        createdAt: payment.createdAt,
         succeededAt: now,
       ),
     );
@@ -261,22 +263,15 @@ final class CheckoutService {
     final nextStatus = grantsAccess
         ? OrderStatus.paid
         : (kind == PaymentKind.deposit ? OrderStatus.depositPaid : OrderStatus.awaitingPayment);
-    final updated = CourseOrder(
-      id: order.id,
-      userId: order.userId,
-      launchId: order.launchId,
+    final updated = order.copyWith(
       status: nextStatus,
       kind: kind,
-      priceFullKopecks: order.priceFullKopecks,
       amountPaidKopecks: paidTotal,
       amountDueKopecks: due,
-      checkoutStartedAt: order.checkoutStartedAt,
       dueAt: kind == PaymentKind.deposit
           ? (order.dueAt ?? now.add(Duration(days: launch.depositDueDays)))
           : order.dueAt,
       paidAt: grantsAccess ? now : order.paidAt,
-      cancelledAt: order.cancelledAt,
-      accessGranted: order.accessGranted,
     );
     _course.updateOrder(updated);
     if (grantsAccess) {
@@ -298,18 +293,8 @@ final class CheckoutService {
   }) async {
     final now = _nowProvider();
     _course.updateOrder(
-      CourseOrder(
-        id: order.id,
-        userId: order.userId,
-        launchId: order.launchId,
+      order.copyWith(
         status: OrderStatus.cancelled,
-        kind: order.kind,
-        priceFullKopecks: order.priceFullKopecks,
-        amountPaidKopecks: order.amountPaidKopecks,
-        amountDueKopecks: order.amountDueKopecks,
-        checkoutStartedAt: order.checkoutStartedAt,
-        dueAt: order.dueAt,
-        paidAt: order.paidAt,
         cancelledAt: now,
         accessGranted: false,
       ),

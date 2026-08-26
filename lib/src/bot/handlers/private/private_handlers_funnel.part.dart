@@ -16,7 +16,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _sender.sendMessage(chatId, _templates.guideMissing(), parseMode: 'HTML');
       return true;
     }
-    await _funnel.markMagnetIssued(userId);
+    _funnel.markMagnetIssued(userId);
     if (sendWarmup) {
       await _sendWarmupZero(userId);
     }
@@ -28,29 +28,24 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (user == null || user.warmupOptOut || user.funnelPhase.excludeSellingDrip) {
       return;
     }
-    if (_course.hasWarmupBeenSent(userId: userId, stepKey: 'warmup_0')) {
-      return;
-    }
-    final decision = WarmupDecision(stepKey: 'warmup_0', userId: userId);
-    if (!_warmup.tryClaim(decision)) {
-      return;
-    }
     try {
-      await _sender.sendMessage(
-        userId,
-        _templates.warmupStep('warmup_0'),
-        parseMode: 'HTML',
-        replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+      await _warmup.deliver(
+        decision: WarmupDecision(stepKey: WarmupService.firstStepKey, userId: userId),
+        now: _nowProvider(),
+        send: () => _sender.sendMessage(
+          userId,
+          _templates.warmupStep(WarmupService.firstStepKey),
+          parseMode: 'HTML',
+          replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+        ),
       );
-      _warmup.markSent(decision, _nowProvider());
     } on Object catch (error, stackTrace) {
-      _warmup.release(decision);
       l.w('Failed to send warmup_0 to $userId: $error', stackTrace);
     }
   }
 
   Future<bool> _optOut(PrivateMessageContext context) async {
-    await _funnel.optOutWarmup(context.userId!);
+    _funnel.optOutWarmup(context.userId!);
     return _send(context, _templates.optOutConfirmed());
   }
 
@@ -64,7 +59,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
-    await _funnel.markCheckout(context.userId!);
+    _funnel.markCheckout(context.userId!);
     return _send(
       context,
       _templates.enrollOptions(launch),

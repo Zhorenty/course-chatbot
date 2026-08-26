@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/domain/storage_enum.dart';
+
 enum OrderStatus {
   checkoutStarted,
   awaitingPayment,
@@ -23,15 +25,12 @@ extension OrderStatusX on OrderStatus {
   bool get isFullyPaid => this == OrderStatus.paid;
 
   static OrderStatus parse(String? raw, {OrderStatus fallback = OrderStatus.checkoutStarted}) {
-    if (raw == null || raw.isEmpty) {
-      return fallback;
-    }
-    for (final value in OrderStatus.values) {
-      if (value.storageValue == raw) {
-        return value;
-      }
-    }
-    return fallback;
+    return parseStoredEnum(
+      raw,
+      values: OrderStatus.values,
+      storage: (value) => value.storageValue,
+      fallback: fallback,
+    );
   }
 }
 
@@ -55,15 +54,12 @@ extension PaymentKindX on PaymentKind {
       this == PaymentKind.full || this == PaymentKind.remainder || this == PaymentKind.installment;
 
   static PaymentKind parse(String? raw, {PaymentKind fallback = PaymentKind.full}) {
-    if (raw == null || raw.isEmpty) {
-      return fallback;
-    }
-    for (final value in PaymentKind.values) {
-      if (value.storageValue == raw) {
-        return value;
-      }
-    }
-    return fallback;
+    return parseStoredEnum(
+      raw,
+      values: PaymentKind.values,
+      storage: (value) => value.storageValue,
+      fallback: fallback,
+    );
   }
 }
 
@@ -99,4 +95,31 @@ final class CourseOrder {
   final bool accessGranted;
 
   bool get hasRemainder => amountDueKopecks > 0 && status == OrderStatus.depositPaid;
+
+  CourseOrder copyWith({
+    OrderStatus? status,
+    PaymentKind? kind,
+    int? amountPaidKopecks,
+    int? amountDueKopecks,
+    DateTime? dueAt,
+    DateTime? paidAt,
+    DateTime? cancelledAt,
+    bool? accessGranted,
+  }) {
+    return CourseOrder(
+      id: id,
+      userId: userId,
+      launchId: launchId,
+      status: status ?? this.status,
+      kind: kind ?? this.kind,
+      priceFullKopecks: priceFullKopecks,
+      amountPaidKopecks: amountPaidKopecks ?? this.amountPaidKopecks,
+      amountDueKopecks: amountDueKopecks ?? this.amountDueKopecks,
+      checkoutStartedAt: checkoutStartedAt,
+      dueAt: dueAt ?? this.dueAt,
+      paidAt: paidAt ?? this.paidAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      accessGranted: accessGranted ?? this.accessGranted,
+    );
+  }
 }

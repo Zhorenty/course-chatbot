@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
@@ -33,7 +34,8 @@ final class BroadcastService {
     final userIds = _course.listBroadcastUserIds(segment: segment);
     var sent = 0;
     var failed = 0;
-    for (final userId in userIds) {
+    for (var i = 0; i < userIds.length; i++) {
+      final userId = userIds[i];
       try {
         await _sender.sendMessage(
           userId,
@@ -49,6 +51,7 @@ final class BroadcastService {
         failed++;
         l.w('Broadcast unexpected error for $userId: $error', stackTrace);
       }
+      await paceOutboundBatch(i + 1);
     }
     return BroadcastResult(sent: sent, failed: failed, total: userIds.length);
   }

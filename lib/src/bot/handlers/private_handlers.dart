@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
@@ -28,7 +26,7 @@ part 'private/private_handlers_checkout.part.dart';
 part 'private/private_handlers_admin.part.dart';
 part 'private/private_handlers_chat_member.part.dart';
 
-final class PrivateHandlers {
+final class PrivateHandlers implements PaymentResultNotifier {
   PrivateHandlers({
     required MessageSender sender,
     required MessageTemplates templates,
@@ -79,6 +77,7 @@ final class PrivateHandlers {
     return _dispatch(context);
   }
 
+  @override
   Future<void> notifyPaymentResult(PaymentApplyResult result) {
     return _notifyPaymentResult(result);
   }

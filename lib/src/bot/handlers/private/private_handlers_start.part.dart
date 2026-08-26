@@ -3,7 +3,7 @@ part of 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 extension _PrivateHandlersStart on PrivateHandlers {
   Future<bool> _handleStart(PrivateMessageContext context, String text) async {
     final payload = _parseStartPayload(text);
-    final user = await _funnel.start(
+    final user = _funnel.start(
       userId: context.userId!,
       username: context.username,
       firstName: context.firstName,

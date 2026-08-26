@@ -157,7 +157,7 @@ final class LoggingMessageSender implements MessageSender {
       return;
     }
     try {
-      await _conversationLog.append(
+      _conversationLog.append(
         direction: ConversationDirection.outbound,
         peerUserId: chatId,
         chatId: chatId,

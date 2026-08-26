@@ -228,6 +228,23 @@ final class MessageTemplates {
 
   String adminCancelled() => 'Статус снят, invite отозван если был.';
 
+  String adminGuideSaved(String fileId) {
+    return 'Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';
+  }
+
+  String adminBroadcastConfirm() {
+    return 'Отправить этот текст сегменту «получили гайд и не купили»?';
+  }
+
+  String adminInviteReissued() => 'Invite перевыдан.';
+
+  static int? idFromCallback(String data, String prefix) {
+    if (!data.startsWith(prefix)) {
+      return null;
+    }
+    return int.tryParse(data.substring(prefix.length));
+  }
+
   String deepLink(String payload) {
     final bot = _botUsername;
     if (bot == null || bot.isEmpty) {

@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/domain/storage_enum.dart';
+
 enum FunnelPhase {
   lead,
   magnetIssued,
@@ -32,15 +34,12 @@ extension FunnelPhaseX on FunnelPhase {
       this == FunnelPhase.cancelled;
 
   static FunnelPhase parse(String? raw, {FunnelPhase fallback = FunnelPhase.lead}) {
-    if (raw == null || raw.isEmpty) {
-      return fallback;
-    }
-    for (final value in FunnelPhase.values) {
-      if (value.storageValue == raw) {
-        return value;
-      }
-    }
-    return fallback;
+    return parseStoredEnum(
+      raw,
+      values: FunnelPhase.values,
+      storage: (value) => value.storageValue,
+      fallback: fallback,
+    );
   }
 }
 

@@ -50,13 +50,13 @@ void main() {
   });
 
   test('broadcast targets guide-not-paid segment', () async {
-    await harness.course.ensureUser(userId: 10, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 10, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(
       userId: 10,
       phase: FunnelPhase.warming,
       magnetIssuedAt: DateTime.utc(2026, 1, 1),
     );
-    await harness.course.ensureUser(userId: 11, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 11, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(userId: 11, phase: FunnelPhase.accessGranted);
 
     final ids = harness.course.listBroadcastUserIds(segment: BroadcastSegment.guideNotPaid);

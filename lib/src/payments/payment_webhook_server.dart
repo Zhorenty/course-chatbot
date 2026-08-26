@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:course_chatbot/src/application/checkout_service.dart';
-import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:l/l.dart';
@@ -15,24 +14,24 @@ final class PaymentWebhookServer {
     required PaymentGateway gateway,
     required CheckoutService checkout,
     required CourseRepository course,
-    required PrivateHandlers handlers,
+    required PaymentResultNotifier notifier,
   })  : _bind = bind,
         _gateway = gateway,
         _checkout = checkout,
         _course = course,
-        _handlers = handlers;
+        _notifier = notifier;
 
   final String _bind;
   final PaymentGateway _gateway;
   final CheckoutService _checkout;
   final CourseRepository _course;
-  final PrivateHandlers _handlers;
+  final PaymentResultNotifier _notifier;
   HttpServer? _server;
 
   Future<void> start() async {
-    final parts = _bind.split(':');
-    final host = parts.length == 2 ? parts.first : '127.0.0.1';
-    final port = int.tryParse(parts.length == 2 ? parts.last : _bind) ?? 8080;
+    final colon = _bind.lastIndexOf(':');
+    final host = colon <= 0 ? '127.0.0.1' : _bind.substring(0, colon);
+    final port = int.tryParse(colon == -1 ? _bind : _bind.substring(colon + 1)) ?? 8080;
     _server = await HttpServer.bind(host, port);
     l.i('Payment webhook listening on $host:$port');
     _server!.listen(_handle, onError: (Object error, StackTrace stackTrace) {
@@ -61,7 +60,13 @@ final class PaymentWebhookServer {
         await request.response.close();
         return;
       }
-      final callback = decoded == null ? null : _gateway.parseCallback(decoded);
+      final parsed = decoded == null ? null : _gateway.parseCallback(decoded);
+      if (parsed == null) {
+        request.response.statusCode = HttpStatus.ok;
+        await request.response.close();
+        return;
+      }
+      final callback = await _gateway.verifyCallback(parsed);
       if (callback == null) {
         request.response.statusCode = HttpStatus.ok;
         await request.response.close();
@@ -74,7 +79,7 @@ final class PaymentWebhookServer {
         return;
       }
       final result = await _checkout.applyCallback(callback, launch: launch);
-      await _handlers.notifyPaymentResult(result);
+      await _notifier.notifyPaymentResult(result);
       request.response.statusCode = HttpStatus.ok;
       await request.response.close();
     } on Object catch (error, stackTrace) {

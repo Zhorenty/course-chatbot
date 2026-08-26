@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/storage_enum.dart';
 
 enum PaymentRecordStatus {
   pending,
@@ -17,15 +18,12 @@ extension PaymentRecordStatusX on PaymentRecordStatus {
     String? raw, {
     PaymentRecordStatus fallback = PaymentRecordStatus.pending,
   }) {
-    if (raw == null || raw.isEmpty) {
-      return fallback;
-    }
-    for (final value in PaymentRecordStatus.values) {
-      if (value.storageValue == raw) {
-        return value;
-      }
-    }
-    return fallback;
+    return parseStoredEnum(
+      raw,
+      values: PaymentRecordStatus.values,
+      storage: (value) => value.storageValue,
+      fallback: fallback,
+    );
   }
 }
 
@@ -53,6 +51,27 @@ final class PaymentRecord {
   final String? providerPaymentId;
   final String? confirmationUrl;
   final DateTime? succeededAt;
+
+  PaymentRecord copyWith({
+    String? provider,
+    String? providerPaymentId,
+    PaymentRecordStatus? status,
+    String? confirmationUrl,
+    DateTime? succeededAt,
+  }) {
+    return PaymentRecord(
+      id: id,
+      orderId: orderId,
+      provider: provider ?? this.provider,
+      providerPaymentId: providerPaymentId ?? this.providerPaymentId,
+      kind: kind,
+      amountKopecks: amountKopecks,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      confirmationUrl: confirmationUrl ?? this.confirmationUrl,
+      succeededAt: succeededAt ?? this.succeededAt,
+    );
+  }
 }
 
 final class CheckoutSession {

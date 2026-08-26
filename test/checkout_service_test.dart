@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:test/test.dart';
 
 import 'support/harness.dart';
@@ -16,7 +17,7 @@ void main() {
   tearDown(() => harness.dispose());
 
   test('full payment grants a one-time invite', () async {
-    await harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
     final order = harness.checkout.startOrReuseOrder(
       userId: 42,
@@ -50,7 +51,7 @@ void main() {
   });
 
   test('repeated succeeded callback does not create a second invite', () async {
-    await harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
     final order = harness.checkout.startOrReuseOrder(
       userId: 42,
@@ -81,7 +82,7 @@ void main() {
   });
 
   test('deposit does not grant invite until remainder is paid', () async {
-    await harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
     final order = harness.checkout.startOrReuseOrder(
       userId: 42,
@@ -138,7 +139,7 @@ void main() {
   });
 
   test('installment application without charge does not grant access', () async {
-    await harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
     final order = harness.checkout.startOrReuseOrder(
       userId: 42,
@@ -166,5 +167,61 @@ void main() {
 
     expect(approved.grantedAccess, isFalse);
     expect(harness.channel.created, isEmpty);
+  });
+
+  test('cancel revokes invite and marks the order cancelled', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    final paid = await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+    expect(paid.inviteLink, isNotNull);
+
+    await harness.checkout.cancel(order: paid.order, launch: launch);
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.cancelled);
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.cancelled);
+    expect(harness.channel.revoked, isNotEmpty);
+  });
+
+  test('gateway failure cancels the pending payment instead of leaving it open', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    harness.gateway.createError = const PaymentUnavailableException('down');
+
+    await expectLater(
+      harness.checkout.createCheckout(
+        order: order,
+        kind: PaymentKind.full,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      throwsA(isA<PaymentUnavailableException>()),
+    );
+    expect(harness.course.latestPendingPayment(order.id), isNull);
   });
 }

@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -65,6 +66,7 @@ void main() {
     expect(harness.sender.documents, contains('file-guide'));
     expect(harness.sender.messages.any((m) => m.text.contains('Первое касание')), isTrue);
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
 
   test('opt-out stops selling drip copy but enroll remains available', () async {

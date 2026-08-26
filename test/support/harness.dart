@@ -37,9 +37,9 @@ final class HandlerHarness {
     int priceFullKopecks = 1000000,
     int depositKopecks = 300000,
   }) async {
-    await course.init();
+    course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
-    await course.upsertActiveLaunch(
+    course.upsertActiveLaunch(
       productCode: 'course',
       productTitle: 'Курс',
       launchCode: 'launch-1',

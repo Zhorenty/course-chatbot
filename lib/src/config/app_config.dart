@@ -8,7 +8,7 @@ final class AppConfig {
   const AppConfig({
     required this.botToken,
     required this.pollTimeoutSeconds,
-    required this.bookingsDbPath,
+    this.sqlitePath = 'data/course.sqlite',
     required this.adminUserIds,
     required this.adminChatId,
     required this.logLevel,
@@ -43,7 +43,7 @@ final class AppConfig {
 
   final String botToken;
   final int pollTimeoutSeconds;
-  final String bookingsDbPath;
+  final String sqlitePath;
   final Set<int> adminUserIds;
   final int? adminChatId;
   final String logLevel;
@@ -149,7 +149,7 @@ final class AppConfig {
           int.tryParse(resolve('POLL_TIMEOUT_SECONDS', 'poll-timeout-seconds') ?? '')
                   ?.clamp(5, 60) ??
               25,
-      bookingsDbPath: resolve('BOOKINGS_DB_PATH', 'bookings-db-path') ?? 'data/course.sqlite',
+      sqlitePath: resolve('BOOKINGS_DB_PATH', 'bookings-db-path') ?? 'data/course.sqlite',
       adminUserIds: _parseIntSet(resolve('ADMIN_USER_IDS', 'admin-user-ids')),
       adminChatId: int.tryParse(resolve('ADMIN_CHAT_ID', 'admin-chat-id') ?? ''),
       logLevel: resolve('LOG_LEVEL', 'log-level') ?? 'info',

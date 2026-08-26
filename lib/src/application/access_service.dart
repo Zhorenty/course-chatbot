@@ -2,7 +2,6 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
-import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/telegram/channel_api.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
@@ -60,23 +59,7 @@ final class AccessService {
     _course.setFunnelPhase(userId: userId, phase: FunnelPhase.accessGranted);
     final order = _course.getOrder(orderId);
     if (order != null) {
-      _course.updateOrder(
-        CourseOrder(
-          id: order.id,
-          userId: order.userId,
-          launchId: order.launchId,
-          status: order.status,
-          kind: order.kind,
-          priceFullKopecks: order.priceFullKopecks,
-          amountPaidKopecks: order.amountPaidKopecks,
-          amountDueKopecks: order.amountDueKopecks,
-          checkoutStartedAt: order.checkoutStartedAt,
-          dueAt: order.dueAt,
-          paidAt: order.paidAt,
-          cancelledAt: order.cancelledAt,
-          accessGranted: true,
-        ),
-      );
+      _course.updateOrder(order.copyWith(accessGranted: true));
     }
     return link;
   }

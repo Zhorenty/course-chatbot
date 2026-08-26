@@ -12,7 +12,7 @@ final class FunnelService {
   final CourseRepository _course;
   final DateTime Function() _nowProvider;
 
-  Future<UserProfile> start({
+  UserProfile start({
     required int userId,
     String? username,
     String? firstName,
@@ -28,15 +28,15 @@ final class FunnelService {
     );
   }
 
-  Future<void> markMagnetIssued(int userId) async {
+  void markMagnetIssued(int userId) {
     _course.setFunnelPhase(
       userId: userId,
-      phase: FunnelPhase.warming,
+      phase: FunnelPhase.magnetIssued,
       magnetIssuedAt: _nowProvider(),
     );
   }
 
-  Future<void> markCheckout(int userId) async {
+  void markCheckout(int userId) {
     final user = _course.getUser(userId);
     if (user == null || user.funnelPhase.excludeSellingDrip) {
       return;
@@ -44,7 +44,7 @@ final class FunnelService {
     _course.setFunnelPhase(userId: userId, phase: FunnelPhase.checkout);
   }
 
-  Future<void> optOutWarmup(int userId) async {
+  void optOutWarmup(int userId) {
     _course.setWarmupOptOut(userId: userId, optOut: true);
   }
 

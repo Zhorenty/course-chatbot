@@ -73,9 +73,11 @@ final class SqliteDatabaseHandle {
         deposit_due_days INTEGER NOT NULL DEFAULT 7,
         offer_url TEXT,
         lead_magnet_file_id TEXT,
-        lead_magnet_url TEXT
+        lead_magnet_url TEXT,
+        is_active INTEGER NOT NULL DEFAULT 0
       );
     ''');
+    _ensureColumn(db, 'launches', 'is_active', 'INTEGER NOT NULL DEFAULT 0');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (
         user_id INTEGER PRIMARY KEY,
@@ -197,6 +199,15 @@ final class SqliteDatabaseHandle {
         value TEXT NOT NULL
       );
     ''');
+  }
+
+  void _ensureColumn(Database db, String table, String column, String spec) {
+    final info = db.select('PRAGMA table_info($table);');
+    final exists = info.any((row) => row['name'] == column);
+    if (exists) {
+      return;
+    }
+    db.execute('ALTER TABLE $table ADD COLUMN $column $spec;');
   }
 
   T transaction<T>(T Function() action) {

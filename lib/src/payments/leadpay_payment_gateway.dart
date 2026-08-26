@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/payments/http_json.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:http/http.dart' as http;
 
@@ -23,6 +25,7 @@ final class LeadPayPaymentGateway implements PaymentGateway {
   final String _baseUrl;
   final http.Client _httpClient;
   final bool _ownsClient;
+  bool _closed = false;
 
   @override
   String get providerId => 'leadpay';
@@ -45,31 +48,24 @@ final class LeadPayPaymentGateway implements PaymentGateway {
     final uri = Uri.parse('$_baseUrl/rest/v3/bothelp/link').replace(
       queryParameters: <String, String>{'client_id': clientId},
     );
-    final response = await _httpClient.post(
-      uri,
-      headers: <String, String>{
-        'Authorization-Token': _token,
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(<String, Object?>{
-        'order_id': order.id,
-        'payment_id': paymentDbId,
-        'user_id': order.userId,
-        'kind': kind.storageValue,
-        'amount_kopecks': amountKopecks,
-        'description': description,
-      }),
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PaymentUnavailableException(
-        'LeadPay link failed HTTP ${response.statusCode}: ${response.body}',
-      );
-    }
-    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-    if (decoded is! Map) {
-      throw const PaymentUnavailableException('LeadPay returned a non-object body.');
-    }
-    final map = Map<String, dynamic>.from(decoded);
+    final response = await _httpClient
+        .post(
+          uri,
+          headers: <String, String>{
+            'Authorization-Token': _token,
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(<String, Object?>{
+            'order_id': order.id,
+            'payment_id': paymentDbId,
+            'user_id': order.userId,
+            'kind': kind.storageValue,
+            'amount_kopecks': amountKopecks,
+            'description': description,
+          }),
+        )
+        .timeout(PaymentGateway.requestTimeout);
+    final map = decodeJsonObject(response, 'LeadPay');
     final url = _extractUrl(map);
     if (url == null || url.isEmpty) {
       throw const PaymentUnavailableException(
@@ -112,6 +108,22 @@ final class LeadPayPaymentGateway implements PaymentGateway {
     );
   }
 
+  @override
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async {
+    return callback;
+  }
+
+  @override
+  void close() {
+    if (_closed) {
+      return;
+    }
+    _closed = true;
+    if (_ownsClient) {
+      _httpClient.close();
+    }
+  }
+
   String? _extractUrl(Map<String, dynamic> map) {
     final result = map['result'];
     if (result is Map) {
@@ -129,11 +141,5 @@ final class LeadPayPaymentGateway implements PaymentGateway {
       return null;
     }
     return int.tryParse(parts[index]);
-  }
-
-  void close() {
-    if (_ownsClient) {
-      _httpClient.close();
-    }
   }
 }

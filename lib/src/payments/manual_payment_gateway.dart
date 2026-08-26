@@ -26,4 +26,10 @@ final class ManualPaymentGateway implements PaymentGateway {
 
   @override
   PaymentCallback? parseCallback(Object payload) => null;
+
+  @override
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async => callback;
+
+  @override
+  void close() {}
 }

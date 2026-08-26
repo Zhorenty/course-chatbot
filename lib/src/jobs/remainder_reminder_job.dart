@@ -1,9 +1,9 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
+import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
-import 'package:l/l.dart';
 
 final class RemainderReminderJob {
   RemainderReminderJob({
@@ -32,24 +32,22 @@ final class RemainderReminderJob {
       return;
     }
     final now = _nowProvider();
-    final orders = _course.listRemainderDue(now: now);
-    for (final order in orders) {
-      final dayKey = now.toUtc().toIso8601String().substring(0, 10);
-      final key = 'remainder:${order.id}:$dayKey';
-      if (!_dedupe.tryClaim(key)) {
-        continue;
-      }
-      try {
-        await _sender.sendMessage(
+    await sendClaimedBatch(
+      items: _course.listRemainderDue(now: now),
+      claimKey: (order) {
+        final dayKey = now.toUtc().toIso8601String().substring(0, 10);
+        return 'remainder:${order.id}:$dayKey';
+      },
+      dedupe: _dedupe,
+      errorLabel: (order) => 'Remainder reminder failed for order ${order.id}',
+      send: (order) {
+        return _sender.sendMessage(
           order.userId,
           _templates.remainderReminder(order),
           parseMode: 'HTML',
           replyMarkup: _templates.remainderKeyboard(),
         );
-      } on Object catch (error, stackTrace) {
-        _dedupe.release(key);
-        l.w('Remainder reminder failed for order ${order.id}: $error', stackTrace);
-      }
-    }
+      },
+    );
   }
 }

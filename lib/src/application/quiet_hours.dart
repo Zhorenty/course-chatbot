@@ -24,6 +24,4 @@ final class QuietHours {
     }
     return hour >= toHour && hour < fromHour;
   }
-
-  bool get canSendNow => !isQuiet(DateTime.now());
 }

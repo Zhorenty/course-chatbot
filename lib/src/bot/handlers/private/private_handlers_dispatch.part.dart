@@ -7,23 +7,21 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (chatId == null || userId == null) {
       return false;
     }
-    await _course.touchUser(
+    _course.touchUser(
       userId: userId,
       username: context.username,
       firstName: context.firstName,
       now: _nowProvider(),
     );
     if (context.message != null && context.text != null) {
-      unawaited(
-        _course.appendConversation(
-          direction: ConversationDirection.inbound,
-          peerUserId: userId,
-          peerUsername: context.username,
-          chatId: chatId,
-          telegramMessageId: asTelegramInt(context.message?['message_id']),
-          contentType: ConversationContentType.text,
-          textPreview: context.text,
-        ),
+      _course.appendConversation(
+        direction: ConversationDirection.inbound,
+        peerUserId: userId,
+        peerUsername: context.username,
+        chatId: chatId,
+        telegramMessageId: asTelegramInt(context.message?['message_id']),
+        contentType: ConversationContentType.text,
+        textPreview: context.text,
       );
     }
     if (context.callbackQueryId != null) {
@@ -81,19 +79,30 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
-      return _continuePay(context, int.tryParse(data.substring(3)));
+      return _continuePay(
+          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbContinuePay));
     }
     if (data.startsWith(MessageTemplates.cbAdminPaid)) {
-      return _adminMarkPaid(context, int.tryParse(data.substring(3)), PaymentKind.full);
+      return _adminMarkPaid(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaid),
+        PaymentKind.full,
+      );
     }
     if (data.startsWith(MessageTemplates.cbAdminDeposit)) {
-      return _adminMarkPaid(context, int.tryParse(data.substring(3)), PaymentKind.deposit);
+      return _adminMarkPaid(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDeposit),
+        PaymentKind.deposit,
+      );
     }
     if (data.startsWith(MessageTemplates.cbAdminCancel)) {
-      return _adminCancel(context, int.tryParse(data.substring(3)));
+      return _adminCancel(
+          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel));
     }
     if (data.startsWith(MessageTemplates.cbAdminInvite)) {
-      return _adminReinvite(context, int.tryParse(data.substring(3)));
+      return _adminReinvite(
+          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminInvite));
     }
     return false;
   }

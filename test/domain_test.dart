@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -24,5 +25,11 @@ void main() {
     expect(PaymentKind.full.grantsAccessOnSuccess, isTrue);
     expect(PaymentKind.remainder.grantsAccessOnSuccess, isTrue);
     expect(PaymentKind.installment.grantsAccessOnSuccess, isTrue);
+  });
+
+  test('callback id parser uses the prefix length', () {
+    expect(MessageTemplates.idFromCallback('ap:99', MessageTemplates.cbAdminPaid), 99);
+    expect(MessageTemplates.idFromCallback('cp:12', MessageTemplates.cbContinuePay), 12);
+    expect(MessageTemplates.idFromCallback('g', MessageTemplates.cbAdminPaid), isNull);
   });
 }

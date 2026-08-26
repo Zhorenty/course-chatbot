@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/payments/http_json.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:http/http.dart' as http;
 
@@ -19,9 +21,12 @@ final class YooKassaPaymentGateway implements PaymentGateway {
   final String _secretKey;
   final http.Client _httpClient;
   final bool _ownsClient;
+  bool _closed = false;
 
   @override
   String get providerId => 'yookassa';
+
+  String get _basicAuth => 'Basic ${base64Encode(utf8.encode('$_shopId:$_secretKey'))}';
 
   @override
   Future<CheckoutSession> createPayment({
@@ -55,25 +60,18 @@ final class YooKassaPaymentGateway implements PaymentGateway {
         'return_url': returnUrl ?? 'https://t.me',
       },
     };
-    final response = await _httpClient.post(
-      Uri.parse('https://api.yookassa.ru/v3/payments'),
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-        'Idempotence-Key': idempotenceKey,
-        'Authorization': 'Basic ${base64Encode(utf8.encode('$_shopId:$_secretKey'))}',
-      },
-      body: jsonEncode(body),
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PaymentUnavailableException(
-        'YooKassa create payment failed HTTP ${response.statusCode}: ${response.body}',
-      );
-    }
-    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-    if (decoded is! Map) {
-      throw const PaymentUnavailableException('YooKassa returned a non-object body.');
-    }
-    final map = Map<String, dynamic>.from(decoded);
+    final response = await _httpClient
+        .post(
+          Uri.parse('https://api.yookassa.ru/v3/payments'),
+          headers: <String, String>{
+            'Content-Type': 'application/json',
+            'Idempotence-Key': idempotenceKey,
+            'Authorization': _basicAuth,
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(PaymentGateway.requestTimeout);
+    final map = decodeJsonObject(response, 'YooKassa');
     final id = map['id']?.toString();
     final confirmation = map['confirmation'];
     String? url;
@@ -102,6 +100,39 @@ final class YooKassaPaymentGateway implements PaymentGateway {
       return null;
     }
     final object = Map<String, dynamic>.from(objectRaw);
+    return _callbackFromPaymentObject(object, event: event);
+  }
+
+  @override
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async {
+    if (callback.providerPaymentId.isEmpty) {
+      return null;
+    }
+    final response = await _httpClient.get(
+      Uri.parse('https://api.yookassa.ru/v3/payments/${callback.providerPaymentId}'),
+      headers: <String, String>{
+        'Authorization': _basicAuth,
+      },
+    ).timeout(PaymentGateway.requestTimeout);
+    final map = decodeJsonObject(response, 'YooKassa');
+    return _callbackFromPaymentObject(map);
+  }
+
+  @override
+  void close() {
+    if (_closed) {
+      return;
+    }
+    _closed = true;
+    if (_ownsClient) {
+      _httpClient.close();
+    }
+  }
+
+  PaymentCallback? _callbackFromPaymentObject(
+    Map<String, dynamic> object, {
+    String? event,
+  }) {
     final id = object['id']?.toString();
     if (id == null || id.isEmpty) {
       return null;
@@ -135,11 +166,5 @@ final class YooKassaPaymentGateway implements PaymentGateway {
       userId: int.tryParse(metadata?['user_id']?.toString() ?? ''),
       amountKopecks: amountKopecks,
     );
-  }
-
-  void close() {
-    if (_ownsClient) {
-      _httpClient.close();
-    }
   }
 }

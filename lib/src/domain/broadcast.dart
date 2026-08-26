@@ -1,0 +1,4 @@
+enum BroadcastSegment {
+  guideNotPaid,
+  allStarted,
+}

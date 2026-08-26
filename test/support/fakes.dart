@@ -105,9 +105,10 @@ final class SentMessage {
 }
 
 final class FakePaymentGateway implements PaymentGateway {
-  FakePaymentGateway({this.url = 'https://pay.example/checkout'});
+  FakePaymentGateway({this.url = 'https://pay.example/checkout', this.createError});
 
   final String? url;
+  Object? createError;
   int creates = 0;
 
   @override
@@ -122,6 +123,10 @@ final class FakePaymentGateway implements PaymentGateway {
     String? description,
     String? returnUrl,
   }) async {
+    final error = createError;
+    if (error != null) {
+      throw error;
+    }
     creates += 1;
     return CheckoutSession(
       provider: providerId,
@@ -152,6 +157,12 @@ final class FakePaymentGateway implements PaymentGateway {
       amountKopecks: int.tryParse(map['amount']?.toString() ?? ''),
     );
   }
+
+  @override
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async => callback;
+
+  @override
+  void close() {}
 }
 
 final class FakeChannelApi implements ChannelApi {

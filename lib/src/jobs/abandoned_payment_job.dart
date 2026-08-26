@@ -2,9 +2,9 @@ import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
-import 'package:l/l.dart';
 
 final class AbandonedPaymentJob {
   AbandonedPaymentJob({
@@ -56,17 +56,16 @@ final class AbandonedPaymentJob {
     required Duration minAge,
     required String keySuffix,
     required String text,
-  }) async {
-    final orders = _course.listAbandonedCheckout(now: now, minAge: minAge);
-    for (final order in orders) {
-      if (order.status.isFullyPaid) {
-        continue;
-      }
-      final key = 'abandon:${order.id}:$keySuffix';
-      if (!_dedupe.tryClaim(key)) {
-        continue;
-      }
-      try {
+  }) {
+    return sendClaimedBatch(
+      items: _course.listAbandonedCheckout(now: now, minAge: minAge),
+      claimKey: (order) => 'abandon:${order.id}:$keySuffix',
+      dedupe: _dedupe,
+      errorLabel: (order) => 'Abandoned payment reminder failed for order ${order.id}',
+      send: (order) async {
+        if (order.status.isFullyPaid) {
+          return;
+        }
         final pending = _course.latestPendingPayment(order.id);
         await _sender.sendMessage(
           order.userId,
@@ -76,10 +75,7 @@ final class AbandonedPaymentJob {
               ? _templates.payUrlKeyboard(pending!.confirmationUrl!)
               : _templates.continuePayKeyboard(order.id),
         );
-      } on Object catch (error, stackTrace) {
-        _dedupe.release(key);
-        l.w('Abandoned payment reminder failed for order ${order.id}: $error', stackTrace);
-      }
-    }
+      },
+    );
   }
 }

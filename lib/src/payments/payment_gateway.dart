@@ -2,6 +2,8 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 
 abstract interface class PaymentGateway {
+  static const Duration requestTimeout = Duration(seconds: 20);
+
   String get providerId;
 
   Future<CheckoutSession> createPayment({
@@ -14,6 +16,12 @@ abstract interface class PaymentGateway {
   });
 
   PaymentCallback? parseCallback(Object payload);
+
+  /// Confirms [callback] with the provider when the kassa supports it.
+  /// Returns null if the event should be ignored.
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback);
+
+  void close();
 }
 
 final class PaymentUnavailableException implements Exception {

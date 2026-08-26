@@ -3,7 +3,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 
 /// Thin adapter so [LoggingMessageSender] does not depend on the full course store.
 abstract interface class ConversationLogRepository {
-  Future<void> append({
+  void append({
     required ConversationDirection direction,
     required int peerUserId,
     String? peerUsername,
@@ -20,7 +20,7 @@ final class CourseConversationLog implements ConversationLogRepository {
   final CourseRepository _course;
 
   @override
-  Future<void> append({
+  void append({
     required ConversationDirection direction,
     required int peerUserId,
     String? peerUsername,
@@ -29,7 +29,7 @@ final class CourseConversationLog implements ConversationLogRepository {
     required ConversationContentType contentType,
     String? textPreview,
   }) {
-    return _course.appendConversation(
+    _course.appendConversation(
       direction: direction,
       peerUserId: peerUserId,
       peerUsername: peerUsername,
