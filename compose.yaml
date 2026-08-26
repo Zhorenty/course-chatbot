@@ -1,0 +1,12 @@
+services:
+  course-chatbot:
+    container_name: course-chatbot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./secrets:/app/secrets:ro
