@@ -7,16 +7,18 @@ abstract final class GoogleSheetsFunnelDashboard {
   static const String defaultSheetTitle = 'FUNNEL';
   static const int columnCount = 12;
 
-  static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.12, 0.16, 0.14);
-  static const GoogleSheetsRgb paper = GoogleSheetsRgb(0.98, 0.97, 0.94);
-  static const GoogleSheetsRgb header = GoogleSheetsRgb(0.12, 0.23, 0.18);
-  static const GoogleSheetsRgb headerText = GoogleSheetsRgb(0.96, 0.95, 0.91);
-  static const GoogleSheetsRgb muted = GoogleSheetsRgb(0.35, 0.40, 0.37);
-  static const GoogleSheetsRgb kpiA = GoogleSheetsRgb(0.88, 0.93, 0.88);
-  static const GoogleSheetsRgb kpiB = GoogleSheetsRgb(0.94, 0.91, 0.84);
-  static const GoogleSheetsRgb kpiC = GoogleSheetsRgb(0.86, 0.91, 0.94);
-  static const GoogleSheetsRgb section = GoogleSheetsRgb(0.22, 0.38, 0.30);
-  static const GoogleSheetsRgb tableHead = GoogleSheetsRgb(0.83, 0.88, 0.83);
+  /// Палитра по гайду «Язык цвета»: тёмный лес + шампань, приглушённые
+  /// дополнительные (терракота / охра / грифель), без спектральных пастелей.
+  static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.10, 0.15, 0.12);
+  static const GoogleSheetsRgb paper = GoogleSheetsRgb(0.97, 0.94, 0.85);
+  static const GoogleSheetsRgb header = GoogleSheetsRgb(0.08, 0.13, 0.11);
+  static const GoogleSheetsRgb headerText = GoogleSheetsRgb(0.96, 0.93, 0.78);
+  static const GoogleSheetsRgb muted = GoogleSheetsRgb(0.45, 0.40, 0.34);
+  static const GoogleSheetsRgb kpiA = GoogleSheetsRgb(0.94, 0.85, 0.81);
+  static const GoogleSheetsRgb kpiB = GoogleSheetsRgb(0.94, 0.88, 0.70);
+  static const GoogleSheetsRgb kpiC = GoogleSheetsRgb(0.82, 0.88, 0.90);
+  static const GoogleSheetsRgb section = GoogleSheetsRgb(0.48, 0.31, 0.26);
+  static const GoogleSheetsRgb tableHead = GoogleSheetsRgb(0.89, 0.82, 0.66);
 
   static final DateFormat _stamp = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -96,11 +98,9 @@ final class _FunnelSheetBuilder {
         verticalAlignment: 'MIDDLE',
       ),
     );
-    _add(
-      const <Object?>[
-        'Гайд → прогрев → оплата. Лист обновляет бот — руками не править. Карточка человека в админке бота.',
-      ],
-    );
+    _add(const <Object?>[
+      'Гайд → прогрев → оплата. Лист обновляет бот — руками не править. Карточка человека в админке бота.',
+    ]);
     styles.add(
       GoogleSheetsRangeStyle(
         startRow: 1,
@@ -117,57 +117,51 @@ final class _FunnelSheetBuilder {
 
   void writeKpis(FunnelAnalytics analytics) {
     final labelRow = nextRow;
-    _add(
-      const <Object?>[
-        'Start всего',
-        '',
-        'В воронке',
-        '',
-        'Взяли гайд',
-        '',
-        'Начали оплату',
-        '',
-        'Купили / списание',
-        '',
-        'Конверсия в оплату',
-        '',
-      ],
-    );
+    _add(const <Object?>[
+      'Start всего',
+      '',
+      'В воронке',
+      '',
+      'Взяли гайд',
+      '',
+      'Начали оплату',
+      '',
+      'Купили / списание',
+      '',
+      'Конверсия в оплату',
+      '',
+    ]);
     final valueRow = nextRow;
     final conversion = analytics.paidConversion;
-    _add(
-      <Object?>[
-        analytics.startedUsersTotal,
-        '',
-        analytics.funnelUsers,
-        '',
-        analytics.guideTaken,
-        '',
-        analytics.checkoutStarted,
-        '',
-        analytics.paidUsers,
-        '',
-        conversion ?? '—',
-        '',
-      ],
-    );
+    _add(<Object?>[
+      analytics.startedUsersTotal,
+      '',
+      analytics.funnelUsers,
+      '',
+      analytics.guideTaken,
+      '',
+      analytics.checkoutStarted,
+      '',
+      analytics.paidUsers,
+      '',
+      conversion ?? '—',
+      '',
+    ]);
     final hintRow = nextRow;
-    _add(
-      <Object?>[
-        'новых Start 7д: ${analytics.startedLast7Days}',
-        '',
-        'Start 30д: ${analytics.startedLast30Days}',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'оплаты 7д: ${analytics.paidLast7Days}',
-        '',
-        'оплаты 30д: ${analytics.paidLast30Days}',
-        '',
-      ],
-    );
+    _add(<Object?>[
+      'новых Start 7д: ${analytics.startedLast7Days}',
+      '',
+      'Start 30д: ${analytics.startedLast30Days}',
+      '',
+      '',
+      '',
+      '',
+      '',
+      'оплаты 7д: ${analytics.paidLast7Days}',
+      '',
+      'оплаты 30д: ${analytics.paidLast30Days}',
+      '',
+    ]);
     const cards = <(int, GoogleSheetsRgb)>[
       (0, GoogleSheetsFunnelDashboard.kpiA),
       (2, GoogleSheetsFunnelDashboard.kpiB),
@@ -253,14 +247,12 @@ final class _FunnelSheetBuilder {
     final firstData = nextRow;
     var previous = started;
     for (final step in steps) {
-      _add(
-        <Object?>[
-          step.$1,
-          step.$2,
-          _ratioOrDash(started <= 0 ? null : step.$2 / started),
-          _ratioOrDash(previous <= 0 ? null : step.$2 / previous),
-        ],
-      );
+      _add(<Object?>[
+        step.$1,
+        step.$2,
+        _ratioOrDash(started <= 0 ? null : step.$2 / started),
+        _ratioOrDash(previous <= 0 ? null : step.$2 / previous),
+      ]);
       previous = step.$2;
     }
     _table(headerRow, nextRow, 0, 4);
@@ -326,47 +318,31 @@ final class _FunnelSheetBuilder {
     _section('Где люди сейчас  ·  Откуда пришли');
     final headerRow = nextRow;
     _add(const <Object?>['Сейчас на шаге', 'Люди', '', 'Источник', 'Люди']);
-    final phases = _ordered(
-      analytics.phaseCounts,
-      const <String>[
-        'lead',
-        'magnet_issued',
-        'warming',
-        'checkout',
-        'deposit_paid',
-        'paid',
-        'access_granted',
-        'cancelled',
-      ],
-      _phaseLabel,
-    );
-    final sources = _ordered(
-      analytics.sourceCounts,
-      const <String>[
-        'ig_reels_guide',
-        'threads_guide',
-        'tg_announce',
-        'direct_course',
-        'ig_stories_guide',
-        'email_guide',
-        'unknown',
-      ],
-      _sourceLabel,
-    );
+    final phases = _ordered(analytics.phaseCounts, const <String>[
+      'lead',
+      'magnet_issued',
+      'warming',
+      'checkout',
+      'deposit_paid',
+      'paid',
+      'access_granted',
+      'cancelled',
+    ], _phaseLabel);
+    final sources = _ordered(analytics.sourceCounts, const <String>[
+      'ig_reels_guide',
+      'threads_guide',
+      'tg_announce',
+      'direct_course',
+      'ig_stories_guide',
+      'email_guide',
+      'unknown',
+    ], _sourceLabel);
     final firstData = nextRow;
     final height = phases.length > sources.length ? phases.length : sources.length;
     for (var index = 0; index < height; index++) {
       final phase = index < phases.length ? phases[index] : null;
       final source = index < sources.length ? sources[index] : null;
-      _add(
-        <Object?>[
-          phase?.$1 ?? '',
-          phase?.$2 ?? '',
-          '',
-          source?.$1 ?? '',
-          source?.$2 ?? '',
-        ],
-      );
+      _add(<Object?>[phase?.$1 ?? '', phase?.$2 ?? '', '', source?.$1 ?? '', source?.$2 ?? '']);
     }
     _table(headerRow, firstData + phases.length, 0, 2);
     _table(headerRow, firstData + sources.length, 3, 5);
@@ -530,13 +506,13 @@ final class _FunnelSheetBuilder {
   }
 
   String _sourceLabel(String raw) => switch (raw) {
-        'ig_reels_guide' => 'Instagram Reels',
-        'threads_guide' => 'Threads',
-        'tg_announce' => 'Telegram, анонс',
-        'direct_course' => 'прямая ссылка',
-        'ig_stories_guide' => 'Stories',
-        'email_guide' => 'рассылка',
-        'unknown' => 'без метки',
-        _ => raw,
-      };
+    'ig_reels_guide' => 'Instagram Reels',
+    'threads_guide' => 'Threads',
+    'tg_announce' => 'Telegram, анонс',
+    'direct_course' => 'прямая ссылка',
+    'ig_stories_guide' => 'Stories',
+    'email_guide' => 'рассылка',
+    'unknown' => 'без метки',
+    _ => raw,
+  };
 }

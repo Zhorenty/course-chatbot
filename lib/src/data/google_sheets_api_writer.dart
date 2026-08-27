@@ -15,8 +15,8 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   GoogleSheetsApiWriter({
     required GoogleSheetsSpreadsheetGateway gateway,
     Duration requestTimeout = const Duration(seconds: 25),
-  })  : _gateway = gateway,
-        _requestTimeout = requestTimeout;
+  }) : _gateway = gateway,
+       _requestTimeout = requestTimeout;
 
   final GoogleSheetsSpreadsheetGateway _gateway;
   final Duration _requestTimeout;
@@ -35,10 +35,7 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
       path: config.googleSheetsCredentialsPath,
       inlineJson: config.googleSheetsCredentialsJson,
     );
-    return connect(
-      credentialsJson: credentials,
-      spreadsheetId: spreadsheetId,
-    );
+    return connect(credentialsJson: credentials, spreadsheetId: spreadsheetId);
   }
 
   static Future<GoogleSheetsApiWriter> connect({
@@ -47,10 +44,9 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     Duration requestTimeout = const Duration(seconds: 25),
   }) async {
     final credentials = ServiceAccountCredentials.fromJson(credentialsJson);
-    final client = await clientViaServiceAccount(
-      credentials,
-      const <String>[SheetsApi.spreadsheetsScope],
-    );
+    final client = await clientViaServiceAccount(credentials, const <String>[
+      SheetsApi.spreadsheetsScope,
+    ]);
     return GoogleSheetsApiWriter(
       gateway: GoogleApisSheetsGateway(
         api: SheetsApi(client),
@@ -62,10 +58,7 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   }
 
   @override
-  Future<void> replaceSheet({
-    required String sheetTitle,
-    required List<List<Object?>> rows,
-  }) {
+  Future<void> replaceSheet({required String sheetTitle, required List<List<Object?>> rows}) {
     return retry(
       () => _replaceSheetOnce(sheetTitle: sheetTitle, rows: rows),
       shouldRetry: _shouldRetry,
@@ -74,10 +67,7 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
 
   @override
   Future<void> replaceDashboard(GoogleSheetsDashboard dashboard) {
-    return retry(
-      () => _replaceDashboardOnce(dashboard),
-      shouldRetry: _shouldRetry,
-    );
+    return retry(() => _replaceDashboardOnce(dashboard), shouldRetry: _shouldRetry);
   }
 
   Future<void> _replaceSheetOnce({
@@ -211,9 +201,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required SheetsApi api,
     required String spreadsheetId,
     http.Client? authClient,
-  })  : _api = api,
-        _spreadsheetId = spreadsheetId,
-        _authClient = authClient;
+  }) : _api = api,
+       _spreadsheetId = spreadsheetId,
+       _authClient = authClient;
 
   final SheetsApi _api;
   final String _spreadsheetId;
@@ -242,7 +232,8 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         GoogleSheetsSheetInfo(
           title: title,
           sheetId: sheetId,
-          chartIds: sheet.charts
+          chartIds:
+              sheet.charts
                   ?.map((chart) => chart.chartId)
                   .whereType<int>()
                   .toList(growable: false) ??
@@ -262,11 +253,8 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
             addSheet: AddSheetRequest(
               properties: SheetProperties(
                 title: title,
-                gridProperties: GridProperties(
-                  hideGridlines: true,
-                  frozenRowCount: 1,
-                ),
-                tabColor: Color(red: 0.12, green: 0.23, blue: 0.18),
+                gridProperties: GridProperties(hideGridlines: true, frozenRowCount: 1),
+                tabColor: Color(red: 0.08, green: 0.13, blue: 0.11),
               ),
             ),
           ),
@@ -297,9 +285,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   Future<void> deleteSheet(int sheetId) async {
     await _api.spreadsheets.batchUpdate(
       BatchUpdateSpreadsheetRequest(
-        requests: <Request>[
-          Request(deleteSheet: DeleteSheetRequest(sheetId: sheetId)),
-        ],
+        requests: <Request>[Request(deleteSheet: DeleteSheetRequest(sheetId: sheetId))],
       ),
       _spreadsheetId,
     );
@@ -307,11 +293,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
 
   @override
   Future<void> clearRange(String a1Range) async {
-    await _api.spreadsheets.values.clear(
-      ClearValuesRequest(),
-      _spreadsheetId,
-      a1Range,
-    );
+    await _api.spreadsheets.values.clear(ClearValuesRequest(), _spreadsheetId, a1Range);
   }
 
   @override
@@ -480,13 +462,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     final outer = Border(
       style: 'SOLID_MEDIUM',
       width: 2,
-      color: Color(red: 0.42, green: 0.50, blue: 0.44),
+      color: Color(red: 0.50, green: 0.39, blue: 0.32),
     );
-    final grid = Border(
-      style: 'SOLID',
-      width: 1,
-      color: Color(red: 0.62, green: 0.68, blue: 0.63),
-    );
+    final grid = Border(style: 'SOLID', width: 1, color: Color(red: 0.78, green: 0.72, blue: 0.58));
     return Request(
       updateBorders: UpdateBordersRequest(
         range: range,
@@ -515,9 +493,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                   endColumnIndex: table.endColumnExclusive,
                 ),
                 rowProperties: BandingProperties(
-                  headerColor: Color(red: 0.83, green: 0.88, blue: 0.83),
-                  firstBandColor: Color(red: 0.99, green: 0.99, blue: 0.97),
-                  secondBandColor: Color(red: 0.93, green: 0.95, blue: 0.93),
+                  headerColor: Color(red: 0.89, green: 0.82, blue: 0.66),
+                  firstBandColor: Color(red: 0.99, green: 0.97, blue: 0.90),
+                  secondBandColor: Color(red: 0.94, green: 0.89, blue: 0.76),
                 ),
               ),
             ),
@@ -536,10 +514,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     }
     NumberFormat? number;
     if (style.numberFormatType != null) {
-      number = NumberFormat(
-        type: style.numberFormatType,
-        pattern: style.numberFormatPattern,
-      );
+      number = NumberFormat(type: style.numberFormatType, pattern: style.numberFormatPattern);
     }
     if (text == null &&
         number == null &&
@@ -589,15 +564,14 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     return [
       for (final chart in charts)
         if (chart.hasData)
-          Request(
-            addChart: AddChartRequest(chart: _embeddedChart(sheetId, chart)),
-          ),
+          Request(addChart: AddChartRequest(chart: _embeddedChart(sheetId, chart))),
     ];
   }
 
   EmbeddedChart _embeddedChart(int sheetId, GoogleSheetsChart chart) {
-    final dataStartRow =
-        chart.kind == GoogleSheetsChartKind.pie ? chart.headerRow + 1 : chart.headerRow;
+    final dataStartRow = chart.kind == GoogleSheetsChartKind.pie
+        ? chart.headerRow + 1
+        : chart.headerRow;
     final labels = _chartData(
       sheetId: sheetId,
       startRow: dataStartRow,
@@ -630,21 +604,15 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     final spec = ChartSpec(
       title: chart.title,
       titleTextFormat: TextFormat(bold: true, fontSize: 12),
-      backgroundColorStyle: ColorStyle(
-        rgbColor: Color(red: 0.98, green: 0.97, blue: 0.94),
-      ),
+      backgroundColorStyle: ColorStyle(rgbColor: Color(red: 0.97, green: 0.94, blue: 0.85)),
       basicChart: chart.kind == GoogleSheetsChartKind.pie
           ? null
           : BasicChartSpec(
               chartType: chart.kind == GoogleSheetsChartKind.bar ? 'BAR' : 'COLUMN',
               legendPosition: chart.legendPosition,
               headerCount: 1,
-              axis: <BasicChartAxis>[
-                BasicChartAxis(position: 'BOTTOM_AXIS'),
-              ],
-              domains: <BasicChartDomain>[
-                BasicChartDomain(domain: labels),
-              ],
+              axis: <BasicChartAxis>[BasicChartAxis(position: 'BOTTOM_AXIS')],
+              domains: <BasicChartDomain>[BasicChartDomain(domain: labels)],
               series: series,
             ),
       pieChart: chart.kind == GoogleSheetsChartKind.pie
@@ -696,9 +664,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
 
   Color _seriesColor(int index) {
     final colors = <Color>[
-      Color(red: 0.24, green: 0.42, blue: 0.32),
-      Color(red: 0.42, green: 0.55, blue: 0.62),
-      Color(red: 0.62, green: 0.52, blue: 0.32),
+      Color(red: 0.44, green: 0.53, blue: 0.33),
+      Color(red: 0.78, green: 0.36, blue: 0.24),
+      Color(red: 0.36, green: 0.51, blue: 0.58),
     ];
     return colors[index % colors.length];
   }
