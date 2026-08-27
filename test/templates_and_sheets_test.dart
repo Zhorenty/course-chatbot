@@ -77,7 +77,7 @@ void main() {
     expect(look.columnCount, 14);
     expect(look.notes, hasLength(14));
     expect(look.notes[7].text, contains('Выбери в календаре'));
-    expect(look.notes.last.text, contains('Формула'));
+    expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
     expect(look.styles, isNotEmpty);
   });

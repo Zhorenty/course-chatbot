@@ -28,8 +28,8 @@ abstract final class CoursesSheet {
   static const String title = 'Курс · Каталог запусков';
   static const String titleAside = 'Правят руками';
   static const String hint =
-      'Одна строка с «да» в колонке «Активен». Цены в рублях, даты как 19.08.2026. '
-      'Бот читает этот лист при старте и по «Обновить Google Sheets».';
+      'Поставь «да» в одной строке — это текущий набор. Цены в рублях, даты как 19.08.2026. '
+      'После правок нажми в боте «Обновить Google Sheets».';
 
   static const List<String> headers = <String>[
     productCode,
@@ -60,26 +60,26 @@ abstract final class CoursesSheet {
     'Старт курса',
     'ID канала',
     'Оферта',
-    'file_id гайда',
-    'URL гайда',
+    'Файл гайда',
+    'Ссылка на гайд',
     'статус',
   ];
 
   static const List<String> headerNotes = <String>[
-    'Код продукта. Пример: course. Пусто = course.',
-    'Название продукта. Пример: Курс.',
-    'Код запуска. Пример: launch-1. Без кода бот строку пропускает.',
-    'Название запуска. Видно в боте.',
-    'да или нет. Одна строка с «да». Если ни одной — бот берёт первую.',
-    'Полная цена в рублях, число. Можно 18000 или 18 000.',
-    'Предоплата в рублях, число. 0 или пусто = без предоплаты.',
-    'Дата. Выбери в календаре. Формат 19.08.2026.',
-    'Дата. Выбери в календаре. Формат 19.08.2026.',
-    'Числовой id закрытого канала, −100…. Пусто = из .env.',
-    'URL публичной оферты. Пусто = из .env.',
-    'Telegram file_id PDF. Пусто = кэш бота / .env.',
-    'Ссылка на гайд, если нет файла. Необязательно.',
-    'Готово или чего не хватает. Формула. Бот колонку не читает.',
+    'Короткий код продукта. Пример: course. Можно не заполнять.',
+    'Как называется продукт. Пример: Курс.',
+    'Короткий код этого потока. Пример: launch-1. Без кода строка не попадёт в бота.',
+    'Как называется этот поток. Это увидят в боте.',
+    'Поставь «да», если это текущий набор. «Да» должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
+    'Полная цена курса в рублях. Пиши число: 18000 или 18 000.',
+    'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты.',
+    'Дата. Выбери в календаре. Формат 19.08.2026. До этого дня нужно доплатить остаток.',
+    'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
+    'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
+    'Ссылка на текст публичной оферты. Если пусто — в боте останется согласие без ссылки на документ.',
+    'Не заполняй. Бот сам запомнит файл гайда. Сюда пишет только тот, кто меняет гайд в Telegram.',
+    'Ссылка на гайд, если отдаём не файлом. Можно не заполнять.',
+    'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
   ];
 
   static const String seedProductCode = 'course';
@@ -156,10 +156,8 @@ abstract final class CoursesSheet {
       return '${columnLetter(index)}$row';
     }
 
-    final started = <String>[
-      for (final name in headers)
-        if (name != status) '${cell(name)}<>""',
-    ].join('$formulaSep ');
+    final statusIndex = headers.indexOf(status);
+    final dataRange = '${columnLetter(0)}$row:${columnLetter(statusIndex - 1)}$row';
     const required = <String>[launchCode, priceFullRub, depositDueDate, courseStartDate];
     final allRequired = <String>[
       for (final name in required) '${cell(name)}<>""',
@@ -170,14 +168,7 @@ abstract final class CoursesSheet {
       'IF(${cell(depositDueDate)}="";"нет даты доплаты";"")',
       'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
     ].join('$formulaSep ');
-    final hints = <String>[
-      '"готово"',
-      'IF(${cell(isActive)}="";"не активен — бот возьмёт первую";"")',
-      'IF(${cell(depositRub)}="";"без предоплаты";"")',
-      'IF(${cell(channelId)}="";"ID канала из .env";"")',
-    ].join('$formulaSep ');
-    return '=IF(NOT(OR($started));"";IF(AND($allRequired);'
-        'TEXTJOIN("; "$formulaSep TRUE$formulaSep $hints);'
+    return '=IF(COUNTA($dataRange)=0;"";IF(AND($allRequired);"готово";'
         'TEXTJOIN("; "$formulaSep TRUE$formulaSep $missing)))';
   }
 
@@ -349,9 +340,11 @@ abstract final class CoursesSheetParser {
     CoursesSheet.leadMagnetFileId: CoursesSheet.leadMagnetFileId,
     'file_id гайда': CoursesSheet.leadMagnetFileId,
     'file id гайда': CoursesSheet.leadMagnetFileId,
+    'файл гайда': CoursesSheet.leadMagnetFileId,
     CoursesSheet.leadMagnetUrl: CoursesSheet.leadMagnetUrl,
     'url гайда': CoursesSheet.leadMagnetUrl,
     'ссылка гайда': CoursesSheet.leadMagnetUrl,
+    'ссылка на гайд': CoursesSheet.leadMagnetUrl,
     CoursesSheet.status: CoursesSheet.status,
     'статус': CoursesSheet.status,
   };

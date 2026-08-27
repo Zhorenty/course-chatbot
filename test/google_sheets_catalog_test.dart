@@ -87,7 +87,7 @@ void main() {
   test('pretty seed layout has chrome, Russian headers, status and parses', () {
     final rows = CoursesSheet.seedRows();
     expect(rows[0].first, CoursesSheet.title);
-    expect(rows[1].first, contains('Активен'));
+    expect(rows[1].first, contains('текущий набор'));
     expect(rows[1].first, isNot(contains('FUNNEL')));
     expect(rows[3].first, 'Код продукта');
     expect(rows[3].last, 'статус');
@@ -100,11 +100,15 @@ void main() {
   test('status formula names missing fields and готов', () {
     final formula = CoursesSheet.statusFormula(row: 5);
     expect(formula, startsWith('='));
+    expect(formula, contains('COUNTA('));
     expect(formula, contains('готово'));
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));
     expect(formula, contains('нет даты доплаты'));
+    expect(formula, isNot(contains('.env')));
     expect(CoursesSheet.headerNotes[7], contains('Выбери в календаре'));
+    expect(CoursesSheet.headerNotes.last, contains('пустая'));
+    expect(CoursesSheet.displayHeaders, isNot(contains('file_id гайда')));
     expect(CoursesSheet.headers.last, CoursesSheet.status);
     expect(CoursesSheet.displayHeaders, hasLength(CoursesSheet.columnCount));
     expect(CoursesSheet.headerNotes, hasLength(CoursesSheet.columnCount));
