@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -62,6 +63,7 @@ void main() {
     final texts = _replyButtonTexts(withKeyboard.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonAdminSearch));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
+    expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
@@ -96,6 +98,41 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
+  });
+
+  test('admin Диплинки without Sheets still returns four starter links', () async {
+    final named = HandlerHarness();
+    await named.init(adminUserIds: const <int>{1}, botUsername: 'course_bot');
+    addTearDown(named.dispose);
+
+    await named.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminLinks),
+    );
+    final text = named.sender.messages.last.text;
+    expect(text, contains('https://t.me/course_bot?start=ig_reels_guide'));
+    expect(text, contains('https://t.me/course_bot?start=threads_guide'));
+    expect(text, contains('https://t.me/course_bot?start=tg_announce'));
+    expect(text, contains('https://t.me/course_bot?start=direct_course'));
+    expect(text, contains(LinksSheet.tabTitle));
+  });
+
+  test('admin /links with Sheets seeds ССЫЛКИ then lists the same URLs', () async {
+    final sheetsHarness = HandlerHarness();
+    await sheetsHarness.init(
+      adminUserIds: const <int>{1},
+      enableSheets: true,
+      botUsername: 'course_bot',
+    );
+    addTearDown(sheetsHarness.dispose);
+
+    await sheetsHarness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/links'));
+    final text = sheetsHarness.sender.messages.last.text;
+    expect(text, contains('?start=ig_reels_guide'));
+    final tab = sheetsHarness.sheetsGateway!.sheets.firstWhere(
+      (sheet) => sheet.title == LinksSheet.tabTitle,
+    );
+    final sheet = sheetsHarness.sheetsGateway!.valuesBySheetId[tab.sheetId]!;
+    expect(sheet.any((row) => row.contains('https://t.me/course_bot?start=direct_course')), isTrue);
   });
 
   test('broadcast targets guide-not-paid segment', () async {

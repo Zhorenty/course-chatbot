@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -55,6 +56,35 @@ void main() {
       privateMessageUpdate(chatId: 8, userId: 8, text: '/start threads_guide'),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
+  });
+
+  test('extra sheet payload with курс opens the course card', () async {
+    final sheetsHarness = HandlerHarness();
+    await sheetsHarness.init(enableSheets: true, botUsername: 'course_bot');
+    addTearDown(sheetsHarness.dispose);
+    await sheetsHarness.catalogSync!.sync();
+    final tab = sheetsHarness.sheetsGateway!.sheets.firstWhere(
+      (sheet) => sheet.title == LinksSheet.tabTitle,
+    );
+    sheetsHarness.sheetsGateway!.valuesBySheetId[tab.sheetId]!.add(
+      LinksSheet.padded(const <Object?>['Таргет', 'курс', 'ads_course', '']),
+    );
+    await sheetsHarness.catalogSync!.sync();
+
+    await sheetsHarness.handlers.handle(
+      privateMessageUpdate(chatId: 21, userId: 21, text: '/start ads_course'),
+    );
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
+
+    sheetsHarness.sender.messages.clear();
+    sheetsHarness.sheetsGateway!.valuesBySheetId[tab.sheetId]!.add(
+      LinksSheet.padded(const <Object?>['Stories', 'гайд', 'ig_extra', '']),
+    );
+    await sheetsHarness.catalogSync!.sync();
+    await sheetsHarness.handlers.handle(
+      privateMessageUpdate(chatId: 22, userId: 22, text: '/start ig_extra'),
+    );
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
   });
 
   test('guide delivery sends PDF and immediate warmup_0', () async {

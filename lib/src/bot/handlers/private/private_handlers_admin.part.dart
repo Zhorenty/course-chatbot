@@ -28,6 +28,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (text == MessageTemplates.buttonAdminSheets || text == '/sheets') {
       return _adminRefreshSheets(context);
     }
+    if (text == MessageTemplates.buttonAdminLinks || text == '/links') {
+      return _adminShowDeepLinks(context);
+    }
     final fileId = extractDocumentFileId(context.message);
     if (fileId != null && text == null) {
       _flowByUserId[userId] = PrivateFlowState(
@@ -106,6 +109,22 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         funnelError: funnelError,
         launch: catalogResult?.launch ?? _launch,
       ),
+      replyMarkup: _templates.adminMenuKeyboard(),
+    );
+  }
+
+  Future<bool> _adminShowDeepLinks(PrivateMessageContext context) async {
+    final sync = _catalogSync;
+    if (sync != null) {
+      try {
+        await sync.sync();
+      } on Object catch (error, stackTrace) {
+        l.w('Admin ССЫЛКИ sync failed: $error', stackTrace);
+      }
+    }
+    return _send(
+      context,
+      _templates.adminDeepLinks(_funnel.links.entries),
       replyMarkup: _templates.adminMenuKeyboard(),
     );
   }

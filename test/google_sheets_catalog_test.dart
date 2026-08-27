@@ -3,7 +3,9 @@ import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -136,10 +138,10 @@ void main() {
       expect(first.ok, isTrue);
       expect(first.seeded, isTrue);
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
-      expect(gateway.applyLookCount, 1);
-      expect(gateway.lastLook?.hideGridlines, isTrue);
-      expect(gateway.lastLook?.notes, hasLength(14));
-      expect(gateway.lastLook?.columnCount, 14);
+      expect(gateway.applyLookCount, 2);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(14));
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 14);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -155,8 +157,8 @@ void main() {
       final second = await sync.sync();
       expect(second.ok, isTrue);
       expect(second.seeded, isFalse);
-      expect(gateway.updateValuesCount, updatesAfterSeed + 1);
-      expect(gateway.applyLookCount, looksAfterSeed + 1);
+      expect(gateway.updateValuesCount, updatesAfterSeed + 2);
+      expect(gateway.applyLookCount, looksAfterSeed + 2);
       expect(course.activeLaunch()?.priceFullKopecks, 2100000);
     });
 
@@ -196,12 +198,12 @@ void main() {
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
       final result = await sync.sync();
       expect(result.ok, isFalse);
-      expect(gateway.updateValuesCount, 1);
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
       expect(
         gateway.valuesBySheetId[0]![1][CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)],
         0,
       );
+      expect(gateway.valuesBySheetId[0]![0].first, CoursesSheet.productCode);
     });
 
     test('snake_case catalog is wrapped in chrome without losing the row', () async {
@@ -234,9 +236,109 @@ void main() {
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
       final result = await sync.sync();
       expect(result.ok, isTrue);
-      expect(gateway.sheets.single.title, 'COURSES');
+      expect(gateway.sheets.any((sheet) => sheet.title == CoursesSheet.tabTitle), isTrue);
+      expect(gateway.sheets.any((sheet) => sheet.title == LinksSheet.tabTitle), isTrue);
       expect(gateway.renamedSheetIds, contains(0));
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
+    });
+  });
+
+  group('ССЫЛКИ catalog', () {
+    late Database db;
+    late SqliteCourseRepository course;
+    late FakeGoogleSheetsGateway gateway;
+    late AcquisitionLinkCatalog links;
+
+    setUp(() {
+      db = sqlite3.openInMemory();
+      final handle = SqliteDatabaseHandle.fromDatabase(db, path: ':memory:');
+      course = SqliteCourseRepository(databaseHandle: handle)..init();
+      JobDedupeRepository(databaseHandle: handle).initSchema();
+      gateway = FakeGoogleSheetsGateway();
+      links = AcquisitionLinkCatalog();
+    });
+
+    tearDown(() => db.dispose());
+
+    test('seeds empty sheet with four starters and fills t.me URLs', () async {
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      expect(sheet.first.first, LinksSheet.title);
+      final parsed = LinksSheetParser.parse(sheet);
+      expect(parsed.rows.map((row) => row.payload).toList(), <String>[
+        'ig_reels_guide',
+        'threads_guide',
+        'tg_announce',
+        'direct_course',
+      ]);
+      final urlCol = LinksSheetParser.columnIndex(sheet, LinksSheet.url)!;
+      final dataRow = LinksSheetParser.headerRowIndex(sheet)! + 1;
+      expect(sheet[dataRow][urlCol], 'https://t.me/course_bot?start=ig_reels_guide');
+      expect(links.entries, hasLength(4));
+      expect(links.opensCourseCard('tg_announce'), isTrue);
+    });
+
+    test('second sync keeps a human fifth row and fills its URL', () async {
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.sync();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      sheet.add(LinksSheet.padded(<Object?>['Таргет', 'курс', 'ads_course', '']));
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      final again = gateway.valuesBySheetId[tab.sheetId]!;
+      final parsed = LinksSheetParser.parse(again);
+      expect(parsed.rows.map((row) => row.payload), contains('ads_course'));
+      expect(links.opensCourseCard('ads_course'), isTrue);
+      expect(again.any((row) => row.contains('https://t.me/course_bot?start=ads_course')), isTrue);
+    });
+
+    test('invalid payload is skipped and marked in the URL column', () async {
+      gateway.sheets = <GoogleSheetsSheetInfo>[
+        const GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        const GoogleSheetsSheetInfo(title: LinksSheet.tabTitle, sheetId: 2),
+      ];
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      gateway.valuesBySheetId[2] = LinksSheet.withChrome(
+        dataRows: <List<Object?>>[
+          LinksSheet.seedDataRow(AcquisitionLink.starters.first),
+          LinksSheet.padded(<Object?>['Сломанная', 'гайд', 'bad payload!', '']),
+        ],
+      );
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.sync();
+      expect(links.entries.map((row) => row.payload), isNot(contains('bad payload!')));
+      final sheet = gateway.valuesBySheetId[2]!;
+      expect(sheet.any((row) => row.contains(LinksSheet.invalidPayloadStatus)), isTrue);
+    });
+
+    test('without bot username does not invent t.me URLs', () async {
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course, links: links);
+      await sync.sync();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      expect(
+        sheet.any((row) => row.any((cell) => cell.toString().contains('https://t.me/'))),
+        isFalse,
+      );
     });
   });
 }

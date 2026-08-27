@@ -298,6 +298,7 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   int updateValuesCount = 0;
   int applyLookCount = 0;
   GoogleSheetsDashboard? lastLook;
+  final Map<int, GoogleSheetsDashboard> looksBySheetId = <int, GoogleSheetsDashboard>{};
 
   @override
   Future<Set<String>> listSheetTitles() async {
@@ -421,6 +422,7 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   }) async {
     applyLookCount += 1;
     lastLook = dashboard;
+    looksBySheetId[sheetId] = dashboard;
   }
 
   @override

@@ -47,7 +47,7 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 | Хранение | SQLite + WAL + транзакции | Один файл, бэкап копированием. Capacity-check на места **не** нужен |
 | Конфиг | CLI → env → `.env` → defaults | В `.env` только секреты и id; тихие часы — в `AppConfig`; цены/даты запуска — вкладка `COURSES` (`gid=0`) |
 | Деплой | Docker Compose, volume `./data`, secrets read-only | Тот же Timeweb-контур |
-| Sheets | `googleapis` + service account | Каталог `COURSES` (`gid=0`, правят руками) + срез `ВОРОНКА` в MVP |
+| Sheets | `googleapis` + service account | Каталог `COURSES` (`gid=0`, правят руками) + диплинки `ССЫЛКИ` (бот пишет URL, не wipe) + срез `ВОРОНКА` в MVP |
 | Качество | `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` | Перед сдачей |
 
 Зависимости-ориентир: `http`, `sqlite3`, `args`, `intl`, `l`, `googleapis` / `googleapis_auth`. Касса — отдельный клиент за интерфейсом `PaymentGateway`, чтобы сменить LeadPay → ЮKassa без перепила хендлеров.
@@ -129,6 +129,7 @@ Long polling остаётся. Если шлюз (ЮKassa или LeadPay) отд
 | `createChatInviteLink` | Одноразовая ссылка | `member_limit: 1`, канал = канал запуска |
 | Google Sheets `ВОРОНКА` | Срез в MVP | SQLite — правда по людям, лист — витрина. Руками не правят |
 | Google Sheets `COURSES` (`gid=0`) | Каталог запуска | Руками правят цену/даты; бот читает в SQLite |
+| Google Sheets `ССЫЛКИ` | Диплинки | Руками правят подписи/метки; бот сидит 4 стартовые и пишет URL, не wipe |
 | Очередь чеков | Ручной override | Всегда: вне кассы, сбой, возврат |
 
 CTA «Записаться» — пока нет `access_granted` (не только «пока не paid»: после списания рассрочки доступ уже выдан).
@@ -337,5 +338,6 @@ GOOGLE_SHEETS_SPREADSHEET_ID=
 - Админ может проставить оплату, отменить, отозвать доступ.
 - Лист воронки `ВОРОНКА` в Sheets обновляется ботом.
 - Каталог запусков — вкладка `COURSES` (`gid=0`); бот её читает, руками правят.
+- Каталог диплинков — вкладка `ССЫЛКИ`; бот пишет URL, не wipe.
 - `PaymentGateway` можно сменить без перепила хендлеров.
 - `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` зелёные.

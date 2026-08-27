@@ -30,7 +30,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
         );
       }
     }
-    if (AcquisitionSource.opensCourseCard(payload)) {
+    if (_funnel.opensCourseCard(payload)) {
       await _sender.sendMessage(
         context.chatId!,
         _templates.startCourseCard(launch: _launch),

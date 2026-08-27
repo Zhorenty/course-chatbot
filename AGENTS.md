@@ -30,7 +30,7 @@ When these exist, they are also source of truth:
 - `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`) — all user-facing copy and keyboards
 - `lib/src/application/` — orchestration (funnel, payments, access)
 - Payment: interface `PaymentGateway`; LeadPay first, YooKassa if the spike fails; never Telegram Payments (`sendInvoice`)
-- Sheets: bot-owned `ВОРОНКА` slice (SQLite is truth for people; `ВОРОНКА` is a dashboard, not hand-edited). Launch catalog is human-edited `COURSES` on spreadsheet `gid=0`.
+- Sheets: bot-owned `ВОРОНКА` slice (SQLite is truth for people; `ВОРОНКА` is a dashboard, not hand-edited). Launch catalog is human-edited `COURSES` on spreadsheet `gid=0`. Deep-link catalog is human-edited `ССЫЛКИ` (bot fills the URL column, no wipe).
 
 ## Architecture and Coding Rules
 
@@ -55,7 +55,7 @@ Also:
 - One SQLite connection (WAL, foreign keys, busy timeout) shared by handlers and jobs.
 - Status changes that grant access or record money run in a transaction. Payment webhooks must be idempotent: a repeated `succeeded` must not create a second invite.
 - Swap payment providers behind `PaymentGateway`. Handlers never call LeadPay/YooKassa HTTP directly.
-- Google Sheets export wipes and recreates bot-owned tabs (`ВОРОНКА`). Do not treat the dashboard as a writable CRM of individual people; the person card is in admin DM. `gid=0` (`COURSES`) is the launch catalog: humans edit it, the bot reads it and must not wipe it.
+- Google Sheets export wipes and recreates bot-owned tabs (`ВОРОНКА`). Do not treat the dashboard as a writable CRM of individual people; the person card is in admin DM. `gid=0` (`COURSES`) is the launch catalog: humans edit it, the bot reads it and must not wipe it. `ССЫЛКИ` is the deep-link catalog: humans add tags, the bot writes `t.me` URLs and must not wipe the tab.
 
 ## How to Approach Work
 

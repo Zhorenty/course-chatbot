@@ -4,9 +4,12 @@ import 'package:course_chatbot/src/data/catalog_repository.dart';
 import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_ids.dart';
+import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:googleapis/sheets/v4.dart';
 import 'package:l/l.dart';
@@ -33,6 +36,8 @@ final class GoogleSheetsCatalogSync {
   GoogleSheetsCatalogSync({
     required GoogleSheetsSpreadsheetGateway gateway,
     required CatalogRepository catalog,
+    AcquisitionLinkCatalog? links,
+    this.botUsername,
     this.timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
     this.fallbackChannelId,
     this.fallbackOfferUrl,
@@ -40,10 +45,13 @@ final class GoogleSheetsCatalogSync {
     this.fallbackLeadMagnetUrl,
     this.requestTimeout = const Duration(seconds: 25),
   }) : _gateway = gateway,
-       _catalog = catalog;
+       _catalog = catalog,
+       _links = links ?? AcquisitionLinkCatalog();
 
   final GoogleSheetsSpreadsheetGateway _gateway;
   final CatalogRepository _catalog;
+  final AcquisitionLinkCatalog _links;
+  final String? botUsername;
   final int timezoneOffsetHours;
   final int? fallbackChannelId;
   final String? fallbackOfferUrl;
@@ -56,6 +64,16 @@ final class GoogleSheetsCatalogSync {
   }
 
   Future<CatalogSyncResult> _syncOnce() async {
+    final result = await _syncCoursesOnce();
+    try {
+      await _syncLinksOnce();
+    } on Object catch (error, stackTrace) {
+      l.w('ССЫЛКИ catalog sync failed: $error', stackTrace);
+    }
+    return result;
+  }
+
+  Future<CatalogSyncResult> _syncCoursesOnce() async {
     final sheets = await _gateway.describeSheets().timeout(requestTimeout);
     final catalogSheet = _sheetById(sheets, CoursesSheet.sheetId);
     if (catalogSheet == null) {
@@ -194,6 +212,94 @@ final class GoogleSheetsCatalogSync {
         .timeout(requestTimeout);
   }
 
+  Future<void> _syncLinksOnce() async {
+    var sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    var tab = _sheetByTitle(sheets, LinksSheet.tabTitle);
+    if (tab == null) {
+      await _gateway.addSheet(LinksSheet.tabTitle).timeout(requestTimeout);
+      sheets = await _gateway.describeSheets().timeout(requestTimeout);
+      tab = _sheetByTitle(sheets, LinksSheet.tabTitle);
+    }
+    if (tab == null) {
+      throw StateError('Failed to create ${LinksSheet.tabTitle} sheet.');
+    }
+
+    final quoted = quoteA1SheetTitle(tab.title);
+    var rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    var parsed = LinksSheetParser.parse(rows);
+    var seeded = false;
+    if (_needsLinksSeed(parsed)) {
+      await _gateway
+          .updateValues(
+            a1Range: '$quoted!A1',
+            rows: LinksSheet.seedRows(botUsername: botUsername),
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(requestTimeout);
+      seeded = true;
+      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      parsed = LinksSheetParser.parse(rows);
+    } else if (parsed.rows.isNotEmpty && LinksSheetParser.headerRowIndex(rows) == 0) {
+      final wrapped = LinksSheet.withChrome(headerRow: rows[0], dataRows: rows.sublist(1));
+      await _gateway
+          .updateValues(a1Range: '$quoted!A1', rows: wrapped, valueInputOption: 'USER_ENTERED')
+          .timeout(requestTimeout);
+      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      parsed = LinksSheetParser.parse(rows);
+    }
+
+    await _writeUrlColumn(
+      title: tab.title,
+      headerAt: LinksSheetParser.headerRowIndex(rows),
+      rows: rows,
+    );
+    rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    parsed = LinksSheetParser.parse(rows);
+
+    final headerAt = LinksSheetParser.headerRowIndex(rows) ?? LinksSheet.defaultHeaderRow;
+    final dataRowCount = parsed.rows.isEmpty ? LinksSheet.extraDataRows : parsed.rows.length + 3;
+    await _gateway
+        .applyDashboardLook(
+          sheetId: tab.sheetId,
+          dashboard: GoogleSheetsLinksCatalog.build(
+            headerRow: headerAt,
+            dataRowCount: dataRowCount,
+          ),
+        )
+        .timeout(requestTimeout);
+
+    _links.replaceAll(parsed.rows);
+    l.i(
+      'ССЫЛКИ catalog synced. links=${_links.entries.length} seeded=$seeded '
+      'skipped=${parsed.skippedInvalidCount}',
+    );
+  }
+
+  Future<void> _writeUrlColumn({
+    required String title,
+    required int? headerAt,
+    required List<List<Object?>> rows,
+  }) async {
+    if (headerAt == null) {
+      return;
+    }
+    final cells = LinksSheetParser.urlColumnCells(rows, botUsername: botUsername);
+    if (cells.isEmpty) {
+      return;
+    }
+    final quoted = quoteA1SheetTitle(title);
+    final letter = LinksSheet.columnLetter(LinksSheet.headers.indexOf(LinksSheet.url));
+    await _gateway
+        .updateValues(
+          a1Range: '$quoted!$letter${headerAt + 2}',
+          rows: <List<Object?>>[
+            for (final cell in cells) <Object?>[cell],
+          ],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+  }
+
   bool _needsSeed(CoursesSheetParseResult parsed) {
     if (!parsed.isEmpty) {
       return false;
@@ -202,9 +308,25 @@ final class GoogleSheetsCatalogSync {
     return parsed.skippedInvalidCount == 0;
   }
 
+  bool _needsLinksSeed(LinksSheetParseResult parsed) {
+    if (!parsed.isEmpty) {
+      return false;
+    }
+    return parsed.skippedInvalidCount == 0;
+  }
+
   GoogleSheetsSheetInfo? _sheetById(List<GoogleSheetsSheetInfo> sheets, int sheetId) {
     for (final sheet in sheets) {
       if (sheet.sheetId == sheetId) {
+        return sheet;
+      }
+    }
+    return null;
+  }
+
+  GoogleSheetsSheetInfo? _sheetByTitle(List<GoogleSheetsSheetInfo> sheets, String title) {
+    for (final sheet in sheets) {
+      if (sheet.title == title) {
         return sheet;
       }
     }

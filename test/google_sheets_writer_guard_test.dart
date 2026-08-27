@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:test/test.dart';
 
 import 'support/fakes.dart';
@@ -78,6 +79,56 @@ void main() {
     expect(gateway.sheets.any((sheet) => sheet.title == 'ВОРОНКА'), isTrue);
   });
 
+  test('ВОРОНКА export does not delete or clear ССЫЛКИ', () async {
+    final linksRows = LinksSheet.seedRows(botUsername: 'course_bot');
+    final gateway = FakeGoogleSheetsGateway(
+      sheets: const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: LinksSheet.tabTitle, sheetId: 4),
+      ],
+      valuesBySheetId: <int, List<List<Object?>>>{
+        CoursesSheet.sheetId: CoursesSheet.seedRows(),
+        4: linksRows,
+      },
+    );
+    final writer = GoogleSheetsApiWriter(gateway: gateway);
+    await writer.replaceDashboard(dashboard());
+    expect(gateway.deletedSheetIds, isNot(contains(4)));
+    expect(gateway.sheets.any((sheet) => sheet.title == LinksSheet.tabTitle), isTrue);
+    expect(gateway.valuesBySheetId[4]!.first.first, LinksSheet.title);
+    expect(
+      gateway.valuesBySheetId[4]!.any(
+        (row) => row.contains('https://t.me/course_bot?start=ig_reels_guide'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('ВОРОНКА export does not delete or clear ССЫЛКИ', () async {
+    final linksRows = LinksSheet.seedRows(botUsername: 'course_bot');
+    final gateway = FakeGoogleSheetsGateway(
+      sheets: const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: LinksSheet.tabTitle, sheetId: 4),
+      ],
+      valuesBySheetId: <int, List<List<Object?>>>{
+        CoursesSheet.sheetId: CoursesSheet.seedRows(),
+        4: linksRows,
+      },
+    );
+    final writer = GoogleSheetsApiWriter(gateway: gateway);
+    await writer.replaceDashboard(dashboard());
+    expect(gateway.deletedSheetIds, isNot(contains(4)));
+    expect(gateway.sheets.any((sheet) => sheet.title == LinksSheet.tabTitle), isTrue);
+    expect(gateway.valuesBySheetId[4]!.first.first, LinksSheet.title);
+    expect(
+      gateway.valuesBySheetId[4]!.any(
+        (row) => row.contains('https://t.me/course_bot?start=ig_reels_guide'),
+      ),
+      isTrue,
+    );
+  });
+
   test('replaceSheet refuses to wipe gid=0 catalog', () async {
     final gateway = FakeGoogleSheetsGateway(
       sheets: const <GoogleSheetsSheetInfo>[
@@ -92,5 +143,25 @@ void main() {
     );
     expect(gateway.clearedRanges, isEmpty);
     expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, CoursesSheet.title);
+  });
+
+  test('replaceSheet refuses to wipe ССЫЛКИ', () async {
+    final gateway = FakeGoogleSheetsGateway(
+      sheets: const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: LinksSheet.tabTitle, sheetId: 4),
+      ],
+      valuesBySheetId: <int, List<List<Object?>>>{
+        CoursesSheet.sheetId: CoursesSheet.seedRows(),
+        4: LinksSheet.seedRows(),
+      },
+    );
+    final writer = GoogleSheetsApiWriter(gateway: gateway);
+    await expectLater(
+      writer.replaceSheet(sheetTitle: LinksSheet.tabTitle, rows: const <List<Object?>>[]),
+      throwsStateError,
+    );
+    expect(gateway.clearedRanges, isEmpty);
+    expect(gateway.valuesBySheetId[4]!.first.first, LinksSheet.title);
   });
 }

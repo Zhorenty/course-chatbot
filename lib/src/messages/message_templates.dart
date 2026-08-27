@@ -1,7 +1,9 @@
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
@@ -34,6 +36,7 @@ final class MessageTemplates {
   static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminBroadcast = '📣 Рассылка';
+  static const String buttonAdminLinks = '🔗 Диплинки';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminMenu = '🛠 Админка';
   static const String buttonAdminMarkPaid = '✅ Отметить оплаченным';
@@ -319,6 +322,7 @@ final class MessageTemplates {
   String adminMenu() {
     return '<b>Админка</b>\n\n'
         'Поиск, карточка, ручной статус, рассылка сегменту. '
+        'Диплинки — «${MessageTemplates.buttonAdminLinks}». '
         'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}».';
   }
 
@@ -441,6 +445,32 @@ final class MessageTemplates {
         );
       }
     }
+    return buf.toString().trim();
+  }
+
+  String adminDeepLinks(List<AcquisitionLink> links) {
+    final buf = StringBuffer()
+      ..writeln('<b>Диплинки</b>')
+      ..writeln();
+    final bot = _botUsername?.trim() ?? '';
+    if (bot.isEmpty) {
+      buf.writeln('Username бота неизвестен — готовые t.me-ссылки не собрались. Метки:');
+      buf.writeln();
+    }
+    for (final link in links) {
+      buf.writeln('${escapeHtml(link.origin)} → ${escapeHtml(link.destinationLabel)}');
+      if (bot.isEmpty) {
+        buf.writeln('<code>${escapeHtml(link.payload)}</code>');
+      } else {
+        buf.writeln('<code>${escapeHtml(deepLink(link.payload))}</code>');
+      }
+      buf.writeln();
+    }
+    buf.write(
+      'Те же ссылки на листе ${escapeHtml(LinksSheet.tabTitle)}. '
+      'Новая метка (Stories, таргет) — строка на листе, затем '
+      '«${MessageTemplates.buttonAdminSheets}» или снова «${MessageTemplates.buttonAdminLinks}».',
+    );
     return buf.toString().trim();
   }
 

@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -19,6 +20,27 @@ void main() {
     expect(AcquisitionSource.opensCourseCard('direct_course'), isTrue);
     expect(AcquisitionSource.opensCourseCard('ig_reels_guide'), isFalse);
     expect(AcquisitionSource.normalize('bad payload!'), isNull);
+  });
+
+  test('sheet extras open course only when destination is курс', () {
+    final catalog = AcquisitionLinkCatalog()
+      ..replaceAll(<AcquisitionLink>[
+        ...AcquisitionLink.starters,
+        const AcquisitionLink(
+          origin: 'Таргет',
+          destination: AcquisitionDestination.course,
+          payload: 'ads_course',
+        ),
+        const AcquisitionLink(
+          origin: 'Stories',
+          destination: AcquisitionDestination.guide,
+          payload: 'ig_extra',
+        ),
+      ]);
+    expect(catalog.opensCourseCard('ads_course'), isTrue);
+    expect(catalog.opensCourseCard('ig_extra'), isFalse);
+    expect(catalog.opensCourseCard('direct_course'), isTrue);
+    expect(catalog.opensCourseCard('unknown_tag'), isFalse);
   });
 
   test('deposit does not grant access on success, full and installment do', () {

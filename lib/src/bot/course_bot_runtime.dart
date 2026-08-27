@@ -17,6 +17,7 @@ import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
@@ -68,6 +69,7 @@ final class CourseBotRuntime {
     final jobDedupe = JobDedupeRepository(databaseHandle: databaseHandle)..initSchema();
     final course = SqliteCourseRepository(databaseHandle: databaseHandle);
     course.init();
+    final links = AcquisitionLinkCatalog();
 
     GoogleSheetsWriter? sheetsWriter;
     GoogleSheetsCatalogSync? catalogSync;
@@ -78,6 +80,8 @@ final class CourseBotRuntime {
         catalogSync = GoogleSheetsCatalogSync(
           gateway: apiWriter.gateway,
           catalog: course,
+          links: links,
+          botUsername: botUsername,
           timezoneOffsetHours: config.timezoneOffsetHours,
           fallbackChannelId: config.courseChannelId,
           fallbackOfferUrl: config.offerUrl,
@@ -116,7 +120,7 @@ final class CourseBotRuntime {
       'Payment gateway in use: ${paymentGateway.providerId} '
       '(config=${config.paymentProvider.name})',
     );
-    final funnel = FunnelService(course: course);
+    final funnel = FunnelService(course: course, links: links);
     final access = AccessService(course: course, telegram: client);
     final checkout = CheckoutService(
       course: course,

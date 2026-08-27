@@ -1,7 +1,10 @@
 import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
+import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -82,11 +85,44 @@ void main() {
     expect(look.styles, isNotEmpty);
   });
 
+  test('ССЫЛКИ catalog look matches COURSES palette and has no charts', () {
+    final look = GoogleSheetsLinksCatalog.build();
+    expect(look.sheetTitle, LinksSheet.tabTitle);
+    expect(look.charts, isEmpty);
+    expect(look.hideGridlines, isTrue);
+    expect(look.frozenRowCount, 4);
+    expect(look.columnCount, 4);
+    expect(look.notes, hasLength(4));
+    expect(look.notes.last.text, contains('t.me'));
+  });
+
+  test('admin deep-link copy escapes origin and URL', () {
+    final templates = MessageTemplates(botUsername: 'bot&x');
+    final text = templates.adminDeepLinks(const <AcquisitionLink>[
+      AcquisitionLink(
+        origin: 'Reels <b>',
+        destination: AcquisitionDestination.guide,
+        payload: 'ig_reels_guide',
+      ),
+    ]);
+    expect(text, contains('Reels &lt;b&gt;'));
+    expect(text, contains('https://t.me/bot&amp;x?start=ig_reels_guide'));
+    expect(text, isNot(contains('Reels <b>')));
+  });
+
+  test('admin deep-link copy without username does not invent t.me URLs', () {
+    final text = MessageTemplates().adminDeepLinks(AcquisitionLink.starters);
+    expect(text, contains('неизвестен'));
+    expect(text, isNot(contains('https://t.me/')));
+    expect(text, contains('ig_reels_guide'));
+  });
+
   test('admin reply keyboard is admin-only and includes sheets refresh', () {
     final templates = MessageTemplates();
     final texts = _replyButtonTexts(templates.adminMenuKeyboard());
     expect(texts, contains(MessageTemplates.buttonAdminSearch));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
+    expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
@@ -100,6 +136,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSearch)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminMenu)));
   });

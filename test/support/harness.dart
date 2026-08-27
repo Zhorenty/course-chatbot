@@ -10,6 +10,7 @@ import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
@@ -51,6 +52,7 @@ final class HandlerHarness {
     String? leadMagnetFileId = 'file-guide',
     String? leadMagnetPath,
     bool enableSheets = false,
+    String? botUsername,
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
@@ -67,7 +69,8 @@ final class HandlerHarness {
       channelId: channelId,
       leadMagnetFileId: leadMagnetFileId,
     );
-    final funnel = FunnelService(course: course);
+    final links = AcquisitionLinkCatalog();
+    final funnel = FunnelService(course: course, links: links);
     final access = AccessService(course: course, telegram: channel);
     checkout = CheckoutService(course: course, gateway: gateway, access: access);
     final warmup = WarmupService(
@@ -86,6 +89,8 @@ final class HandlerHarness {
       catalogSync = GoogleSheetsCatalogSync(
         gateway: sheetsGateway!,
         catalog: course,
+        links: links,
+        botUsername: botUsername,
         fallbackChannelId: channelId,
         fallbackLeadMagnetFileId: leadMagnetFileId,
       );
@@ -93,7 +98,7 @@ final class HandlerHarness {
     }
     handlers = PrivateHandlers(
       sender: sender,
-      templates: MessageTemplates(),
+      templates: MessageTemplates(botUsername: botUsername),
       course: course,
       funnel: funnel,
       checkout: checkout,

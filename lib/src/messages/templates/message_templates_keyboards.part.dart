@@ -21,6 +21,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
       <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminLinks},
         <String, String>{'text': MessageTemplates.buttonAdminSheets},
       ],
     ]);

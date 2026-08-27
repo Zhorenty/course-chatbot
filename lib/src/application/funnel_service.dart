@@ -1,14 +1,22 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 
 final class FunnelService {
-  FunnelService({required CourseRepository course, DateTime Function()? nowProvider})
-    : _course = course,
-      _nowProvider = nowProvider ?? DateTime.now;
+  FunnelService({
+    required CourseRepository course,
+    AcquisitionLinkCatalog? links,
+    DateTime Function()? nowProvider,
+  }) : _course = course,
+       links = links ?? AcquisitionLinkCatalog(),
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final CourseRepository _course;
+  final AcquisitionLinkCatalog links;
   final DateTime Function() _nowProvider;
+
+  bool opensCourseCard(String? payload) => links.opensCourseCard(payload);
 
   UserProfile start({required int userId, String? username, String? firstName, String? payload}) {
     final source = AcquisitionSource.normalize(payload);
