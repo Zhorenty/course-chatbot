@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -54,6 +55,15 @@ void main() {
     expect(MessageTemplates.idFromCallback('ap:99', MessageTemplates.cbAdminPaid), 99);
     expect(MessageTemplates.idFromCallback('cp:12', MessageTemplates.cbContinuePay), 12);
     expect(MessageTemplates.idFromCallback('g', MessageTemplates.cbAdminPaid), isNull);
+  });
+
+  test('broadcast segment codes are short and parse back', () {
+    expect(BroadcastSegment.guideNotPaid.code, 'g');
+    expect(BroadcastSegment.fromCode('a'), BroadcastSegment.allStarted);
+    expect(BroadcastSegment.fromCode('l'), BroadcastSegment.leadNoGuide);
+    expect(BroadcastSegment.fromCode('x'), BroadcastSegment.cancelled);
+    expect(BroadcastSegment.fromCode('nope'), isNull);
+    expect(MessageTemplates.segmentFromCallback('bs:p'), BroadcastSegment.paidAccess);
   });
 
   test('funnel phases do not move backwards except cancel/admin override', () {

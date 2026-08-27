@@ -97,11 +97,12 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _optOut(context);
       case MessageTemplates.cbNewInvite:
         return _reissueInvite(context);
-      case MessageTemplates.cbBroadcastGuide:
+      case MessageTemplates.cbBroadcastSend:
         return _confirmBroadcast(context);
+      case MessageTemplates.cbBroadcastOtherSegment:
+        return _reselectBroadcastSegment(context);
       case MessageTemplates.cbBroadcastCancel:
-        _flowByUserId.remove(context.userId);
-        return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
+        return _cancelBroadcast(context);
       case MessageTemplates.cbGuideSave:
         return _savePendingGuide(context);
       case MessageTemplates.cbGuideDiscard:
@@ -111,6 +112,9 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
           _templates.adminGuideDiscarded(),
           replyMarkup: _templates.adminMenuKeyboard(),
         );
+    }
+    if (data.startsWith(MessageTemplates.cbBroadcastSegment)) {
+      return _selectBroadcastSegment(context, MessageTemplates.segmentFromCallback(data));
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
       return _continuePay(

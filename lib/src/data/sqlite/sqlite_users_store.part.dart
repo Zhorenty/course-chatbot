@@ -163,22 +163,34 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
 
   @override
   List<int> listBroadcastUserIds({required BroadcastSegment segment}) {
-    final sql = switch (segment) {
-      BroadcastSegment.allStarted =>
-        '''
-        SELECT user_id FROM telegram_users
-        WHERE bot_blocked = 0
-        ORDER BY user_id;
-      ''',
+    return _db
+        .select(
+          'SELECT user_id FROM telegram_users WHERE ${_broadcastWhere(segment)} ORDER BY user_id;',
+        )
+        .map((row) => row['user_id'] as int)
+        .toList(growable: false);
+  }
+
+  @override
+  int countBroadcastUsers({required BroadcastSegment segment}) {
+    final rows = _db.select(
+      'SELECT COUNT(*) AS c FROM telegram_users WHERE ${_broadcastWhere(segment)};',
+    );
+    return rows.first['c'] as int;
+  }
+
+  String _broadcastWhere(BroadcastSegment segment) {
+    return switch (segment) {
+      BroadcastSegment.allStarted => 'bot_blocked = 0',
+      BroadcastSegment.leadNoGuide =>
+        "bot_blocked = 0 AND funnel_phase = 'lead' AND magnet_issued_at IS NULL",
       BroadcastSegment.guideNotPaid =>
-        '''
-        SELECT user_id FROM telegram_users
-        WHERE bot_blocked = 0
-          AND magnet_issued_at IS NOT NULL
-          AND funnel_phase NOT IN ('paid', 'access_granted', 'cancelled', 'deposit_paid')
-        ORDER BY user_id;
-      ''',
+        "bot_blocked = 0 AND magnet_issued_at IS NOT NULL AND funnel_phase NOT IN ('paid', 'access_granted', 'cancelled', 'deposit_paid')",
+      BroadcastSegment.checkoutOpen => "bot_blocked = 0 AND funnel_phase = 'checkout'",
+      BroadcastSegment.depositPaid => "bot_blocked = 0 AND funnel_phase = 'deposit_paid'",
+      BroadcastSegment.paidAccess =>
+        "bot_blocked = 0 AND funnel_phase IN ('paid', 'access_granted')",
+      BroadcastSegment.cancelled => "bot_blocked = 0 AND funnel_phase = 'cancelled'",
     };
-    return _db.select(sql).map((row) => row['user_id'] as int).toList(growable: false);
   }
 }

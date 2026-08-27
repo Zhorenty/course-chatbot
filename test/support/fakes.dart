@@ -98,6 +98,31 @@ final class FakeMessageSender implements MessageSender {
     );
     return 1000 + forwards.length;
   }
+
+  final List<CopiedMessage> copies = <CopiedMessage>[];
+  Object? throwOnCopy;
+
+  @override
+  Future<int> copyMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    final error = throwOnCopy;
+    if (error != null) {
+      throw error;
+    }
+    copies.add(
+      CopiedMessage(
+        chatId: chatId,
+        fromChatId: fromChatId,
+        messageId: messageId,
+        disableNotification: disableNotification,
+      ),
+    );
+    return 2000 + copies.length;
+  }
 }
 
 final class CallbackAnswer {
@@ -134,6 +159,20 @@ final class SentMessage {
 
 final class ForwardedMessage {
   const ForwardedMessage({
+    required this.chatId,
+    required this.fromChatId,
+    required this.messageId,
+    this.disableNotification = true,
+  });
+
+  final int chatId;
+  final int fromChatId;
+  final int messageId;
+  final bool disableNotification;
+}
+
+final class CopiedMessage {
+  const CopiedMessage({
     required this.chatId,
     required this.fromChatId,
     required this.messageId,
@@ -474,11 +513,12 @@ Map<String, dynamic> privateMessageUpdate({
   required int userId,
   required String text,
   String? username,
+  int messageId = 10,
 }) {
   return <String, dynamic>{
     'update_id': 1,
     'message': <String, dynamic>{
-      'message_id': 10,
+      'message_id': messageId,
       'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
       'from': <String, dynamic>{
         'id': userId,
@@ -495,11 +535,13 @@ Map<String, dynamic> privatePhotoUpdate({
   required int userId,
   String? caption,
   String? username,
+  int messageId = 11,
+  String? mediaGroupId,
 }) {
   return <String, dynamic>{
     'update_id': 1,
     'message': <String, dynamic>{
-      'message_id': 11,
+      'message_id': messageId,
       'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
       'from': <String, dynamic>{
         'id': userId,
@@ -511,6 +553,74 @@ Map<String, dynamic> privatePhotoUpdate({
         <String, dynamic>{'file_id': 'photo-large'},
       ],
       if (caption != null) 'caption': caption,
+      if (mediaGroupId != null) 'media_group_id': mediaGroupId,
+    },
+  };
+}
+
+Map<String, dynamic> privateDocumentUpdate({
+  required int chatId,
+  required int userId,
+  String fileId = 'doc-1',
+  String? caption,
+  String? username,
+  int messageId = 12,
+}) {
+  return <String, dynamic>{
+    'update_id': 1,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
+      'document': <String, dynamic>{'file_id': fileId, 'file_name': 'file.pdf'},
+      if (caption != null) 'caption': caption,
+    },
+  };
+}
+
+Map<String, dynamic> privateVideoUpdate({
+  required int chatId,
+  required int userId,
+  String? caption,
+  String? username,
+  int messageId = 13,
+}) {
+  return <String, dynamic>{
+    'update_id': 1,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
+      'video': <String, dynamic>{'file_id': 'vid-1'},
+      if (caption != null) 'caption': caption,
+    },
+  };
+}
+
+Map<String, dynamic> privateEmptyMessageUpdate({
+  required int chatId,
+  required int userId,
+  String? username,
+  int messageId = 14,
+}) {
+  return <String, dynamic>{
+    'update_id': 1,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
     },
   };
 }

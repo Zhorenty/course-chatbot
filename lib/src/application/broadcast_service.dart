@@ -23,8 +23,8 @@ final class BroadcastService {
 
   Future<BroadcastResult> send({
     required BroadcastSegment segment,
-    required String htmlText,
-    Map<String, Object?>? replyMarkup,
+    required int fromChatId,
+    required int messageId,
   }) async {
     final userIds = _course.listBroadcastUserIds(segment: segment);
     var sent = 0;
@@ -32,7 +32,7 @@ final class BroadcastService {
     for (var i = 0; i < userIds.length; i++) {
       final userId = userIds[i];
       try {
-        await _sender.sendMessage(userId, htmlText, parseMode: 'HTML', replyMarkup: replyMarkup);
+        await _sender.copyMessage(chatId: userId, fromChatId: fromChatId, messageId: messageId);
         sent++;
       } on TelegramApiException catch (error) {
         failed++;

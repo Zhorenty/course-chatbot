@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/domain/broadcast.dart';
+
 final class PrivateMessageContext {
   const PrivateMessageContext({
     required this.chat,
@@ -104,4 +106,43 @@ String? extractDocumentFileId(Map<String, dynamic>? message) {
     return null;
   }
   return fileId;
+}
+
+bool isTelegramAlbum(Map<String, dynamic>? message) {
+  final raw = message?['media_group_id']?.toString().trim();
+  return raw != null && raw.isNotEmpty;
+}
+
+BroadcastContentKind? broadcastContentKindOf(Map<String, dynamic>? message) {
+  if (message == null) {
+    return null;
+  }
+  if (message['photo'] != null) {
+    return BroadcastContentKind.photo;
+  }
+  if (message['document'] != null) {
+    return BroadcastContentKind.document;
+  }
+  if (message['video'] != null) {
+    return BroadcastContentKind.video;
+  }
+  if (message['video_note'] != null) {
+    return BroadcastContentKind.videoNote;
+  }
+  if (message['animation'] != null) {
+    return BroadcastContentKind.animation;
+  }
+  if (message['voice'] != null) {
+    return BroadcastContentKind.voice;
+  }
+  if (message['audio'] != null) {
+    return BroadcastContentKind.audio;
+  }
+  if (message['sticker'] != null) {
+    return BroadcastContentKind.sticker;
+  }
+  if (_trimmedMessageText(message) != null) {
+    return BroadcastContentKind.text;
+  }
+  return null;
 }

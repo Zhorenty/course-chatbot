@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
@@ -44,7 +45,8 @@ final class MessageTemplates {
   static const String buttonAdminMarkDeposit = '💵 Предоплата';
   static const String buttonAdminCancel = '↩️ Отмена / возврат';
   static const String buttonAdminReinvite = '🔗 Новый invite';
-  static const String buttonAdminBroadcastGuide = '📣 Гайд, не купили';
+  static const String buttonAdminBroadcastSend = 'Отправить';
+  static const String buttonAdminBroadcastOtherSegment = 'Другой сегмент';
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
@@ -66,7 +68,9 @@ final class MessageTemplates {
   static const String cbAdminDeposit = 'ad:';
   static const String cbAdminCancel = 'ac:';
   static const String cbAdminInvite = 'ai:';
-  static const String cbBroadcastGuide = 'bg';
+  static const String cbBroadcastSegment = 'bs:';
+  static const String cbBroadcastSend = 'bp';
+  static const String cbBroadcastOtherSegment = 'br';
   static const String cbBroadcastCancel = 'bx';
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
@@ -373,8 +377,62 @@ final class MessageTemplates {
     return buf.toString();
   }
 
-  String adminAskBroadcast() {
-    return '📣 Пришли текст рассылки. Сегмент: получили гайд и не купили.';
+  String adminAskBroadcastContent() {
+    return 'Пришли одним сообщением текст, фото, файл, видео или голосовое. Можно с подписью.';
+  }
+
+  String adminBroadcastPickSegment(Map<BroadcastSegment, int> counts) {
+    final buf = StringBuffer()
+      ..writeln('<b>Рассылка</b>')
+      ..writeln()
+      ..writeln('Кому отправить?')
+      ..writeln();
+    for (final segment in BroadcastSegment.values) {
+      buf.writeln('${broadcastSegmentLabel(segment)} — ${counts[segment] ?? 0}');
+    }
+    return buf.toString().trim();
+  }
+
+  String adminBroadcastDraftSavedPickSegment() {
+    return 'Сохранил черновик. Выбери сегмент.';
+  }
+
+  String adminBroadcastPreview({
+    required BroadcastSegment segment,
+    required int recipientCount,
+    required BroadcastContentKind kind,
+    String? previewText,
+  }) {
+    final buf = StringBuffer()
+      ..writeln('<b>Превью</b>')
+      ..writeln()
+      ..writeln('Сегмент: ${escapeHtml(broadcastSegmentLabel(segment))}')
+      ..writeln('Получателей: $recipientCount')
+      ..write('Содержимое: ${escapeHtml(broadcastContentKindLabel(kind))}');
+    final preview = previewText?.trim();
+    if (preview != null && preview.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(escapeHtml(_clipBroadcastPreview(preview)));
+    }
+    return buf.toString();
+  }
+
+  String adminBroadcastAlbumRejected() {
+    return 'Пришли одно фото или файл, не альбом.';
+  }
+
+  String adminBroadcastEmptyRejected() {
+    return 'Пришли текст или файл.';
+  }
+
+  String adminBroadcastCopyFailed() {
+    return 'Не получилось показать превью. Пришли сообщение ещё раз.';
+  }
+
+  String adminBroadcastNeedDraft() {
+    return 'Сначала пришли текст, фото, файл, видео или голосовое.';
   }
 
   String adminBroadcastDone({required int sent, required int failed, required int total}) {
@@ -395,10 +453,6 @@ final class MessageTemplates {
   }
 
   String adminGuideDiscarded() => 'Файл не сохранён как гайд.';
-
-  String adminBroadcastConfirm() {
-    return 'Отправить этот текст сегменту «получили гайд и не купили»?';
-  }
 
   String adminInviteReissued() => '🔗 Invite перевыдан.';
 
@@ -499,6 +553,46 @@ final class MessageTemplates {
       return null;
     }
     return int.tryParse(data.substring(prefix.length));
+  }
+
+  static BroadcastSegment? segmentFromCallback(String data) {
+    if (!data.startsWith(cbBroadcastSegment)) {
+      return null;
+    }
+    return BroadcastSegment.fromCode(data.substring(cbBroadcastSegment.length));
+  }
+
+  String broadcastSegmentLabel(BroadcastSegment segment) => switch (segment) {
+    BroadcastSegment.allStarted => 'Все',
+    BroadcastSegment.leadNoGuide => 'Зашли, без гайда',
+    BroadcastSegment.guideNotPaid => 'Гайд, не купили',
+    BroadcastSegment.checkoutOpen => 'Начали оплату',
+    BroadcastSegment.depositPaid => 'Предоплата',
+    BroadcastSegment.paidAccess => 'Оплатили / доступ',
+    BroadcastSegment.cancelled => 'Отмена / возврат',
+  };
+
+  String broadcastSegmentButton(BroadcastSegment segment, int count) {
+    return '${broadcastSegmentLabel(segment)} ($count)';
+  }
+
+  String broadcastContentKindLabel(BroadcastContentKind kind) => switch (kind) {
+    BroadcastContentKind.text => 'текст',
+    BroadcastContentKind.photo => 'фото',
+    BroadcastContentKind.document => 'файл',
+    BroadcastContentKind.video => 'видео',
+    BroadcastContentKind.voice => 'голосовое',
+    BroadcastContentKind.audio => 'аудио',
+    BroadcastContentKind.animation => 'gif',
+    BroadcastContentKind.sticker => 'стикер',
+    BroadcastContentKind.videoNote => 'видеосообщение',
+  };
+
+  String _clipBroadcastPreview(String text) {
+    if (text.length <= 200) {
+      return text;
+    }
+    return '${text.substring(0, 200)}…';
   }
 
   String deepLink(String payload) {

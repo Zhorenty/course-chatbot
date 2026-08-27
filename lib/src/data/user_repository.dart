@@ -26,4 +26,6 @@ abstract interface class UserRepository {
   List<UserProfile> searchUsers(String query, {int limit = 10});
 
   List<int> listBroadcastUserIds({required BroadcastSegment segment});
+
+  int countBroadcastUsers({required BroadcastSegment segment});
 }

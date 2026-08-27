@@ -147,10 +147,13 @@ void main() {
     );
     harness.course.ensureUser(userId: 11, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(userId: 11, phase: FunnelPhase.accessGranted);
+    harness.course.ensureUser(userId: 12, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(userId: 12, phase: FunnelPhase.depositPaid);
 
     final ids = harness.course.listBroadcastUserIds(segment: BroadcastSegment.guideNotPaid);
     expect(ids, contains(10));
     expect(ids, isNot(contains(11)));
+    expect(ids, isNot(contains(12)));
   });
 }
 

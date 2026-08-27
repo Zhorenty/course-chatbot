@@ -17,7 +17,6 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
-import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';

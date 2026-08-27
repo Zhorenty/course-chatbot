@@ -94,6 +94,28 @@ final class LoggingMessageSender implements MessageSender {
     );
   }
 
+  @override
+  Future<int> copyMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    final copiedId = await _inner.copyMessage(
+      chatId: chatId,
+      fromChatId: fromChatId,
+      messageId: messageId,
+      disableNotification: disableNotification,
+    );
+    await _safeAppend(
+      chatId: chatId,
+      telegramMessageId: copiedId,
+      contentType: ConversationContentType.copy,
+      textPreview: 'copy $fromChatId:$messageId',
+    );
+    return copiedId;
+  }
+
   Future<void> _safeAppend({
     required int chatId,
     required int telegramMessageId,

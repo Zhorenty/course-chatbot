@@ -196,15 +196,38 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
+  Map<String, Object?> broadcastSegmentKeyboard(Map<BroadcastSegment, int> counts) {
+    final rows = <List<Map<String, String>>>[
+      for (final segment in BroadcastSegment.values)
+        <Map<String, String>>[
+          <String, String>{
+            'text': broadcastSegmentButton(segment, counts[segment] ?? 0),
+            'callback_data': '${MessageTemplates.cbBroadcastSegment}${segment.code}',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'callback_data': MessageTemplates.cbBroadcastCancel,
+        },
+      ],
+    ];
+    return inlineKeyboard(rows);
+  }
+
   Map<String, Object?> broadcastConfirmKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': MessageTemplates.buttonAdminBroadcastGuide,
-          'callback_data': MessageTemplates.cbBroadcastGuide,
+          'text': MessageTemplates.buttonAdminBroadcastSend,
+          'callback_data': MessageTemplates.cbBroadcastSend,
         },
       ],
       <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminBroadcastOtherSegment,
+          'callback_data': MessageTemplates.cbBroadcastOtherSegment,
+        },
         <String, String>{
           'text': MessageTemplates.buttonAdminBroadcastCancel,
           'callback_data': MessageTemplates.cbBroadcastCancel,

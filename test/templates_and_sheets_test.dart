@@ -167,6 +167,24 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
   });
 
+  test('broadcast confirm keyboard is not locked to one segment', () {
+    final templates = MessageTemplates();
+    final rows = templates.broadcastConfirmKeyboard()['inline_keyboard'] as List<dynamic>;
+    final texts = <String>[
+      for (final row in rows)
+        for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+    ];
+    final data = <String>[
+      for (final row in rows)
+        for (final cell in row as List<dynamic>) (cell as Map)['callback_data'] as String,
+    ];
+    expect(texts, contains(MessageTemplates.buttonAdminBroadcastSend));
+    expect(texts, contains(MessageTemplates.buttonAdminBroadcastOtherSegment));
+    expect(data, contains(MessageTemplates.cbBroadcastSend));
+    expect(data, isNot(contains('bg')));
+    expect(texts.join(), isNot(contains('получили гайд и не купили')));
+  });
+
   test('user reply keyboard has no admin actions', () {
     final templates = MessageTemplates();
     final texts = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: false));

@@ -38,4 +38,11 @@ abstract interface class MessageSender {
     required int messageId,
     bool disableNotification = true,
   });
+
+  Future<int> copyMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  });
 }
