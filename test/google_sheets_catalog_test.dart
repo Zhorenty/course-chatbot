@@ -284,6 +284,8 @@ void main() {
       expect(sheet[dataRow][urlCol], 'https://t.me/course_bot?start=ig_reels_guide');
       expect(links.entries, hasLength(4));
       expect(links.opensCourseCard('tg_announce'), isTrue);
+      final headerAt = LinksSheetParser.headerRowIndex(sheet)!;
+      expect(sheet.length, greaterThanOrEqualTo(headerAt + 1 + LinksSheet.extraDataRows));
     });
 
     test('second sync keeps a human fifth row and fills its URL', () async {
@@ -328,6 +330,10 @@ void main() {
       expect(links.entries.map((row) => row.payload), isNot(contains('bad payload!')));
       final sheet = gateway.valuesBySheetId[2]!;
       expect(sheet.any((row) => row.contains(LinksSheet.invalidPayloadStatus)), isTrue);
+      expect(
+        sheet.length,
+        greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + LinksSheet.extraDataRows),
+      );
     });
 
     test('without bot username does not invent t.me URLs', () async {

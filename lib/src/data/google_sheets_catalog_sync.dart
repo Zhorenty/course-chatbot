@@ -248,6 +248,9 @@ final class GoogleSheetsCatalogSync {
       parsed = LinksSheetParser.parse(rows);
     }
 
+    await _ensureEmptyLinkRows(title: tab.title, rows: rows);
+    rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+
     await _writeUrlColumn(
       title: tab.title,
       headerAt: LinksSheetParser.headerRowIndex(rows),
@@ -257,7 +260,10 @@ final class GoogleSheetsCatalogSync {
     parsed = LinksSheetParser.parse(rows);
 
     final headerAt = LinksSheetParser.headerRowIndex(rows) ?? LinksSheet.defaultHeaderRow;
-    final dataRowCount = parsed.rows.isEmpty ? LinksSheet.extraDataRows : parsed.rows.length + 3;
+    final filled = parsed.rows.length;
+    final dataRowCount = filled + 3 < LinksSheet.extraDataRows
+        ? LinksSheet.extraDataRows
+        : filled + 3;
     await _gateway
         .applyDashboardLook(
           sheetId: tab.sheetId,
@@ -273,6 +279,33 @@ final class GoogleSheetsCatalogSync {
       'ССЫЛКИ catalog synced. links=${_links.entries.length} seeded=$seeded '
       'skipped=${parsed.skippedInvalidCount}',
     );
+  }
+
+  Future<void> _ensureEmptyLinkRows({
+    required String title,
+    required List<List<Object?>> rows,
+  }) async {
+    final headerAt = LinksSheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return;
+    }
+    final dataStart = headerAt + 1;
+    final currentData = rows.length <= dataStart ? 0 : rows.length - dataStart;
+    if (currentData >= LinksSheet.extraDataRows) {
+      return;
+    }
+    final missing = LinksSheet.extraDataRows - currentData;
+    final quoted = quoteA1SheetTitle(title);
+    final startRow = dataStart + currentData + 1;
+    await _gateway
+        .updateValues(
+          a1Range: '$quoted!A$startRow',
+          rows: <List<Object?>>[
+            for (var i = 0; i < missing; i++) LinksSheet.padded(const <Object?>[]),
+          ],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
   }
 
   Future<void> _writeUrlColumn({

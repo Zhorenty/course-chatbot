@@ -94,6 +94,8 @@ void main() {
     expect(look.columnCount, 4);
     expect(look.notes, hasLength(4));
     expect(look.notes.last.text, contains('t.me'));
+    expect(LinksSheet.extraDataRows, greaterThanOrEqualTo(24));
+    expect(look.rowCount, greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + 24));
   });
 
   test('admin deep-link copy escapes origin and URL', () {

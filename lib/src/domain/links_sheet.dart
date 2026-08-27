@@ -7,7 +7,7 @@ abstract final class LinksSheet {
   static const String tabTitle = 'ССЫЛКИ';
   static const int columnCount = 4;
   static const int defaultHeaderRow = 3;
-  static const int extraDataRows = 8;
+  static const int extraDataRows = 24;
 
   static const String origin = 'origin';
   static const String destination = 'destination';
@@ -33,9 +33,13 @@ abstract final class LinksSheet {
   ];
 
   static List<List<Object?>> seedRows({String? botUsername}) {
+    final starters = <List<Object?>>[
+      for (final link in AcquisitionLink.starters) seedDataRow(link, botUsername: botUsername),
+    ];
     return withChrome(
       dataRows: <List<Object?>>[
-        for (final link in AcquisitionLink.starters) seedDataRow(link, botUsername: botUsername),
+        ...starters,
+        for (var i = starters.length; i < extraDataRows; i++) padded(const <Object?>[]),
       ],
     );
   }
