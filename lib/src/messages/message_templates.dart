@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
@@ -327,7 +328,8 @@ final class MessageTemplates {
   }
 
   String adminAskSearch() {
-    return '🔍 Пришли Telegram user id или @username.';
+    return '<b>Поиск человека</b>\n\n'
+        'Пришли сообщением id — цифры, как в карточке, или @username — ник в Telegram';
   }
 
   String adminNotFound(String query) {
@@ -419,30 +421,40 @@ final class MessageTemplates {
     String? funnelError,
     Launch? launch,
   }) {
-    final buf = StringBuffer();
+    final buf = StringBuffer()
+      ..writeln('<b>Таблица</b>')
+      ..writeln();
     if (catalogAttempted) {
       if (catalogOk && launch != null) {
-        buf.write('Текущий набор в боте: ${formatRubFromKopecks(launch.priceFullKopecks)}');
-        final start = launch.courseStartAt;
-        if (start != null) {
-          buf.write(', старт ${_date.format(start.toUtc())}');
+        buf.writeln('Набор в боте');
+        final title = launch.title.trim();
+        if (title.isNotEmpty) {
+          buf.writeln('поток: ${escapeHtml(title)}');
         }
-        buf.writeln('.');
+        buf.writeln('цена: ${formatRubFromKopecks(launch.priceFullKopecks)}');
+        final start = _formatDate(launch.courseStartAt);
+        if (start != null) {
+          buf.writeln('старт: $start');
+        }
       } else if (catalogOk) {
-        buf.writeln('Набор в таблице не менялся, в боте всё как было.');
+        buf.writeln('Набор в боте');
+        buf.writeln('без изменений');
       } else {
+        buf.writeln('Набор в боте');
         buf.writeln(
-          'Не получилось взять набор из таблицы: ${escapeHtml(catalogError ?? 'ошибка')}.',
+          'лист ${escapeHtml(CoursesSheet.tabTitle)}: не прочитался — '
+          '${escapeHtml(catalogError ?? 'ошибка')}',
         );
       }
+      buf.writeln();
     }
     if (funnelAttempted) {
       if (funnelOk) {
-        buf.writeln('Цифры воронки в таблице обновлены.');
+        buf.writeln('Воронка');
+        buf.writeln('лист ВОРОНКА: цифры перезаписаны');
       } else {
-        buf.writeln(
-          'Не получилось обновить цифры воронки в таблице: ${escapeHtml(funnelError ?? 'ошибка')}.',
-        );
+        buf.writeln('Воронка');
+        buf.writeln('лист ВОРОНКА: не обновился — ${escapeHtml(funnelError ?? 'ошибка')}');
       }
     }
     return buf.toString().trim();

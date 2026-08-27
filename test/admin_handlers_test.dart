@@ -87,7 +87,10 @@ void main() {
     expect(sheetsHarness.course.activeLaunch()?.priceFullKopecks, 2100000);
     expect(
       sheetsHarness.sender.messages.any(
-        (m) => m.text.contains('набор') && m.text.contains('воронки') && m.text.contains('21000'),
+        (m) =>
+            m.text.contains('Набор в боте') &&
+            m.text.contains('Воронка') &&
+            m.text.contains('21000'),
       ),
       isTrue,
     );

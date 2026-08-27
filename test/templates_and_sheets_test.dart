@@ -98,6 +98,41 @@ void main() {
     expect(look.rowCount, greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + 24));
   });
 
+  test('admin search prompt lists id and username', () {
+    final text = MessageTemplates().adminAskSearch();
+    expect(text, contains('<b>Поиск человека</b>'));
+    expect(text, contains('Пришли сообщением'));
+    expect(text, contains('id'));
+    expect(text, contains('или @username'));
+  });
+
+  test('admin sheets refresh result is a structured card', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Октябрь <b>',
+      priceFullKopecks: 1800000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+    );
+    final text = MessageTemplates().adminSheetsRefreshResult(
+      catalogAttempted: true,
+      catalogOk: true,
+      funnelAttempted: true,
+      funnelOk: true,
+      launch: launch,
+    );
+    expect(text, contains('<b>Таблица</b>'));
+    expect(text, contains('Набор в боте'));
+    expect(text, contains('поток: Октябрь &lt;b&gt;'));
+    expect(text, contains('цена: 18000 ₽'));
+    expect(text, contains('старт: 12.10.2026'));
+    expect(text, contains('лист ВОРОНКА: цифры перезаписаны'));
+    expect(text, isNot(contains('Октябрь <b>')));
+  });
+
   test('admin deep-link copy escapes origin and URL', () {
     final templates = MessageTemplates(botUsername: 'bot&x');
     final text = templates.adminDeepLinks(const <AcquisitionLink>[
