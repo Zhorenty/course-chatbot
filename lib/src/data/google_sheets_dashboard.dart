@@ -105,6 +105,9 @@ final class GoogleSheetsDashboard {
     this.columnWidthsPx = const <int>[],
     this.obsoleteSheetTitles = const <String>[],
     this.frozenRowCount = 1,
+    this.hideGridlines = false,
+    this.tabColor,
+    this.rowHeightsPx = const <int>[],
   });
 
   final String sheetTitle;
@@ -115,6 +118,9 @@ final class GoogleSheetsDashboard {
   final List<int> columnWidthsPx;
   final List<String> obsoleteSheetTitles;
   final int frozenRowCount;
+  final bool hideGridlines;
+  final GoogleSheetsRgb? tabColor;
+  final List<int> rowHeightsPx;
 }
 
 final class GoogleSheetsSheetInfo {

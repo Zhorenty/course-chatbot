@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:course_chatbot/src/data/catalog_repository.dart';
+import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_ids.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
@@ -77,12 +78,38 @@ final class GoogleSheetsCatalogSync {
     var seeded = false;
     if (_needsSeed(parsed)) {
       await _gateway
-          .updateValues(a1Range: '$quoted!A1', rows: CoursesSheet.seedRows())
+          .updateValues(
+            a1Range: '$quoted!A1',
+            rows: CoursesSheet.seedRows(),
+            valueInputOption: 'USER_ENTERED',
+          )
           .timeout(requestTimeout);
       seeded = true;
       rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
       parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
+    } else if (parsed.rows.isNotEmpty && CoursesSheetParser.headerRowIndex(rows) == 0) {
+      final headerAt = 0;
+      final wrapped = CoursesSheet.withChrome(
+        headerRow: rows[headerAt],
+        dataRows: rows.sublist(headerAt + 1),
+      );
+      await _gateway
+          .updateValues(a1Range: '$quoted!A1', rows: wrapped, valueInputOption: 'USER_ENTERED')
+          .timeout(requestTimeout);
+      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     }
+
+    final headerAt = CoursesSheetParser.headerRowIndex(rows) ?? CoursesSheet.defaultHeaderRow;
+    await _gateway
+        .applyDashboardLook(
+          sheetId: CoursesSheet.sheetId,
+          dashboard: GoogleSheetsCoursesCatalog.build(
+            headerRow: headerAt,
+            dataRowCount: parsed.rows.isEmpty ? 8 : parsed.rows.length + 3,
+          ),
+        )
+        .timeout(requestTimeout);
 
     final draft = parsed.active;
     if (draft == null) {

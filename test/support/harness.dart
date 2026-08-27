@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
+import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
@@ -40,6 +41,7 @@ final class HandlerHarness {
 
   Future<void> init({
     Set<int> adminUserIds = const <int>{1},
+    InteractionWhitelist interactionWhitelist = InteractionWhitelist.permissive,
     int channelId = -1001,
     int priceFullKopecks = 1800000,
     int depositKopecks = 500000,
@@ -98,6 +100,7 @@ final class HandlerHarness {
       warmup: warmup,
       broadcast: BroadcastService(sender: sender, course: course),
       adminUserIds: adminUserIds,
+      interactionWhitelist: interactionWhitelist,
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: leadMagnetPath,

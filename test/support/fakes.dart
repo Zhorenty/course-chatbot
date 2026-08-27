@@ -244,6 +244,8 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   final List<int> renamedSheetIds = <int>[];
   final List<String> clearedRanges = <String>[];
   int updateValuesCount = 0;
+  int applyLookCount = 0;
+  GoogleSheetsDashboard? lastLook;
 
   @override
   Future<Set<String>> listSheetTitles() async {
@@ -343,7 +345,10 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   Future<void> applyDashboardLook({
     required int sheetId,
     required GoogleSheetsDashboard dashboard,
-  }) async {}
+  }) async {
+    applyLookCount += 1;
+    lastLook = dashboard;
+  }
 
   @override
   Future<void> close() async {}
@@ -397,12 +402,17 @@ Map<String, dynamic> privateCallbackUpdate({
   required int chatId,
   required int userId,
   required String data,
+  String? username,
 }) {
   return <String, dynamic>{
     'update_id': 2,
     'callback_query': <String, dynamic>{
       'id': callbackId,
-      'from': <String, dynamic>{'id': userId, 'first_name': 'Test'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
       'message': <String, dynamic>{
         'message_id': 20,
         'chat': <String, dynamic>{'id': chatId, 'type': 'private'},

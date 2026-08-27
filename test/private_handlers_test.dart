@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
@@ -244,5 +245,67 @@ void main() {
     );
     expect(harness.gateway.creates, 1);
     expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
+  });
+
+  test('production whitelist admits only listed usernames', () {
+    const gate = InteractionWhitelist.production;
+    expect(gate.allows('zhorenty'), isTrue);
+    expect(gate.allows('@Dvor_Support'), isTrue);
+    expect(gate.allows('stranger'), isFalse);
+    expect(gate.allows(null), isFalse);
+  });
+
+  test('non-whitelisted users get the in-development reply and are not stored', () async {
+    final gated = HandlerHarness();
+    addTearDown(gated.dispose);
+    await gated.init(interactionWhitelist: InteractionWhitelist.production);
+
+    final handled = await gated.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start', username: 'stranger'),
+    );
+
+    expect(handled, isTrue);
+    expect(gated.sender.messages, hasLength(1));
+    expect(gated.sender.messages.single.text, contains('в разработке'));
+    expect(gated.course.getUser(42), isNull);
+
+    gated.sender.messages.clear();
+    await gated.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+        username: 'random_user',
+      ),
+    );
+    expect(gated.sender.documents, isEmpty);
+    expect(gated.sender.messages.single.text, contains('в разработке'));
+    expect(gated.course.getUser(42), isNull);
+  });
+
+  test('whitelisted username can start the funnel', () async {
+    final gated = HandlerHarness();
+    addTearDown(gated.dispose);
+    await gated.init(interactionWhitelist: InteractionWhitelist.production);
+
+    await gated.handlers.handle(
+      privateMessageUpdate(chatId: 7, userId: 7, text: '/start', username: 'zhorenty'),
+    );
+    expect(gated.sender.messages.any((m) => m.text.contains('Гайд')), isTrue);
+    expect(gated.course.getUser(7), isNotNull);
+
+    gated.sender.messages.clear();
+    await gated.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 8,
+        userId: 8,
+        data: MessageTemplates.cbGuide,
+        username: 'dvor_support',
+      ),
+    );
+    expect(gated.sender.documents, isNotEmpty);
+    expect(gated.course.getUser(8), isNotNull);
   });
 }

@@ -73,10 +73,10 @@ void main() {
     await sheetsHarness.init(adminUserIds: const <int>{1}, enableSheets: true);
     addTearDown(sheetsHarness.dispose);
 
-    sheetsHarness.sheetsGateway!.valuesBySheetId[0]![1][CoursesSheet.headers.indexOf(
-          CoursesSheet.priceFullRub,
-        )] =
-        21000;
+    final sheet = sheetsHarness.sheetsGateway!.valuesBySheetId[0]!;
+    final priceCol = CoursesSheetParser.columnIndex(sheet, CoursesSheet.priceFullRub)!;
+    final dataRow = CoursesSheetParser.headerRowIndex(sheet)! + 1;
+    sheet[dataRow][priceCol] = 21000;
 
     await sheetsHarness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),

@@ -7,6 +7,12 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (chatId == null || userId == null) {
       return false;
     }
+    if (!_interactionWhitelist.allows(context.username)) {
+      if (context.callbackQueryId != null) {
+        await _answerCallback(context);
+      }
+      return _send(context, _templates.botInDevelopment());
+    }
     _course.touchUser(
       userId: userId,
       username: context.username,

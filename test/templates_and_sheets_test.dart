@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
@@ -5,6 +6,10 @@ import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('in-development copy is a stub, not a funnel step', () {
+    expect(MessageTemplates().botInDevelopment(), contains('в разработке'));
+  });
+
   test('enroll CTA stays in templates until access is granted', () {
     final templates = MessageTemplates();
     expect(templates.warmupStep('warmup_0'), contains('записаться'));
@@ -57,6 +62,17 @@ void main() {
     expect(flat, contains('Instagram Reels'));
     expect(flat, isNot(contains('квиз')));
     expect(dashboard.charts, isNotEmpty);
+  });
+
+  test('COURSES catalog look matches FUNNEL palette and has no charts', () {
+    final look = GoogleSheetsCoursesCatalog.build();
+    expect(look.sheetTitle, 'COURSES');
+    expect(look.charts, isEmpty);
+    expect(look.hideGridlines, isTrue);
+    expect(look.frozenRowCount, 4);
+    expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
+    expect(look.columnWidthsPx, hasLength(13));
+    expect(look.styles, isNotEmpty);
   });
 
   test('admin reply keyboard is admin-only and includes sheets refresh', () {

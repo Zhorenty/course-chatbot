@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/application/funnel_service.dart';
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/bot_runner.dart';
+import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/config/app_config.dart';
 import 'package:course_chatbot/src/data/conversation_log_repository.dart';
@@ -143,6 +144,7 @@ final class CourseBotRuntime {
       warmup: warmup,
       broadcast: broadcast,
       adminUserIds: config.adminUserIds,
+      interactionWhitelist: InteractionWhitelist.production,
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: config.leadMagnetPath,

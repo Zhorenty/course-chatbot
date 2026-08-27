@@ -45,7 +45,7 @@ void main() {
       CoursesSheet.tabTitle,
     );
     expect(gateway.sheets.any((sheet) => sheet.title == 'FUNNEL'), isTrue);
-    expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, 'product_code');
+    expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, CoursesSheet.title);
   });
 
   test('replaceDashboard refuses when FUNNEL is gid=0', () async {
@@ -75,6 +75,6 @@ void main() {
       throwsStateError,
     );
     expect(gateway.clearedRanges, isEmpty);
-    expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, 'product_code');
+    expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, CoursesSheet.title);
   });
 }

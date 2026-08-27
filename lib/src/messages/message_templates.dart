@@ -66,6 +66,12 @@ final class MessageTemplates {
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
 
+  String botInDevelopment() {
+    return '<b>Бот в разработке</b>\n\n'
+        'Сейчас сценарий доступен только команде. '
+        'Как откроем — напиши /start ещё раз.';
+  }
+
   String startGuideOffer() {
     return '<b>Гайд «Язык цвета»</b>\n\n'
         'Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает». '

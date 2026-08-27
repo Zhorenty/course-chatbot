@@ -4,6 +4,8 @@ import 'package:course_chatbot/src/domain/money.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
+  static const int columnCount = 13;
+  static const int defaultHeaderRow = 3;
   static const int defaultDepositDueDays = 7;
   static const int defaultTimezoneOffsetHours = 3;
 
@@ -21,6 +23,12 @@ abstract final class CoursesSheet {
   static const String leadMagnetFileId = 'lead_magnet_file_id';
   static const String leadMagnetUrl = 'lead_magnet_url';
 
+  static const String title = 'Курс · Каталог запусков';
+  static const String titleAside = 'Правят руками';
+  static const String hint =
+      'Одна строка с «да» в колонке «Активен». Цены в рублях, даты ГГГГ-ММ-ДД. '
+      'Бот читает этот лист при старте и по «Обновить Google Sheets». Вкладку FUNNEL руками не править.';
+
   static const List<String> headers = <String>[
     productCode,
     productTitle,
@@ -37,6 +45,22 @@ abstract final class CoursesSheet {
     leadMagnetUrl,
   ];
 
+  static const List<String> displayHeaders = <String>[
+    'Код продукта',
+    'Продукт',
+    'Код запуска',
+    'Название запуска',
+    'Активен',
+    'Цена, ₽',
+    'Предоплата, ₽',
+    'Доплата до',
+    'Старт курса',
+    'ID канала',
+    'Оферта',
+    'file_id гайда',
+    'URL гайда',
+  ];
+
   static const String seedProductCode = 'course';
   static const String seedProductTitle = 'Курс';
   static const String seedLaunchCode = 'launch-1';
@@ -47,16 +71,37 @@ abstract final class CoursesSheet {
   static const String seedCourseStartDate = '2026-10-12';
 
   static List<List<Object?>> seedRows() {
-    return <List<Object?>>[List<Object?>.from(headers), seedDataRow()];
+    return withChrome(dataRows: <List<Object?>>[seedDataRow()]);
   }
 
+  static List<List<Object?>> withChrome({
+    List<Object?>? headerRow,
+    List<List<Object?>> dataRows = const <List<Object?>>[],
+  }) {
+    return <List<Object?>>[
+      titleRow(),
+      hintRow(),
+      padded(const <Object?>[]),
+      toDisplayHeaders(headerRow ?? displayHeaders),
+      ...dataRows,
+    ];
+  }
+
+  static List<Object?> titleRow() {
+    final row = padded(<Object?>[title]);
+    row[columnCount - 1] = titleAside;
+    return row;
+  }
+
+  static List<Object?> hintRow() => padded(<Object?>[hint]);
+
   static List<Object?> seedDataRow() {
-    return <Object?>[
+    return padded(<Object?>[
       seedProductCode,
       seedProductTitle,
       seedLaunchCode,
       seedLaunchTitle,
-      '1',
+      'да',
       seedPriceFullRub,
       seedDepositRub,
       seedDepositDueDate,
@@ -65,7 +110,31 @@ abstract final class CoursesSheet {
       '',
       '',
       '',
+    ]);
+  }
+
+  static List<Object?> padded(List<Object?> cells) {
+    return <Object?>[
+      for (var i = 0; i < columnCount; i++) i < cells.length ? (cells[i] ?? '') : '',
     ];
+  }
+
+  static List<Object?> toDisplayHeaders(List<Object?> headerRow) {
+    return <Object?>[
+      for (var i = 0; i < headerRow.length; i++)
+        displayNameFor(CoursesSheetParser.canonicalHeader(headerRow[i])) ?? headerRow[i],
+    ];
+  }
+
+  static String? displayNameFor(String? canonical) {
+    if (canonical == null) {
+      return null;
+    }
+    final index = headers.indexOf(canonical);
+    if (index < 0 || index >= displayHeaders.length) {
+      return null;
+    }
+    return displayHeaders[index];
   }
 
   static bool isPlaceholderTitle(String title) {
@@ -173,6 +242,69 @@ final class CoursesSheetParseResult {
 }
 
 abstract final class CoursesSheetParser {
+  static const Map<String, String> headerAliases = <String, String>{
+    CoursesSheet.productCode: CoursesSheet.productCode,
+    'код продукта': CoursesSheet.productCode,
+    CoursesSheet.productTitle: CoursesSheet.productTitle,
+    'продукт': CoursesSheet.productTitle,
+    'название продукта': CoursesSheet.productTitle,
+    CoursesSheet.launchCode: CoursesSheet.launchCode,
+    'код запуска': CoursesSheet.launchCode,
+    CoursesSheet.launchTitle: CoursesSheet.launchTitle,
+    'название запуска': CoursesSheet.launchTitle,
+    CoursesSheet.isActive: CoursesSheet.isActive,
+    'активен': CoursesSheet.isActive,
+    'active': CoursesSheet.isActive,
+    CoursesSheet.priceFullRub: CoursesSheet.priceFullRub,
+    'цена руб': CoursesSheet.priceFullRub,
+    'цена': CoursesSheet.priceFullRub,
+    'полная цена': CoursesSheet.priceFullRub,
+    CoursesSheet.depositRub: CoursesSheet.depositRub,
+    'предоплата руб': CoursesSheet.depositRub,
+    'предоплата': CoursesSheet.depositRub,
+    CoursesSheet.depositDueDate: CoursesSheet.depositDueDate,
+    'доплата до': CoursesSheet.depositDueDate,
+    'дата доплаты': CoursesSheet.depositDueDate,
+    CoursesSheet.courseStartDate: CoursesSheet.courseStartDate,
+    'старт курса': CoursesSheet.courseStartDate,
+    CoursesSheet.channelId: CoursesSheet.channelId,
+    'id канала': CoursesSheet.channelId,
+    'канал': CoursesSheet.channelId,
+    CoursesSheet.offerUrl: CoursesSheet.offerUrl,
+    'оферта': CoursesSheet.offerUrl,
+    CoursesSheet.leadMagnetFileId: CoursesSheet.leadMagnetFileId,
+    'file_id гайда': CoursesSheet.leadMagnetFileId,
+    'file id гайда': CoursesSheet.leadMagnetFileId,
+    CoursesSheet.leadMagnetUrl: CoursesSheet.leadMagnetUrl,
+    'url гайда': CoursesSheet.leadMagnetUrl,
+    'ссылка гайда': CoursesSheet.leadMagnetUrl,
+  };
+
+  static String? canonicalHeader(Object? cell) {
+    final normalized = _normalizeHeader(cell);
+    if (normalized == null) {
+      return null;
+    }
+    return headerAliases[normalized];
+  }
+
+  static int? headerRowIndex(List<List<Object?>> rows) {
+    for (var i = 0; i < rows.length; i++) {
+      if (_headerIndex(rows[i]).containsKey(CoursesSheet.launchCode)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  static int? columnIndex(List<List<Object?>> rows, String canonical) {
+    final headerAt = headerRowIndex(rows);
+    if (headerAt == null) {
+      return null;
+    }
+    return _headerIndex(rows[headerAt])[canonical];
+  }
+
   static CoursesSheetParseResult parse(
     List<List<Object?>> rows, {
     int timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
@@ -184,18 +316,19 @@ abstract final class CoursesSheetParser {
         error: 'empty sheet',
       );
     }
-    final headerIndex = _headerIndex(rows.first);
-    if (!headerIndex.containsKey(CoursesSheet.launchCode)) {
+    final headerAt = headerRowIndex(rows);
+    if (headerAt == null) {
       return const CoursesSheetParseResult(
         rows: <CatalogLaunchDraft>[],
         skippedInvalidCount: 0,
         error: 'missing launch_code header',
       );
     }
+    final headerIndex = _headerIndex(rows[headerAt]);
 
     final parsed = <CatalogLaunchDraft>[];
     var skipped = 0;
-    for (var i = 1; i < rows.length; i++) {
+    for (var i = headerAt + 1; i < rows.length; i++) {
       final raw = rows[i];
       if (_isEmptyRow(raw)) {
         continue;
@@ -217,13 +350,27 @@ abstract final class CoursesSheetParser {
   static Map<String, int> _headerIndex(List<Object?> headerRow) {
     final map = <String, int>{};
     for (var i = 0; i < headerRow.length; i++) {
-      final name = _cellString(headerRow[i])?.toLowerCase();
-      if (name == null || name.isEmpty) {
+      final name = canonicalHeader(headerRow[i]);
+      if (name == null) {
         continue;
       }
-      map[name] = i;
+      map.putIfAbsent(name, () => i);
     }
     return map;
+  }
+
+  static String? _normalizeHeader(Object? cell) {
+    final text = _cellString(cell);
+    if (text == null) {
+      return null;
+    }
+    return text
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replaceAll('₽', 'руб')
+        .replaceAll(RegExp('[,:]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   static CatalogLaunchDraft? _parseRow(
@@ -344,15 +491,25 @@ abstract final class CoursesSheetParser {
 }
 
 final _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
+final _dottedDate = RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$');
 
 DateTime? _parseIsoDate(String? raw) {
-  final match = _isoDate.firstMatch(raw?.trim() ?? '');
-  if (match == null) {
-    return null;
+  final trimmed = raw?.trim() ?? '';
+  var match = _isoDate.firstMatch(trimmed);
+  if (match != null) {
+    return _utcDate(match.group(1)!, match.group(2)!, match.group(3)!);
   }
-  final year = int.parse(match.group(1)!);
-  final month = int.parse(match.group(2)!);
-  final day = int.parse(match.group(3)!);
+  match = _dottedDate.firstMatch(trimmed);
+  if (match != null) {
+    return _utcDate(match.group(3)!, match.group(2)!, match.group(1)!);
+  }
+  return null;
+}
+
+DateTime? _utcDate(String yearRaw, String monthRaw, String dayRaw) {
+  final year = int.parse(yearRaw);
+  final month = int.parse(monthRaw);
+  final day = int.parse(dayRaw);
   if (month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }

@@ -386,8 +386,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required GoogleSheetsDashboard dashboard,
   }) async {
     final formatRequests = <Request>[
-      ..._frozenRowRequests(sheetId, dashboard.frozenRowCount),
+      ..._sheetChromeRequests(sheetId, dashboard),
       ..._columnWidthRequests(sheetId, dashboard.columnWidthsPx),
+      ..._rowHeightRequests(sheetId, dashboard.rowHeightsPx),
       ..._styleRequests(sheetId, dashboard.styles),
       ..._bandingRequests(sheetId, dashboard.bandedTables),
     ];
@@ -411,8 +412,18 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     }
   }
 
-  List<Request> _frozenRowRequests(int sheetId, int frozenRowCount) {
-    if (frozenRowCount < 1) {
+  List<Request> _sheetChromeRequests(int sheetId, GoogleSheetsDashboard dashboard) {
+    final fields = <String>[];
+    if (dashboard.frozenRowCount >= 1) {
+      fields.add('gridProperties.frozenRowCount');
+    }
+    if (dashboard.hideGridlines) {
+      fields.add('gridProperties.hideGridlines');
+    }
+    if (dashboard.tabColor != null) {
+      fields.add('tabColor');
+    }
+    if (fields.isEmpty) {
       return const <Request>[];
     }
     return <Request>[
@@ -420,12 +431,37 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         updateSheetProperties: UpdateSheetPropertiesRequest(
           properties: SheetProperties(
             sheetId: sheetId,
-            gridProperties: GridProperties(frozenRowCount: frozenRowCount),
+            gridProperties: GridProperties(
+              frozenRowCount: dashboard.frozenRowCount >= 1 ? dashboard.frozenRowCount : null,
+              hideGridlines: dashboard.hideGridlines ? true : null,
+            ),
+            tabColor: _color(dashboard.tabColor),
           ),
-          fields: 'gridProperties.frozenRowCount',
+          fields: fields.join(','),
         ),
       ),
     ];
+  }
+
+  List<Request> _rowHeightRequests(int sheetId, List<int> heights) {
+    final requests = <Request>[];
+    for (var index = 0; index < heights.length; index++) {
+      requests.add(
+        Request(
+          updateDimensionProperties: UpdateDimensionPropertiesRequest(
+            range: DimensionRange(
+              sheetId: sheetId,
+              dimension: 'ROWS',
+              startIndex: index,
+              endIndex: index + 1,
+            ),
+            properties: DimensionProperties(pixelSize: heights[index]),
+            fields: 'pixelSize',
+          ),
+        ),
+      );
+    }
+    return requests;
   }
 
   List<Request> _columnWidthRequests(int sheetId, List<int> widths) {
@@ -460,6 +496,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         endColumnIndex: style.endColumnExclusive,
       );
       if (style.merge) {
+        requests.add(Request(unmergeCells: UnmergeCellsRequest(range: range)));
         requests.add(
           Request(
             mergeCells: MergeCellsRequest(range: range, mergeType: 'MERGE_ALL'),
