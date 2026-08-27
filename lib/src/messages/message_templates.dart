@@ -207,7 +207,7 @@ final class MessageTemplates {
 
   String adminMenu() {
     return '<b>Админка</b>\n\nПоиск человека, карточка, ручной статус, рассылка сегменту. '
-        'Срез воронки — кнопка «${MessageTemplates.buttonAdminSheets}».';
+        'Срез воронки и каталог COURSES — кнопка «${MessageTemplates.buttonAdminSheets}».';
   }
 
   String adminAskSearch() {
@@ -284,7 +284,50 @@ final class MessageTemplates {
 
   String adminInviteReissued() => 'Invite перевыдан.';
 
-  String adminSheetsUpdated() => 'Срез FUNNEL в Google Sheets обновлён.';
+  String adminSheetsUpdated({Launch? launch}) {
+    return adminSheetsRefreshResult(
+      catalogAttempted: true,
+      catalogOk: true,
+      funnelAttempted: true,
+      funnelOk: true,
+      launch: launch,
+    );
+  }
+
+  String adminSheetsRefreshResult({
+    required bool catalogAttempted,
+    required bool catalogOk,
+    String? catalogError,
+    required bool funnelAttempted,
+    required bool funnelOk,
+    String? funnelError,
+    Launch? launch,
+  }) {
+    final buf = StringBuffer();
+    if (catalogAttempted) {
+      if (catalogOk && launch != null) {
+        buf.write('Каталог COURSES перечитан: <code>${escapeHtml(launch.code)}</code>, ');
+        buf.write(formatRubFromKopecks(launch.priceFullKopecks));
+        final start = launch.courseStartAt;
+        if (start != null) {
+          buf.write(', старт ${_date.format(start.toUtc())}');
+        }
+        buf.writeln('.');
+      } else if (catalogOk) {
+        buf.writeln('Каталог COURSES: новых строк нет, текущий запуск в базе не тронут.');
+      } else {
+        buf.writeln('Каталог COURSES не обновлён: ${escapeHtml(catalogError ?? 'ошибка')}.');
+      }
+    }
+    if (funnelAttempted) {
+      if (funnelOk) {
+        buf.writeln('Срез FUNNEL обновлён.');
+      } else {
+        buf.writeln('Срез FUNNEL не обновлён: ${escapeHtml(funnelError ?? 'ошибка')}.');
+      }
+    }
+    return buf.toString().trim();
+  }
 
   String adminSheetsDisabled() {
     return 'Google Sheets не подключён. Проверь ключ, id таблицы и GOOGLE_SHEETS_WRITE_ENABLED.';

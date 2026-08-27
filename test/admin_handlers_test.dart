@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -47,6 +48,12 @@ void main() {
     expect(harness.channel.created, isNotEmpty);
   });
 
+  test('harness without Sheets still uses upsertActiveLaunch', () {
+    expect(harness.catalogSync, isNull);
+    expect(harness.course.activeLaunch()?.code, 'launch-1');
+    expect(harness.course.activeLaunch()?.priceFullKopecks, 1800000);
+  });
+
   test('admin /start shows only admin reply buttons', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/start'));
     final withKeyboard = harness.sender.messages.lastWhere((m) => m.replyMarkup != null);
@@ -61,16 +68,28 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
   });
 
-  test('admin sheets button writes FUNNEL when export is wired', () async {
+  test('admin sheets button pulls COURSES and writes FUNNEL', () async {
     final sheetsHarness = HandlerHarness();
     await sheetsHarness.init(adminUserIds: const <int>{1}, enableSheets: true);
     addTearDown(sheetsHarness.dispose);
+
+    sheetsHarness.sheetsGateway!.valuesBySheetId[0]![1][CoursesSheet.headers.indexOf(
+          CoursesSheet.priceFullRub,
+        )] =
+        21000;
 
     await sheetsHarness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
     );
     expect(sheetsHarness.sheetsWriter!.replaceDashboardCount, 1);
-    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('обновлён')), isTrue);
+    expect(sheetsHarness.course.activeLaunch()?.priceFullKopecks, 2100000);
+    expect(
+      sheetsHarness.sender.messages.any(
+        (m) =>
+            m.text.contains('COURSES') && m.text.contains('FUNNEL') && m.text.contains('обновлён'),
+      ),
+      isTrue,
+    );
   });
 
   test('admin sheets button says disabled when Sheets is off', () async {

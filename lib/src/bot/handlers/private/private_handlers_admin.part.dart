@@ -58,29 +58,56 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
   }
 
   Future<bool> _adminRefreshSheets(PrivateMessageContext context) async {
+    final sync = _catalogSync;
     final job = _sheetsExportJob;
-    if (job == null) {
+    if (sync == null && job == null) {
       return _send(
         context,
         _templates.adminSheetsDisabled(),
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
-    try {
-      await job.export();
-      return _send(
-        context,
-        _templates.adminSheetsUpdated(),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Admin Google Sheets refresh failed: $error', stackTrace);
-      return _send(
-        context,
-        _templates.adminSheetsFailed('$error'),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+
+    CatalogSyncResult? catalogResult;
+    String? catalogError;
+    if (sync != null) {
+      try {
+        catalogResult = await sync.sync();
+        if (!catalogResult.ok) {
+          catalogError = catalogResult.error;
+        }
+      } on Object catch (error, stackTrace) {
+        l.w('Admin COURSES catalog refresh failed: $error', stackTrace);
+        catalogError = '$error';
+      }
     }
+
+    var funnelOk = job == null;
+    String? funnelError;
+    if (job != null) {
+      try {
+        await job.export();
+        funnelOk = true;
+      } on Object catch (error, stackTrace) {
+        l.w('Admin Google Sheets FUNNEL refresh failed: $error', stackTrace);
+        funnelOk = false;
+        funnelError = '$error';
+      }
+    }
+
+    return _send(
+      context,
+      _templates.adminSheetsRefreshResult(
+        catalogAttempted: sync != null,
+        catalogOk: sync == null || catalogError == null,
+        catalogError: catalogError,
+        funnelAttempted: job != null,
+        funnelOk: funnelOk,
+        funnelError: funnelError,
+        launch: catalogResult?.launch ?? _launch,
+      ),
+      replyMarkup: _templates.adminMenuKeyboard(),
+    );
   }
 
   Future<bool> _showAdminCard(PrivateMessageContext context, String query) async {

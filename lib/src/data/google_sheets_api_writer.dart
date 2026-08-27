@@ -5,6 +5,7 @@ import 'package:course_chatbot/src/data/google_sheets_credentials.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_ids.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:googleapis/sheets/v4.dart';
 import 'package:googleapis_auth/auth_io.dart';
@@ -74,7 +75,9 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     required String sheetTitle,
     required List<List<Object?>> rows,
   }) async {
-    final titles = await _gateway.listSheetTitles().timeout(_requestTimeout);
+    final sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    _assertNotCatalogTitle(sheets, sheetTitle);
+    final titles = sheets.map((sheet) => sheet.title).toSet();
     if (!titles.contains(sheetTitle)) {
       await _gateway.addSheet(sheetTitle).timeout(_requestTimeout);
     }
@@ -88,6 +91,7 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
 
   Future<void> _replaceDashboardOnce(GoogleSheetsDashboard dashboard) async {
     var sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    _assertNotCatalogTitle(sheets, dashboard.sheetTitle);
     for (final obsolete in dashboard.obsoleteSheetTitles) {
       sheets = await _deleteNamed(sheets, obsolete, keepTitle: dashboard.sheetTitle);
     }
@@ -122,8 +126,11 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     sheets = await _gateway.describeSheets().timeout(_requestTimeout);
     sheets = await _deleteNamed(sheets, prevTitle, keepTitle: null);
     final live = _named(sheets, dashboard.sheetTitle);
-    if (live != null) {
+    if (live != null && live.sheetId != CoursesSheet.sheetId) {
       await _gateway.renameSheet(sheetId: live.sheetId, title: prevTitle).timeout(_requestTimeout);
+    }
+    if (staging.sheetId == CoursesSheet.sheetId) {
+      throw StateError('Refusing to rename gid=0 catalog sheet into ${dashboard.sheetTitle}.');
     }
     await _gateway
         .renameSheet(sheetId: staging.sheetId, title: dashboard.sheetTitle)
@@ -142,14 +149,14 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
       return sheets;
     }
     final staging = _named(sheets, stagingTitle);
-    if (staging != null) {
+    if (staging != null && staging.sheetId != CoursesSheet.sheetId) {
       await _gateway
           .renameSheet(sheetId: staging.sheetId, title: liveTitle)
           .timeout(_requestTimeout);
       return _gateway.describeSheets().timeout(_requestTimeout);
     }
     final prev = _named(sheets, prevTitle);
-    if (prev != null) {
+    if (prev != null && prev.sheetId != CoursesSheet.sheetId) {
       await _gateway.renameSheet(sheetId: prev.sheetId, title: liveTitle).timeout(_requestTimeout);
       return _gateway.describeSheets().timeout(_requestTimeout);
     }
@@ -165,6 +172,10 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     if (match == null || match.title == keepTitle) {
       return sheets;
     }
+    if (match.sheetId == CoursesSheet.sheetId) {
+      l.w('Refusing to delete gid=0 catalog sheet ($title).');
+      return sheets;
+    }
     if (sheets.length <= 1) {
       return sheets;
     }
@@ -174,6 +185,9 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
 
   GoogleSheetsSheetInfo? _named(List<GoogleSheetsSheetInfo> sheets, String title) {
     for (final sheet in sheets) {
+      if (sheet.sheetId == CoursesSheet.sheetId) {
+        continue;
+      }
       if (sheet.title == title) {
         return sheet;
       }
@@ -181,10 +195,24 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     return null;
   }
 
+  void _assertNotCatalogTitle(List<GoogleSheetsSheetInfo> sheets, String title) {
+    for (final sheet in sheets) {
+      if (sheet.sheetId == CoursesSheet.sheetId && sheet.title == title) {
+        throw StateError(
+          'Refusing to write bot-owned tab "$title" onto gid=0. '
+          'The first sheet is the COURSES catalog.',
+        );
+      }
+    }
+  }
+
   @override
   Future<void> close() => _gateway.close();
 
   bool _shouldRetry(Object error) {
+    if (error is StateError) {
+      return false;
+    }
     if (error is TimeoutException) {
       return true;
     }

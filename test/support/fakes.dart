@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -218,6 +219,156 @@ final class FakeGoogleSheetsWriter implements GoogleSheetsWriter {
 
   @override
   Future<void> close() async {}
+}
+
+final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
+  FakeGoogleSheetsGateway({
+    List<GoogleSheetsSheetInfo>? sheets,
+    Map<int, List<List<Object?>>>? valuesBySheetId,
+    this.nextSheetId = 1,
+  }) : sheets = List<GoogleSheetsSheetInfo>.from(
+         sheets ??
+             const <GoogleSheetsSheetInfo>[
+               GoogleSheetsSheetInfo(title: 'Sheet1', sheetId: CoursesSheet.sheetId),
+             ],
+       ),
+       valuesBySheetId = <int, List<List<Object?>>>{
+         for (final entry in (valuesBySheetId ?? const <int, List<List<Object?>>>{}).entries)
+           entry.key: _copyRows(entry.value),
+       };
+
+  List<GoogleSheetsSheetInfo> sheets;
+  final Map<int, List<List<Object?>>> valuesBySheetId;
+  int nextSheetId;
+  final List<int> deletedSheetIds = <int>[];
+  final List<int> renamedSheetIds = <int>[];
+  final List<String> clearedRanges = <String>[];
+  int updateValuesCount = 0;
+
+  @override
+  Future<Set<String>> listSheetTitles() async {
+    return sheets.map((sheet) => sheet.title).toSet();
+  }
+
+  @override
+  Future<List<GoogleSheetsSheetInfo>> describeSheets() async {
+    return List<GoogleSheetsSheetInfo>.from(sheets);
+  }
+
+  @override
+  Future<void> renameSheet({required int sheetId, required String title}) async {
+    renamedSheetIds.add(sheetId);
+    sheets = List<GoogleSheetsSheetInfo>.from(sheets);
+    final index = sheets.indexWhere((sheet) => sheet.sheetId == sheetId);
+    if (index < 0) {
+      throw StateError('Sheet $sheetId is missing.');
+    }
+    if (sheets.any((sheet) => sheet.sheetId != sheetId && sheet.title == title)) {
+      throw StateError('Sheet $title already exists.');
+    }
+    final previous = sheets[index];
+    sheets[index] = GoogleSheetsSheetInfo(
+      title: title,
+      sheetId: previous.sheetId,
+      chartIds: previous.chartIds,
+    );
+  }
+
+  @override
+  Future<void> deleteSheet(int sheetId) async {
+    deletedSheetIds.add(sheetId);
+    sheets = List<GoogleSheetsSheetInfo>.from(sheets)
+      ..removeWhere((sheet) => sheet.sheetId == sheetId);
+    valuesBySheetId.remove(sheetId);
+  }
+
+  @override
+  Future<void> addSheet(String title) async {
+    if (sheets.any((sheet) => sheet.title == title)) {
+      throw StateError('Sheet $title already exists.');
+    }
+    final id = nextSheetId;
+    nextSheetId += 1;
+    if (nextSheetId == CoursesSheet.sheetId) {
+      nextSheetId += 1;
+    }
+    sheets = List<GoogleSheetsSheetInfo>.from(sheets)
+      ..add(GoogleSheetsSheetInfo(title: title, sheetId: id));
+  }
+
+  @override
+  Future<void> clearRange(String a1Range) async {
+    clearedRanges.add(a1Range);
+    final title = _titleFromRange(a1Range);
+    final sheet = _sheetByTitle(title);
+    if (sheet != null) {
+      valuesBySheetId[sheet.sheetId] = <List<Object?>>[];
+    }
+  }
+
+  @override
+  Future<void> updateValues({
+    required String a1Range,
+    required List<List<Object?>> rows,
+    String valueInputOption = 'RAW',
+  }) async {
+    updateValuesCount += 1;
+    final title = _titleFromRange(a1Range);
+    final sheet = _sheetByTitle(title);
+    if (sheet == null) {
+      throw StateError('Sheet $title is missing.');
+    }
+    valuesBySheetId[sheet.sheetId] = _copyRows(rows);
+  }
+
+  @override
+  Future<List<List<Object?>>> getValues(String a1Range) async {
+    final title = _titleFromRange(a1Range);
+    final sheet = _sheetByTitle(title);
+    if (sheet == null) {
+      return const <List<Object?>>[];
+    }
+    return _copyRows(valuesBySheetId[sheet.sheetId] ?? const <List<Object?>>[]);
+  }
+
+  @override
+  Future<void> deleteDimension({
+    required int sheetId,
+    required String dimension,
+    required int startIndex,
+    required int endIndex,
+  }) async {}
+
+  @override
+  Future<void> applyDashboardLook({
+    required int sheetId,
+    required GoogleSheetsDashboard dashboard,
+  }) async {}
+
+  @override
+  Future<void> close() async {}
+
+  GoogleSheetsSheetInfo? _sheetByTitle(String title) {
+    for (final sheet in sheets) {
+      if (sheet.title == title) {
+        return sheet;
+      }
+    }
+    return null;
+  }
+
+  static String _titleFromRange(String a1Range) {
+    final bang = a1Range.lastIndexOf('!');
+    final raw = bang <= 0 ? a1Range : a1Range.substring(0, bang);
+    if (raw.startsWith("'") && raw.endsWith("'") && raw.length >= 2) {
+      return raw.substring(1, raw.length - 1).replaceAll("''", "'");
+    }
+    return raw;
+  }
+
+  static List<List<Object?>> _copyRows(List<List<Object?>> rows) {
+    return <List<Object?>>[for (final row in rows) List<Object?>.from(row)];
+  }
 }
 
 Map<String, dynamic> privateMessageUpdate({

@@ -9,6 +9,7 @@ import 'package:course_chatbot/src/bot/handlers/private/admin_gate.dart';
 import 'package:course_chatbot/src/bot/handlers/private/private_context.dart';
 import 'package:course_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
@@ -40,6 +41,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     required WarmupService warmup,
     required BroadcastService broadcast,
     required Set<int> adminUserIds,
+    GoogleSheetsCatalogSync? catalogSync,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     DateTime Function()? nowProvider,
     this.leadMagnetPath,
@@ -53,6 +55,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _warmup = warmup,
        _broadcast = broadcast,
        _adminGate = AdminGate(adminUserIds),
+       _catalogSync = catalogSync,
        _sheetsExportJob = sheetsExportJob,
        _nowProvider = nowProvider ?? DateTime.now;
 
@@ -65,6 +68,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final WarmupService _warmup;
   final BroadcastService _broadcast;
   final AdminGate _adminGate;
+  final GoogleSheetsCatalogSync? _catalogSync;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final DateTime Function() _nowProvider;
   final String? leadMagnetPath;

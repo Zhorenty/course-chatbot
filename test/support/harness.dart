@@ -4,9 +4,12 @@ import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
+import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -32,6 +35,8 @@ final class HandlerHarness {
   late final PrivateHandlers handlers;
   late final CheckoutService checkout;
   FakeGoogleSheetsWriter? sheetsWriter;
+  FakeGoogleSheetsGateway? sheetsGateway;
+  GoogleSheetsCatalogSync? catalogSync;
 
   Future<void> init({
     Set<int> adminUserIds = const <int>{1},
@@ -69,6 +74,18 @@ final class HandlerHarness {
     GoogleSheetsFunnelExportJob? sheetsExportJob;
     if (enableSheets) {
       sheetsWriter = FakeGoogleSheetsWriter();
+      sheetsGateway = FakeGoogleSheetsGateway(
+        sheets: const <GoogleSheetsSheetInfo>[
+          GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        ],
+        valuesBySheetId: <int, List<List<Object?>>>{CoursesSheet.sheetId: CoursesSheet.seedRows()},
+      );
+      catalogSync = GoogleSheetsCatalogSync(
+        gateway: sheetsGateway!,
+        catalog: course,
+        fallbackChannelId: channelId,
+        fallbackLeadMagnetFileId: leadMagnetFileId,
+      );
       sheetsExportJob = GoogleSheetsFunnelExportJob(course: course, writer: sheetsWriter!);
     }
     handlers = PrivateHandlers(
@@ -81,6 +98,7 @@ final class HandlerHarness {
       warmup: warmup,
       broadcast: BroadcastService(sender: sender, course: course),
       adminUserIds: adminUserIds,
+      catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: leadMagnetPath,
     );

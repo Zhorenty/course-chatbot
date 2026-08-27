@@ -6,7 +6,8 @@ enum PaymentProvider { leadpay, yookassa, manual }
 
 final class AppConfig {
   /// Secrets and Telegram ids come from CLI / env / `.env`.
-  /// Product constants (price, dates, quiet hours, backups) are constructor defaults.
+  /// Quiet hours, backups, and offline test fallbacks are constructor defaults.
+  /// Live launch price/dates come from Google Sheets `COURSES` (gid=0).
   const AppConfig({
     required this.botToken,
     this.pollTimeoutSeconds = 25,
@@ -184,9 +185,7 @@ final class AppConfig {
     final providerRaw = resolve('PAYMENT_PROVIDER', 'payment-provider');
     final paymentProvider = _parsePaymentProvider(providerRaw);
     if (paymentProvider == null) {
-      stderr.writeln(
-        'Unknown PAYMENT_PROVIDER="$providerRaw". Use leadpay, yookassa, or manual.',
-      );
+      stderr.writeln('Unknown PAYMENT_PROVIDER="$providerRaw". Use leadpay, yookassa, or manual.');
       exit(2);
     }
 
@@ -209,12 +208,18 @@ final class AppConfig {
         resolve('GOOGLE_SHEETS_WRITE_ENABLED', 'google-sheets-write-enabled'),
         defaultValue: false,
       ),
-      googleSheetsCredentialsPath:
-          resolve('GOOGLE_SHEETS_CREDENTIALS_PATH', 'google-sheets-credentials-path'),
-      googleSheetsCredentialsJson:
-          resolve('GOOGLE_SHEETS_CREDENTIALS_JSON', 'google-sheets-credentials-json'),
-      googleSheetsSpreadsheetId:
-          resolve('GOOGLE_SHEETS_SPREADSHEET_ID', 'google-sheets-spreadsheet-id'),
+      googleSheetsCredentialsPath: resolve(
+        'GOOGLE_SHEETS_CREDENTIALS_PATH',
+        'google-sheets-credentials-path',
+      ),
+      googleSheetsCredentialsJson: resolve(
+        'GOOGLE_SHEETS_CREDENTIALS_JSON',
+        'google-sheets-credentials-json',
+      ),
+      googleSheetsSpreadsheetId: resolve(
+        'GOOGLE_SHEETS_SPREADSHEET_ID',
+        'google-sheets-spreadsheet-id',
+      ),
       paymentWebhookSecret: resolve('PAYMENT_WEBHOOK_SECRET', 'payment-webhook-secret'),
     );
   }
@@ -320,6 +325,12 @@ DateTime? parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours}) 
   if (date == null) {
     return null;
   }
-  return DateTime.utc(date.year, date.month, date.day, 23, 59, 59)
-      .subtract(Duration(hours: timezoneOffsetHours));
+  return DateTime.utc(
+    date.year,
+    date.month,
+    date.day,
+    23,
+    59,
+    59,
+  ).subtract(Duration(hours: timezoneOffsetHours));
 }

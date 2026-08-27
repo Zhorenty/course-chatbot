@@ -222,7 +222,7 @@ PAYMENT_WEBHOOK_SECRET=
 GOOGLE_SHEETS_WRITE_ENABLED=false
 ```
 
-Цены, даты, тихие часы, путь к гайду и бэкап SQLite заданы в `AppConfig` (`lib/src/config/app_config.dart`), не в `.env`. Compose сам ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` внутри контейнера.
+Цены, даты запуска — вкладка `COURSES` (`gid=0`) в Google-таблице, не `.env`. Тихие часы, путь к гайду и бэкап SQLite заданы в `AppConfig` (`lib/src/config/app_config.dart`). Compose сам ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` внутри контейнера.
 
 `COURSE_CHANNEL_ID` — числовой id (`-100…`), **не** `t.me/+…`. Постоянный invite ученикам не отдаём.
 
@@ -259,11 +259,11 @@ PAYMENT_WEBHOOK_SECRET=длинная_случайная_строка
 
 ЮKassa требует **HTTPS**. Без домена и шага 9 живой шлюз не включать.
 
-### Google Sheets (срез `FUNNEL`)
+### Google Sheets (`COURSES` + срез `FUNNEL`)
 
-Бот сам пересобирает вкладку `FUNNEL` раз в 5 минут. SQLite — правда; лист руками не править (wipe + create). Другие вкладки в той же таблице бот не трогает.
+Первый лист таблицы (`gid=0`) — каталог запуска **`COURSES`**. Его правят руками (цена, предоплата, даты). Если он пустой, бот при первом коннекте запишет шапку и текущие значения. Бот пересобирает вкладку `FUNNEL` раз в 5 минут и по кнопке админа; `FUNNEL` руками не править (wipe + create). `gid=0` бот не удаляет и не затирает дашбордом.
 
-Нужны три вещи: **сервис-аккаунт JSON**, **пустая таблица**, **доступ редактора** этой почте на таблицу.
+Нужны три вещи: **сервис-аккаунт JSON**, **таблица**, **доступ редактора** этой почте на таблицу.
 
 #### 1. Google Cloud — ключ
 
@@ -335,6 +335,7 @@ docker compose logs -f --tail=80
 Ожидаемое в логах:
 
 - `Google Sheets write enabled. spreadsheetId=…`
+- `COURSES catalog synced. launch=…`
 - в течение минуты: `Google Sheets FUNNEL export completed`
 
 Если `Failed to enable Google Sheets write`:
@@ -347,7 +348,7 @@ docker compose logs -f --tail=80
 | `404` | id скопирован не из URL (не gid листа, не имя файла) |
 | `Google Sheets API has not been used` | в том же GCP-проекте не включили Sheets API |
 
-Вкладка `FUNNEL` появится сама. Руками её не верстать.
+Вкладка `FUNNEL` появится сама. Руками её не верстать. Первый лист (`gid=0`) бот переименует в `COURSES` и заполнит, если он пустой.
 
 ---
 

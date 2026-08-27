@@ -11,11 +11,11 @@ import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/config/app_config.dart';
 import 'package:course_chatbot/src/data/conversation_log_repository.dart';
 import 'package:course_chatbot/src/data/google_sheets_api_writer.dart';
+import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
-import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
@@ -50,9 +50,6 @@ final class CourseBotRuntime {
       }
       exit(2);
     }
-    if (config.priceFullRub <= 0) {
-      l.w('priceFullRub is 0; checkout will be refused until a price is set in AppConfig.');
-    }
     final guidePath = config.leadMagnetPath;
     if (guidePath != null && guidePath.isNotEmpty && !File(guidePath).existsSync()) {
       l.w('Lead magnet file is missing: $guidePath');
@@ -70,30 +67,43 @@ final class CourseBotRuntime {
     final jobDedupe = JobDedupeRepository(databaseHandle: databaseHandle)..initSchema();
     final course = SqliteCourseRepository(databaseHandle: databaseHandle);
     course.init();
-    course.upsertActiveLaunch(
-      productCode: config.productCode,
-      productTitle: 'Курс',
-      launchCode: config.launchCode,
-      launchTitle: 'Запуск',
-      priceFullKopecks: rubToKopecks(config.priceFullRub),
-      depositKopecks: rubToKopecks(config.depositAmountRub),
-      depositDueDays: config.depositDueDays,
-      depositDueAt: config.depositDueAt,
-      courseStartAt: config.courseStartAt,
-      channelId: config.courseChannelId,
-      offerUrl: config.offerUrl,
-      leadMagnetFileId: config.leadMagnetFileId,
-      leadMagnetUrl: config.leadMagnetUrl,
-    );
 
     GoogleSheetsWriter? sheetsWriter;
+    GoogleSheetsCatalogSync? catalogSync;
     if (config.googleSheetsWriteEnabled) {
       try {
-        sheetsWriter = await GoogleSheetsApiWriter.connectFromConfig(config);
+        final apiWriter = await GoogleSheetsApiWriter.connectFromConfig(config);
+        sheetsWriter = apiWriter;
+        catalogSync = GoogleSheetsCatalogSync(
+          gateway: apiWriter.gateway,
+          catalog: course,
+          timezoneOffsetHours: config.timezoneOffsetHours,
+          fallbackChannelId: config.courseChannelId,
+          fallbackOfferUrl: config.offerUrl,
+          fallbackLeadMagnetFileId: config.leadMagnetFileId,
+          fallbackLeadMagnetUrl: config.leadMagnetUrl,
+        );
         l.i('Google Sheets write enabled. spreadsheetId=${config.googleSheetsSpreadsheetId}');
+        final syncResult = await catalogSync.sync();
+        if (syncResult.ok) {
+          l.i(
+            'COURSES catalog synced. launch=${syncResult.launch?.code} '
+            'seeded=${syncResult.seeded}',
+          );
+        } else {
+          l.w('COURSES catalog sync failed: ${syncResult.error}');
+        }
       } on Object catch (error, stackTrace) {
         l.e('Failed to enable Google Sheets write: $error', stackTrace);
       }
+    } else {
+      l.w(
+        'Google Sheets is off; launch catalog is not seeded from AppConfig. '
+        'Put the launch on COURSES (gid=0) or keep an existing SQLite row.',
+      );
+    }
+    if (course.activeLaunch() == null) {
+      l.w('No active launch in SQLite. Checkout will be refused until COURSES (gid=0) is synced.');
     }
 
     final sender = LoggingMessageSender(
@@ -133,6 +143,7 @@ final class CourseBotRuntime {
       warmup: warmup,
       broadcast: broadcast,
       adminUserIds: config.adminUserIds,
+      catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: config.leadMagnetPath,
       leadMagnetFilename: config.leadMagnetFilename,

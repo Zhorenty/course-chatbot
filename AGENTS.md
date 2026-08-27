@@ -30,7 +30,7 @@ When these exist, they are also source of truth:
 - `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`) — all user-facing copy and keyboards
 - `lib/src/application/` — orchestration (funnel, payments, access)
 - Payment: interface `PaymentGateway`; LeadPay first, YooKassa if the spike fails; never Telegram Payments (`sendInvoice`)
-- Sheets: bot-owned `FUNNEL` slice (SQLite is truth; the sheet is a dashboard, not hand-edited)
+- Sheets: bot-owned `FUNNEL` slice (SQLite is truth for people; `FUNNEL` is a dashboard, not hand-edited). Launch catalog is human-edited `COURSES` on spreadsheet `gid=0`.
 
 ## Architecture and Coding Rules
 
@@ -55,7 +55,7 @@ Also:
 - One SQLite connection (WAL, foreign keys, busy timeout) shared by handlers and jobs.
 - Status changes that grant access or record money run in a transaction. Payment webhooks must be idempotent: a repeated `succeeded` must not create a second invite.
 - Swap payment providers behind `PaymentGateway`. Handlers never call LeadPay/YooKassa HTTP directly.
-- Google Sheets export wipes and recreates bot-owned tabs. Do not treat the dashboard as a writable CRM of individual people; the person card is in admin DM.
+- Google Sheets export wipes and recreates bot-owned tabs (`FUNNEL`). Do not treat the dashboard as a writable CRM of individual people; the person card is in admin DM. `gid=0` (`COURSES`) is the launch catalog: humans edit it, the bot reads it and must not wipe it.
 
 ## How to Approach Work
 
@@ -128,7 +128,7 @@ Precedence (highest to lowest):
 3. `.env`
 4. defaults
 
-Core env (see `.env.example`): `BOT_TOKEN`, `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`, `COURSE_CHANNEL_ID`, `LEAD_MAGNET_FILE_ID`, `OFFER_URL`, `PAYMENT_PROVIDER`, LeadPay/YooKassa secrets, `PAYMENT_WEBHOOK_SECRET`, Google Sheets credentials. Product constants (price, dates, quiet hours, SQLite path, backups, lead-magnet file, drip delays) live as defaults in `AppConfig` — not in `.env`. Compose sets `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` inside the container.
+Core env (see `.env.example`): `BOT_TOKEN`, `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`, `COURSE_CHANNEL_ID`, `LEAD_MAGNET_FILE_ID`, `OFFER_URL`, `PAYMENT_PROVIDER`, LeadPay/YooKassa secrets, `PAYMENT_WEBHOOK_SECRET`, Google Sheets credentials. Launch price/dates/title live on Google Sheets `COURSES` (`gid=0`). Quiet hours, SQLite path, backups, lead-magnet file on disk, and drip delays stay as defaults in `AppConfig`. Compose sets `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` inside the container.
 
 After `.env` changes in Docker: recreate the container.
 

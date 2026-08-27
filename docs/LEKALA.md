@@ -45,9 +45,9 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 | Язык | Dart SDK ≥ 3.11 | Один стек, те же линтеры |
 | Транспорт | Long polling, `getUpdates` | Telegram как сейчас. HTTPS нужен, если касса шлёт webhook (ЮKassa; LeadPay — по итогам спайка) |
 | Хранение | SQLite + WAL + транзакции | Один файл, бэкап копированием. Capacity-check на места **не** нужен |
-| Конфиг | CLI → env → `.env` → defaults | В `.env` только секреты и id; цены/даты/тихие часы — в `AppConfig` |
+| Конфиг | CLI → env → `.env` → defaults | В `.env` только секреты и id; тихие часы — в `AppConfig`; цены/даты запуска — вкладка `COURSES` (`gid=0`) |
 | Деплой | Docker Compose, volume `./data`, secrets read-only | Тот же Timeweb-контур |
-| Sheets | `googleapis` + service account | Срез `FUNNEL` в MVP |
+| Sheets | `googleapis` + service account | Каталог `COURSES` (`gid=0`, правят руками) + срез `FUNNEL` в MVP |
 | Качество | `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` | Перед сдачей |
 
 Зависимости-ориентир: `http`, `sqlite3`, `args`, `intl`, `l`, `googleapis` / `googleapis_auth`. Касса — отдельный клиент за интерфейсом `PaymentGateway`, чтобы сменить LeadPay → ЮKassa без перепила хендлеров.
@@ -84,6 +84,7 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 | `lib/src/messages/html_escaper.dart` | Escape | Как есть |
 | `lib/src/messages/message_templates.dart` | Copy и клавиатуры | Каркас; тексты подставляет заказчик |
 | `lib/src/data/google_sheets_funnel_dashboard.dart` | Вёрстка листа `FUNNEL` | Клон раскладки, другие KPI/шаги (гайд → прогрев → оплата) |
+| `lib/src/data/google_sheets_catalog_sync.dart` | — | Каталог `COURSES` (`gid=0`) → SQLite |
 | `lib/src/jobs/google_sheets_funnel_export_job.dart` | Периодический wipe+write | Как есть |
 | `test/support/fakes.dart`, harness | Фейковый sender | Перенести |
 
@@ -126,7 +127,8 @@ Long polling остаётся. Если шлюз (ЮKassa или LeadPay) отд
 | `PaymentReminderJob` | Брошенный чекаут + напоминание доплаты | **Без** автоотмены брони: лимита мест нет |
 | `job_dedupe_log` | Идемпотентность | `warmup:{userId}:{step}`, `abandon:{orderId}:h6` |
 | `createChatInviteLink` | Одноразовая ссылка | `member_limit: 1`, канал = канал запуска |
-| Google Sheets `FUNNEL` | Срез в MVP | SQLite — правда, лист — витрина. Руками не правят |
+| Google Sheets `FUNNEL` | Срез в MVP | SQLite — правда по людям, лист — витрина. Руками не правят |
+| Google Sheets `COURSES` (`gid=0`) | Каталог запуска | Руками правят цену/даты; бот читает в SQLite |
 | Очередь чеков | Ручной override | Всегда: вне кассы, сбой, возврат |
 
 CTA «Записаться» — пока нет `access_granted` (не только «пока не paid»: после списания рассрочки доступ уже выдан).
@@ -296,7 +298,7 @@ GOOGLE_SHEETS_CREDENTIALS_PATH=
 GOOGLE_SHEETS_SPREADSHEET_ID=
 ```
 
-Цены, даты, тихие часы, путь к гайду, SQLite и бэкапы — дефолты в `lib/src/config/app_config.dart`. Compose сам ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` в контейнере.
+Цены, даты и название запуска — вкладка **`COURSES`** (`gid=0`) в Google-таблице. Бот читает её при старте и по кнопке «Обновить Google Sheets». Тихие часы, путь к гайду, SQLite и бэкапы — дефолты в `lib/src/config/app_config.dart`. Compose сам ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` в контейнере.
 
 Секреты кассы и JSON сервис-аккаунта — не в git. После сдачи — её сервер и её `.env`. Webhook кассы — только с секретом; порт на хосте не торчать в интернет.
 
@@ -333,6 +335,7 @@ GOOGLE_SHEETS_SPREADSHEET_ID=
 - Депозит не выдаёт invite; full и списание рассрочки — выдают.
 - Канал только этого запуска.
 - Админ может проставить оплату, отменить, отозвать доступ.
-- Лист воронки в Sheets обновляется ботом.
+- Лист воронки `FUNNEL` в Sheets обновляется ботом.
+- Каталог запусков — вкладка `COURSES` (`gid=0`); бот её читает, руками правят.
 - `PaymentGateway` можно сменить без перепила хендлеров.
 - `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` зелёные.
