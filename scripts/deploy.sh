@@ -25,11 +25,26 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$BRANCH" == "HEAD" ]]; then
+  BRANCH="main"
+fi
+REMOTE_REF="origin/$BRANCH"
 BEFORE="$(git rev-parse --short HEAD)"
 
-echo "==> fetching $BRANCH in $ROOT"
+echo "==> fetching $REMOTE_REF in $ROOT"
 git fetch origin
-git pull --ff-only origin "$BRANCH"
+if ! git rev-parse --verify "$REMOTE_REF" >/dev/null 2>&1; then
+  echo "error: $REMOTE_REF not found" >&2
+  exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "==> discarding local changes to tracked files (keeps .env, data/, secrets/):"
+  git diff --stat
+  git diff --cached --stat
+fi
+
+git reset --hard "$REMOTE_REF"
 
 AFTER="$(git rev-parse --short HEAD)"
 if [[ "$BEFORE" == "$AFTER" ]]; then

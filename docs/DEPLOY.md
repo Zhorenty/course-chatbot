@@ -445,7 +445,17 @@ cd /opt/course-chatbot
 ./scripts/deploy.sh
 ```
 
-Скрипт делает `git pull --ff-only`, пересобирает образ и поднимает контейнер заново. `.env`, `data/` и `secrets/` не трогает. Ждёт `GET /health` на `127.0.0.1:8080`.
+Скрипт делает `git fetch` + `git reset --hard` на `origin` текущей ветки, пересобирает образ и поднимает контейнер. Локальные правки отслеживаемых файлов (например `Dockerfile`) сбрасываются. `.env`, `data/` и `secrets/` не трогает. Ждёт `GET /health` на `127.0.0.1:8080`.
+
+Если скрипта ещё нет и `git pull` ругается на local changes:
+
+```bash
+cd /opt/course-chatbot
+git fetch origin
+git reset --hard origin/main
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+```
 
 Если менялись зависимости / Dockerfile — без кэша:
 
