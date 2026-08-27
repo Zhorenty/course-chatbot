@@ -289,6 +289,16 @@ final class MessageTemplates {
     return '💳 Онлайн-оплата сейчас не открылась. Напиши сюда — админ отметит платёж вручную.';
   }
 
+  String adminPaymentGatewayDown({required int userId, required String provider, String? reason}) {
+    final reasonLine = (reason == null || reason.trim().isEmpty)
+        ? ''
+        : '\n${escapeHtml(reason.trim())}';
+    return '<b>Касса недоступна</b>\n\n'
+        'Провайдер <code>${escapeHtml(provider)}</code> не отдал ссылку на оплату '
+        'для id <code>$userId</code>.$reasonLine\n\n'
+        'Если человек напишет сюда — отметь оплату вручную из карточки.';
+  }
+
   String paymentSucceeded() {
     return '<b>Оплата прошла</b>\n\n'
         'Дальше — одноразовая ссылка в канал этого потока. На одного человека.';

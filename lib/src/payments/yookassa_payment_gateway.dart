@@ -29,6 +29,12 @@ final class YooKassaPaymentGateway implements PaymentGateway {
 
   String get _basicAuth => 'Basic ${base64Encode(utf8.encode('$_shopId:$_secretKey'))}';
 
+  /// Config-only check, no HTTP call: pinging YooKassa on every funnel step
+  /// would be a wasted round-trip. Real outages surface reactively via
+  /// [createPayment] throwing [PaymentUnavailableException].
+  @override
+  Future<bool> isAvailable() async => _shopId.trim().isNotEmpty && _secretKey.trim().isNotEmpty;
+
   @override
   Future<CheckoutSession> createPayment({
     required CourseOrder order,

@@ -42,6 +42,19 @@ abstract interface class PaymentResultNotifier {
   Future<void> notifyPaymentResult(PaymentApplyResult result);
 }
 
+/// Push-notifies admins the moment the kassa turns out to be unavailable,
+/// without waiting for the user to write in manually (see [_escalateToAdmin]
+/// in the dispatch handler, which is the fallback, not-guaranteed path).
+abstract interface class PaymentGatewayAlertPort {
+  Future<void> notifyGatewayUnavailable({
+    required int userId,
+    required int launchId,
+    required PaymentKind kind,
+    required String provider,
+    String? reason,
+  });
+}
+
 final class CheckoutService {
   CheckoutService({
     required CourseRepository course,
@@ -49,17 +62,27 @@ final class CheckoutService {
     required AccessService access,
     DateTime Function()? nowProvider,
     String? returnUrl,
+    PaymentGatewayAlertPort? alertPort,
+    Duration gatewayAlertCooldown = const Duration(minutes: 15),
   }) : _course = course,
        _gateway = gateway,
        _access = access,
        _nowProvider = nowProvider ?? DateTime.now,
-       _returnUrl = returnUrl;
+       _returnUrl = returnUrl,
+       _alertPort = alertPort,
+       _gatewayAlertCooldown = gatewayAlertCooldown;
 
   final CourseRepository _course;
   final PaymentGateway _gateway;
   final AccessService _access;
   final DateTime Function() _nowProvider;
   final String? _returnUrl;
+  final PaymentGatewayAlertPort? _alertPort;
+  final Duration _gatewayAlertCooldown;
+
+  /// Per-launch cooldown so a flapping kassa or repeated user retries do not
+  /// spam admins on every checkout attempt.
+  final Map<int, DateTime> _lastGatewayAlertAtByLaunch = <int, DateTime>{};
 
   CourseOrder startOrReuseOrder({
     required int userId,
@@ -140,6 +163,11 @@ final class CheckoutService {
     );
     late final CheckoutSession session;
     try {
+      if (!await _gateway.isAvailable()) {
+        throw PaymentUnavailableException(
+          '${_gateway.providerId} gateway is not configured (isAvailable() == false).',
+        );
+      }
       session = await _gateway
           .createPayment(
             order: order,
@@ -149,12 +177,15 @@ final class CheckoutService {
             returnUrl: _returnUrl,
           )
           .timeout(PaymentGateway.requestTimeout);
-    } on PaymentUnavailableException {
+    } on PaymentUnavailableException catch (error) {
       _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
+      await _alertGatewayDown(order: order, kind: kind, error: error);
       rethrow;
     } on Object catch (error, stackTrace) {
       _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
-      Error.throwWithStackTrace(PaymentUnavailableException('Checkout failed: $error'), stackTrace);
+      final unavailable = PaymentUnavailableException('Checkout failed: $error');
+      await _alertGatewayDown(order: order, kind: kind, error: unavailable);
+      Error.throwWithStackTrace(unavailable, stackTrace);
     }
 
     final currentPayment = _course.getPayment(payment.id) ?? payment;
@@ -184,6 +215,34 @@ final class CheckoutService {
       _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
     }
     return payment;
+  }
+
+  Future<void> _alertGatewayDown({
+    required CourseOrder order,
+    required PaymentKind kind,
+    required PaymentUnavailableException error,
+  }) async {
+    final port = _alertPort;
+    if (port == null) {
+      return;
+    }
+    final now = _nowProvider();
+    final last = _lastGatewayAlertAtByLaunch[order.launchId];
+    if (last != null && now.difference(last) < _gatewayAlertCooldown) {
+      return;
+    }
+    _lastGatewayAlertAtByLaunch[order.launchId] = now;
+    try {
+      await port.notifyGatewayUnavailable(
+        userId: order.userId,
+        launchId: order.launchId,
+        kind: kind,
+        provider: _gateway.providerId,
+        reason: error.message,
+      );
+    } on Object catch (notifyError, stackTrace) {
+      l.w('Failed to notify admin about gateway outage: $notifyError', stackTrace);
+    }
   }
 
   int amountFor(Launch launch, CourseOrder order, PaymentKind kind) {

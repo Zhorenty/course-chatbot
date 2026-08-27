@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
+import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/bot_runner.dart';
@@ -122,12 +123,25 @@ final class CourseBotRuntime {
     );
     final funnel = FunnelService(course: course, links: links);
     final access = AccessService(course: course, telegram: client);
+    // Same admin chat set as `AdminGate.notificationChatIds`: every admin
+    // plus the shared admin chat, if configured.
+    final adminNotificationChatIds = <int>{
+      ...config.adminUserIds,
+      if (config.adminChatId != null) config.adminChatId!,
+    };
     final checkout = CheckoutService(
       course: course,
       gateway: paymentGateway,
       access: access,
       returnUrl:
           config.yookassaReturnUrl ?? (botUsername == null ? null : 'https://t.me/$botUsername'),
+      alertPort: adminNotificationChatIds.isEmpty
+          ? null
+          : PaymentAlertNotifier(
+              sender: sender,
+              templates: templates,
+              notificationChatIds: adminNotificationChatIds,
+            ),
     );
     final warmup = WarmupService(course: course, dedupe: jobDedupe);
     final broadcast = BroadcastService(sender: sender, course: course);

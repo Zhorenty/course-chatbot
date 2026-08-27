@@ -53,6 +53,9 @@ final class HandlerHarness {
     String? leadMagnetPath,
     bool enableSheets = false,
     String? botUsername,
+    PaymentGatewayAlertPort? alertPort,
+    Duration gatewayAlertCooldown = const Duration(minutes: 15),
+    DateTime Function()? nowProvider,
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
@@ -72,7 +75,14 @@ final class HandlerHarness {
     final links = AcquisitionLinkCatalog();
     final funnel = FunnelService(course: course, links: links);
     final access = AccessService(course: course, telegram: channel);
-    checkout = CheckoutService(course: course, gateway: gateway, access: access);
+    checkout = CheckoutService(
+      course: course,
+      gateway: gateway,
+      access: access,
+      alertPort: alertPort,
+      gatewayAlertCooldown: gatewayAlertCooldown,
+      nowProvider: nowProvider,
+    );
     final warmup = WarmupService(
       course: course,
       dedupe: JobDedupeRepository(databaseHandle: handle),

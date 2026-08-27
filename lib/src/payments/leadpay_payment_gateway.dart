@@ -30,6 +30,13 @@ final class LeadPayPaymentGateway implements PaymentGateway {
   @override
   String get providerId => 'leadpay';
 
+  /// Config-only check: LeadPay has no documented health endpoint (spike
+  /// still needs the customer cabinet), so we don't spend an extra HTTP
+  /// round-trip per checkout attempt. Real outages surface reactively via
+  /// [createPayment] throwing [PaymentUnavailableException].
+  @override
+  Future<bool> isAvailable() async => _token.trim().isNotEmpty;
+
   @override
   Future<CheckoutSession> createPayment({
     required CourseOrder order,

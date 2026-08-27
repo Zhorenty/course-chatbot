@@ -9,6 +9,10 @@ final class ManualPaymentGateway implements PaymentGateway {
   @override
   String get providerId => 'manual';
 
+  /// Manual override is a deliberate fallback, not a failure — always "up".
+  @override
+  Future<bool> isAvailable() async => true;
+
   @override
   Future<CheckoutSession> createPayment({
     required CourseOrder order,

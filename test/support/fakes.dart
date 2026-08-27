@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
@@ -191,10 +192,14 @@ final class FakePaymentGateway implements PaymentGateway {
   final String? url;
   Object? createError;
   int creates = 0;
+  bool available = true;
   Future<void> Function(CheckoutSession session, int paymentDbId)? onCreated;
 
   @override
   String get providerId => 'fake';
+
+  @override
+  Future<bool> isAvailable() async => available;
 
   @override
   Future<CheckoutSession> createPayment({
@@ -250,6 +255,45 @@ final class FakePaymentGateway implements PaymentGateway {
 
   @override
   void close() {}
+}
+
+final class GatewayAlert {
+  const GatewayAlert({
+    required this.userId,
+    required this.launchId,
+    required this.kind,
+    required this.provider,
+    this.reason,
+  });
+
+  final int userId;
+  final int launchId;
+  final PaymentKind kind;
+  final String provider;
+  final String? reason;
+}
+
+final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort {
+  final List<GatewayAlert> alerts = <GatewayAlert>[];
+
+  @override
+  Future<void> notifyGatewayUnavailable({
+    required int userId,
+    required int launchId,
+    required PaymentKind kind,
+    required String provider,
+    String? reason,
+  }) async {
+    alerts.add(
+      GatewayAlert(
+        userId: userId,
+        launchId: launchId,
+        kind: kind,
+        provider: provider,
+        reason: reason,
+      ),
+    );
+  }
 }
 
 final class FakeChannelApi implements ChannelApi {
