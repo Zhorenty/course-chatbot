@@ -288,10 +288,9 @@ final class MessageTemplates {
   // TODO(launch): replace the hardcoded @zhorenty support username below with
   //  the real support contact once it's confirmed.
   String payManualFallback() {
-    return '💳 Сейчас временные технические неполадки с онлайн-оплатой. '
-        'Не переживай — место за тобой сохранится.\n\n'
-        'Чтобы оплатить, напиши в поддержку: @zhorenty. '
-        'Там всё оформим вручную и подтвердим оплату.';
+    return '💳 Сейчас временные технические неполадки с онлайн-оплатой, '
+        'запись временно оформляется через администратора.\n\n'
+        'Напиши сюда: @zhorenty — зафиксируем твоё место.';
   }
 
   String adminPaymentGatewayDown({required int userId, required String provider, String? reason}) {
