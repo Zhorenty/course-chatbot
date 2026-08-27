@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
@@ -38,6 +40,8 @@ final class PrivateHandlers implements PaymentResultNotifier {
     required BroadcastService broadcast,
     required Set<int> adminUserIds,
     DateTime Function()? nowProvider,
+    this.leadMagnetPath,
+    this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
   })  : _sender = sender,
         _templates = templates,
         _course = course,
@@ -59,6 +63,8 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final BroadcastService _broadcast;
   final AdminGate _adminGate;
   final DateTime Function() _nowProvider;
+  final String? leadMagnetPath;
+  final String leadMagnetFilename;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
 
   Launch? get _launch => _course.activeLaunch();

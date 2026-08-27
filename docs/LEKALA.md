@@ -290,6 +290,7 @@ LOG_LEVEL=info
 
 COURSE_CHANNEL_ID=
 LEAD_MAGNET_FILE_ID=
+LEAD_MAGNET_PATH=assets/guide.pdf
 WARMUP_ENABLED=true
 
 PAYMENT_PROVIDER=leadpay   # leadpay | yookassa | manual

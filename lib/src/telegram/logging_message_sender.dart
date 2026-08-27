@@ -40,25 +40,29 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
-  Future<int> sendDocument(
+  Future<SentTelegramDocument> sendDocument(
     int chatId, {
     required String document,
+    String? filename,
+    bool fromFile = false,
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) async {
-    final messageId = await _inner.sendDocument(
+    final sent = await _inner.sendDocument(
       chatId,
       document: document,
+      filename: filename,
+      fromFile: fromFile,
       disableNotification: disableNotification,
       replyMarkup: replyMarkup,
     );
     await _safeAppend(
       chatId: chatId,
-      telegramMessageId: messageId,
+      telegramMessageId: sent.messageId,
       contentType: ConversationContentType.document,
-      textPreview: 'document $document',
+      textPreview: 'document ${filename ?? document}',
     );
-    return messageId;
+    return sent;
   }
 
   @override

@@ -14,6 +14,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./secrets:/app/secrets:ro
+      - ./assets:/app/assets:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
       interval: 30s

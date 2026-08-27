@@ -18,12 +18,14 @@ final class AppConfig {
     this.warmupEnabled = true,
     this.courseChannelId,
     this.leadMagnetFileId,
+    this.leadMagnetUrl,
+    this.leadMagnetPath = 'assets/guide.pdf',
+    this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
     this.paymentProvider = PaymentProvider.leadpay,
     this.leadpayToken,
     this.yookassaShopId,
     this.yookassaSecretKey,
     this.paymentWebhookBind = '127.0.0.1:8080',
-    this.leadMagnetUrl,
     this.offerUrl,
     this.productCode = 'course',
     this.launchCode = 'launch-1',
@@ -62,6 +64,8 @@ final class AppConfig {
   final int? courseChannelId;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
+  final String? leadMagnetPath;
+  final String leadMagnetFilename;
   final String? offerUrl;
   final String productCode;
   final String launchCode;
@@ -136,7 +140,9 @@ final class AppConfig {
       ..addOption('warmup-enabled', help: 'Enable drip after lead magnet (default: true)')
       ..addOption('course-channel-id', help: 'Closed channel id for this launch')
       ..addOption('lead-magnet-file-id', help: 'Telegram file_id of the guide PDF')
-      ..addOption('lead-magnet-url', help: 'Fallback URL if PDF file_id is empty')
+      ..addOption('lead-magnet-path', help: 'Local PDF path (default: assets/guide.pdf)')
+      ..addOption('lead-magnet-filename', help: 'Filename shown in Telegram')
+      ..addOption('lead-magnet-url', help: 'Fallback URL if PDF file_id and path are empty')
       ..addOption('offer-url', help: 'Offer / terms URL shown before checkout')
       ..addOption('product-code', help: 'Product code in SQLite (default: course)')
       ..addOption('launch-code', help: 'Launch code in SQLite (default: launch-1)')
@@ -232,6 +238,9 @@ final class AppConfig {
       courseChannelId: int.tryParse(resolve('COURSE_CHANNEL_ID', 'course-channel-id') ?? ''),
       leadMagnetFileId: resolve('LEAD_MAGNET_FILE_ID', 'lead-magnet-file-id'),
       leadMagnetUrl: resolve('LEAD_MAGNET_URL', 'lead-magnet-url'),
+      leadMagnetPath: resolve('LEAD_MAGNET_PATH', 'lead-magnet-path') ?? 'assets/guide.pdf',
+      leadMagnetFilename:
+          resolve('LEAD_MAGNET_FILENAME', 'lead-magnet-filename') ?? 'Гайд Язык цвета.pdf',
       offerUrl: resolve('OFFER_URL', 'offer-url'),
       productCode: resolve('PRODUCT_CODE', 'product-code') ?? 'course',
       launchCode: resolve('LAUNCH_CODE', 'launch-code') ?? 'launch-1',

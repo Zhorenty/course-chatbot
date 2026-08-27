@@ -13,6 +13,7 @@ FROM ubuntu:24.04 AS runtime
 WORKDIR /app
 
 COPY --from=build /app/course_bot.run /app/
+COPY --from=build /app/assets /app/assets
 
 RUN apt-get update -y \
  && apt-get install -y --no-install-recommends ca-certificates curl libsqlite3-0 \

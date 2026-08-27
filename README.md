@@ -18,7 +18,7 @@ dart pub get
 make bot
 ```
 
-Админ может прислать PDF гайда в личку бота — сохранится `file_id`. Либо пропиши `LEAD_MAGNET_FILE_ID` / `LEAD_MAGNET_URL`.
+Админ может прислать PDF гайда в личку бота — сохранится `file_id`. В репозитории уже лежит `assets/guide.pdf` («Гайд Язык цвета»); бот отдаёт его сам, `LEAD_MAGNET_FILE_ID` не обязателен.
 
 ## Docker
 

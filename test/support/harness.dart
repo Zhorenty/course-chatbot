@@ -38,6 +38,8 @@ final class HandlerHarness {
     int depositKopecks = 500000,
     DateTime? depositDueAt,
     DateTime? courseStartAt,
+    String? leadMagnetFileId = 'file-guide',
+    String? leadMagnetPath,
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
@@ -52,7 +54,7 @@ final class HandlerHarness {
       depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
       courseStartAt: courseStartAt ?? DateTime.utc(2026, 10, 12),
       channelId: channelId,
-      leadMagnetFileId: 'file-guide',
+      leadMagnetFileId: leadMagnetFileId,
     );
     final funnel = FunnelService(course: course);
     final access = AccessService(course: course, telegram: channel);
@@ -71,6 +73,7 @@ final class HandlerHarness {
       warmup: warmup,
       broadcast: BroadcastService(sender: sender, course: course),
       adminUserIds: adminUserIds,
+      leadMagnetPath: leadMagnetPath,
     );
   }
 

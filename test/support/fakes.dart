@@ -34,14 +34,19 @@ final class FakeMessageSender implements MessageSender {
   }
 
   @override
-  Future<int> sendDocument(
+  Future<SentTelegramDocument> sendDocument(
     int chatId, {
     required String document,
+    String? filename,
+    bool fromFile = false,
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) async {
     documents.add(document);
-    return 100 + documents.length;
+    return SentTelegramDocument(
+      messageId: 100 + documents.length,
+      fileId: fromFile ? 'cached-guide' : document,
+    );
   }
 
   final List<CallbackAnswer> callbackAnswers = <CallbackAnswer>[];

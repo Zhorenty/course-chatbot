@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:course_chatbot/src/telegram/channel_api.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
@@ -43,6 +44,32 @@ final class TelegramClient implements MessageSender, ChannelApi {
       },
     );
 
+    return _decodeResponse(response);
+  }
+
+  Future<Map<String, dynamic>> _postMultipart(
+    String method, {
+    required Map<String, String> fields,
+    required Future<List<http.MultipartFile>> Function() files,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final response = await retry(
+      () async {
+        final request = http.MultipartRequest('POST', _methodUri(method));
+        request.fields.addAll(fields);
+        request.files.addAll(await files());
+        final streamed = await _httpClient.send(request).timeout(timeout);
+        return http.Response.fromStream(streamed);
+      },
+      shouldRetry: (error) => error is! TelegramApiException || error.statusCode == 429,
+      delayForError: (error, currentDelay) {
+        if (error is TelegramApiException && error.retryAfterSeconds != null) {
+          final wait = Duration(seconds: error.retryAfterSeconds!);
+          return wait > currentDelay ? wait : currentDelay;
+        }
+        return currentDelay;
+      },
+    );
     return _decodeResponse(response);
   }
 
@@ -269,12 +296,23 @@ final class TelegramClient implements MessageSender, ChannelApi {
   int _textLength(String text) => text.runes.length;
 
   @override
-  Future<int> sendDocument(
+  Future<SentTelegramDocument> sendDocument(
     int chatId, {
     required String document,
+    String? filename,
+    bool fromFile = false,
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) {
+    if (fromFile) {
+      return _sendLocalDocument(
+        chatId: chatId,
+        path: document,
+        filename: filename,
+        disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
+      );
+    }
     return _sendFileMessage(
       method: 'sendDocument',
       chatId: chatId,
@@ -285,7 +323,41 @@ final class TelegramClient implements MessageSender, ChannelApi {
     );
   }
 
-  Future<int> _sendFileMessage({
+  Future<SentTelegramDocument> _sendLocalDocument({
+    required int chatId,
+    required String path,
+    required String? filename,
+    required bool disableNotification,
+    required Map<String, Object?>? replyMarkup,
+  }) async {
+    final file = File(path);
+    if (!file.existsSync()) {
+      throw TelegramApiException('Lead magnet file is missing: $path');
+    }
+    final fields = <String, String>{
+      'chat_id': '$chatId',
+      'disable_notification': '$disableNotification',
+    };
+    if (replyMarkup != null) {
+      fields['reply_markup'] = jsonEncode(replyMarkup);
+    }
+    final payload = await _postMultipart(
+      'sendDocument',
+      fields: fields,
+      files: () async {
+        return <http.MultipartFile>[
+          await http.MultipartFile.fromPath(
+            'document',
+            path,
+            filename: filename ?? _basename(path),
+          ),
+        ];
+      },
+    );
+    return _sentDocumentFromPayload(payload);
+  }
+
+  Future<SentTelegramDocument> _sendFileMessage({
     required String method,
     required int chatId,
     required String fileField,
@@ -302,11 +374,29 @@ final class TelegramClient implements MessageSender, ChannelApi {
       body['reply_markup'] = replyMarkup;
     }
     final payload = await _post(method, body: body);
+    return _sentDocumentFromPayload(payload);
+  }
+
+  SentTelegramDocument _sentDocumentFromPayload(Map<String, dynamic> payload) {
     final result = payload['result'];
     if (result is! Map || result['message_id'] is! int) {
       throw const TelegramApiException('Telegram did not return message_id');
     }
-    return result['message_id'] as int;
+    final document = result['document'];
+    String? fileId;
+    if (document is Map) {
+      fileId = document['file_id']?.toString();
+    }
+    return SentTelegramDocument(
+      messageId: result['message_id'] as int,
+      fileId: fileId == null || fileId.isEmpty ? null : fileId,
+    );
+  }
+
+  String _basename(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final slash = normalized.lastIndexOf('/');
+    return slash < 0 ? normalized : normalized.substring(slash + 1);
   }
 
   @override

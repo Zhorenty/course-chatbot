@@ -1,3 +1,10 @@
+final class SentTelegramDocument {
+  const SentTelegramDocument({required this.messageId, this.fileId});
+
+  final int messageId;
+  final String? fileId;
+}
+
 abstract interface class MessageSender {
   Future<int> sendMessage(
     int chatId,
@@ -8,9 +15,11 @@ abstract interface class MessageSender {
     String? parseMode,
   });
 
-  Future<int> sendDocument(
+  Future<SentTelegramDocument> sendDocument(
     int chatId, {
     required String document,
+    String? filename,
+    bool fromFile = false,
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   });

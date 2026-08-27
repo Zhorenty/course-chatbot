@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
@@ -115,6 +117,34 @@ void main() {
     );
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.paid);
     expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
+  });
+
+  test('bundled PDF is uploaded when Telegram file_id is empty', () async {
+    final extra = HandlerHarness();
+    addTearDown(extra.dispose);
+    final pdf = File('${Directory.systemTemp.path}/course-guide-test.pdf')
+      ..writeAsBytesSync(const <int>[37, 80, 68, 70]);
+    addTearDown(() {
+      if (pdf.existsSync()) {
+        pdf.deleteSync();
+      }
+    });
+    await extra.init(leadMagnetFileId: null, leadMagnetPath: pdf.path);
+
+    await extra.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
+    );
+    await extra.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+
+    expect(extra.sender.documents, contains(pdf.path));
+    expect(extra.course.activeLaunch()?.leadMagnetFileId, 'cached-guide');
   });
 
   test('enroll shows full price, deposit and 5 October due date', () async {

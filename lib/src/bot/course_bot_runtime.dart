@@ -53,6 +53,10 @@ final class CourseBotRuntime {
     if (config.priceFullRub <= 0) {
       l.w('PRICE_FULL_RUB is 0; checkout will be refused until a price is set.');
     }
+    final guidePath = config.leadMagnetPath;
+    if (guidePath != null && guidePath.isNotEmpty && !File(guidePath).existsSync()) {
+      l.w('LEAD_MAGNET_PATH is set but the file is missing: $guidePath');
+    }
 
     final client = TelegramClient(token: config.botToken);
     String? botUsername;
@@ -124,6 +128,8 @@ final class CourseBotRuntime {
       warmup: warmup,
       broadcast: broadcast,
       adminUserIds: config.adminUserIds,
+      leadMagnetPath: config.leadMagnetPath,
+      leadMagnetFilename: config.leadMagnetFilename,
     );
     final quietHours = QuietHours(
       timezoneOffsetHours: config.timezoneOffsetHours,

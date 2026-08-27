@@ -7,8 +7,21 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     final chatId = context.chatId!;
     final fileId = launch?.leadMagnetFileId;
     final url = launch?.leadMagnetUrl;
+    final localPath = leadMagnetPath;
     if (fileId != null && fileId.isNotEmpty) {
       await _sender.sendDocument(chatId, document: fileId);
+      await _sender.sendMessage(chatId, _templates.guideReady(), parseMode: 'HTML');
+    } else if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
+      final sent = await _sender.sendDocument(
+        chatId,
+        document: localPath,
+        filename: leadMagnetFilename,
+        fromFile: true,
+      );
+      final cachedId = sent.fileId;
+      if (cachedId != null && cachedId.isNotEmpty) {
+        _course.setLeadMagnetFileId(cachedId);
+      }
       await _sender.sendMessage(chatId, _templates.guideReady(), parseMode: 'HTML');
     } else if (url != null && url.isNotEmpty) {
       await _sender.sendMessage(chatId, _templates.guideAsUrl(url), parseMode: 'HTML');
