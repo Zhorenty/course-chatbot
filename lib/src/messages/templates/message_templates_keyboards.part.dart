@@ -95,19 +95,13 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': _checkbox(
-            acceptedOffer,
-            'Я ознакомился(-ась) и принимаю условия Публичной оферты',
-          ),
+          'text': _checkbox(acceptedOffer, MessageTemplates.buttonAcceptOffer),
           'callback_data': MessageTemplates.cbToggleOffer,
         },
       ],
       <Map<String, String>>[
         <String, String>{
-          'text': _checkbox(
-            acceptedPersonalData,
-            'Я даю согласие на обработку персональных данных',
-          ),
+          'text': _checkbox(acceptedPersonalData, MessageTemplates.buttonAcceptPersonalData),
           'callback_data': MessageTemplates.cbTogglePersonalData,
         },
       ],
@@ -167,23 +161,23 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': 'Отметить оплаченным',
+          'text': MessageTemplates.buttonAdminMarkPaid,
           'callback_data': '${MessageTemplates.cbAdminPaid}$userId',
         },
       ],
       <Map<String, String>>[
         <String, String>{
-          'text': 'Предоплата',
+          'text': MessageTemplates.buttonAdminMarkDeposit,
           'callback_data': '${MessageTemplates.cbAdminDeposit}$userId',
         },
       ],
       <Map<String, String>>[
         <String, String>{
-          'text': 'Отмена / возврат',
+          'text': MessageTemplates.buttonAdminCancel,
           'callback_data': '${MessageTemplates.cbAdminCancel}$userId',
         },
         <String, String>{
-          'text': 'Новый invite',
+          'text': MessageTemplates.buttonAdminReinvite,
           'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
         },
       ],
@@ -194,12 +188,15 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': 'Гайд, не купили',
+          'text': MessageTemplates.buttonAdminBroadcastGuide,
           'callback_data': MessageTemplates.cbBroadcastGuide,
         },
       ],
       <Map<String, String>>[
-        <String, String>{'text': 'Отмена', 'callback_data': MessageTemplates.cbBroadcastCancel},
+        <String, String>{
+          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'callback_data': MessageTemplates.cbBroadcastCancel,
+        },
       ],
     ]);
   }
@@ -207,10 +204,16 @@ extension MessageTemplateKeyboards on MessageTemplates {
   Map<String, Object?> guideConfirmKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
-        <String, String>{'text': 'Сохранить гайд', 'callback_data': MessageTemplates.cbGuideSave},
+        <String, String>{
+          'text': MessageTemplates.buttonAdminGuideSave,
+          'callback_data': MessageTemplates.cbGuideSave,
+        },
       ],
       <Map<String, String>>[
-        <String, String>{'text': 'Не сохранять', 'callback_data': MessageTemplates.cbGuideDiscard},
+        <String, String>{
+          'text': MessageTemplates.buttonAdminGuideDiscard,
+          'callback_data': MessageTemplates.cbGuideDiscard,
+        },
       ],
     ]);
   }

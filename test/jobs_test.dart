@@ -38,10 +38,10 @@ void main() {
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
     );
-    harness.db.execute(
-      'UPDATE orders SET checkout_started_at = ? WHERE id = ?;',
-      <Object?>['2026-01-01T00:00:00.000Z', order.id],
-    );
+    harness.db.execute('UPDATE orders SET checkout_started_at = ? WHERE id = ?;', <Object?>[
+      '2026-01-01T00:00:00.000Z',
+      order.id,
+    ]);
 
     final dedupe = JobDedupeRepository(databaseHandle: harness.handle)..initSchema();
     final job = AbandonedPaymentJob(
@@ -69,11 +69,15 @@ void main() {
     );
     await dayJob.run();
     expect(
-        harness.sender.messages.where((m) => m.text.contains('Оформление началось')), hasLength(1));
+      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      hasLength(1),
+    );
 
     await dayJob.run();
     expect(
-        harness.sender.messages.where((m) => m.text.contains('Оформление началось')), hasLength(1));
+      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      hasLength(1),
+    );
   });
 
   test('remainder job reminds deposit-paid orders after due date', () async {
@@ -139,7 +143,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Первое касание')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('алфавит')), isTrue);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
 

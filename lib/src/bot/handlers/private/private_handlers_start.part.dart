@@ -33,7 +33,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
     if (AcquisitionSource.opensCourseCard(payload)) {
       await _sender.sendMessage(
         context.chatId!,
-        _templates.startCourseCard(source: user.source),
+        _templates.startCourseCard(launch: _launch),
         parseMode: 'HTML',
         replyMarkup: _templates.guideOfferKeyboard(showEnroll: true),
       );
@@ -41,7 +41,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
     }
     await _sender.sendMessage(
       context.chatId!,
-      _templates.startGuideOffer(source: user.source),
+      _templates.startGuideOffer(),
       parseMode: 'HTML',
       replyMarkup: _templates.guideOfferKeyboard(showEnroll: _funnel.shouldOfferEnroll(user)),
     );

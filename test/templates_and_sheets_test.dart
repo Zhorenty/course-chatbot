@@ -27,8 +27,12 @@ void main() {
     final keyboard = templates.offerKeyboard(acceptedOffer: true, acceptedPersonalData: false);
     final rows = keyboard['inline_keyboard'] as List<dynamic>;
     expect(rows[0].toString(), contains('☑️'));
+    expect(rows[0].toString(), contains(MessageTemplates.buttonAcceptOffer));
     expect(rows[1].toString(), contains('☐'));
+    expect(rows[1].toString(), contains(MessageTemplates.buttonAcceptPersonalData));
     expect(rows[2].toString(), contains('Перейти к оплате'));
+    expect('☑️ ${MessageTemplates.buttonAcceptOffer}'.length, lessThanOrEqualTo(64));
+    expect('☑️ ${MessageTemplates.buttonAcceptPersonalData}'.length, lessThanOrEqualTo(64));
   });
 
   test('FUNNEL dashboard has course steps not club quiz', () {

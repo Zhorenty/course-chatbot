@@ -47,7 +47,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
         now: _nowProvider(),
         send: () => _sender.sendMessage(
           userId,
-          _templates.warmupStep(WarmupService.firstStepKey),
+          _templates.warmupStep(WarmupService.firstStepKey, launch: _launch),
           parseMode: 'HTML',
           replyMarkup: _templates.warmupKeyboard(showEnroll: true),
         ),
@@ -65,8 +65,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   Future<bool> _showEnroll(PrivateMessageContext context) async {
     final user = _course.getUser(context.userId!);
     if (user != null && user.funnelPhase.hasAccess) {
-      return _send(context, _templates.alreadyHasAccess(),
-          replyMarkup: _templates.accessKeyboard());
+      return _send(
+        context,
+        _templates.alreadyHasAccess(),
+        replyMarkup: _templates.accessKeyboard(),
+      );
     }
     final launch = _launch;
     if (launch == null) {

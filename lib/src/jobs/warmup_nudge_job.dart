@@ -16,12 +16,12 @@ final class WarmupNudgeJob {
     required MessageTemplates templates,
     required QuietHours quietHours,
     DateTime Function()? nowProvider,
-  })  : _course = course,
-        _warmup = warmup,
-        _sender = sender,
-        _templates = templates,
-        _quietHours = quietHours,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _course = course,
+       _warmup = warmup,
+       _sender = sender,
+       _templates = templates,
+       _quietHours = quietHours,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final CourseRepository _course;
   final WarmupService _warmup;
@@ -53,7 +53,7 @@ final class WarmupNudgeJob {
           now: now,
           send: () => _sender.sendMessage(
             candidate.userId,
-            _templates.warmupStep(decision.stepKey),
+            _templates.warmupStep(decision.stepKey, launch: _course.activeLaunch()),
             parseMode: 'HTML',
             replyMarkup: _templates.warmupKeyboard(showEnroll: true),
           ),

@@ -11,29 +11,39 @@ import 'package:intl/intl.dart';
 
 part 'templates/message_templates_keyboards.part.dart';
 
-/// Stub copy until the customer delivers marketing texts.
+/// User-facing copy and keyboards. Marketing tone lives here, not in handlers.
 final class MessageTemplates {
   MessageTemplates({String? botUsername}) : _botUsername = botUsername;
 
   final String? _botUsername;
   final DateFormat _date = DateFormat('dd.MM.yyyy');
 
-  static const String buttonGuide = 'Получить гайд';
-  static const String buttonEnroll = 'Записаться на курс';
-  static const String buttonMenu = 'Меню';
-  static const String buttonHelp = 'Помощь';
-  static const String buttonOptOut = 'Не писать';
-  static const String buttonPayFull = 'Оплатить полностью';
-  static const String buttonPayDeposit = 'Предоплата';
-  static const String buttonPayInstallment = 'Рассрочка';
-  static const String buttonPayRemainder = 'Доплатить';
-  static const String buttonGoToPay = 'Перейти к оплате';
-  static const String buttonContinuePay = 'Продолжить оплату';
-  static const String buttonNewInvite = 'Новая ссылка в канал';
-  static const String buttonAdminSearch = 'Поиск человека';
-  static const String buttonAdminBroadcast = 'Рассылка';
-  static const String buttonAdminSheets = 'Обновить Google Sheets';
-  static const String buttonAdminMenu = 'Админка';
+  static const String buttonGuide = '📘 Получить гайд';
+  static const String buttonEnroll = '✨ Записаться на курс';
+  static const String buttonMenu = '📋 Меню';
+  static const String buttonHelp = '❓ Помощь';
+  static const String buttonOptOut = '⏸ Не писать';
+  static const String buttonPayFull = '💳 Оплатить полностью';
+  static const String buttonPayDeposit = '💳 Предоплата';
+  static const String buttonPayInstallment = '💳 Рассрочка';
+  static const String buttonPayRemainder = '💳 Доплатить';
+  static const String buttonGoToPay = '💳 Перейти к оплате';
+  static const String buttonContinuePay = '💳 Продолжить оплату';
+  static const String buttonNewInvite = '🔗 Новая ссылка в канал';
+  static const String buttonAcceptOffer = 'Принимаю условия Публичной оферты';
+  static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
+  static const String buttonAdminSearch = '🔍 Поиск человека';
+  static const String buttonAdminBroadcast = '📣 Рассылка';
+  static const String buttonAdminSheets = '📊 Обновить Sheets';
+  static const String buttonAdminMenu = '🛠 Админка';
+  static const String buttonAdminMarkPaid = '✅ Отметить оплаченным';
+  static const String buttonAdminMarkDeposit = '💵 Предоплата';
+  static const String buttonAdminCancel = '↩️ Отмена / возврат';
+  static const String buttonAdminReinvite = '🔗 Новый invite';
+  static const String buttonAdminBroadcastGuide = '📣 Гайд, не купили';
+  static const String buttonAdminBroadcastCancel = '✖️ Отмена';
+  static const String buttonAdminGuideSave = '💾 Сохранить гайд';
+  static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
 
   static const String cbGuide = 'g';
   static const String cbEnroll = 'e';
@@ -56,64 +66,128 @@ final class MessageTemplates {
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
 
-  String startGuideOffer({String? source}) {
-    final mark = source == null ? 'без метки' : escapeHtml(source);
-    return '<b>Гайд по колористике</b>\n\n'
-        'Источник: $mark.\n'
-        'Нажми кнопку — пришлю материал в этот чат. Имя, почту и телефон не спрашиваю.';
+  String startGuideOffer() {
+    return '<b>Гайд «Язык цвета»</b>\n\n'
+        'Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает». '
+        'PDF пришлю сюда же: без имени, почты и телефона.\n\n'
+        'Нажми кнопку — файл будет в этом чате.';
   }
 
-  String startCourseCard({String? source}) {
-    final mark = source == null ? 'без метки' : escapeHtml(source);
-    return '<b>Запись на курс</b>\n\n'
-        'Источник: $mark.\n'
-        'Можно сразу записаться или сначала забрать бесплатный гайд.';
+  String startCourseCard({Launch? launch}) {
+    final start = _formatDate(launch?.courseStartAt);
+    final price = _formatPrice(launch?.priceFullKopecks);
+    final headline = start == null ? 'Курс по колористике' : 'Поток с $start';
+    final buf = StringBuffer()
+      ..writeln('<b>$headline</b>')
+      ..writeln()
+      ..write('Собрать свой язык цвета и гардероб, который не спорит с тоном кожи.');
+    if (price != null) {
+      buf.write(' Полная стоимость — $price.');
+    }
+    if (start != null) {
+      buf.write(' Старт $start.');
+    }
+    buf
+      ..writeln()
+      ..writeln()
+      ..write('Можно сразу записаться или сначала забрать бесплатный гайд «Язык цвета».');
+    return buf.toString();
   }
 
   String alreadyHasAccess() {
-    return '<b>Доступ уже есть</b>\n\n'
-        'Ты в канале этого запуска. Если ссылка потерялась — нажми «Новая ссылка».';
+    return '<b>Ты уже в канале этого потока</b>\n\n'
+        'Если ссылка потерялась — нажми «${MessageTemplates.buttonNewInvite}». '
+        'Старая отключится, новая будет на одного человека.';
   }
 
   String menu(UserProfile user) {
     return '<b>Меню</b>\n\n'
-        'Сейчас: ${escapeHtml(_phaseLabel(user.funnelPhase))}.\n'
-        'Дальше: гайд, запись на курс или помощь.';
+        'Сейчас: ${escapeHtml(_phaseLabel(user.funnelPhase))}.\n\n'
+        'Дальше — гайд, запись на курс или помощь.';
   }
 
   String help() {
-    return 'Это бот запуска курса.\n'
-        'Гайд — бесплатно. Запись — через оплату. '
-        'Если что-то сломалось с оплатой, напиши сюда — админ увидит.';
+    return '<b>Как это устроено</b>\n\n'
+        'Гайд «Язык цвета» — бесплатно, в этот чат. Запись на поток — через оплату в боте.\n\n'
+        'Если касса зависла или ссылка не открылась, напиши сюда. Сообщение увидит админ.';
   }
 
   String guideReady() {
-    return 'Гайд ушёл. Сразу ниже — первое сообщение прогрева.';
+    return '📘 Лови гайд «Язык цвета» — файл выше.';
   }
 
   String guideAsUrl(String url) {
-    return 'Материал здесь: ${escapeHtml(url)}';
+    return '📘 Гайд «Язык цвета» здесь: ${escapeHtml(url)}';
   }
 
   String guideMissing() {
-    return 'Гайд ещё не загружен. Напиши «Помощь» — админ пришлёт файл.';
+    return '📘 Гайд ещё не загружен. Нажми «${MessageTemplates.buttonHelp}» — '
+        'пришлю, как только файл будет на месте.';
   }
 
-  String warmupStep(String stepKey) {
+  String warmupStep(String stepKey, {Launch? launch}) {
     return switch (stepKey) {
-      'warmup_0' =>
-        '<b>Первое касание после гайда</b>\n\n'
-            'Это заглушка. Здесь будет текст заказчика.\n'
-            'Можно сразу записаться на курс.',
-      'warmup_d1' => '<b>Прогрев, день 1</b>\n\nЗаглушка цепочки. Можно записаться.',
-      'warmup_d3' => '<b>Прогрев, день 3</b>\n\nЗаглушка цепочки. Можно записаться.',
-      _ => '<b>Прогрев</b>\n\nШаг <code>${escapeHtml(stepKey)}</code>. Можно записаться.',
+      'warmup_0' => _warmupZero(launch),
+      'warmup_d1' => _warmupDay1(),
+      'warmup_d3' => _warmupDay3(launch),
+      _ =>
+        '<b>Ещё одно касание</b>\n\n'
+            'Можно записаться на поток, когда будет удобно. Кнопка ниже.',
     };
   }
 
+  String _warmupZero(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null
+        ? 'Можно записаться с кнопки ниже — когда будет удобно.'
+        : 'Поток стартует $start. Можно записаться сейчас или почитать гайд и вернуться — кнопка никуда не денется.';
+    return '<b>Гайд — это алфавит</b>\n\n'
+        '«Язык цвета» помогает увидеть, какие оттенки тебе идут. '
+        'Курс собирает это в систему: база гардероба и цвета, с которыми проще собираться.\n\n'
+        '$startLine';
+  }
+
+  String _warmupDay1() {
+    return '<b>Почему любимый цвет «не идёт»</b>\n\n'
+        'Часто дело не во вкусе, а в подтоне: холодный розовый на тёплой коже выглядит грязновато, '
+        'тёплый беж на холодной — желтит.\n\n'
+        'Гайд это подсвечивает. На курсе разбираем, как собрать базу, которая не спорит с кожей. '
+        'Когда будет момент — кнопка записи ниже.';
+  }
+
+  String _warmupDay3(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final price = _formatPrice(launch?.priceFullKopecks);
+    final deposit = launch != null && launch.hasDepositOption
+        ? formatRubFromKopecks(launch.depositKopecks)
+        : null;
+    final due = _formatDate(launch?.depositDueAt);
+    final buf = StringBuffer()
+      ..writeln(start == null ? '<b>Если идёшь в поток</b>' : '<b>Поток $start</b>')
+      ..writeln();
+    if (price != null) {
+      buf.write('Полная стоимость $price.');
+      if (deposit != null && due != null) {
+        buf.write(' Можно внести предоплату $deposit и закрыть остаток до $due.');
+      }
+      buf.write(' Рассрочка открывается на странице кассы — график ведёт касса, не бот.');
+    } else {
+      buf.write(
+        'Можно закрыть полную сумму, внести предоплату или открыть рассрочку на странице кассы.',
+      );
+    }
+    buf
+      ..writeln()
+      ..writeln()
+      ..write(
+        'В канал потока пускаю после полной суммы или после списания. Записаться — с кнопки ниже.',
+      );
+    return buf.toString();
+  }
+
   String optOutConfirmed() {
-    return 'Ок, продающие сообщения больше не пришлю. '
-        'Меню, гайд и запись остаются. Напоминания про начатую оплату тоже.';
+    return '⏸ Ок, продающие сообщения больше не пришлю.\n\n'
+        'Меню, гайд и запись остаются. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
   }
 
   String enrollOptions(Launch launch) {
@@ -121,35 +195,41 @@ final class MessageTemplates {
         ? formatRubFromKopecks(launch.priceFullKopecks)
         : 'цену уточнит админ';
     final buf = StringBuffer()
-      ..writeln('<b>Запись на курс</b>')
+      ..writeln('<b>Запись на поток</b>')
       ..writeln()
       ..writeln('Стоимость: $price.');
     if (launch.hasDepositOption) {
-      buf.writeln('Предоплата: ${formatRubFromKopecks(launch.depositKopecks)}.');
-      final due = launch.depositDueAt;
+      buf.write('Предоплата: ${formatRubFromKopecks(launch.depositKopecks)}.');
+      final due = _formatDate(launch.depositDueAt);
       if (due != null) {
-        buf.write('Дата доплаты: ${_date.format(due.toUtc())}');
-        final start = launch.courseStartAt;
+        buf.write(' Остаток — до $due');
+        final start = _formatDate(launch.courseStartAt);
         if (start != null) {
-          buf.write(' (старт курса ${_date.format(start.toUtc())})');
+          buf.write(', старт курса $start');
         }
-        buf.writeln('.');
+        buf.write('.');
       }
+      buf.writeln(' В канал пущу после полной суммы.');
     }
-    buf.writeln('Рассрочка — на странице кассы, бот график не ведёт.');
+    buf.writeln(
+      'Рассрочка откроется на странице кассы: график ведёт касса, не бот. '
+      'Доступ — после списания, не после «заявка одобрена».',
+    );
+    buf.writeln();
+    buf.write('Выбери, как удобнее закрыть оплату.');
     return buf.toString().trim();
   }
 
   String offerConsent(Launch launch) {
     final offerPhrase = _offerPhrase(launch);
-    return 'Нажимая кнопку «${MessageTemplates.buttonGoToPay}», вы подтверждаете, '
+    return 'Нажимая «${MessageTemplates.buttonGoToPay}», вы подтверждаете, '
         'что ознакомились и соглашаетесь с условиями $offerPhrase '
-        'на оказание информационно-консультационных/образовательных услуг, '
-        'а также даёте согласие на обработку персональных данных.';
+        'на оказание информационно-консультационных/образовательных услуг '
+        'и даёте согласие на обработку персональных данных.';
   }
 
   String offerNeedBothChecks() {
-    return 'Отметь оба пункта, чтобы перейти к оплате.';
+    return 'Нужны обе галочки, чтобы открыть оплату.';
   }
 
   String _offerPhrase(Launch launch) {
@@ -164,54 +244,57 @@ final class MessageTemplates {
     if (url.isEmpty) {
       return payManualFallback();
     }
-    return 'Ссылка на оплату готова. После успешного платежа статус обновится сам.';
+    return '💳 Ссылка на оплату готова. После успешного платежа статус в боте обновится сам. '
+        'Если это предоплата, в канал пущу после полной суммы.';
   }
 
   String payManualFallback() {
-    return 'Онлайн-касса ещё не подключена или вернула ошибку. '
-        'Напиши админу — отметит оплату вручную.';
+    return '💳 Онлайн-оплата сейчас не открылась. Напиши сюда — админ отметит платёж вручную.';
   }
 
   String paymentSucceeded() {
-    return '<b>Оплата прошла</b>\n\nДальше — одноразовая ссылка в канал этого запуска.';
+    return '<b>Оплата прошла</b>\n\n'
+        'Дальше — одноразовая ссылка в канал этого потока. На одного человека.';
   }
 
   String depositSucceeded(CourseOrder order) {
     final due = order.dueAt == null ? 'по договорённости' : _date.format(order.dueAt!.toLocal());
-    return '<b>Предоплата получена</b>\n\n'
-        'Остаток: ${formatRubFromKopecks(order.amountDueKopecks)} до $due.\n'
-        'В канал пущу после полной суммы. Место никого не держит — лимита нет.';
+    return '<b>Предоплата дошла</b>\n\n'
+        'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due. '
+        'В канал пущу, когда закроется полная сумма. Место никто не бронирует: лимита нет.';
   }
 
   String inviteMessage(String link) {
-    return 'Вот одноразовая ссылка в канал запуска:\n${escapeHtml(link)}\n\n'
-        'На одного человека. Если не открылась — запроси новую, старая отключится.';
+    return '🔗 Одноразовая ссылка в канал потока:\n${escapeHtml(link)}\n\n'
+        'На одного человека. Если не открылась — запроси новую, эта отключится.';
   }
 
   String inviteUnavailable() {
-    return 'Оплата есть, но канал ещё не привязан. Админ выдаст доступ вручную.';
+    return 'Оплата есть, канал ещё не привязан. Напиши сюда — админ выдаст доступ вручную.';
   }
 
   String abandonedFirst() {
-    return 'Оформление началось, оплата не завершилась. Можно продолжить.';
+    return '💳 Оформление началось, оплата пока не закрылась. Можно продолжить с того же места.';
   }
 
   String abandonedSecond() {
-    return 'Напоминаю про незакрытую оплату. Ссылка ещё действует.';
+    return '💳 Напоминаю про незакрытую оплату. Ссылка ещё действует — если поток всё ещё в планах.';
   }
 
   String remainderReminder(CourseOrder order) {
     final due = order.dueAt == null ? 'скоро' : _date.format(order.dueAt!.toLocal());
-    return 'Доплата по курсу: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due.';
+    return '💳 Доплата по курсу: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due. '
+        'После полной суммы открою канал потока.';
   }
 
   String adminMenu() {
-    return '<b>Админка</b>\n\nПоиск человека, карточка, ручной статус, рассылка сегменту. '
-        'Срез воронки и каталог COURSES — кнопка «${MessageTemplates.buttonAdminSheets}».';
+    return '<b>Админка</b>\n\n'
+        'Поиск, карточка, ручной статус, рассылка сегменту. '
+        'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}».';
   }
 
   String adminAskSearch() {
-    return 'Пришли Telegram user id или @username.';
+    return '🔍 Пришли Telegram user id или @username.';
   }
 
   String adminNotFound(String query) {
@@ -256,23 +339,23 @@ final class MessageTemplates {
   }
 
   String adminAskBroadcast() {
-    return 'Пришли текст рассылки. Сегмент: получили гайд и не купили.';
+    return '📣 Пришли текст рассылки. Сегмент: получили гайд и не купили.';
   }
 
   String adminBroadcastDone({required int sent, required int failed, required int total}) {
-    return 'Рассылка: отправлено $sent, ошибок $failed, в сегменте $total.';
+    return '📣 Рассылка: отправлено $sent, ошибок $failed, в сегменте $total.';
   }
 
-  String adminMarkedPaid() => 'Оплата проставлена вручную.';
+  String adminMarkedPaid() => '✅ Оплата проставлена вручную.';
 
-  String adminCancelled() => 'Статус снят, invite отозван если был.';
+  String adminCancelled() => '↩️ Статус снят, invite отозван, если был.';
 
   String adminGuideSaved(String fileId) {
-    return 'Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';
+    return '📘 Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';
   }
 
   String adminGuideConfirm(String fileId) {
-    return 'Сохранить этот файл как гайд запуска?\n'
+    return '💾 Сохранить этот файл как гайд запуска?\n'
         'file_id: <code>${escapeHtml(fileId)}</code>';
   }
 
@@ -282,7 +365,7 @@ final class MessageTemplates {
     return 'Отправить этот текст сегменту «получили гайд и не купили»?';
   }
 
-  String adminInviteReissued() => 'Invite перевыдан.';
+  String adminInviteReissued() => '🔗 Invite перевыдан.';
 
   String adminSheetsUpdated({Launch? launch}) {
     return adminSheetsRefreshResult(
@@ -330,11 +413,11 @@ final class MessageTemplates {
   }
 
   String adminSheetsDisabled() {
-    return 'Google Sheets не подключён. Проверь ключ, id таблицы и GOOGLE_SHEETS_WRITE_ENABLED.';
+    return '📊 Google Sheets не подключён. Проверь ключ, id таблицы и GOOGLE_SHEETS_WRITE_ENABLED.';
   }
 
   String adminSheetsFailed(String error) {
-    return 'Не получилось обновить таблицу: ${escapeHtml(error)}';
+    return '📊 Не получилось обновить таблицу: ${escapeHtml(error)}';
   }
 
   static int? idFromCallback(String data, String prefix) {
@@ -353,13 +436,27 @@ final class MessageTemplates {
   }
 
   String _phaseLabel(FunnelPhase phase) => switch (phase) {
-    FunnelPhase.lead => 'пришёл',
-    FunnelPhase.magnetIssued => 'получил гайд',
-    FunnelPhase.warming => 'в прогреве',
-    FunnelPhase.checkout => 'начал оформление',
-    FunnelPhase.depositPaid => 'предоплата',
+    FunnelPhase.lead => 'только зашёл',
+    FunnelPhase.magnetIssued => 'гайд уже у тебя',
+    FunnelPhase.warming => 'смотришь гайд',
+    FunnelPhase.checkout => 'оформляешь оплату',
+    FunnelPhase.depositPaid => 'есть предоплата',
     FunnelPhase.paid => 'оплачено',
-    FunnelPhase.accessGranted => 'доступ выдан',
-    FunnelPhase.cancelled => 'отменено',
+    FunnelPhase.accessGranted => 'доступ в канал есть',
+    FunnelPhase.cancelled => 'оплата отменена',
   };
+
+  String? _formatDate(DateTime? value) {
+    if (value == null) {
+      return null;
+    }
+    return _date.format(value.toUtc());
+  }
+
+  String? _formatPrice(int? kopecks) {
+    if (kopecks == null || kopecks <= 0) {
+      return null;
+    }
+    return formatRubFromKopecks(kopecks);
+  }
 }

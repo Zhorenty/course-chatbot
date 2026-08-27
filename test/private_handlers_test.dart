@@ -47,13 +47,13 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('Запись на курс')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
 
     harness.sender.messages.clear();
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 8, userId: 8, text: '/start threads_guide'),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('Гайд по колористике')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
   });
 
   test('guide delivery sends PDF and immediate warmup_0', () async {
@@ -62,35 +62,49 @@ void main() {
     );
     await harness.handlers.handle(
       privateCallbackUpdate(
-          callbackId: '1', chatId: 42, userId: 42, data: MessageTemplates.cbGuide),
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
     );
 
     expect(harness.sender.documents, contains('file-guide'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Первое касание')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('алфавит')), isTrue);
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
 
   test('opt-out stops selling drip copy but enroll remains available', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
     );
     await harness.handlers.handle(
       privateCallbackUpdate(
-          callbackId: '1', chatId: 42, userId: 42, data: MessageTemplates.cbGuide),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-          callbackId: '2', chatId: 42, userId: 42, data: MessageTemplates.cbOptOut),
+        callbackId: '2',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbOptOut,
+      ),
     );
 
     expect(harness.course.getUser(42)?.warmupOptOut, isTrue);
     harness.sender.messages.clear();
     await harness.handlers.handle(
       privateCallbackUpdate(
-          callbackId: '3', chatId: 42, userId: 42, data: MessageTemplates.cbEnroll),
+        callbackId: '3',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbEnroll,
+      ),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('Запись на курс')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Запись на поток')), isTrue);
   });
 
   test('group messages are ignored', () async {
@@ -131,9 +145,7 @@ void main() {
     });
     await extra.init(leadMagnetFileId: null, leadMagnetPath: pdf.path);
 
-    await extra.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
-    );
+    await extra.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await extra.handlers.handle(
       privateCallbackUpdate(
         callbackId: '1',
@@ -148,9 +160,7 @@ void main() {
   });
 
   test('enroll shows full price, deposit and 5 October due date', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
-    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
       privateCallbackUpdate(
         callbackId: '1',
@@ -169,9 +179,7 @@ void main() {
   });
 
   test('checkout is blocked until both offer checkboxes are accepted', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
-    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
       privateCallbackUpdate(
         callbackId: '1',
@@ -203,7 +211,7 @@ void main() {
     expect(harness.gateway.creates, 0);
     expect(
       harness.sender.callbackAnswers.any(
-        (answer) => answer.showAlert && (answer.text?.contains('оба пункта') ?? false),
+        (answer) => answer.showAlert && (answer.text?.contains('галочки') ?? false),
       ),
       isTrue,
     );
@@ -235,9 +243,6 @@ void main() {
       ),
     );
     expect(harness.gateway.creates, 1);
-    expect(
-      harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')),
-      isTrue,
-    );
+    expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
   });
 }
