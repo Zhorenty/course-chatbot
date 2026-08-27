@@ -7,18 +7,18 @@ abstract final class GoogleSheetsFunnelDashboard {
   static const String defaultSheetTitle = 'FUNNEL';
   static const int columnCount = 12;
 
-  /// Палитра по гайду «Язык цвета»: тёмный лес + шампань, приглушённые
-  /// дополнительные (терракота / охра / грифель), без спектральных пастелей.
-  static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.10, 0.15, 0.12);
-  static const GoogleSheetsRgb paper = GoogleSheetsRgb(0.97, 0.94, 0.85);
-  static const GoogleSheetsRgb header = GoogleSheetsRgb(0.08, 0.13, 0.11);
-  static const GoogleSheetsRgb headerText = GoogleSheetsRgb(0.96, 0.93, 0.78);
-  static const GoogleSheetsRgb muted = GoogleSheetsRgb(0.45, 0.40, 0.34);
-  static const GoogleSheetsRgb kpiA = GoogleSheetsRgb(0.94, 0.85, 0.81);
-  static const GoogleSheetsRgb kpiB = GoogleSheetsRgb(0.94, 0.88, 0.70);
-  static const GoogleSheetsRgb kpiC = GoogleSheetsRgb(0.82, 0.88, 0.90);
-  static const GoogleSheetsRgb section = GoogleSheetsRgb(0.48, 0.31, 0.26);
-  static const GoogleSheetsRgb tableHead = GoogleSheetsRgb(0.89, 0.82, 0.66);
+  /// Одна тёплая гамма: лес → шалфей → слоновая кость, акцент пыльная роза.
+  /// Без холодного синего и терракоты — они ломали соседство с зеленью.
+  static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.14, 0.20, 0.17);
+  static const GoogleSheetsRgb paper = GoogleSheetsRgb(0.96, 0.95, 0.93);
+  static const GoogleSheetsRgb header = GoogleSheetsRgb(0.18, 0.27, 0.23);
+  static const GoogleSheetsRgb headerText = GoogleSheetsRgb(0.96, 0.94, 0.89);
+  static const GoogleSheetsRgb muted = GoogleSheetsRgb(0.42, 0.45, 0.42);
+  static const GoogleSheetsRgb kpiA = GoogleSheetsRgb(0.89, 0.93, 0.90);
+  static const GoogleSheetsRgb kpiB = GoogleSheetsRgb(0.95, 0.91, 0.85);
+  static const GoogleSheetsRgb kpiC = GoogleSheetsRgb(0.93, 0.89, 0.88);
+  static const GoogleSheetsRgb section = GoogleSheetsRgb(0.29, 0.39, 0.35);
+  static const GoogleSheetsRgb tableHead = GoogleSheetsRgb(0.85, 0.89, 0.85);
 
   static final DateFormat _stamp = DateFormat('dd.MM.yyyy HH:mm');
 

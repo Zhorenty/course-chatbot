@@ -254,7 +254,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
               properties: SheetProperties(
                 title: title,
                 gridProperties: GridProperties(hideGridlines: true, frozenRowCount: 1),
-                tabColor: Color(red: 0.08, green: 0.13, blue: 0.11),
+                tabColor: Color(red: 0.18, green: 0.27, blue: 0.23),
               ),
             ),
           ),
@@ -462,9 +462,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     final outer = Border(
       style: 'SOLID_MEDIUM',
       width: 2,
-      color: Color(red: 0.50, green: 0.39, blue: 0.32),
+      color: Color(red: 0.48, green: 0.54, blue: 0.50),
     );
-    final grid = Border(style: 'SOLID', width: 1, color: Color(red: 0.78, green: 0.72, blue: 0.58));
+    final grid = Border(style: 'SOLID', width: 1, color: Color(red: 0.79, green: 0.83, blue: 0.80));
     return Request(
       updateBorders: UpdateBordersRequest(
         range: range,
@@ -493,9 +493,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                   endColumnIndex: table.endColumnExclusive,
                 ),
                 rowProperties: BandingProperties(
-                  headerColor: Color(red: 0.89, green: 0.82, blue: 0.66),
-                  firstBandColor: Color(red: 0.99, green: 0.97, blue: 0.90),
-                  secondBandColor: Color(red: 0.94, green: 0.89, blue: 0.76),
+                  headerColor: Color(red: 0.85, green: 0.89, blue: 0.85),
+                  firstBandColor: Color(red: 0.98, green: 0.97, blue: 0.95),
+                  secondBandColor: Color(red: 0.92, green: 0.94, blue: 0.91),
                 ),
               ),
             ),
@@ -604,7 +604,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     final spec = ChartSpec(
       title: chart.title,
       titleTextFormat: TextFormat(bold: true, fontSize: 12),
-      backgroundColorStyle: ColorStyle(rgbColor: Color(red: 0.97, green: 0.94, blue: 0.85)),
+      backgroundColorStyle: ColorStyle(rgbColor: Color(red: 0.96, green: 0.95, blue: 0.93)),
       basicChart: chart.kind == GoogleSheetsChartKind.pie
           ? null
           : BasicChartSpec(
@@ -664,9 +664,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
 
   Color _seriesColor(int index) {
     final colors = <Color>[
-      Color(red: 0.44, green: 0.53, blue: 0.33),
-      Color(red: 0.78, green: 0.36, blue: 0.24),
-      Color(red: 0.36, green: 0.51, blue: 0.58),
+      Color(red: 0.43, green: 0.55, blue: 0.48),
+      Color(red: 0.77, green: 0.66, blue: 0.51),
+      Color(red: 0.69, green: 0.54, blue: 0.52),
     ];
     return colors[index % colors.length];
   }
