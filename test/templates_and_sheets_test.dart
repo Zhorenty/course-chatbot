@@ -106,6 +106,13 @@ void main() {
     expect(text, contains('или @username'));
   });
 
+  test('admin add prompt asks for numeric id or a forwarded message', () {
+    final text = MessageTemplates().adminAskAddUser();
+    expect(text, contains('<b>Добавить на курс</b>'));
+    expect(text, contains('id'));
+    expect(text, contains('переслать'));
+  });
+
   test('admin sheets refresh result is a structured card', () {
     final launch = Launch(
       id: 1,

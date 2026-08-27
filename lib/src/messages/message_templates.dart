@@ -37,14 +37,16 @@ final class MessageTemplates {
   static const String buttonAcceptOffer = 'Принимаю условия Публичной оферты';
   static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
+  static const String buttonAdminAddUser = '➕ Добавить на курс';
   static const String buttonAdminBroadcast = '📣 Рассылка';
   static const String buttonAdminLinks = '🔗 Диплинки';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminMenu = '🛠 Админка';
   static const String buttonAdminMarkPaid = '✅ Отметить оплаченным';
   static const String buttonAdminMarkDeposit = '💵 Предоплата';
-  static const String buttonAdminCancel = '↩️ Отмена / возврат';
+  static const String buttonAdminCancel = '🚫 Убрать с курса';
   static const String buttonAdminReinvite = '🔗 Новый invite';
+  static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
   static const String buttonAdminBroadcastOtherSegment = 'Другой сегмент';
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
@@ -68,6 +70,7 @@ final class MessageTemplates {
   static const String cbAdminDeposit = 'ad:';
   static const String cbAdminCancel = 'ac:';
   static const String cbAdminInvite = 'ai:';
+  static const String cbAdminCreate = 'an:';
   static const String cbBroadcastSegment = 'bs:';
   static const String cbBroadcastSend = 'bp';
   static const String cbBroadcastOtherSegment = 'br';
@@ -340,18 +343,35 @@ final class MessageTemplates {
 
   String adminMenu() {
     return '<b>Админка</b>\n\n'
-        'Поиск, карточка, ручной статус, рассылка сегменту. '
+        'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
         'Диплинки — «${MessageTemplates.buttonAdminLinks}». '
         'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}».';
   }
 
   String adminAskSearch() {
     return '<b>Поиск человека</b>\n\n'
-        'Пришли сообщением id — цифры, как в карточке, или @username — ник в Telegram';
+        'Пришли сообщением id — цифры, как в карточке, или @username — ник в Telegram. '
+        'Можно переслать сюда его сообщение — подставлю id сам.';
   }
 
-  String adminNotFound(String query) {
-    return 'Никого не нашёл по «${escapeHtml(query)}».';
+  String adminAskAddUser() {
+    return '<b>Добавить на курс</b>\n\n'
+        'Пришли числовой Telegram id человека (как в @userinfobot). '
+        'Можно переслать сюда его сообщение — подставлю id сам.\n\n'
+        'Карточку создам, если её ещё нет. Дальше из карточки: оплата, invite или убрать с курса.';
+  }
+
+  String adminNeedNumericId() {
+    return 'Нужен числовой Telegram id или пересланное сообщение. '
+        'По нику без карточки id не подставлю.';
+  }
+
+  String adminNotFound(String query, {bool canCreate = false}) {
+    final buf = StringBuffer('Никого не нашёл по «${escapeHtml(query)}».');
+    if (canCreate) {
+      buf.write('\n\nЕсли это Telegram id — создай карточку кнопкой ниже.');
+    }
+    return buf.toString();
   }
 
   String adminCard({
@@ -455,7 +475,8 @@ final class MessageTemplates {
 
   String adminMarkedPaid() => '✅ Оплата проставлена вручную.';
 
-  String adminCancelled() => '↩️ Статус снят, invite отозван, если был.';
+  String adminCancelled() =>
+      '🚫 Убрал с курса. Статус снят, invite отозван, из канала выкинул, если был.';
 
   String adminGuideSaved(String fileId) {
     return '📘 Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';

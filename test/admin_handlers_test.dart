@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
+import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -62,6 +63,7 @@ void main() {
     expect(withKeyboard.text, isNot(contains('Гайд по колористике')));
     final texts = _replyButtonTexts(withKeyboard.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonAdminSearch));
+    expect(texts, contains(MessageTemplates.buttonAdminAddUser));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
     expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
@@ -154,6 +156,127 @@ void main() {
     expect(ids, contains(10));
     expect(ids, isNot(contains(11)));
     expect(ids, isNot(contains(12)));
+  });
+
+  test('admin can add a person by Telegram id and later /start keeps admin source', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '50'));
+
+    final created = harness.course.getUser(50);
+    expect(created, isNotNull);
+    expect(created!.source, AcquisitionSource.adminManual);
+    expect(created.funnelPhase, FunnelPhase.lead);
+    expect(harness.sender.messages.any((m) => m.text.contains('Карточка')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('id <code>50</code>')), isTrue);
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 50, userId: 50, text: '/start ig_reels_guide', username: 'anna'),
+    );
+    expect(harness.course.getUser(50)?.source, AcquisitionSource.adminManual);
+  });
+
+  test('admin add of an existing person opens the card and does not overwrite source', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '99'));
+
+    expect(harness.course.getUser(99)?.source, 'ig_reels_guide');
+    expect(harness.sender.messages.last.text, contains('Карточка'));
+  });
+
+  test('search miss on a numeric id offers to create a card', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '50'));
+
+    final notFound = harness.sender.messages.last;
+    expect(notFound.text, contains('Никого не нашёл'));
+    expect(notFound.text, contains('создай карточку'));
+    expect(notFound.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCreate}50'));
+    expect(harness.course.getUser(50), isNull);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'create',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCreate}50',
+      ),
+    );
+    expect(harness.course.getUser(50)?.source, AcquisitionSource.adminManual);
+    expect(harness.sender.messages.last.text, contains('Карточка'));
+  });
+
+  test('admin add from a forwarded message creates the card with username', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(
+        chatId: 1,
+        userId: 1,
+        text: 'переслала',
+        forwardFrom: <String, dynamic>{'id': 50, 'username': 'anna', 'first_name': 'Анна'},
+      ),
+    );
+    final created = harness.course.getUser(50);
+    expect(created?.username, 'anna');
+    expect(created?.firstName, 'Анна');
+    expect(created?.source, AcquisitionSource.adminManual);
+  });
+
+  test('admin can remove a person from the course without an order', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '50'));
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rm',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancel}50',
+      ),
+    );
+    expect(harness.course.getUser(50)?.funnelPhase, FunnelPhase.cancelled);
+    expect(harness.channel.banned, contains(50));
+    expect(harness.sender.messages.any((m) => m.text.contains('Убрал с курса')), isTrue);
+  });
+
+  test('admin remove after paid revokes invite and kicks from the channel', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'p',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminPaid}99',
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
+    expect(harness.channel.created, isNotEmpty);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rm',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancel}99',
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, FunnelPhase.cancelled);
+    expect(harness.course.latestOrder(99)?.status, OrderStatus.cancelled);
+    expect(harness.channel.revoked, isNotEmpty);
+    expect(harness.channel.banned, contains(99));
   });
 }
 

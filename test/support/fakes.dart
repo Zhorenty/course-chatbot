@@ -324,8 +324,12 @@ final class FakeChannelApi implements ChannelApi {
     revoked.add(inviteLink);
   }
 
+  final List<int> banned = <int>[];
+
   @override
-  Future<void> banChatMember(int chatId, {required int userId, bool revokeMessages = true}) async {}
+  Future<void> banChatMember(int chatId, {required int userId, bool revokeMessages = true}) async {
+    banned.add(userId);
+  }
 
   @override
   Future<void> unbanChatMember(int chatId, {required int userId, bool onlyIfBanned = true}) async {}
@@ -558,6 +562,7 @@ Map<String, dynamic> privateMessageUpdate({
   required String text,
   String? username,
   int messageId = 10,
+  Map<String, dynamic>? forwardFrom,
 }) {
   return <String, dynamic>{
     'update_id': 1,
@@ -570,6 +575,7 @@ Map<String, dynamic> privateMessageUpdate({
         'first_name': 'Test',
       },
       'text': text,
+      if (forwardFrom != null) 'forward_from': forwardFrom,
     },
   };
 }

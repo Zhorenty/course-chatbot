@@ -205,6 +205,15 @@ void main() {
     expect(harness.channel.revoked, isNotEmpty);
   });
 
+  test('cancelEnrollment without an order still marks cancelled and revokes access', () async {
+    harness.course.ensureUser(userId: 7, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    await harness.checkout.cancelEnrollment(userId: 7, launch: launch);
+    expect(harness.course.getUser(7)?.funnelPhase, FunnelPhase.cancelled);
+    expect(harness.course.latestOrder(7), isNull);
+    expect(harness.channel.banned, contains(7));
+  });
+
   test('gateway failure cancels the pending payment instead of leaving it open', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;

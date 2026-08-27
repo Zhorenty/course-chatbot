@@ -418,4 +418,15 @@ final class CheckoutService {
     _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.cancelled);
     await _access.revoke(userId: order.userId, launch: launch);
   }
+
+  /// Drops the person off this launch: cancel the order if any, revoke invite, kick.
+  Future<void> cancelEnrollment({required int userId, required Launch launch}) async {
+    final order = _course.latestOrder(userId);
+    if (order != null) {
+      await cancel(order: order, launch: launch);
+      return;
+    }
+    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.cancelled);
+    await _access.revoke(userId: userId, launch: launch);
+  }
 }

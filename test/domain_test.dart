@@ -21,6 +21,7 @@ void main() {
     expect(AcquisitionSource.opensCourseCard('direct_course'), isTrue);
     expect(AcquisitionSource.opensCourseCard('ig_reels_guide'), isFalse);
     expect(AcquisitionSource.normalize('bad payload!'), isNull);
+    expect(AcquisitionSource.normalize(AcquisitionSource.adminManual), 'admin');
   });
 
   test('sheet extras open course only when destination is курс', () {

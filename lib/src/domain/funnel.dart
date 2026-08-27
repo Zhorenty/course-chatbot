@@ -84,6 +84,9 @@ final class AcquisitionSource {
 
   static const Set<String> coursePayloads = <String>{'tg_announce', 'direct_course'};
 
+  /// Attribution when an admin creates the person card by Telegram id.
+  static const String adminManual = 'admin';
+
   static String? normalize(String? raw) {
     final trimmed = raw?.trim().toLowerCase();
     if (trimmed == null || trimmed.isEmpty) {

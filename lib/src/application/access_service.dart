@@ -64,14 +64,17 @@ final class AccessService {
   Future<void> revoke({required int userId, required Launch launch}) async {
     final channelId = launch.channelId;
     final existing = _course.accessFor(userId: userId, launchId: launch.id);
-    if (existing?.inviteLink != null && channelId != null) {
-      try {
-        await _telegram.revokeChatInviteLink(chatId: channelId, inviteLink: existing!.inviteLink!);
-      } on TelegramApiException catch (error, stackTrace) {
-        l.w('Failed to revoke invite for user $userId: $error', stackTrace);
-      }
-    }
     if (channelId != null) {
+      if (existing?.inviteLink != null) {
+        try {
+          await _telegram.revokeChatInviteLink(
+            chatId: channelId,
+            inviteLink: existing!.inviteLink!,
+          );
+        } on TelegramApiException catch (error, stackTrace) {
+          l.w('Failed to revoke invite for user $userId: $error', stackTrace);
+        }
+      }
       try {
         await _telegram.banChatMember(channelId, userId: userId);
         await _telegram.unbanChatMember(channelId, userId: userId);
@@ -79,13 +82,16 @@ final class AccessService {
         l.w('Failed to kick user $userId from channel: $error', stackTrace);
       }
     }
+    if (existing == null) {
+      return;
+    }
     _course.upsertAccess(
       userId: userId,
       launchId: launch.id,
-      orderId: existing?.orderId ?? 0,
-      inviteLink: existing?.inviteLink,
-      inviteCreatedAt: existing?.inviteCreatedAt,
-      joinedAt: existing?.joinedAt,
+      orderId: existing.orderId,
+      inviteLink: existing.inviteLink,
+      inviteCreatedAt: existing.inviteCreatedAt,
+      joinedAt: existing.joinedAt,
       revokedAt: _nowProvider(),
     );
   }

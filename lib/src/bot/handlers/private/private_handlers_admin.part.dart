@@ -17,6 +17,14 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
+    if (text == MessageTemplates.buttonAdminAddUser) {
+      _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminAddUser);
+      return _send(
+        context,
+        _templates.adminAskAddUser(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
     if (text == MessageTemplates.buttonAdminBroadcast) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
       return _showBroadcastPicker(context);
@@ -43,8 +51,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.guideConfirmKeyboard(),
       );
     }
-    if (flow?.step == PrivateFlowStep.adminSearch && text != null) {
-      return _showAdminCard(context, text);
+    if (flow?.step == PrivateFlowStep.adminSearch || flow?.step == PrivateFlowStep.adminAddUser) {
+      return _handleAdminPersonLookup(
+        context,
+        createIfMissing: flow?.step == PrivateFlowStep.adminAddUser,
+      );
     }
     return false;
   }
@@ -118,16 +129,97 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     );
   }
 
+  Future<bool> _handleAdminPersonLookup(
+    PrivateMessageContext context, {
+    required bool createIfMissing,
+  }) async {
+    final forwarded = extractForwardedUser(context.message);
+    if (forwarded != null) {
+      if (createIfMissing) {
+        return _adminEnsureAndShowCard(
+          context,
+          forwarded.userId,
+          username: forwarded.username,
+          firstName: forwarded.firstName,
+        );
+      }
+      final existing = _course.getUser(forwarded.userId);
+      if (existing != null) {
+        return _presentAdminCard(context, existing);
+      }
+      return _send(
+        context,
+        _templates.adminNotFound('${forwarded.userId}', canCreate: true),
+        replyMarkup: _templates.adminCreateUserKeyboard(forwarded.userId),
+      );
+    }
+    final query = context.text;
+    if (query == null || query.isEmpty) {
+      return _send(
+        context,
+        _templates.adminNeedNumericId(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
+    if (createIfMissing) {
+      final asId = parseTelegramUserId(query);
+      if (asId != null) {
+        return _adminEnsureAndShowCard(context, asId);
+      }
+      final matches = _course.searchUsers(query);
+      if (matches.isNotEmpty) {
+        return _presentAdminCard(context, matches.first);
+      }
+      return _send(
+        context,
+        _templates.adminNeedNumericId(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
+    return _showAdminCard(context, query);
+  }
+
+  Future<bool> _adminEnsureAndShowCard(
+    PrivateMessageContext context,
+    int targetUserId, {
+    String? username,
+    String? firstName,
+  }) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId <= 0) {
+      return false;
+    }
+    var user = _course.getUser(targetUserId);
+    user ??= _course.ensureUser(
+      userId: targetUserId,
+      username: username,
+      firstName: firstName,
+      source: AcquisitionSource.adminManual,
+      now: _nowProvider(),
+    );
+    return _presentAdminCard(context, user);
+  }
+
   Future<bool> _showAdminCard(PrivateMessageContext context, String query) async {
     final matches = _course.searchUsers(query);
     if (matches.isEmpty) {
+      final asId = parseTelegramUserId(query);
+      if (asId != null) {
+        return _send(
+          context,
+          _templates.adminNotFound(query, canCreate: true),
+          replyMarkup: _templates.adminCreateUserKeyboard(asId),
+        );
+      }
       return _send(
         context,
         _templates.adminNotFound(query),
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
-    final user = matches.first;
+    return _presentAdminCard(context, matches.first);
+  }
+
+  Future<bool> _presentAdminCard(PrivateMessageContext context, UserProfile user) async {
     final launch = _launch;
     final order = _course.latestOrder(user.userId);
     final access = launch == null
@@ -167,20 +259,29 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       amountKopecks: amount <= 0 ? launch.priceFullKopecks : amount,
     );
     await _notifyPaymentResult(result);
-    return _send(context, _templates.adminMarkedPaid());
+    await _send(context, _templates.adminMarkedPaid());
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
+      return true;
+    }
+    return _presentAdminCard(context, user);
   }
 
   Future<bool> _adminCancel(PrivateMessageContext context, int? targetUserId) async {
     if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
       return false;
     }
-    final launch = _launch;
-    final order = _course.latestOrder(targetUserId);
-    if (launch == null || order == null) {
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
       return _send(context, _templates.adminNotFound('$targetUserId'));
     }
-    await _checkout.cancel(order: order, launch: launch);
-    return _send(context, _templates.adminCancelled());
+    final launch = _launch;
+    if (launch == null) {
+      return _send(context, _templates.payManualFallback());
+    }
+    await _checkout.cancelEnrollment(userId: targetUserId, launch: launch);
+    await _send(context, _templates.adminCancelled());
+    return _presentAdminCard(context, _course.getUser(targetUserId)!);
   }
 
   Future<bool> _adminReinvite(PrivateMessageContext context, int? targetUserId) async {
@@ -206,10 +307,15 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.accessKeyboard(),
       );
     }
-    return _send(
+    await _send(
       context,
       link == null ? _templates.inviteUnavailable() : _templates.adminInviteReissued(),
     );
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
+      return true;
+    }
+    return _presentAdminCard(context, user);
   }
 
   bool _isBroadcastStep(PrivateFlowStep? step) {

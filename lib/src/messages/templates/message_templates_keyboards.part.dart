@@ -18,6 +18,9 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return replyKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminSearch},
+        <String, String>{'text': MessageTemplates.buttonAdminAddUser},
+      ],
+      <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
       <Map<String, String>>[
@@ -185,12 +188,25 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
       <Map<String, String>>[
         <String, String>{
+          'text': MessageTemplates.buttonAdminReinvite,
+          'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
           'text': MessageTemplates.buttonAdminCancel,
           'callback_data': '${MessageTemplates.cbAdminCancel}$userId',
         },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCreateUserKeyboard(int userId) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
         <String, String>{
-          'text': MessageTemplates.buttonAdminReinvite,
-          'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
+          'text': MessageTemplates.buttonAdminCreateUser,
+          'callback_data': '${MessageTemplates.cbAdminCreate}$userId',
         },
       ],
     ]);

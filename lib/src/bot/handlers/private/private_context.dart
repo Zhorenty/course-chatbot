@@ -72,6 +72,17 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
   return null;
 }
 
+int? parseTelegramUserId(String? raw) {
+  if (raw == null) {
+    return null;
+  }
+  final id = int.tryParse(raw.trim());
+  if (id == null || id <= 0) {
+    return null;
+  }
+  return id;
+}
+
 int? asTelegramInt(Object? value) => _asInt(value);
 
 int? _asInt(Object? value) {
@@ -94,6 +105,50 @@ String? _trimmedMessageText(Map<String, dynamic> message) {
     return null;
   }
   return text;
+}
+
+/// Telegram user from a forwarded message, if privacy settings expose them.
+ForwardedTelegramUser? extractForwardedUser(Map<String, dynamic>? message) {
+  if (message == null) {
+    return null;
+  }
+  final fromForward = _forwardedUserFromMap(message['forward_from']);
+  if (fromForward != null) {
+    return fromForward;
+  }
+  final origin = message['forward_origin'];
+  if (origin is! Map) {
+    return null;
+  }
+  if (origin['type']?.toString() != 'user') {
+    return null;
+  }
+  return _forwardedUserFromMap(origin['sender_user']);
+}
+
+ForwardedTelegramUser? _forwardedUserFromMap(Object? raw) {
+  if (raw is! Map) {
+    return null;
+  }
+  final userId = asTelegramInt(raw['id']);
+  if (userId == null || userId <= 0) {
+    return null;
+  }
+  final username = raw['username']?.toString().trim();
+  final firstName = raw['first_name']?.toString().trim();
+  return ForwardedTelegramUser(
+    userId: userId,
+    username: (username == null || username.isEmpty) ? null : username,
+    firstName: (firstName == null || firstName.isEmpty) ? null : firstName,
+  );
+}
+
+final class ForwardedTelegramUser {
+  const ForwardedTelegramUser({required this.userId, this.username, this.firstName});
+
+  final int userId;
+  final String? username;
+  final String? firstName;
 }
 
 String? extractDocumentFileId(Map<String, dynamic>? message) {

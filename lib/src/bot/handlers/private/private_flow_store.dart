@@ -7,6 +7,7 @@ enum PrivateFlowStep {
   idle,
   offerConsent,
   adminSearch,
+  adminAddUser,
   adminBroadcastSegment,
   adminBroadcastCompose,
   adminGuideConfirm,

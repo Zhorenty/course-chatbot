@@ -158,6 +158,13 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       }
       return _showAdminCard(context, '$targetId');
     }
+    if (data.startsWith(MessageTemplates.cbAdminCreate)) {
+      final targetId = MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCreate);
+      if (targetId == null) {
+        return false;
+      }
+      return _adminEnsureAndShowCard(context, targetId);
+    }
     return false;
   }
 

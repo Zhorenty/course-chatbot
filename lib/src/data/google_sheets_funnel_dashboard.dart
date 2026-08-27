@@ -520,6 +520,7 @@ final class _FunnelSheetBuilder {
     'direct_course' => 'прямая ссылка',
     'ig_stories_guide' => 'Stories',
     'email_guide' => 'рассылка',
+    AcquisitionSource.adminManual => 'админ',
     'unknown' => 'без метки',
     _ => raw,
   };
