@@ -1,15 +1,33 @@
+import 'dart:ffi';
 import 'dart:io';
 
+import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
+
+bool _linuxSqliteOverrideApplied = false;
+
+/// Ubuntu runtime images ship `libsqlite3.so.0`, while `package:sqlite3`
+/// dlopens `libsqlite3.so` (the unversioned symlink from `-dev`).
+void _ensureSqliteNativeLibrary() {
+  if (_linuxSqliteOverrideApplied || !Platform.isLinux) {
+    return;
+  }
+  _linuxSqliteOverrideApplied = true;
+  open.overrideFor(OperatingSystem.linux, () {
+    try {
+      return DynamicLibrary.open('libsqlite3.so');
+    } on ArgumentError {
+      return DynamicLibrary.open('libsqlite3.so.0');
+    }
+  });
+}
 
 /// Shared SQLite connection for funnel/order/payment repositories.
 final class SqliteDatabaseHandle {
   SqliteDatabaseHandle._(this._db, {required this.path, required this.ownsConnection});
 
-  factory SqliteDatabaseHandle.open(
-    String path, {
-    int busyTimeoutMs = 5000,
-  }) {
+  factory SqliteDatabaseHandle.open(String path, {int busyTimeoutMs = 5000}) {
+    _ensureSqliteNativeLibrary();
     final file = File(path);
     file.parent.createSync(recursive: true);
     final db = sqlite3.open(path);
@@ -23,10 +41,7 @@ final class SqliteDatabaseHandle {
     return SqliteDatabaseHandle._(db, path: path, ownsConnection: true);
   }
 
-  factory SqliteDatabaseHandle.fromDatabase(
-    Database db, {
-    required String path,
-  }) {
+  factory SqliteDatabaseHandle.fromDatabase(Database db, {required String path}) {
     return SqliteDatabaseHandle._(db, path: path, ownsConnection: false);
   }
 

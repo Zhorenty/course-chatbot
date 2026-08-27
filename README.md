@@ -31,9 +31,12 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-На сервере после `git push`: `./scripts/deploy.sh` (с Mac: `ssh course-bot 'cd /opt/course-chatbot && ./scripts/deploy.sh'`). Подробнее: [`docs/DEPLOY.md`](docs/DEPLOY.md) → раздел 10.
-
 SQLite живёт в `./data`. Бэкап — периодический `VACUUM INTO` в `data/backups/` и копия файла `data/course.sqlite` (и `-wal`/`-shm`, если есть).
+
+Прод: SmartApe, `/opt/course-chatbot`. Подробнее: [`docs/DEPLOY.md`](docs/DEPLOY.md) → раздел 10.
+
+- Обычный апдейт на сервере: `bash scripts/update_and_logs.sh` (`git pull` + сборка с кэшем Docker).
+- Полный деплой (новые пакеты, Dockerfile, `.env`, воронка Sheets): с Mac после commit + push — `./scripts/full_deploy.sh`. На VPS — `bash scripts/full_deploy.sh` (сборка **без кэша**, recreate контейнера).
 
 ## Касса
 

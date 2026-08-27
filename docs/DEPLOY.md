@@ -391,6 +391,18 @@ docker compose up -d --force-recreate
 
 Один инстанс. Второй контейнер с тем же токеном даст 409 на `getUpdates`.
 
+Если `docker compose ps` показывает `Restarting` / `exited with code 1`:
+
+```bash
+docker compose logs --tail=80
+```
+
+| В логе | Что делать |
+| --- | --- |
+| `Failed to load dynamic library 'libsqlite3.so'` | Образ без symlink на `libsqlite3.so.0`. Пересобрать текущим Dockerfile: `docker compose up -d --build` |
+| `ADMIN_USER_IDS is required` / `Missing bot token` / `PAYMENT_WEBHOOK_SECRET` | Это **code 2**. Дописать `.env` и `docker compose up -d --force-recreate` |
+| `Polling conflict (409)` | Второй процесс с тем же токеном (локальный `make bot`, старый контейнер). Оставить один инстанс |
+
 ---
 
 
@@ -432,36 +444,37 @@ curl -fsS https://pay.example.ru/health
 
 ## 10. Обновление кода
 
-После `git push` с Mac:
+| Скрипт | Когда |
+| --- | --- |
+| `scripts/restart_bot.sh` | Процесс завис, код не менялся |
+| `scripts/update_and_logs.sh` | Обычный патч: текст, хендлер, шаблон. На сервере: `git pull` + сборка **с кэшем Docker** |
+| `scripts/full_deploy.sh` | Новые пакеты (`pubspec.yaml`), Dockerfile/compose, `.env`, ключ Sheets, или кэш оставил старый бинарник |
 
-```bash
-ssh course-bot 'cd /opt/course-chatbot && ./scripts/deploy.sh'
-```
-
-Или на самом сервере:
-
-```bash
-cd /opt/course-chatbot
-./scripts/deploy.sh
-```
-
-Скрипт делает `git fetch` + `git reset --hard` на `origin` текущей ветки, пересобирает образ и поднимает контейнер. Локальные правки отслеживаемых файлов (например `Dockerfile`) сбрасываются. `.env`, `data/` и `secrets/` не трогает. Ждёт `GET /health` на `127.0.0.1:8080`.
-
-Если скрипта ещё нет и `git pull` ругается на local changes:
+Обычный апдейт на сервере:
 
 ```bash
 cd /opt/course-chatbot
-git fetch origin
-git reset --hard origin/main
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh
+bash scripts/update_and_logs.sh
 ```
 
-Если менялись зависимости / Dockerfile — без кэша:
+Полный деплой с Mac (после commit + push):
 
 ```bash
-NO_CACHE=1 ./scripts/deploy.sh
+./scripts/full_deploy.sh
 ```
+
+Скрипт проверит, что рабочее дерево чистое и origin совпадает с HEAD, затем по SSH (`course-bot` из `~/.ssh/config`): `git pull`, сборка без кэша, recreate контейнера, логи.
+
+Другой хост: `COURSE_SSH=root@IP ./scripts/full_deploy.sh`.
+
+Уже в SSH на VPS:
+
+```bash
+cd /opt/course-chatbot
+bash scripts/full_deploy.sh
+```
+
+Первый запуск нового скрипта: сначала push, на сервере один раз `git pull`, дальше можно вызывать с Mac.
 
 SQLite живёт в `/opt/course-chatbot/data/` — `git pull` её не затирает. Бэкапы: `data/backups/` (`VACUUM INTO`, по умолчанию 7 копий).
 

@@ -17,6 +17,9 @@ COPY --from=build /app/assets /app/assets
 
 RUN apt-get update -y \
  && apt-get install -y --no-install-recommends ca-certificates curl libsqlite3-0 \
+ && so="$(find /usr/lib -name 'libsqlite3.so.0' | head -n1)" \
+ && test -n "$so" \
+ && ln -sf "$so" "$(dirname "$so")/libsqlite3.so" \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
