@@ -22,7 +22,7 @@
 | Возврат | Вручную: пишут админу, админ снимает статус / invite. Бот не ходит в кассу за refund |
 | Второй продукт | После первого запуска, ориентир **ноябрь**. В схеме сразу `product_id` |
 | Copy | Все тексты и цепочки готовит заказчик. Не брать `docs/VOICE.md` клуба. UX: факт → статус → один шаг |
-| Аналитика | Срез воронки в Google Sheets **в MVP**, как лист `FUNNEL` у DVOR (см. [`funnel-example.png`](funnel-example.png)) |
+| Аналитика | Срез воронки в Google Sheets **в MVP**, как лист `FUNNEL` у DVOR (см. [`funnel-example.png`](funnel-example.png)); вкладка называется **`ВОРОНКА`** |
 | Чьё после сдачи | Токен, канал, таблица, SQLite, VPS — заказчица. Касса — её кабинет |
 | Оплата работ | Два транша 40 + 40 тыс., пауза неделя. На разработку не влияет, кроме «спайк после доступов LeadPay» |
 
@@ -32,7 +32,7 @@ Telegram Payments (`sendInvoice`) **не** берём: рассрочка кас
 
 ## 1. Что такое DVOR-бот одним абзацем
 
-Dart CLI-приложение: long polling Telegram Bot API, SQLite как источник правды, фоновые джобы, админка в личке. Пользователь записывается на событие → получает реквизиты/ссылку → присылает чек → админ подтверждает. Параллельно онбординг с drip и атрибуцией (`/start book`, `/start start`, `/start ref_123`). Срез воронки бот пишет в Google Sheets (`FUNNEL`).
+Dart CLI-приложение: long polling Telegram Bot API, SQLite как источник правды, фоновые джобы, админка в личке. Пользователь записывается на событие → получает реквизиты/ссылку → присылает чек → админ подтверждает. Параллельно онбординг с drip и атрибуцией (`/start book`, `/start start`, `/start ref_123`). Срез воронки бот пишет в Google Sheets (`ВОРОНКА`).
 
 Оплата в DVOR **не** эквайринг. У курса — онлайн-касса с автостатусом; ручной override как **fallback**, не как основной путь.
 
@@ -47,7 +47,7 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 | Хранение | SQLite + WAL + транзакции | Один файл, бэкап копированием. Capacity-check на места **не** нужен |
 | Конфиг | CLI → env → `.env` → defaults | В `.env` только секреты и id; тихие часы — в `AppConfig`; цены/даты запуска — вкладка `COURSES` (`gid=0`) |
 | Деплой | Docker Compose, volume `./data`, secrets read-only | Тот же Timeweb-контур |
-| Sheets | `googleapis` + service account | Каталог `COURSES` (`gid=0`, правят руками) + срез `FUNNEL` в MVP |
+| Sheets | `googleapis` + service account | Каталог `COURSES` (`gid=0`, правят руками) + срез `ВОРОНКА` в MVP |
 | Качество | `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` | Перед сдачей |
 
 Зависимости-ориентир: `http`, `sqlite3`, `args`, `intl`, `l`, `googleapis` / `googleapis_auth`. Касса — отдельный клиент за интерфейсом `PaymentGateway`, чтобы сменить LeadPay → ЮKassa без перепила хендлеров.
@@ -83,7 +83,7 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 | `lib/src/bot/handlers/private/admin_gate.dart` | `ADMIN_USER_IDS` | Как есть |
 | `lib/src/messages/html_escaper.dart` | Escape | Как есть |
 | `lib/src/messages/message_templates.dart` | Copy и клавиатуры | Каркас; тексты подставляет заказчик |
-| `lib/src/data/google_sheets_funnel_dashboard.dart` | Вёрстка листа `FUNNEL` | Клон раскладки, другие KPI/шаги (гайд → прогрев → оплата) |
+| `lib/src/data/google_sheets_funnel_dashboard.dart` | Вёрстка листа `ВОРОНКА` | Клон раскладки DVOR `FUNNEL`, другие KPI/шаги (гайд → прогрев → оплата) |
 | `lib/src/data/google_sheets_catalog_sync.dart` | — | Каталог `COURSES` (`gid=0`) → SQLite |
 | `lib/src/jobs/google_sheets_funnel_export_job.dart` | Периодический wipe+write | Как есть |
 | `test/support/fakes.dart`, harness | Фейковый sender | Перенести |
@@ -127,7 +127,7 @@ Long polling остаётся. Если шлюз (ЮKassa или LeadPay) отд
 | `PaymentReminderJob` | Брошенный чекаут + напоминание доплаты | **Без** автоотмены брони: лимита мест нет |
 | `job_dedupe_log` | Идемпотентность | `warmup:{userId}:{step}`, `abandon:{orderId}:h6` |
 | `createChatInviteLink` | Одноразовая ссылка | `member_limit: 1`, канал = канал запуска |
-| Google Sheets `FUNNEL` | Срез в MVP | SQLite — правда по людям, лист — витрина. Руками не правят |
+| Google Sheets `ВОРОНКА` | Срез в MVP | SQLite — правда по людям, лист — витрина. Руками не правят |
 | Google Sheets `COURSES` (`gid=0`) | Каталог запуска | Руками правят цену/даты; бот читает в SQLite |
 | Очередь чеков | Ручной override | Всегда: вне кассы, сбой, возврат |
 
@@ -270,7 +270,7 @@ Telegram-счёт ЮKassa не используем.
 6. Запись: full / deposit / installment (URL кассы).
 7. Шлюз после спайка + брошенная оплата + remainder.
 8. Invite в канал запуска.
-9. Админка + экспорт Sheets как `FUNNEL`.
+9. Админка + экспорт Sheets как `ВОРОНКА`.
 10. Деплой, бэкап, runbook. Доступы отдать заказчице.
 
 `product_id` + `launch_id` + `channel_id` в схеме с дня один. В MVP одна строка продукта.
@@ -316,7 +316,7 @@ GOOGLE_SHEETS_SPREADSHEET_ID=
 | LeadPay как касса Dart-бота | Высокая, пока нет спайка — **делать первым** |
 | ЮKassa webhook | Высокая, но известная; включать только если LeadPay провалился |
 | Списание vs «одобрено» у рассрочки | Средняя: завязано на события кассы |
-| Sheets FUNNEL под курс | Низкая/средняя: клон дашборда, другие метрики |
+| Sheets ВОРОНКА под курс | Низкая/средняя: клон дашборда, другие метрики |
 | Второй продукт в ноябре | Только схема сейчас, не UI витрины |
 | Email/телефон | **Не делаем** |
 
@@ -335,7 +335,7 @@ GOOGLE_SHEETS_SPREADSHEET_ID=
 - Депозит не выдаёт invite; full и списание рассрочки — выдают.
 - Канал только этого запуска.
 - Админ может проставить оплату, отменить, отозвать доступ.
-- Лист воронки `FUNNEL` в Sheets обновляется ботом.
+- Лист воронки `ВОРОНКА` в Sheets обновляется ботом.
 - Каталог запусков — вкладка `COURSES` (`gid=0`); бот её читает, руками правят.
 - `PaymentGateway` можно сменить без перепила хендлеров.
 - `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` зелёные.

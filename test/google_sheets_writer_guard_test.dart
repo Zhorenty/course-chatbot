@@ -27,7 +27,7 @@ void main() {
     );
   }
 
-  test('FUNNEL export does not delete, rename, or clear gid=0', () async {
+  test('ВОРОНКА export does not delete, rename, or clear gid=0', () async {
     final gateway = FakeGoogleSheetsGateway(
       sheets: const <GoogleSheetsSheetInfo>[
         GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
@@ -44,14 +44,15 @@ void main() {
       gateway.sheets.firstWhere((sheet) => sheet.sheetId == CoursesSheet.sheetId).title,
       CoursesSheet.tabTitle,
     );
-    expect(gateway.sheets.any((sheet) => sheet.title == 'FUNNEL'), isTrue);
+    expect(gateway.sheets.any((sheet) => sheet.title == 'ВОРОНКА'), isTrue);
+    expect(gateway.sheets.any((sheet) => sheet.title == 'FUNNEL'), isFalse);
     expect(gateway.valuesBySheetId[CoursesSheet.sheetId]!.first.first, CoursesSheet.title);
   });
 
-  test('replaceDashboard refuses when FUNNEL is gid=0', () async {
+  test('replaceDashboard refuses when ВОРОНКА is gid=0', () async {
     final gateway = FakeGoogleSheetsGateway(
       sheets: const <GoogleSheetsSheetInfo>[
-        GoogleSheetsSheetInfo(title: 'FUNNEL', sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: 'ВОРОНКА', sheetId: CoursesSheet.sheetId),
       ],
     );
     final writer = GoogleSheetsApiWriter(gateway: gateway);
@@ -59,7 +60,22 @@ void main() {
     expect(gateway.deletedSheetIds, isEmpty);
     expect(gateway.renamedSheetIds, isEmpty);
     expect(gateway.clearedRanges, isEmpty);
-    expect(gateway.sheets.single.title, 'FUNNEL');
+    expect(gateway.sheets.single.title, 'ВОРОНКА');
+  });
+
+  test('ВОРОНКА export deletes an obsolete FUNNEL tab', () async {
+    final gateway = FakeGoogleSheetsGateway(
+      sheets: const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: 'FUNNEL', sheetId: 7),
+      ],
+      valuesBySheetId: <int, List<List<Object?>>>{CoursesSheet.sheetId: CoursesSheet.seedRows()},
+    );
+    final writer = GoogleSheetsApiWriter(gateway: gateway);
+    await writer.replaceDashboard(dashboard());
+    expect(gateway.deletedSheetIds, contains(7));
+    expect(gateway.sheets.any((sheet) => sheet.title == 'FUNNEL'), isFalse);
+    expect(gateway.sheets.any((sheet) => sheet.title == 'ВОРОНКА'), isTrue);
   });
 
   test('replaceSheet refuses to wipe gid=0 catalog', () async {

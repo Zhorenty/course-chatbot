@@ -320,7 +320,28 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     if (sheet == null) {
       throw StateError('Sheet $title is missing.');
     }
-    valuesBySheetId[sheet.sheetId] = _copyRows(rows);
+    final start = _a1Start(a1Range);
+    if (start == null || (start.row == 0 && start.col == 0)) {
+      valuesBySheetId[sheet.sheetId] = _copyRows(rows);
+      return;
+    }
+    final grid = _copyRows(valuesBySheetId[sheet.sheetId] ?? const <List<Object?>>[]);
+    for (var r = 0; r < rows.length; r++) {
+      final destRow = start.row + r;
+      while (grid.length <= destRow) {
+        grid.add(<Object?>[]);
+      }
+      final line = List<Object?>.from(grid[destRow]);
+      for (var c = 0; c < rows[r].length; c++) {
+        final destCol = start.col + c;
+        while (line.length <= destCol) {
+          line.add('');
+        }
+        line[destCol] = rows[r][c];
+      }
+      grid[destRow] = line;
+    }
+    valuesBySheetId[sheet.sheetId] = grid;
   }
 
   @override
@@ -369,6 +390,24 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       return raw.substring(1, raw.length - 1).replaceAll("''", "'");
     }
     return raw;
+  }
+
+  static ({int row, int col})? _a1Start(String a1Range) {
+    final bang = a1Range.lastIndexOf('!');
+    final cell = bang < 0 ? a1Range : a1Range.substring(bang + 1);
+    final match = RegExp(r'^\$?([A-Za-z]+)\$?(\d+)').firstMatch(cell);
+    if (match == null) {
+      return null;
+    }
+    return (row: int.parse(match.group(2)!) - 1, col: _columnIndex(match.group(1)!));
+  }
+
+  static int _columnIndex(String letters) {
+    var n = 0;
+    for (final code in letters.toUpperCase().codeUnits) {
+      n = n * 26 + (code - 64);
+    }
+    return n - 1;
   }
 
   static List<List<Object?>> _copyRows(List<List<Object?>> rows) {

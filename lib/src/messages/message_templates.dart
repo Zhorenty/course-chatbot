@@ -410,9 +410,9 @@ final class MessageTemplates {
     }
     if (funnelAttempted) {
       if (funnelOk) {
-        buf.writeln('Срез FUNNEL обновлён.');
+        buf.writeln('Срез ВОРОНКА обновлён.');
       } else {
-        buf.writeln('Срез FUNNEL не обновлён: ${escapeHtml(funnelError ?? 'ошибка')}.');
+        buf.writeln('Срез ВОРОНКА не обновлён: ${escapeHtml(funnelError ?? 'ошибка')}.');
       }
     }
     return buf.toString().trim();

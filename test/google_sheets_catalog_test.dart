@@ -84,14 +84,30 @@ void main() {
     expect(parsed.active!.courseStartAt, DateTime.utc(2026, 10, 12));
   });
 
-  test('pretty seed layout has chrome, Russian headers and parses', () {
+  test('pretty seed layout has chrome, Russian headers, status and parses', () {
     final rows = CoursesSheet.seedRows();
     expect(rows[0].first, CoursesSheet.title);
     expect(rows[1].first, contains('Активен'));
+    expect(rows[1].first, isNot(contains('FUNNEL')));
     expect(rows[3].first, 'Код продукта');
+    expect(rows[3].last, 'статус');
+    expect(rows[4].last.toString(), startsWith('='));
     expect(CoursesSheetParser.headerRowIndex(rows), 3);
     final parsed = CoursesSheetParser.parse(rows);
     expect(parsed.active!.priceFullKopecks, 1800000);
+  });
+
+  test('status formula names missing fields and готов', () {
+    final formula = CoursesSheet.statusFormula(row: 5);
+    expect(formula, startsWith('='));
+    expect(formula, contains('готово'));
+    expect(formula, contains('нет кода запуска'));
+    expect(formula, contains('нет цены'));
+    expect(formula, contains('нет даты доплаты'));
+    expect(CoursesSheet.headerNotes[7], contains('Выбери в календаре'));
+    expect(CoursesSheet.headers.last, CoursesSheet.status);
+    expect(CoursesSheet.displayHeaders, hasLength(CoursesSheet.columnCount));
+    expect(CoursesSheet.headerNotes, hasLength(CoursesSheet.columnCount));
   });
 
   group('GoogleSheetsCatalogSync', () {
@@ -117,7 +133,13 @@ void main() {
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
       expect(gateway.applyLookCount, 1);
       expect(gateway.lastLook?.hideGridlines, isTrue);
+      expect(gateway.lastLook?.notes, hasLength(14));
+      expect(gateway.lastLook?.columnCount, 14);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
+      final seeded = gateway.valuesBySheetId[0]!;
+      final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
+      expect(seeded[CoursesSheet.defaultHeaderRow][statusCol], 'статус');
+      expect(seeded[CoursesSheet.defaultHeaderRow + 1][statusCol].toString(), startsWith('='));
 
       final sheet = gateway.valuesBySheetId[CoursesSheet.sheetId]!;
       final priceCol = CoursesSheetParser.columnIndex(sheet, CoursesSheet.priceFullRub)!;
@@ -128,7 +150,7 @@ void main() {
       final second = await sync.sync();
       expect(second.ok, isTrue);
       expect(second.seeded, isFalse);
-      expect(gateway.updateValuesCount, updatesAfterSeed);
+      expect(gateway.updateValuesCount, updatesAfterSeed + 1);
       expect(gateway.applyLookCount, looksAfterSeed + 1);
       expect(course.activeLaunch()?.priceFullKopecks, 2100000);
     });
@@ -169,8 +191,12 @@ void main() {
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
       final result = await sync.sync();
       expect(result.ok, isFalse);
-      expect(gateway.updateValuesCount, 0);
+      expect(gateway.updateValuesCount, 1);
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
+      expect(
+        gateway.valuesBySheetId[0]![1][CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)],
+        0,
+      );
     });
 
     test('snake_case catalog is wrapped in chrome without losing the row', () async {
@@ -194,6 +220,7 @@ void main() {
       expect(result.ok, isTrue);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       expect(gateway.valuesBySheetId[0]![3].first, 'Код продукта');
+      expect(gateway.valuesBySheetId[0]![3].last, 'статус');
       expect(course.activeLaunch()?.code, 'launch-1');
     });
 

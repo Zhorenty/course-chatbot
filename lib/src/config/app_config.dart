@@ -44,7 +44,7 @@ final class AppConfig {
     this.googleSheetsCredentialsPath,
     this.googleSheetsCredentialsJson,
     this.googleSheetsSpreadsheetId,
-    this.googleSheetsWriteSheetTitle = 'FUNNEL',
+    this.googleSheetsWriteSheetTitle = 'ВОРОНКА',
     this.googleSheetsWriteIntervalSeconds = 300,
     this.paymentWebhookSecret,
     this.paymentWebhookPath = '/payments/callback',

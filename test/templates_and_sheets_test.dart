@@ -40,7 +40,7 @@ void main() {
     expect('☑️ ${MessageTemplates.buttonAcceptPersonalData}'.length, lessThanOrEqualTo(64));
   });
 
-  test('FUNNEL dashboard has course steps not club quiz', () {
+  test('ВОРОНКА dashboard has course steps not club quiz', () {
     final dashboard = GoogleSheetsFunnelDashboard.build(
       FunnelAnalytics(
         generatedAt: DateTime.utc(2026, 8, 26, 12),
@@ -62,16 +62,23 @@ void main() {
     expect(flat, contains('Instagram Reels'));
     expect(flat, isNot(contains('квиз')));
     expect(dashboard.charts, isNotEmpty);
+    expect(dashboard.sheetTitle, 'ВОРОНКА');
+    expect(dashboard.obsoleteSheetTitles, contains('FUNNEL'));
   });
 
-  test('COURSES catalog look matches FUNNEL palette and has no charts', () {
+  test('COURSES catalog look matches ВОРОНКА palette and has no charts', () {
     final look = GoogleSheetsCoursesCatalog.build();
     expect(look.sheetTitle, 'COURSES');
     expect(look.charts, isEmpty);
     expect(look.hideGridlines, isTrue);
     expect(look.frozenRowCount, 4);
     expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
-    expect(look.columnWidthsPx, hasLength(13));
+    expect(look.columnWidthsPx, hasLength(14));
+    expect(look.columnCount, 14);
+    expect(look.notes, hasLength(14));
+    expect(look.notes[7].text, contains('Выбери в календаре'));
+    expect(look.notes.last.text, contains('Формула'));
+    expect(look.validations, isNotEmpty);
     expect(look.styles, isNotEmpty);
   });
 

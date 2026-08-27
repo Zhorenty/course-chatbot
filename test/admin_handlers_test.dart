@@ -68,7 +68,7 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
   });
 
-  test('admin sheets button pulls COURSES and writes FUNNEL', () async {
+  test('admin sheets button pulls COURSES and writes ВОРОНКА', () async {
     final sheetsHarness = HandlerHarness();
     await sheetsHarness.init(adminUserIds: const <int>{1}, enableSheets: true);
     addTearDown(sheetsHarness.dispose);
@@ -86,7 +86,7 @@ void main() {
     expect(
       sheetsHarness.sender.messages.any(
         (m) =>
-            m.text.contains('COURSES') && m.text.contains('FUNNEL') && m.text.contains('обновлён'),
+            m.text.contains('COURSES') && m.text.contains('ВОРОНКА') && m.text.contains('обновлён'),
       ),
       isTrue,
     );

@@ -89,7 +89,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         await job.export();
         funnelOk = true;
       } on Object catch (error, stackTrace) {
-        l.w('Admin Google Sheets FUNNEL refresh failed: $error', stackTrace);
+        l.w('Admin Google Sheets ВОРОНКА refresh failed: $error', stackTrace);
         funnelOk = false;
         funnelError = '$error';
       }

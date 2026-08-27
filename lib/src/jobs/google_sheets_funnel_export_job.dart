@@ -23,7 +23,7 @@ final class GoogleSheetsFunnelExportJob {
     final dashboard = GoogleSheetsFunnelDashboard.build(analytics, sheetTitle: sheetTitle);
     await _writer.replaceDashboard(dashboard);
     l.i(
-      'Google Sheets FUNNEL export completed. '
+      'Google Sheets ВОРОНКА export completed. '
       'sheet=${dashboard.sheetTitle} charts=${dashboard.charts.length}',
     );
   }

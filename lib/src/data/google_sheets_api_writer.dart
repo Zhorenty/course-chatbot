@@ -391,6 +391,8 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       ..._rowHeightRequests(sheetId, dashboard.rowHeightsPx),
       ..._styleRequests(sheetId, dashboard.styles),
       ..._bandingRequests(sheetId, dashboard.bandedTables),
+      ..._noteRequests(sheetId, dashboard.notes),
+      ..._validationRequests(sheetId, dashboard.validations),
     ];
     if (formatRequests.isNotEmpty) {
       await _api.spreadsheets.batchUpdate(
@@ -423,6 +425,12 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     if (dashboard.tabColor != null) {
       fields.add('tabColor');
     }
+    if (dashboard.columnCount != null && dashboard.columnCount! > 0) {
+      fields.add('gridProperties.columnCount');
+    }
+    if (dashboard.rowCount != null && dashboard.rowCount! > 0) {
+      fields.add('gridProperties.rowCount');
+    }
     if (fields.isEmpty) {
       return const <Request>[];
     }
@@ -434,12 +442,68 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
             gridProperties: GridProperties(
               frozenRowCount: dashboard.frozenRowCount >= 1 ? dashboard.frozenRowCount : null,
               hideGridlines: dashboard.hideGridlines ? true : null,
+              columnCount: dashboard.columnCount,
+              rowCount: dashboard.rowCount,
             ),
             tabColor: _color(dashboard.tabColor),
           ),
           fields: fields.join(','),
         ),
       ),
+    ];
+  }
+
+  List<Request> _noteRequests(int sheetId, List<GoogleSheetsNote> notes) {
+    if (notes.isEmpty) {
+      return const <Request>[];
+    }
+    final byRow = <int, Map<int, String>>{};
+    for (final note in notes) {
+      byRow.putIfAbsent(note.row, () => <int, String>{})[note.column] = note.text;
+    }
+    final requests = <Request>[];
+    for (final entry in byRow.entries) {
+      final columns = entry.value.keys.toList()..sort();
+      final startColumn = columns.first;
+      final endColumn = columns.last;
+      final values = <CellData>[
+        for (var column = startColumn; column <= endColumn; column++)
+          CellData(note: entry.value[column]),
+      ];
+      requests.add(
+        Request(
+          updateCells: UpdateCellsRequest(
+            fields: 'note',
+            start: GridCoordinate(sheetId: sheetId, rowIndex: entry.key, columnIndex: startColumn),
+            rows: <RowData>[RowData(values: values)],
+          ),
+        ),
+      );
+    }
+    return requests;
+  }
+
+  List<Request> _validationRequests(int sheetId, List<GoogleSheetsValidation> validations) {
+    return <Request>[
+      for (final rule in validations)
+        if (rule.endRowExclusive > rule.startRow && rule.endColumnExclusive > rule.startColumn)
+          Request(
+            setDataValidation: SetDataValidationRequest(
+              range: GridRange(
+                sheetId: sheetId,
+                startRowIndex: rule.startRow,
+                endRowIndex: rule.endRowExclusive,
+                startColumnIndex: rule.startColumn,
+                endColumnIndex: rule.endColumnExclusive,
+              ),
+              rule: DataValidationRule(
+                condition: BooleanCondition(type: rule.conditionType),
+                inputMessage: rule.inputMessage,
+                showCustomUi: rule.showCustomUi,
+                strict: rule.strict,
+              ),
+            ),
+          ),
     ];
   }
 

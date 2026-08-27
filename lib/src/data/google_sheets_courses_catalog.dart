@@ -12,6 +12,7 @@ abstract final class GoogleSheetsCoursesCatalog {
   static const GoogleSheetsRgb stripeA = GoogleSheetsRgb(0.98, 0.97, 0.95);
   static const GoogleSheetsRgb stripeB = GoogleSheetsRgb(0.92, 0.94, 0.91);
   static const GoogleSheetsRgb accent = GoogleSheetsRgb(0.89, 0.93, 0.90);
+  static const GoogleSheetsRgb rule = GoogleSheetsRgb(0.48, 0.54, 0.50);
 
   static GoogleSheetsDashboard build({
     int headerRow = CoursesSheet.defaultHeaderRow,
@@ -19,7 +20,9 @@ abstract final class GoogleSheetsCoursesCatalog {
   }) {
     final columnCount = CoursesSheet.columnCount;
     final dataStart = headerRow + 1;
-    final dataEnd = dataStart + (dataRowCount < 8 ? 8 : dataRowCount);
+    final dataEnd =
+        dataStart +
+        (dataRowCount < CoursesSheet.extraDataRows ? CoursesSheet.extraDataRows : dataRowCount);
     final canvasEnd = dataEnd + 4;
     final styles = <GoogleSheetsRangeStyle>[
       GoogleSheetsRangeStyle(
@@ -78,6 +81,18 @@ abstract final class GoogleSheetsCoursesCatalog {
           verticalAlignment: 'MIDDLE',
         ),
       );
+      if (headerRow >= 2) {
+        styles.add(
+          const GoogleSheetsRangeStyle(
+            startRow: 2,
+            endRowExclusive: 3,
+            startColumn: 0,
+            endColumnExclusive: CoursesSheet.columnCount,
+            background: rule,
+            merge: true,
+          ),
+        );
+      }
     }
 
     styles.add(
@@ -148,6 +163,8 @@ abstract final class GoogleSheetsCoursesCatalog {
           startColumn: column,
           endColumnExclusive: column + 1,
           horizontalAlignment: 'CENTER',
+          numberFormatType: 'DATE',
+          numberFormatPattern: 'dd.mm.yyyy',
         ),
       );
     }
@@ -161,17 +178,59 @@ abstract final class GoogleSheetsCoursesCatalog {
         bold: true,
       ),
     );
+    final statusColumn = CoursesSheet.headers.indexOf(CoursesSheet.status);
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: dataStart,
+        endRowExclusive: dataEnd,
+        startColumn: statusColumn,
+        endColumnExclusive: statusColumn + 1,
+        foreground: muted,
+        wrap: true,
+      ),
+    );
 
     return GoogleSheetsDashboard(
       sheetTitle: CoursesSheet.tabTitle,
       rows: const <List<Object?>>[],
       charts: const <GoogleSheetsChart>[],
       styles: styles,
-      columnWidthsPx: const <int>[130, 140, 130, 180, 90, 110, 130, 120, 120, 140, 220, 170, 220],
+      columnWidthsPx: const <int>[
+        130,
+        140,
+        130,
+        180,
+        90,
+        110,
+        130,
+        120,
+        120,
+        140,
+        220,
+        170,
+        220,
+        280,
+      ],
       frozenRowCount: headerRow + 1,
       hideGridlines: true,
       tabColor: header,
       rowHeightsPx: headerRow >= 3 ? const <int>[42, 52, 12, 36] : const <int>[],
+      notes: <GoogleSheetsNote>[
+        for (var i = 0; i < CoursesSheet.headerNotes.length; i++)
+          GoogleSheetsNote(row: headerRow, column: i, text: CoursesSheet.headerNotes[i]),
+      ],
+      columnCount: columnCount,
+      rowCount: canvasEnd,
+      validations: <GoogleSheetsValidation>[
+        GoogleSheetsValidation(
+          startRow: dataStart,
+          endRowExclusive: dataEnd,
+          startColumn: 7,
+          endColumnExclusive: 9,
+          conditionType: 'DATE_IS_VALID',
+          inputMessage: 'Выбери дату в календаре. Формат 19.08.2026.',
+        ),
+      ],
     );
   }
 }

@@ -16,13 +16,13 @@
 - [ ] Для контейнера: compose ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` и публикует только `127.0.0.1:8080` на хосте. Снаружи — reverse proxy. Задай `PAYMENT_WEBHOOK_SECRET` до включения живой кассы.
 - [ ] После сдачи: доступы VPS, `.env`, бэкапы SQLite — заказчице, копии бота себе не оставлять
 
-### Google Sheets (срез `FUNNEL`)
+### Google Sheets (срез `ВОРОНКА`)
 
 - [ ] Создать Google-таблицу (пустую) **или** взять ту, что пришлёт заказчица
 - [ ] Google Cloud: проект → включить Google Sheets API → service account → JSON в `secrets/google-sheets.json` (не в git)
 - [ ] Выдать сервисному аккаунту доступ **редактора** на таблицу
 - [ ] Прописать `GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS_PATH`, `GOOGLE_SHEETS_WRITE_ENABLED=true`
-- [ ] Проверить, что вкладка `COURSES` (`gid=0`) заполнена (цена/даты) и `FUNNEL` пересобирается ботом (`FUNNEL` руками не править)
+- [ ] Проверить, что вкладка `COURSES` (`gid=0`) заполнена (цена/даты) и `ВОРОНКА` пересобирается ботом (`ВОРОНКА` руками не править)
 
 ### Telegram
 
@@ -82,6 +82,6 @@
 - Оплата за `PaymentGateway`: LeadPay / ЮKassa / manual, идемпотентный callback, предоплата без invite, рассрочка только после списания
 - Одноразовый invite канала запуска, перевыдача со revoke, вход по `chat_member`
 - Админка в личке: поиск, карточка, ручной paid/deposit/cancel, рассылка «гайд и не купили»
-- Срез Google Sheets `FUNNEL` + каталог `COURSES` (`gid=0`), тихие часы джобов, dedupe после рестарта, Docker Compose
+- Срез Google Sheets `ВОРОНКА` + каталог `COURSES` (`gid=0`), тихие часы джобов, dedupe после рестарта, Docker Compose
 
 Не сделано и **не должно** делаться в MVP: второй продукт (ноябрь), email/телефон, Telegram Payments, возврат через API кассы, лимит мест.

@@ -101,12 +101,20 @@ final class GoogleSheetsCatalogSync {
     }
 
     final headerAt = CoursesSheetParser.headerRowIndex(rows) ?? CoursesSheet.defaultHeaderRow;
+    final dataRowCount = parsed.rows.isEmpty ? CoursesSheet.extraDataRows : parsed.rows.length + 3;
+    await _writeStatusColumn(
+      title: title,
+      headerAt: headerAt,
+      dataRowCount: dataRowCount < CoursesSheet.extraDataRows
+          ? CoursesSheet.extraDataRows
+          : dataRowCount,
+    );
     await _gateway
         .applyDashboardLook(
           sheetId: CoursesSheet.sheetId,
           dashboard: GoogleSheetsCoursesCatalog.build(
             headerRow: headerAt,
-            dataRowCount: parsed.rows.isEmpty ? 8 : parsed.rows.length + 3,
+            dataRowCount: dataRowCount,
           ),
         )
         .timeout(requestTimeout);
@@ -162,6 +170,28 @@ final class GoogleSheetsCatalogSync {
       multipleActive: parsed.multipleActive,
       usedFirstRowAsActive: parsed.noActiveFlag,
     );
+  }
+
+  Future<void> _writeStatusColumn({
+    required String title,
+    required int headerAt,
+    required int dataRowCount,
+  }) async {
+    final quoted = quoteA1SheetTitle(title);
+    final statusIndex = CoursesSheet.headers.indexOf(CoursesSheet.status);
+    final letter = CoursesSheet.columnLetter(statusIndex);
+    final rows = <List<Object?>>[
+      <Object?>[CoursesSheet.displayHeaders[statusIndex]],
+      for (var i = 0; i < dataRowCount; i++)
+        <Object?>[CoursesSheet.statusFormula(row: headerAt + 2 + i)],
+    ];
+    await _gateway
+        .updateValues(
+          a1Range: '$quoted!$letter${headerAt + 1}',
+          rows: rows,
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
   }
 
   bool _needsSeed(CoursesSheetParseResult parsed) {

@@ -81,6 +81,36 @@ final class GoogleSheetsRangeStyle {
   final bool innerBorders;
 }
 
+final class GoogleSheetsNote {
+  const GoogleSheetsNote({required this.row, required this.column, required this.text});
+
+  final int row;
+  final int column;
+  final String text;
+}
+
+final class GoogleSheetsValidation {
+  const GoogleSheetsValidation({
+    required this.startRow,
+    required this.endRowExclusive,
+    required this.startColumn,
+    required this.endColumnExclusive,
+    required this.conditionType,
+    this.inputMessage,
+    this.strict = false,
+    this.showCustomUi = true,
+  });
+
+  final int startRow;
+  final int endRowExclusive;
+  final int startColumn;
+  final int endColumnExclusive;
+  final String conditionType;
+  final String? inputMessage;
+  final bool strict;
+  final bool showCustomUi;
+}
+
 final class GoogleSheetsBandedTable {
   const GoogleSheetsBandedTable({
     required this.startRow,
@@ -108,6 +138,10 @@ final class GoogleSheetsDashboard {
     this.hideGridlines = false,
     this.tabColor,
     this.rowHeightsPx = const <int>[],
+    this.notes = const <GoogleSheetsNote>[],
+    this.columnCount,
+    this.rowCount,
+    this.validations = const <GoogleSheetsValidation>[],
   });
 
   final String sheetTitle;
@@ -121,6 +155,10 @@ final class GoogleSheetsDashboard {
   final bool hideGridlines;
   final GoogleSheetsRgb? tabColor;
   final List<int> rowHeightsPx;
+  final List<GoogleSheetsNote> notes;
+  final int? columnCount;
+  final int? rowCount;
+  final List<GoogleSheetsValidation> validations;
 }
 
 final class GoogleSheetsSheetInfo {

@@ -4,7 +4,12 @@ import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:intl/intl.dart';
 
 abstract final class GoogleSheetsFunnelDashboard {
-  static const String defaultSheetTitle = 'FUNNEL';
+  static const String defaultSheetTitle = 'ВОРОНКА';
+  static const List<String> obsoleteSheetTitles = <String>[
+    'FUNNEL',
+    'FUNNEL__next',
+    'FUNNEL__prev',
+  ];
   static const int columnCount = 12;
 
   /// Одна тёплая гамма: лес → шалфей → слоновая кость, акцент пыльная роза.
@@ -40,6 +45,9 @@ abstract final class GoogleSheetsFunnelDashboard {
       styles: sheet.styles,
       bandedTables: sheet.bandedTables,
       columnWidthsPx: const <int>[250, 110, 120, 250, 110, 120, 200, 90, 90, 90, 90, 180],
+      obsoleteSheetTitles: sheetTitle == defaultSheetTitle
+          ? GoogleSheetsFunnelDashboard.obsoleteSheetTitles
+          : const <String>[],
     );
   }
 }

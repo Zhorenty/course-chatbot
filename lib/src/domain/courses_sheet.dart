@@ -1,11 +1,12 @@
 import 'package:course_chatbot/src/domain/money.dart';
 
-/// Human-editable catalog on spreadsheet `gid=0`. Bot reads; FUNNEL must not live here.
+/// Human-editable catalog on spreadsheet `gid=0`. Bot reads; ВОРОНКА must not live here.
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 13;
+  static const int columnCount = 14;
   static const int defaultHeaderRow = 3;
+  static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
   static const int defaultTimezoneOffsetHours = 3;
 
@@ -22,12 +23,13 @@ abstract final class CoursesSheet {
   static const String offerUrl = 'offer_url';
   static const String leadMagnetFileId = 'lead_magnet_file_id';
   static const String leadMagnetUrl = 'lead_magnet_url';
+  static const String status = 'status';
 
   static const String title = 'Курс · Каталог запусков';
   static const String titleAside = 'Правят руками';
   static const String hint =
-      'Одна строка с «да» в колонке «Активен». Цены в рублях, даты ГГГГ-ММ-ДД. '
-      'Бот читает этот лист при старте и по «Обновить Google Sheets». Вкладку FUNNEL руками не править.';
+      'Одна строка с «да» в колонке «Активен». Цены в рублях, даты как 19.08.2026. '
+      'Бот читает этот лист при старте и по «Обновить Google Sheets».';
 
   static const List<String> headers = <String>[
     productCode,
@@ -43,6 +45,7 @@ abstract final class CoursesSheet {
     offerUrl,
     leadMagnetFileId,
     leadMagnetUrl,
+    status,
   ];
 
   static const List<String> displayHeaders = <String>[
@@ -59,6 +62,24 @@ abstract final class CoursesSheet {
     'Оферта',
     'file_id гайда',
     'URL гайда',
+    'статус',
+  ];
+
+  static const List<String> headerNotes = <String>[
+    'Код продукта. Пример: course. Пусто = course.',
+    'Название продукта. Пример: Курс.',
+    'Код запуска. Пример: launch-1. Без кода бот строку пропускает.',
+    'Название запуска. Видно в боте.',
+    'да или нет. Одна строка с «да». Если ни одной — бот берёт первую.',
+    'Полная цена в рублях, число. Можно 18000 или 18 000.',
+    'Предоплата в рублях, число. 0 или пусто = без предоплаты.',
+    'Дата. Выбери в календаре. Формат 19.08.2026.',
+    'Дата. Выбери в календаре. Формат 19.08.2026.',
+    'Числовой id закрытого канала, −100…. Пусто = из .env.',
+    'URL публичной оферты. Пусто = из .env.',
+    'Telegram file_id PDF. Пусто = кэш бота / .env.',
+    'Ссылка на гайд, если нет файла. Необязательно.',
+    'Готово или чего не хватает. Формула. Бот колонку не читает.',
   ];
 
   static const String seedProductCode = 'course';
@@ -67,8 +88,8 @@ abstract final class CoursesSheet {
   static const String seedLaunchTitle = 'Запуск';
   static const int seedPriceFullRub = 18000;
   static const int seedDepositRub = 5000;
-  static const String seedDepositDueDate = '2026-10-05';
-  static const String seedCourseStartDate = '2026-10-12';
+  static const String seedDepositDueDate = '05.10.2026';
+  static const String seedCourseStartDate = '12.10.2026';
 
   static List<List<Object?>> seedRows() {
     return withChrome(dataRows: <List<Object?>>[seedDataRow()]);
@@ -110,7 +131,54 @@ abstract final class CoursesSheet {
       '',
       '',
       '',
+      statusFormula(row: defaultHeaderRow + 2),
     ]);
+  }
+
+  static String columnLetter(int column) {
+    var n = column + 1;
+    final buffer = StringBuffer();
+    while (n > 0) {
+      n -= 1;
+      buffer.writeCharCode(65 + n % 26);
+      n ~/= 26;
+    }
+    return buffer.toString().split('').reversed.join();
+  }
+
+  /// Locale-aware status formula for data row [row] (1-based A1).
+  static String statusFormula({required int row, String formulaSep = ';'}) {
+    String cell(String canonical) {
+      final index = headers.indexOf(canonical);
+      if (index < 0) {
+        throw StateError('COURSES header "$canonical" is missing from spec.');
+      }
+      return '${columnLetter(index)}$row';
+    }
+
+    final started = <String>[
+      for (final name in headers)
+        if (name != status) '${cell(name)}<>""',
+    ].join('$formulaSep ');
+    const required = <String>[launchCode, priceFullRub, depositDueDate, courseStartDate];
+    final allRequired = <String>[
+      for (final name in required) '${cell(name)}<>""',
+    ].join('$formulaSep ');
+    final missing = <String>[
+      'IF(${cell(launchCode)}="";"нет кода запуска";"")',
+      'IF(${cell(priceFullRub)}="";"нет цены";"")',
+      'IF(${cell(depositDueDate)}="";"нет даты доплаты";"")',
+      'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
+    ].join('$formulaSep ');
+    final hints = <String>[
+      '"готово"',
+      'IF(${cell(isActive)}="";"не активен — бот возьмёт первую";"")',
+      'IF(${cell(depositRub)}="";"без предоплаты";"")',
+      'IF(${cell(channelId)}="";"ID канала из .env";"")',
+    ].join('$formulaSep ');
+    return '=IF(NOT(OR($started));"";IF(AND($allRequired);'
+        'TEXTJOIN("; "$formulaSep TRUE$formulaSep $hints);'
+        'TEXTJOIN("; "$formulaSep TRUE$formulaSep $missing)))';
   }
 
   static List<Object?> padded(List<Object?> cells) {
@@ -120,10 +188,15 @@ abstract final class CoursesSheet {
   }
 
   static List<Object?> toDisplayHeaders(List<Object?> headerRow) {
-    return <Object?>[
+    final mapped = <Object?>[
       for (var i = 0; i < headerRow.length; i++)
         displayNameFor(CoursesSheetParser.canonicalHeader(headerRow[i])) ?? headerRow[i],
     ];
+    final hasStatus = mapped.any((cell) => CoursesSheetParser.canonicalHeader(cell) == status);
+    if (!hasStatus) {
+      mapped.add(displayHeaders.last);
+    }
+    return padded(mapped);
   }
 
   static String? displayNameFor(String? canonical) {
@@ -147,6 +220,7 @@ abstract final class CoursesSheet {
       case 'лист1':
       case 'tabellenblatt1':
       case 'funnel':
+      case 'воронка':
         return true;
       default:
         return false;
@@ -278,6 +352,8 @@ abstract final class CoursesSheetParser {
     CoursesSheet.leadMagnetUrl: CoursesSheet.leadMagnetUrl,
     'url гайда': CoursesSheet.leadMagnetUrl,
     'ссылка гайда': CoursesSheet.leadMagnetUrl,
+    CoursesSheet.status: CoursesSheet.status,
+    'статус': CoursesSheet.status,
   };
 
   static String? canonicalHeader(Object? cell) {
