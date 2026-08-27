@@ -32,9 +32,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
     );
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: '@lead'),
-    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '@lead'));
     expect(harness.sender.messages.any((m) => m.text.contains('Карточка')), isTrue);
 
     await harness.handlers.handle(
@@ -47,6 +45,39 @@ void main() {
     );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
     expect(harness.channel.created, isNotEmpty);
+  });
+
+  test('admin /start shows only admin reply buttons', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/start'));
+    final withKeyboard = harness.sender.messages.lastWhere((m) => m.replyMarkup != null);
+    expect(withKeyboard.text, contains('Админка'));
+    expect(withKeyboard.text, isNot(contains('Гайд по колористике')));
+    final texts = _replyButtonTexts(withKeyboard.replyMarkup);
+    expect(texts, contains(MessageTemplates.buttonAdminSearch));
+    expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
+    expect(texts, contains(MessageTemplates.buttonAdminSheets));
+    expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
+    expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
+    expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
+  });
+
+  test('admin sheets button writes FUNNEL when export is wired', () async {
+    final sheetsHarness = HandlerHarness();
+    await sheetsHarness.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheetsHarness.dispose);
+
+    await sheetsHarness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
+    );
+    expect(sheetsHarness.sheetsWriter!.replaceDashboardCount, 1);
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('обновлён')), isTrue);
+  });
+
+  test('admin sheets button says disabled when Sheets is off', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
   });
 
   test('broadcast targets guide-not-paid segment', () async {
@@ -63,4 +94,12 @@ void main() {
     expect(ids, contains(10));
     expect(ids, isNot(contains(11)));
   });
+}
+
+List<String> _replyButtonTexts(Map<String, Object?>? markup) {
+  final rows = markup?['keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
 }

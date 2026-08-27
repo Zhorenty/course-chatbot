@@ -14,6 +14,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
+import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -39,19 +40,21 @@ final class PrivateHandlers implements PaymentResultNotifier {
     required WarmupService warmup,
     required BroadcastService broadcast,
     required Set<int> adminUserIds,
+    GoogleSheetsFunnelExportJob? sheetsExportJob,
     DateTime Function()? nowProvider,
     this.leadMagnetPath,
     this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
-  })  : _sender = sender,
-        _templates = templates,
-        _course = course,
-        _funnel = funnel,
-        _checkout = checkout,
-        _access = access,
-        _warmup = warmup,
-        _broadcast = broadcast,
-        _adminGate = AdminGate(adminUserIds),
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _sender = sender,
+       _templates = templates,
+       _course = course,
+       _funnel = funnel,
+       _checkout = checkout,
+       _access = access,
+       _warmup = warmup,
+       _broadcast = broadcast,
+       _adminGate = AdminGate(adminUserIds),
+       _sheetsExportJob = sheetsExportJob,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
   final MessageTemplates _templates;
@@ -62,12 +65,22 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final WarmupService _warmup;
   final BroadcastService _broadcast;
   final AdminGate _adminGate;
+  final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final DateTime Function() _nowProvider;
   final String? leadMagnetPath;
   final String leadMagnetFilename;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
 
   Launch? get _launch => _course.activeLaunch();
+
+  Map<String, Object?> _homeKeyboard(int userId) {
+    if (_adminGate.isConfiguredAdmin(userId)) {
+      return _templates.adminMenuKeyboard();
+    }
+    return _templates.userMenuKeyboard(
+      hasAccess: _course.getUser(userId)?.funnelPhase.hasAccess ?? false,
+    );
+  }
 
   Future<bool> handle(Map<String, dynamic> update) async {
     if (await _handleChatMember(update)) {

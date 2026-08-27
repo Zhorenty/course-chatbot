@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
+import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -23,12 +25,7 @@ final class FakeMessageSender implements MessageSender {
       throw error;
     }
     messages.add(
-      SentMessage(
-        chatId: chatId,
-        text: text,
-        parseMode: parseMode,
-        replyMarkup: replyMarkup,
-      ),
+      SentMessage(chatId: chatId, text: text, parseMode: parseMode, replyMarkup: replyMarkup),
     );
     return messages.length;
   }
@@ -58,9 +55,7 @@ final class FakeMessageSender implements MessageSender {
     String? text,
     bool showAlert = false,
   }) async {
-    callbackAnswers.add(
-      CallbackAnswer(id: callbackQueryId, text: text, showAlert: showAlert),
-    );
+    callbackAnswers.add(CallbackAnswer(id: callbackQueryId, text: text, showAlert: showAlert));
   }
 
   @override
@@ -69,9 +64,7 @@ final class FakeMessageSender implements MessageSender {
     required int messageId,
     Map<String, Object?>? replyMarkup,
   }) async {
-    markupEdits.add(
-      MarkupEdit(chatId: chatId, messageId: messageId, replyMarkup: replyMarkup),
-    );
+    markupEdits.add(MarkupEdit(chatId: chatId, messageId: messageId, replyMarkup: replyMarkup));
   }
 }
 
@@ -84,11 +77,7 @@ final class CallbackAnswer {
 }
 
 final class MarkupEdit {
-  const MarkupEdit({
-    required this.chatId,
-    required this.messageId,
-    this.replyMarkup,
-  });
+  const MarkupEdit({required this.chatId, required this.messageId, this.replyMarkup});
 
   final int chatId;
   final int messageId;
@@ -96,12 +85,7 @@ final class MarkupEdit {
 }
 
 final class SentMessage {
-  const SentMessage({
-    required this.chatId,
-    required this.text,
-    this.parseMode,
-    this.replyMarkup,
-  });
+  const SentMessage({required this.chatId, required this.text, this.parseMode, this.replyMarkup});
 
   final int chatId;
   final String text;
@@ -200,26 +184,40 @@ final class FakeChannelApi implements ChannelApi {
   }
 
   @override
-  Future<void> revokeChatInviteLink({
-    required int chatId,
-    required String inviteLink,
-  }) async {
+  Future<void> revokeChatInviteLink({required int chatId, required String inviteLink}) async {
     revoked.add(inviteLink);
   }
 
   @override
-  Future<void> banChatMember(
-    int chatId, {
-    required int userId,
-    bool revokeMessages = true,
+  Future<void> banChatMember(int chatId, {required int userId, bool revokeMessages = true}) async {}
+
+  @override
+  Future<void> unbanChatMember(int chatId, {required int userId, bool onlyIfBanned = true}) async {}
+}
+
+final class FakeGoogleSheetsWriter implements GoogleSheetsWriter {
+  int replaceDashboardCount = 0;
+  Object? throwOnReplace;
+  GoogleSheetsDashboard? lastDashboard;
+
+  @override
+  Future<void> replaceSheet({
+    required String sheetTitle,
+    required List<List<Object?>> rows,
   }) async {}
 
   @override
-  Future<void> unbanChatMember(
-    int chatId, {
-    required int userId,
-    bool onlyIfBanned = true,
-  }) async {}
+  Future<void> replaceDashboard(GoogleSheetsDashboard dashboard) async {
+    final error = throwOnReplace;
+    if (error != null) {
+      throw error;
+    }
+    replaceDashboardCount += 1;
+    lastDashboard = dashboard;
+  }
+
+  @override
+  Future<void> close() async {}
 }
 
 Map<String, dynamic> privateMessageUpdate({

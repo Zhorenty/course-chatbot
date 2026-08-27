@@ -100,12 +100,17 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _savePendingGuide(context);
       case MessageTemplates.cbGuideDiscard:
         _flowByUserId.remove(context.userId);
-        return _send(context, _templates.adminGuideDiscarded(),
-            replyMarkup: _templates.adminMenuKeyboard());
+        return _send(
+          context,
+          _templates.adminGuideDiscarded(),
+          replyMarkup: _templates.adminMenuKeyboard(),
+        );
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
       return _continuePay(
-          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbContinuePay));
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbContinuePay),
+      );
     }
     if (data.startsWith(MessageTemplates.cbAdminPaid)) {
       return _adminMarkPaid(
@@ -123,11 +128,15 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     }
     if (data.startsWith(MessageTemplates.cbAdminCancel)) {
       return _adminCancel(
-          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel));
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel),
+      );
     }
     if (data.startsWith(MessageTemplates.cbAdminInvite)) {
       return _adminReinvite(
-          context, MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminInvite));
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminInvite),
+      );
     }
     return false;
   }
@@ -147,14 +156,10 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       return _showMenu(context);
     }
     if (text == MessageTemplates.buttonHelp || text == '/help') {
-      return _send(
-        context,
-        _templates.help(),
-        replyMarkup: _templates.userMenuKeyboard(
-          isAdmin: _adminGate.isConfiguredAdmin(context.userId),
-          hasAccess: _course.getUser(context.userId!)?.funnelPhase.hasAccess ?? false,
-        ),
-      );
+      if (_adminGate.isConfiguredAdmin(context.userId)) {
+        return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
+      }
+      return _send(context, _templates.help(), replyMarkup: _homeKeyboard(context.userId!));
     }
     return _showMenu(context);
   }
@@ -168,12 +173,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (chatId == null) {
       return false;
     }
-    await _sender.sendMessage(
-      chatId,
-      text,
-      parseMode: 'HTML',
-      replyMarkup: replyMarkup,
-    );
+    await _sender.sendMessage(chatId, text, parseMode: 'HTML', replyMarkup: replyMarkup);
     return true;
   }
 }

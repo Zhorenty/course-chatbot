@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
+import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -30,6 +31,7 @@ final class HandlerHarness {
   late final FakeChannelApi channel;
   late final PrivateHandlers handlers;
   late final CheckoutService checkout;
+  FakeGoogleSheetsWriter? sheetsWriter;
 
   Future<void> init({
     Set<int> adminUserIds = const <int>{1},
@@ -40,6 +42,7 @@ final class HandlerHarness {
     DateTime? courseStartAt,
     String? leadMagnetFileId = 'file-guide',
     String? leadMagnetPath,
+    bool enableSheets = false,
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
@@ -63,6 +66,11 @@ final class HandlerHarness {
       course: course,
       dedupe: JobDedupeRepository(databaseHandle: handle),
     );
+    GoogleSheetsFunnelExportJob? sheetsExportJob;
+    if (enableSheets) {
+      sheetsWriter = FakeGoogleSheetsWriter();
+      sheetsExportJob = GoogleSheetsFunnelExportJob(course: course, writer: sheetsWriter!);
+    }
     handlers = PrivateHandlers(
       sender: sender,
       templates: MessageTemplates(),
@@ -73,6 +81,7 @@ final class HandlerHarness {
       warmup: warmup,
       broadcast: BroadcastService(sender: sender, course: course),
       adminUserIds: adminUserIds,
+      sheetsExportJob: sheetsExportJob,
       leadMagnetPath: leadMagnetPath,
     );
   }

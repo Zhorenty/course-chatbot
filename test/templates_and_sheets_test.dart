@@ -24,10 +24,7 @@ void main() {
     );
     expect(templates.offerConsent(launch), contains('Перейти к оплате'));
     expect(templates.offerConsent(launch), contains('Публичной оферты'));
-    final keyboard = templates.offerKeyboard(
-      acceptedOffer: true,
-      acceptedPersonalData: false,
-    );
+    final keyboard = templates.offerKeyboard(acceptedOffer: true, acceptedPersonalData: false);
     final rows = keyboard['inline_keyboard'] as List<dynamic>;
     expect(rows[0].toString(), contains('☑️'));
     expect(rows[1].toString(), contains('☐'));
@@ -57,4 +54,34 @@ void main() {
     expect(flat, isNot(contains('квиз')));
     expect(dashboard.charts, isNotEmpty);
   });
+
+  test('admin reply keyboard is admin-only and includes sheets refresh', () {
+    final templates = MessageTemplates();
+    final texts = _replyButtonTexts(templates.adminMenuKeyboard());
+    expect(texts, contains(MessageTemplates.buttonAdminSearch));
+    expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
+    expect(texts, contains(MessageTemplates.buttonAdminSheets));
+    expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
+    expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
+    expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
+    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+  });
+
+  test('user reply keyboard has no admin actions', () {
+    final templates = MessageTemplates();
+    final texts = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: false));
+    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(MessageTemplates.buttonGuide));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminSearch)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminMenu)));
+  });
+}
+
+List<String> _replyButtonTexts(Map<String, Object?> markup) {
+  final rows = markup['keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
 }

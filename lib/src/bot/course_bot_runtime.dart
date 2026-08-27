@@ -90,9 +90,7 @@ final class CourseBotRuntime {
     if (config.googleSheetsWriteEnabled) {
       try {
         sheetsWriter = await GoogleSheetsApiWriter.connectFromConfig(config);
-        l.i(
-          'Google Sheets write enabled. spreadsheetId=${config.googleSheetsSpreadsheetId}',
-        );
+        l.i('Google Sheets write enabled. spreadsheetId=${config.googleSheetsSpreadsheetId}');
       } on Object catch (error, stackTrace) {
         l.e('Failed to enable Google Sheets write: $error', stackTrace);
       }
@@ -118,6 +116,13 @@ final class CourseBotRuntime {
     );
     final warmup = WarmupService(course: course, dedupe: jobDedupe);
     final broadcast = BroadcastService(sender: sender, course: course);
+    final sheetsExportJob = sheetsWriter == null
+        ? null
+        : GoogleSheetsFunnelExportJob(
+            course: course,
+            writer: sheetsWriter,
+            sheetTitle: config.googleSheetsWriteSheetTitle,
+          );
     final handlers = PrivateHandlers(
       sender: sender,
       templates: templates,
@@ -128,6 +133,7 @@ final class CourseBotRuntime {
       warmup: warmup,
       broadcast: broadcast,
       adminUserIds: config.adminUserIds,
+      sheetsExportJob: sheetsExportJob,
       leadMagnetPath: config.leadMagnetPath,
       leadMagnetFilename: config.leadMagnetFilename,
     );
@@ -177,13 +183,7 @@ final class CourseBotRuntime {
         templates: templates,
         quietHours: quietHours,
       ),
-      sheetsExportJob: sheetsWriter == null
-          ? null
-          : GoogleSheetsFunnelExportJob(
-              course: course,
-              writer: sheetsWriter,
-              sheetTitle: config.googleSheetsWriteSheetTitle,
-            ),
+      sheetsExportJob: sheetsExportJob,
       maintenanceJob: SqliteMaintenanceJob(
         databaseHandle: databaseHandle,
         course: course,

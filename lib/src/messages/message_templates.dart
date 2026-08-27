@@ -32,6 +32,7 @@ final class MessageTemplates {
   static const String buttonNewInvite = 'Новая ссылка в канал';
   static const String buttonAdminSearch = 'Поиск человека';
   static const String buttonAdminBroadcast = 'Рассылка';
+  static const String buttonAdminSheets = 'Обновить Google Sheets';
   static const String buttonAdminMenu = 'Админка';
 
   static const String cbGuide = 'g';
@@ -100,9 +101,10 @@ final class MessageTemplates {
 
   String warmupStep(String stepKey) {
     return switch (stepKey) {
-      'warmup_0' => '<b>Первое касание после гайда</b>\n\n'
-          'Это заглушка. Здесь будет текст заказчика.\n'
-          'Можно сразу записаться на курс.',
+      'warmup_0' =>
+        '<b>Первое касание после гайда</b>\n\n'
+            'Это заглушка. Здесь будет текст заказчика.\n'
+            'Можно сразу записаться на курс.',
       'warmup_d1' => '<b>Прогрев, день 1</b>\n\nЗаглушка цепочки. Можно записаться.',
       'warmup_d3' => '<b>Прогрев, день 3</b>\n\nЗаглушка цепочки. Можно записаться.',
       _ => '<b>Прогрев</b>\n\nШаг <code>${escapeHtml(stepKey)}</code>. Можно записаться.',
@@ -205,7 +207,7 @@ final class MessageTemplates {
 
   String adminMenu() {
     return '<b>Админка</b>\n\nПоиск человека, карточка, ручной статус, рассылка сегменту. '
-        'Цифры воронки — в Google Sheets.';
+        'Срез воронки — кнопка «${MessageTemplates.buttonAdminSheets}».';
   }
 
   String adminAskSearch() {
@@ -226,13 +228,13 @@ final class MessageTemplates {
     final orderLine = order == null
         ? 'заказа нет'
         : '#${order.id} ${order.status.storageValue}, '
-            'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
-            'из ${formatRubFromKopecks(order.priceFullKopecks)}';
+              'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
+              'из ${formatRubFromKopecks(order.priceFullKopecks)}';
     final channel = access == null
         ? 'канала нет'
         : (access.hasJoined
-            ? 'вошёл ${access.joinedAt!.toIso8601String()}'
-            : (access.inviteLink == null ? 'ссылка не выдана' : 'ссылка выдана, входа нет'));
+              ? 'вошёл ${access.joinedAt!.toIso8601String()}'
+              : (access.inviteLink == null ? 'ссылка не выдана' : 'ссылка выдана, входа нет'));
     final opt = user.warmupOptOut ? 'да' : 'нет';
     final blocked = user.botBlocked ? 'да' : 'нет';
     final buf = StringBuffer()
@@ -282,6 +284,16 @@ final class MessageTemplates {
 
   String adminInviteReissued() => 'Invite перевыдан.';
 
+  String adminSheetsUpdated() => 'Срез FUNNEL в Google Sheets обновлён.';
+
+  String adminSheetsDisabled() {
+    return 'Google Sheets не подключён. Проверь ключ, id таблицы и GOOGLE_SHEETS_WRITE_ENABLED.';
+  }
+
+  String adminSheetsFailed(String error) {
+    return 'Не получилось обновить таблицу: ${escapeHtml(error)}';
+  }
+
   static int? idFromCallback(String data, String prefix) {
     if (!data.startsWith(prefix)) {
       return null;
@@ -298,13 +310,13 @@ final class MessageTemplates {
   }
 
   String _phaseLabel(FunnelPhase phase) => switch (phase) {
-        FunnelPhase.lead => 'пришёл',
-        FunnelPhase.magnetIssued => 'получил гайд',
-        FunnelPhase.warming => 'в прогреве',
-        FunnelPhase.checkout => 'начал оформление',
-        FunnelPhase.depositPaid => 'предоплата',
-        FunnelPhase.paid => 'оплачено',
-        FunnelPhase.accessGranted => 'доступ выдан',
-        FunnelPhase.cancelled => 'отменено',
-      };
+    FunnelPhase.lead => 'пришёл',
+    FunnelPhase.magnetIssued => 'получил гайд',
+    FunnelPhase.warming => 'в прогреве',
+    FunnelPhase.checkout => 'начал оформление',
+    FunnelPhase.depositPaid => 'предоплата',
+    FunnelPhase.paid => 'оплачено',
+    FunnelPhase.accessGranted => 'доступ выдан',
+    FunnelPhase.cancelled => 'отменено',
+  };
 }

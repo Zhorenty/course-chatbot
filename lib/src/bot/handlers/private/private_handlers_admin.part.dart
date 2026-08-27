@@ -11,11 +11,22 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     if (text == MessageTemplates.buttonAdminSearch) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminSearch);
-      return _send(context, _templates.adminAskSearch());
+      return _send(
+        context,
+        _templates.adminAskSearch(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
     }
     if (text == MessageTemplates.buttonAdminBroadcast) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminBroadcastText);
-      return _send(context, _templates.adminAskBroadcast());
+      return _send(
+        context,
+        _templates.adminAskBroadcast(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
+    if (text == MessageTemplates.buttonAdminSheets || text == '/sheets') {
+      return _adminRefreshSheets(context);
     }
     final fileId = extractDocumentFileId(context.message);
     if (fileId != null && text == null) {
@@ -46,16 +57,47 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return false;
   }
 
+  Future<bool> _adminRefreshSheets(PrivateMessageContext context) async {
+    final job = _sheetsExportJob;
+    if (job == null) {
+      return _send(
+        context,
+        _templates.adminSheetsDisabled(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
+    try {
+      await job.export();
+      return _send(
+        context,
+        _templates.adminSheetsUpdated(),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Admin Google Sheets refresh failed: $error', stackTrace);
+      return _send(
+        context,
+        _templates.adminSheetsFailed('$error'),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
+  }
+
   Future<bool> _showAdminCard(PrivateMessageContext context, String query) async {
     final matches = _course.searchUsers(query);
     if (matches.isEmpty) {
-      return _send(context, _templates.adminNotFound(query));
+      return _send(
+        context,
+        _templates.adminNotFound(query),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
     }
     final user = matches.first;
     final launch = _launch;
     final order = _course.latestOrder(user.userId);
-    final access =
-        launch == null ? null : _course.accessFor(userId: user.userId, launchId: launch.id);
+    final access = launch == null
+        ? null
+        : _course.accessFor(userId: user.userId, launchId: launch.id);
     final dialog = _course.dialogForUser(user.userId);
     _flowByUserId[context.userId!] = PrivateFlowState(
       step: PrivateFlowStep.idle,
@@ -81,11 +123,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _send(context, _templates.payManualFallback());
     }
     _course.ensureUser(userId: targetUserId, now: _nowProvider());
-    final order = _checkout.startOrReuseOrder(
-      userId: targetUserId,
-      launch: launch,
-      kind: kind,
-    );
+    final order = _checkout.startOrReuseOrder(userId: targetUserId, launch: launch, kind: kind);
     final amount = _checkout.amountFor(launch, order, kind);
     final result = await _checkout.applyManualPaid(
       order: order,
@@ -134,7 +172,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       );
     }
     return _send(
-        context, link == null ? _templates.inviteUnavailable() : _templates.adminInviteReissued());
+      context,
+      link == null ? _templates.inviteUnavailable() : _templates.adminInviteReissued(),
+    );
   }
 
   Future<bool> _confirmBroadcast(PrivateMessageContext context) async {
@@ -152,11 +192,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     );
     return _send(
       context,
-      _templates.adminBroadcastDone(
-        sent: result.sent,
-        failed: result.failed,
-        total: result.total,
-      ),
+      _templates.adminBroadcastDone(sent: result.sent, failed: result.failed, total: result.total),
+      replyMarkup: _templates.adminMenuKeyboard(),
     );
   }
 
@@ -170,6 +207,10 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _send(context, _templates.adminGuideDiscarded());
     }
     _course.setLeadMagnetFileId(fileId);
-    return _send(context, _templates.adminGuideSaved(fileId));
+    return _send(
+      context,
+      _templates.adminGuideSaved(fileId),
+      replyMarkup: _templates.adminMenuKeyboard(),
+    );
   }
 }
