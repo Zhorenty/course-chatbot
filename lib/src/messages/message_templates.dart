@@ -285,8 +285,13 @@ final class MessageTemplates {
         'Если это предоплата, в канал пущу после полной суммы.';
   }
 
+  // TODO(launch): replace the hardcoded @zhorenty support username below with
+  //  the real support contact once it's confirmed.
   String payManualFallback() {
-    return '💳 Онлайн-оплата сейчас не открылась. Напиши сюда — админ отметит платёж вручную.';
+    return '💳 Сейчас временные технические неполадки с онлайн-оплатой. '
+        'Не переживай — место за тобой сохранится.\n\n'
+        'Чтобы оплатить, напиши в поддержку: @zhorenty. '
+        'Там всё оформим вручную и подтвердим оплату.';
   }
 
   String adminPaymentGatewayDown({required int userId, required String provider, String? reason}) {
