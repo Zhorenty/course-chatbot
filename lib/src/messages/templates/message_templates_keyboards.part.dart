@@ -106,11 +106,47 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(rows);
   }
 
+  Map<String, Object?> offerKeyboard({
+    required bool acceptedOffer,
+    required bool acceptedPersonalData,
+  }) {
+    return inlineKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': _checkbox(
+              acceptedOffer,
+              'Я ознакомился(-ась) и принимаю условия Публичной оферты',
+            ),
+            'callback_data': MessageTemplates.cbToggleOffer,
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': _checkbox(
+              acceptedPersonalData,
+              'Я даю согласие на обработку персональных данных',
+            ),
+            'callback_data': MessageTemplates.cbTogglePersonalData,
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonGoToPay,
+            'callback_data': MessageTemplates.cbGoToPay,
+          },
+        ],
+      ],
+    );
+  }
+
+  String _checkbox(bool checked, String label) => '${checked ? '☑️' : '☐'} $label';
+
   Map<String, Object?> payUrlKeyboard(String url) {
     return inlineKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': 'Оплатить', 'url': url},
+          <String, String>{'text': MessageTemplates.buttonGoToPay, 'url': url},
         ],
       ],
     );

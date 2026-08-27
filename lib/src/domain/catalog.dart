@@ -19,6 +19,8 @@ final class Launch {
     required this.priceFullKopecks,
     required this.depositKopecks,
     required this.depositDueDays,
+    this.depositDueAt,
+    this.courseStartAt,
     this.channelId,
     this.offerUrl,
     this.leadMagnetFileId,
@@ -33,9 +35,15 @@ final class Launch {
   final int priceFullKopecks;
   final int depositKopecks;
   final int depositDueDays;
+  final DateTime? depositDueAt;
+  final DateTime? courseStartAt;
   final String? offerUrl;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
 
   bool get hasDepositOption => depositKopecks > 0 && depositKopecks < priceFullKopecks;
+
+  DateTime resolveDepositDueAt(DateTime now) {
+    return depositDueAt ?? now.add(Duration(days: depositDueDays));
+  }
 }

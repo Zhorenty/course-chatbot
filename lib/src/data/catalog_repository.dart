@@ -9,6 +9,8 @@ abstract interface class CatalogRepository {
     required int priceFullKopecks,
     required int depositKopecks,
     required int depositDueDays,
+    DateTime? depositDueAt,
+    DateTime? courseStartAt,
     int? channelId,
     String? offerUrl,
     String? leadMagnetFileId,

@@ -10,6 +10,8 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required int priceFullKopecks,
     required int depositKopecks,
     required int depositDueDays,
+    DateTime? depositDueAt,
+    DateTime? courseStartAt,
     int? channelId,
     String? offerUrl,
     String? leadMagnetFileId,
@@ -30,14 +32,17 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       '''
       INSERT INTO launches (
         product_id, code, title, channel_id, price_full_kopecks, deposit_kopecks,
-        deposit_due_days, offer_url, lead_magnet_file_id, lead_magnet_url, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        deposit_due_days, deposit_due_at, course_start_at, offer_url,
+        lead_magnet_file_id, lead_magnet_url, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title,
         channel_id = COALESCE(excluded.channel_id, launches.channel_id),
         price_full_kopecks = excluded.price_full_kopecks,
         deposit_kopecks = excluded.deposit_kopecks,
         deposit_due_days = excluded.deposit_due_days,
+        deposit_due_at = excluded.deposit_due_at,
+        course_start_at = excluded.course_start_at,
         offer_url = COALESCE(excluded.offer_url, launches.offer_url),
         lead_magnet_file_id = COALESCE(excluded.lead_magnet_file_id, launches.lead_magnet_file_id),
         lead_magnet_url = COALESCE(excluded.lead_magnet_url, launches.lead_magnet_url);
@@ -50,6 +55,8 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         priceFullKopecks,
         depositKopecks,
         depositDueDays,
+        depositDueAt?.toUtc().toIso8601String(),
+        courseStartAt?.toUtc().toIso8601String(),
         offerUrl,
         leadMagnetFileId,
         leadMagnetUrl,

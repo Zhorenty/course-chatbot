@@ -116,4 +116,98 @@ void main() {
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.paid);
     expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
   });
+
+  test('enroll shows full price, deposit and 5 October due date', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbEnroll,
+      ),
+    );
+
+    final enroll = harness.sender.messages.last.text;
+    expect(enroll, contains('18000 ₽'));
+    expect(enroll, contains('5000 ₽'));
+    expect(enroll, contains('05.10.2026'));
+    expect(enroll, contains('12.10.2026'));
+    expect(enroll, isNot(contains('t.me/+')));
+  });
+
+  test('checkout is blocked until both offer checkboxes are accepted', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbEnroll,
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '2',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbPayFull,
+      ),
+    );
+
+    expect(harness.sender.messages.last.text, contains('Публичной оферты'));
+    expect(harness.gateway.creates, 0);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '3',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGoToPay,
+      ),
+    );
+    expect(harness.gateway.creates, 0);
+    expect(
+      harness.sender.callbackAnswers.any(
+        (answer) => answer.showAlert && (answer.text?.contains('оба пункта') ?? false),
+      ),
+      isTrue,
+    );
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '4',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbToggleOffer,
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '5',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbTogglePersonalData,
+      ),
+    );
+    expect(harness.sender.markupEdits, isNotEmpty);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '6',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGoToPay,
+      ),
+    );
+    expect(harness.gateway.creates, 1);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')),
+      isTrue,
+    );
+  });
 }

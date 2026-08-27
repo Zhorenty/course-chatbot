@@ -1,6 +1,78 @@
 part of 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 
 extension _PrivateHandlersCheckout on PrivateHandlers {
+  Future<bool> _showOffer(PrivateMessageContext context, PaymentKind kind) async {
+    final launch = _launch;
+    if (launch == null) {
+      return _send(context, _templates.payManualFallback());
+    }
+    _flowByUserId[context.userId!] = PrivateFlowState(
+      step: PrivateFlowStep.offerConsent,
+      pendingPayKind: kind,
+    );
+    return _send(
+      context,
+      _templates.offerConsent(launch),
+      replyMarkup: _templates.offerKeyboard(
+        acceptedOffer: false,
+        acceptedPersonalData: false,
+      ),
+    );
+  }
+
+  Future<bool> _toggleOfferCheck(PrivateMessageContext context, {required bool offer}) async {
+    final userId = context.userId!;
+    final flow = _flowByUserId[userId];
+    if (flow == null || flow.step != PrivateFlowStep.offerConsent || flow.pendingPayKind == null) {
+      await _answerCallback(context, text: 'Выбери способ оплаты ещё раз.');
+      return _showEnroll(context);
+    }
+    final next = offer
+        ? flow.copyWith(acceptedOffer: !flow.acceptedOffer)
+        : flow.copyWith(acceptedPersonalData: !flow.acceptedPersonalData);
+    _flowByUserId[userId] = next;
+    await _answerCallback(context);
+    final markup = _templates.offerKeyboard(
+      acceptedOffer: next.acceptedOffer,
+      acceptedPersonalData: next.acceptedPersonalData,
+    );
+    final messageId = asTelegramInt(context.callbackMessage?['message_id']);
+    final chatId = context.chatId;
+    if (chatId != null && messageId != null) {
+      try {
+        await _sender.editMessageReplyMarkup(
+          chatId,
+          messageId: messageId,
+          replyMarkup: markup,
+        );
+        return true;
+      } on TelegramApiException catch (error, stackTrace) {
+        l.w('editMessageReplyMarkup failed: $error', stackTrace);
+      }
+    }
+    return _send(context, _templates.offerConsent(_launch!), replyMarkup: markup);
+  }
+
+  Future<bool> _confirmOfferAndPay(PrivateMessageContext context) async {
+    final flow = _flowByUserId[context.userId!];
+    final kind = flow?.pendingPayKind;
+    if (flow == null || flow.step != PrivateFlowStep.offerConsent || kind == null) {
+      await _answerCallback(context, text: 'Выбери способ оплаты ещё раз.');
+      return _showEnroll(context);
+    }
+    if (!flow.offerReady) {
+      await _answerCallback(
+        context,
+        text: _templates.offerNeedBothChecks(),
+        showAlert: true,
+      );
+      return true;
+    }
+    await _answerCallback(context);
+    _flowByUserId.remove(context.userId);
+    return _startPay(context, kind);
+  }
+
   Future<bool> _startPay(PrivateMessageContext context, PaymentKind kind) async {
     final launch = _launch;
     final userId = context.userId!;
@@ -48,7 +120,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (url != null && url.isNotEmpty) {
       return _send(context, _templates.payButton(url), replyMarkup: _templates.payUrlKeyboard(url));
     }
-    return _startPay(context, order.kind);
+    return _showOffer(context, order.kind);
   }
 
   Future<bool> _reissueInvite(PrivateMessageContext context) async {

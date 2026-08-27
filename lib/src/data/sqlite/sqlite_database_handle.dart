@@ -71,6 +71,8 @@ final class SqliteDatabaseHandle {
         price_full_kopecks INTEGER NOT NULL DEFAULT 0,
         deposit_kopecks INTEGER NOT NULL DEFAULT 0,
         deposit_due_days INTEGER NOT NULL DEFAULT 7,
+        deposit_due_at TEXT,
+        course_start_at TEXT,
         offer_url TEXT,
         lead_magnet_file_id TEXT,
         lead_magnet_url TEXT,
@@ -78,6 +80,8 @@ final class SqliteDatabaseHandle {
       );
     ''');
     _ensureColumn(db, 'launches', 'is_active', 'INTEGER NOT NULL DEFAULT 0');
+    _ensureColumn(db, 'launches', 'deposit_due_at', 'TEXT');
+    _ensureColumn(db, 'launches', 'course_start_at', 'TEXT');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (
         user_id INTEGER PRIMARY KEY,

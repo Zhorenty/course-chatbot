@@ -74,6 +74,8 @@ final class CourseBotRuntime {
       priceFullKopecks: rubToKopecks(config.priceFullRub),
       depositKopecks: rubToKopecks(config.depositAmountRub),
       depositDueDays: config.depositDueDays,
+      depositDueAt: config.depositDueAt,
+      courseStartAt: config.courseStartAt,
       channelId: config.courseChannelId,
       offerUrl: config.offerUrl,
       leadMagnetFileId: config.leadMagnetFileId,

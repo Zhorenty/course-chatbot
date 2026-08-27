@@ -72,8 +72,7 @@ final class CheckoutService {
       return existing;
     }
     final now = _nowProvider();
-    final dueAt =
-        kind == PaymentKind.deposit ? now.add(Duration(days: launch.depositDueDays)) : null;
+    final dueAt = kind == PaymentKind.deposit ? launch.resolveDepositDueAt(now) : null;
     final amountDue = switch (kind) {
       PaymentKind.deposit => launch.priceFullKopecks,
       PaymentKind.remainder => existing?.amountDueKopecks ?? launch.priceFullKopecks,
@@ -345,7 +344,7 @@ final class CheckoutService {
       amountPaidKopecks: paidTotal,
       amountDueKopecks: due,
       dueAt: kind == PaymentKind.deposit
-          ? (order.dueAt ?? now.add(Duration(days: launch.depositDueDays)))
+          ? (order.dueAt ?? launch.resolveDepositDueAt(now))
           : order.dueAt,
       paidAt: grantsAccess ? now : order.paidAt,
     );

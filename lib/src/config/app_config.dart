@@ -27,9 +27,11 @@ final class AppConfig {
     this.offerUrl,
     this.productCode = 'course',
     this.launchCode = 'launch-1',
-    this.priceFullRub = 0,
-    this.depositAmountRub = 0,
+    this.priceFullRub = 18000,
+    this.depositAmountRub = 5000,
     this.depositDueDays = 7,
+    this.depositDueDate = '2026-10-05',
+    this.courseStartDate = '2026-10-12',
     this.abandonFirstDelayHours = 6,
     this.abandonSecondDelayHours = 24,
     this.yookassaReturnUrl,
@@ -66,6 +68,8 @@ final class AppConfig {
   final int priceFullRub;
   final int depositAmountRub;
   final int depositDueDays;
+  final String? depositDueDate;
+  final String? courseStartDate;
   final int abandonFirstDelayHours;
   final int abandonSecondDelayHours;
   final String? yookassaReturnUrl;
@@ -86,6 +90,11 @@ final class AppConfig {
   final String sqliteBackupDir;
   final int sqliteBackupKeep;
   final int sqliteBackupIntervalHours;
+
+  DateTime? get depositDueAt =>
+      parseIsoDateEndOfDay(depositDueDate, timezoneOffsetHours: timezoneOffsetHours);
+
+  DateTime? get courseStartAt => parseIsoDate(courseStartDate);
 
   bool get usesLiveKassa {
     switch (paymentProvider) {
@@ -133,7 +142,9 @@ final class AppConfig {
       ..addOption('launch-code', help: 'Launch code in SQLite (default: launch-1)')
       ..addOption('price-full-rub', help: 'Full course price in RUB')
       ..addOption('deposit-amount-rub', help: 'Deposit amount in RUB (0 = no deposit)')
-      ..addOption('deposit-due-days', help: 'Days until remainder is due (default: 7)')
+      ..addOption('deposit-due-days', help: 'Fallback days until remainder if no calendar date')
+      ..addOption('deposit-due-date', help: 'Remainder due date YYYY-MM-DD (default: 2026-10-05)')
+      ..addOption('course-start-date', help: 'Course start date YYYY-MM-DD (default: 2026-10-12)')
       ..addOption('abandon-first-delay-hours', help: 'First abandoned-payment nudge hours')
       ..addOption('abandon-second-delay-hours', help: 'Second abandoned-payment nudge hours')
       ..addOption('yookassa-return-url', help: 'Redirect after YooKassa checkout')
@@ -225,12 +236,15 @@ final class AppConfig {
       productCode: resolve('PRODUCT_CODE', 'product-code') ?? 'course',
       launchCode: resolve('LAUNCH_CODE', 'launch-code') ?? 'launch-1',
       priceFullRub:
-          int.tryParse(resolve('PRICE_FULL_RUB', 'price-full-rub') ?? '')?.clamp(0, 100000000) ?? 0,
+          int.tryParse(resolve('PRICE_FULL_RUB', 'price-full-rub') ?? '')?.clamp(0, 100000000) ??
+              18000,
       depositAmountRub: int.tryParse(resolve('DEPOSIT_AMOUNT_RUB', 'deposit-amount-rub') ?? '')
               ?.clamp(0, 100000000) ??
-          0,
+          5000,
       depositDueDays:
           int.tryParse(resolve('DEPOSIT_DUE_DAYS', 'deposit-due-days') ?? '')?.clamp(1, 365) ?? 7,
+      depositDueDate: resolve('DEPOSIT_DUE_DATE', 'deposit-due-date') ?? '2026-10-05',
+      courseStartDate: resolve('COURSE_START_DATE', 'course-start-date') ?? '2026-10-12',
       abandonFirstDelayHours:
           int.tryParse(resolve('ABANDON_FIRST_DELAY_HOURS', 'abandon-first-delay-hours') ?? '')
                   ?.clamp(1, 72) ??
@@ -358,4 +372,30 @@ Set<int> _parseIntSet(String? raw) {
     return const <int>{};
   }
   return raw.split(',').map((item) => int.tryParse(item.trim())).whereType<int>().toSet();
+}
+
+final _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
+
+DateTime? parseIsoDate(String? raw) {
+  final match = _isoDate.firstMatch(raw?.trim() ?? '');
+  if (match == null) {
+    return null;
+  }
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  return DateTime.utc(year, month, day);
+}
+
+/// End of the calendar day in the business timezone, stored as UTC.
+DateTime? parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours}) {
+  final date = parseIsoDate(raw);
+  if (date == null) {
+    return null;
+  }
+  return DateTime.utc(date.year, date.month, date.day, 23, 59, 59)
+      .subtract(Duration(hours: timezoneOffsetHours));
 }

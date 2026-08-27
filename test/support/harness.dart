@@ -34,8 +34,10 @@ final class HandlerHarness {
   Future<void> init({
     Set<int> adminUserIds = const <int>{1},
     int channelId = -1001,
-    int priceFullKopecks = 1000000,
-    int depositKopecks = 300000,
+    int priceFullKopecks = 1800000,
+    int depositKopecks = 500000,
+    DateTime? depositDueAt,
+    DateTime? courseStartAt,
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
@@ -47,6 +49,8 @@ final class HandlerHarness {
       priceFullKopecks: priceFullKopecks,
       depositKopecks: depositKopecks,
       depositDueDays: 7,
+      depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
+      courseStartAt: courseStartAt ?? DateTime.utc(2026, 10, 12),
       channelId: channelId,
       leadMagnetFileId: 'file-guide',
     );

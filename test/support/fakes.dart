@@ -44,19 +44,50 @@ final class FakeMessageSender implements MessageSender {
     return 100 + documents.length;
   }
 
+  final List<CallbackAnswer> callbackAnswers = <CallbackAnswer>[];
+  final List<MarkupEdit> markupEdits = <MarkupEdit>[];
+
   @override
   Future<void> answerCallbackQuery(
     String callbackQueryId, {
     String? text,
     bool showAlert = false,
-  }) async {}
+  }) async {
+    callbackAnswers.add(
+      CallbackAnswer(id: callbackQueryId, text: text, showAlert: showAlert),
+    );
+  }
 
   @override
   Future<void> editMessageReplyMarkup(
     int chatId, {
     required int messageId,
     Map<String, Object?>? replyMarkup,
-  }) async {}
+  }) async {
+    markupEdits.add(
+      MarkupEdit(chatId: chatId, messageId: messageId, replyMarkup: replyMarkup),
+    );
+  }
+}
+
+final class CallbackAnswer {
+  const CallbackAnswer({required this.id, this.text, this.showAlert = false});
+
+  final String id;
+  final String? text;
+  final bool showAlert;
+}
+
+final class MarkupEdit {
+  const MarkupEdit({
+    required this.chatId,
+    required this.messageId,
+    this.replyMarkup,
+  });
+
+  final int chatId;
+  final int messageId;
+  final Map<String, Object?>? replyMarkup;
 }
 
 final class SentMessage {
@@ -219,6 +250,7 @@ Map<String, dynamic> privateCallbackUpdate({
       'id': callbackId,
       'from': <String, dynamic>{'id': userId, 'first_name': 'Test'},
       'message': <String, dynamic>{
+        'message_id': 20,
         'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
       },
       'data': data,

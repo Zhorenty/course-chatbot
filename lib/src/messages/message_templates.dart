@@ -27,6 +27,7 @@ final class MessageTemplates {
   static const String buttonPayDeposit = 'Предоплата';
   static const String buttonPayInstallment = 'Рассрочка';
   static const String buttonPayRemainder = 'Доплатить';
+  static const String buttonGoToPay = 'Перейти к оплате';
   static const String buttonContinuePay = 'Продолжить оплату';
   static const String buttonNewInvite = 'Новая ссылка в канал';
   static const String buttonAdminSearch = 'Поиск человека';
@@ -39,6 +40,9 @@ final class MessageTemplates {
   static const String cbPayDeposit = 'pd';
   static const String cbPayInstallment = 'pi';
   static const String cbPayRemainder = 'pr';
+  static const String cbToggleOffer = 'oo';
+  static const String cbTogglePersonalData = 'op';
+  static const String cbGoToPay = 'og';
   static const String cbOptOut = 'o';
   static const String cbContinuePay = 'cp:';
   static const String cbNewInvite = 'ni';
@@ -114,13 +118,44 @@ final class MessageTemplates {
     final price = launch.priceFullKopecks > 0
         ? formatRubFromKopecks(launch.priceFullKopecks)
         : 'цену уточнит админ';
-    final offer = launch.offerUrl == null ? '' : '\nОферта: ${escapeHtml(launch.offerUrl!)}';
-    final deposit = launch.hasDepositOption
-        ? '\nПредоплата: ${formatRubFromKopecks(launch.depositKopecks)}.'
-        : '';
-    return '<b>Запись на курс</b>\n\n'
-        'Полная оплата: $price.$deposit\n'
-        'Рассрочка — на странице кассы, бот график не ведёт.$offer';
+    final buf = StringBuffer()
+      ..writeln('<b>Запись на курс</b>')
+      ..writeln()
+      ..writeln('Стоимость: $price.');
+    if (launch.hasDepositOption) {
+      buf.writeln('Предоплата: ${formatRubFromKopecks(launch.depositKopecks)}.');
+      final due = launch.depositDueAt;
+      if (due != null) {
+        buf.write('Дата доплаты: ${_date.format(due.toUtc())}');
+        final start = launch.courseStartAt;
+        if (start != null) {
+          buf.write(' (старт курса ${_date.format(start.toUtc())})');
+        }
+        buf.writeln('.');
+      }
+    }
+    buf.writeln('Рассрочка — на странице кассы, бот график не ведёт.');
+    return buf.toString().trim();
+  }
+
+  String offerConsent(Launch launch) {
+    final offerPhrase = _offerPhrase(launch);
+    return 'Нажимая кнопку «${MessageTemplates.buttonGoToPay}», вы подтверждаете, '
+        'что ознакомились и соглашаетесь с условиями $offerPhrase '
+        'на оказание информационно-консультационных/образовательных услуг, '
+        'а также даёте согласие на обработку персональных данных.';
+  }
+
+  String offerNeedBothChecks() {
+    return 'Отметь оба пункта, чтобы перейти к оплате.';
+  }
+
+  String _offerPhrase(Launch launch) {
+    final url = launch.offerUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return 'Публичной оферты';
+    }
+    return '<a href="${escapeHtml(url)}">Публичной оферты</a>';
   }
 
   String payButton(String url) {

@@ -25,7 +25,10 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       );
     }
     if (context.callbackQueryId != null) {
-      await _answerCallback(context);
+      final data = context.callbackData ?? '';
+      if (!_defersCallbackAnswer(data)) {
+        await _answerCallback(context);
+      }
       return _handleCallback(context);
     }
     final text = context.text;
@@ -41,13 +44,23 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     return _handleUserText(context);
   }
 
-  Future<void> _answerCallback(PrivateMessageContext context) async {
+  bool _defersCallbackAnswer(String data) {
+    return data == MessageTemplates.cbToggleOffer ||
+        data == MessageTemplates.cbTogglePersonalData ||
+        data == MessageTemplates.cbGoToPay;
+  }
+
+  Future<void> _answerCallback(
+    PrivateMessageContext context, {
+    String? text,
+    bool showAlert = false,
+  }) async {
     final id = context.callbackQueryId;
     if (id == null) {
       return;
     }
     try {
-      await _sender.answerCallbackQuery(id);
+      await _sender.answerCallbackQuery(id, text: text, showAlert: showAlert);
     } on TelegramApiException catch (error, stackTrace) {
       l.w('answerCallbackQuery failed: $error', stackTrace);
     }
@@ -61,13 +74,19 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       case MessageTemplates.cbEnroll:
         return _showEnroll(context);
       case MessageTemplates.cbPayFull:
-        return _startPay(context, PaymentKind.full);
+        return _showOffer(context, PaymentKind.full);
       case MessageTemplates.cbPayDeposit:
-        return _startPay(context, PaymentKind.deposit);
+        return _showOffer(context, PaymentKind.deposit);
       case MessageTemplates.cbPayInstallment:
-        return _startPay(context, PaymentKind.installment);
+        return _showOffer(context, PaymentKind.installment);
       case MessageTemplates.cbPayRemainder:
-        return _startPay(context, PaymentKind.remainder);
+        return _showOffer(context, PaymentKind.remainder);
+      case MessageTemplates.cbToggleOffer:
+        return _toggleOfferCheck(context, offer: true);
+      case MessageTemplates.cbTogglePersonalData:
+        return _toggleOfferCheck(context, offer: false);
+      case MessageTemplates.cbGoToPay:
+        return _confirmOfferAndPay(context);
       case MessageTemplates.cbOptOut:
         return _optOut(context);
       case MessageTemplates.cbNewInvite:

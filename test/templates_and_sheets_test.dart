@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -8,6 +9,29 @@ void main() {
     final templates = MessageTemplates();
     expect(templates.warmupStep('warmup_0'), contains('записаться'));
     expect(MessageTemplates.buttonEnroll, contains('Записаться'));
+  });
+
+  test('offer consent copy names the pay button and both checkboxes', () {
+    final templates = MessageTemplates();
+    const launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+    );
+    expect(templates.offerConsent(launch), contains('Перейти к оплате'));
+    expect(templates.offerConsent(launch), contains('Публичной оферты'));
+    final keyboard = templates.offerKeyboard(
+      acceptedOffer: true,
+      acceptedPersonalData: false,
+    );
+    final rows = keyboard['inline_keyboard'] as List<dynamic>;
+    expect(rows[0].toString(), contains('☑️'));
+    expect(rows[1].toString(), contains('☐'));
+    expect(rows[2].toString(), contains('Перейти к оплате'));
   });
 
   test('FUNNEL dashboard has course steps not club quiz', () {

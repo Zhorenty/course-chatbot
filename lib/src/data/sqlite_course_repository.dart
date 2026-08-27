@@ -136,6 +136,8 @@ class _SqliteCourseStore {
       priceFullKopecks: row['price_full_kopecks'] as int,
       depositKopecks: row['deposit_kopecks'] as int,
       depositDueDays: row['deposit_due_days'] as int,
+      depositDueAt: parseTime(row['deposit_due_at'] as String?),
+      courseStartAt: parseTime(row['course_start_at'] as String?),
       offerUrl: row['offer_url'] as String?,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
       leadMagnetUrl: row['lead_magnet_url'] as String?,

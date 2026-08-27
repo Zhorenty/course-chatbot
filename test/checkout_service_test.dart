@@ -383,6 +383,19 @@ void main() {
     expect(harness.channel.created, isNotEmpty);
   });
 
+  test('deposit remainder is due 5 October 2026 Moscow', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 8, 27));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.deposit,
+    );
+
+    expect(order.dueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
+    expect(launch.courseStartAt, DateTime.utc(2026, 10, 12));
+  });
+
   test('zero amount checkout is refused', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
