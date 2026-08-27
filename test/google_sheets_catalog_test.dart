@@ -100,7 +100,8 @@ void main() {
   test('status formula names missing fields and готов', () {
     final formula = CoursesSheet.statusFormula(row: 5);
     expect(formula, startsWith('='));
-    expect(formula, contains('COUNTA('));
+    expect(formula, contains('SUMPRODUCT(LEN('));
+    expect(formula, isNot(contains('COUNTA(')));
     expect(formula, contains('готово'));
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));

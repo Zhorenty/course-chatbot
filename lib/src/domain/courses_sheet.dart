@@ -168,7 +168,7 @@ abstract final class CoursesSheet {
       'IF(${cell(depositDueDate)}="";"нет даты доплаты";"")',
       'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
     ].join('$formulaSep ');
-    return '=IF(COUNTA($dataRange)=0;"";IF(AND($allRequired);"готово";'
+    return '=IF(SUMPRODUCT(LEN($dataRange))=0;"";IF(AND($allRequired);"готово";'
         'TEXTJOIN("; "$formulaSep TRUE$formulaSep $missing)))';
   }
 

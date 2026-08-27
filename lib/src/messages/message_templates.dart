@@ -395,24 +395,27 @@ final class MessageTemplates {
     final buf = StringBuffer();
     if (catalogAttempted) {
       if (catalogOk && launch != null) {
-        buf.write('Каталог COURSES перечитан: <code>${escapeHtml(launch.code)}</code>, ');
-        buf.write(formatRubFromKopecks(launch.priceFullKopecks));
+        buf.write('Текущий набор в боте: ${formatRubFromKopecks(launch.priceFullKopecks)}');
         final start = launch.courseStartAt;
         if (start != null) {
           buf.write(', старт ${_date.format(start.toUtc())}');
         }
         buf.writeln('.');
       } else if (catalogOk) {
-        buf.writeln('Каталог COURSES: новых строк нет, текущий запуск в базе не тронут.');
+        buf.writeln('Набор в таблице не менялся, в боте всё как было.');
       } else {
-        buf.writeln('Каталог COURSES не обновлён: ${escapeHtml(catalogError ?? 'ошибка')}.');
+        buf.writeln(
+          'Не получилось взять набор из таблицы: ${escapeHtml(catalogError ?? 'ошибка')}.',
+        );
       }
     }
     if (funnelAttempted) {
       if (funnelOk) {
-        buf.writeln('Срез ВОРОНКА обновлён.');
+        buf.writeln('Цифры воронки в таблице обновлены.');
       } else {
-        buf.writeln('Срез ВОРОНКА не обновлён: ${escapeHtml(funnelError ?? 'ошибка')}.');
+        buf.writeln(
+          'Не получилось обновить цифры воронки в таблице: ${escapeHtml(funnelError ?? 'ошибка')}.',
+        );
       }
     }
     return buf.toString().trim();
