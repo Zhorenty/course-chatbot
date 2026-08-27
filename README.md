@@ -7,6 +7,7 @@
 - [`docs/TZ.md`](docs/TZ.md) — ТЗ, согласованное с заказчиком
 - [`docs/LEKALA.md`](docs/LEKALA.md) — лекала сборки
 - [`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md) — что осталось сделать тебе и заказчику (VPS, таблица, касса, тексты)
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — заказ VPS в SmartApe, `.env`, Docker, HTTPS для кассы
 - [`docs/funnel-example.png`](docs/funnel-example.png) — пример среза воронки в Google Sheets
 
 ## Запуск локально
@@ -24,11 +25,13 @@ make bot
 
 ```bash
 cp .env.example .env
-# BOT_TOKEN, ADMIN_USER_IDS
-# для контейнера compose сам ставит PAYMENT_WEBHOOK_BIND=0.0.0.0:8080
+# BOT_TOKEN, ADMIN_USER_IDS, COURSE_CHANNEL_ID
+# compose сам ставит PAYMENT_WEBHOOK_BIND=0.0.0.0:8080
 # порт на хосте только 127.0.0.1:8080
 docker compose up -d --build
 ```
+
+На сервере после `git push`: `./scripts/deploy.sh` (с Mac: `ssh course-bot 'cd /opt/course-chatbot && ./scripts/deploy.sh'`). Подробнее: [`docs/DEPLOY.md`](docs/DEPLOY.md) → раздел 10.
 
 SQLite живёт в `./data`. Бэкап — периодический `VACUUM INTO` в `data/backups/` и копия файла `data/course.sqlite` (и `-wal`/`-shm`, если есть).
 
@@ -46,7 +49,7 @@ SQLite живёт в `./data`. Бэкап — периодический `VACUUM
 
 ## Google Sheets
 
-Сервис-аккаунт JSON в `secrets/` (не в git). Таблице выдать доступ редактора. Бот пересобирает вкладку `FUNNEL`.
+Сервис-аккаунт JSON в `secrets/` (не в git). Таблице выдать доступ редактора на `client_email` из JSON. Бот пересобирает вкладку `FUNNEL`. Пошагово: [`docs/DEPLOY.md`](docs/DEPLOY.md) → раздел Google Sheets.
 
 ## Проверки
 

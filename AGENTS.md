@@ -128,7 +128,7 @@ Precedence (highest to lowest):
 3. `.env`
 4. defaults
 
-Core env (see `.env.example`): `BOT_TOKEN`, `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`, `BOOKINGS_DB_PATH`, `POLL_TIMEOUT_SECONDS`, `TIMEZONE_OFFSET_HOURS`, `QUIET_HOURS_FROM` / `QUIET_HOURS_TO`, `COURSE_CHANNEL_ID`, `LEAD_MAGNET_FILE_ID`, `LEAD_MAGNET_PATH`, `LEAD_MAGNET_FILENAME`, `WARMUP_ENABLED`, `PAYMENT_PROVIDER`, LeadPay/YooKassa secrets, `PAYMENT_WEBHOOK_BIND`, `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_WEBHOOK_PATH`, `PRICE_FULL_RUB`, `DEPOSIT_AMOUNT_RUB`, `DEPOSIT_DUE_DATE`, `COURSE_START_DATE`, `OFFER_URL`, Google Sheets write flags, `SQLITE_BACKUP_*`, `LOG_LEVEL`.
+Core env (see `.env.example`): `BOT_TOKEN`, `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`, `COURSE_CHANNEL_ID`, `LEAD_MAGNET_FILE_ID`, `OFFER_URL`, `PAYMENT_PROVIDER`, LeadPay/YooKassa secrets, `PAYMENT_WEBHOOK_SECRET`, Google Sheets credentials. Product constants (price, dates, quiet hours, SQLite path, backups, lead-magnet file, drip delays) live as defaults in `AppConfig` — not in `.env`. Compose sets `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` inside the container.
 
 After `.env` changes in Docker: recreate the container.
 

@@ -17,7 +17,7 @@
 | Регистрация на гайд | Только Telegram user id. Имя / почта / телефон **не** собираем |
 | Прогрев | **Сразу** после выдачи гайда — первое сообщение. Дальнейшая цепочка — тексты заказчика, пока каркас + первое касание |
 | Отписка | Кнопка «Не писать» в прогреве. Меню / гайд / запись остаются. Напоминания про незакрытый платёж **не** глушить |
-| Тихие часы | Исходящие джобы: **10:00–21:00 Europe/Moscow** (`TIMEZONE_OFFSET_HOURS=3`) |
+| Тихие часы | Исходящие джобы: **10:00–21:00 Europe/Moscow** (дефолт в `AppConfig`) |
 | Канал | **Отдельный на каждый запуск.** Прошлый поток ≠ доступ к новому. `product_id` / `launch_id` + свой `COURSE_CHANNEL_ID` |
 | Возврат | Вручную: пишут админу, админ снимает статус / invite. Бот не ходит в кассу за refund |
 | Второй продукт | После первого запуска, ориентир **ноябрь**. В схеме сразу `product_id` |
@@ -42,10 +42,10 @@ Dart CLI-приложение: long polling Telegram Bot API, SQLite как ис
 
 | Слой | Как в DVOR | Зачем в боте курса |
 | --- | --- | --- |
-| Язык | Dart SDK ≥ 3.5 | Один стек, те же линтеры |
+| Язык | Dart SDK ≥ 3.11 | Один стек, те же линтеры |
 | Транспорт | Long polling, `getUpdates` | Telegram как сейчас. HTTPS нужен, если касса шлёт webhook (ЮKassa; LeadPay — по итогам спайка) |
 | Хранение | SQLite + WAL + транзакции | Один файл, бэкап копированием. Capacity-check на места **не** нужен |
-| Конфиг | CLI → env → `.env` → defaults | Секреты не в коде |
+| Конфиг | CLI → env → `.env` → defaults | В `.env` только секреты и id; цены/даты/тихие часы — в `AppConfig` |
 | Деплой | Docker Compose, volume `./data`, secrets read-only | Тот же Timeweb-контур |
 | Sheets | `googleapis` + service account | Срез `FUNNEL` в MVP |
 | Качество | `dart format`, `analyze --fatal-infos --fatal-warnings`, `dart test` | Перед сдачей |
@@ -281,30 +281,22 @@ Telegram-счёт ЮKassa не используем.
 BOT_TOKEN=
 ADMIN_USER_IDS=
 ADMIN_CHAT_ID=
-BOOKINGS_DB_PATH=data/course.sqlite
-TIMEZONE_OFFSET_HOURS=3
-QUIET_HOURS_FROM=10
-QUIET_HOURS_TO=21
-POLL_TIMEOUT_SECONDS=25
-LOG_LEVEL=info
-
 COURSE_CHANNEL_ID=
 LEAD_MAGNET_FILE_ID=
-LEAD_MAGNET_PATH=assets/guide.pdf
-WARMUP_ENABLED=true
+OFFER_URL=
 
 PAYMENT_PROVIDER=leadpay   # leadpay | yookassa | manual
 LEADPAY_TOKEN=
 YOOKASSA_SHOP_ID=
 YOOKASSA_SECRET_KEY=
-PAYMENT_WEBHOOK_BIND=127.0.0.1:8080
-PAYMENT_WEBHOOK_PATH=/payments/callback
 PAYMENT_WEBHOOK_SECRET=
 
 GOOGLE_SHEETS_WRITE_ENABLED=true
 GOOGLE_SHEETS_CREDENTIALS_PATH=
 GOOGLE_SHEETS_SPREADSHEET_ID=
 ```
+
+Цены, даты, тихие часы, путь к гайду, SQLite и бэкапы — дефолты в `lib/src/config/app_config.dart`. Compose сам ставит `PAYMENT_WEBHOOK_BIND=0.0.0.0:8080` в контейнере.
 
 Секреты кассы и JSON сервис-аккаунта — не в git. После сдачи — её сервер и её `.env`. Webhook кассы — только с секретом; порт на хосте не торчать в интернет.
 

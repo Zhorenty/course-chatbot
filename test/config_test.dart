@@ -5,10 +5,8 @@ void main() {
   test('live kassa without webhook secret fails validation', () {
     const config = AppConfig(
       botToken: 't',
-      pollTimeoutSeconds: 25,
       adminUserIds: {1},
       adminChatId: null,
-      logLevel: 'info',
       leadpayToken: 'token',
     );
     expect(
@@ -20,10 +18,8 @@ void main() {
   test('empty admin list fails validation', () {
     const config = AppConfig(
       botToken: 't',
-      pollTimeoutSeconds: 25,
       adminUserIds: {},
       adminChatId: null,
-      logLevel: 'info',
     );
     expect(
       config.validationErrors().any((error) => error.contains('ADMIN_USER_IDS')),
@@ -34,10 +30,8 @@ void main() {
   test('manual provider without secret is valid when admins are set', () {
     const config = AppConfig(
       botToken: 't',
-      pollTimeoutSeconds: 25,
       adminUserIds: {1},
       adminChatId: null,
-      logLevel: 'info',
       paymentProvider: PaymentProvider.manual,
     );
     expect(config.validationErrors(), isEmpty);
@@ -46,10 +40,8 @@ void main() {
   test('defaults are 18000 / 5000 and remainder due 5 Oct 2026 MSK', () {
     const config = AppConfig(
       botToken: 't',
-      pollTimeoutSeconds: 25,
       adminUserIds: {1},
       adminChatId: null,
-      logLevel: 'info',
     );
     expect(config.priceFullRub, 18000);
     expect(config.depositAmountRub, 5000);
