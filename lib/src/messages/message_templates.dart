@@ -121,7 +121,7 @@ final class MessageTemplates {
   }
 
   String helpReceived() {
-    return 'Передал админу. Ответит в этом чате.';
+    return 'Передал админу. Напишет тебе в личные сообщения.';
   }
 
   String helpForwardFailed() {
