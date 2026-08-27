@@ -7,8 +7,8 @@ final class JobDedupeRepository {
   JobDedupeRepository({
     required SqliteDatabaseHandle databaseHandle,
     DateTime Function()? nowProvider,
-  })  : _handle = databaseHandle,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _handle = databaseHandle,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final SqliteDatabaseHandle _handle;
   final DateTime Function() _nowProvider;
@@ -36,10 +36,10 @@ final class JobDedupeRepository {
         _db.execute('COMMIT;');
         return false;
       }
-      _db.execute(
-        'INSERT INTO job_dedupe_log (dedupe_key, sent_at) VALUES (?, ?);',
-        <Object?>[normalized, nowIso],
-      );
+      _db.execute('INSERT INTO job_dedupe_log (dedupe_key, sent_at) VALUES (?, ?);', <Object?>[
+        normalized,
+        nowIso,
+      ]);
       _db.execute('COMMIT;');
       return true;
     } on Object {
@@ -57,17 +57,11 @@ final class JobDedupeRepository {
     if (normalized.isEmpty) {
       return;
     }
-    _db.execute(
-      'DELETE FROM job_dedupe_log WHERE dedupe_key = ?;',
-      <Object?>[normalized],
-    );
+    _db.execute('DELETE FROM job_dedupe_log WHERE dedupe_key = ?;', <Object?>[normalized]);
   }
 
   void cleanupOlderThan(Duration maxAge) {
     final threshold = _nowProvider().toUtc().subtract(maxAge).toIso8601String();
-    _db.execute(
-      'DELETE FROM job_dedupe_log WHERE sent_at < ?;',
-      <Object?>[threshold],
-    );
+    _db.execute('DELETE FROM job_dedupe_log WHERE sent_at < ?;', <Object?>[threshold]);
   }
 }

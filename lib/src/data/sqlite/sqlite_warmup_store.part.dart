@@ -50,11 +50,7 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
   }
 
   @override
-  void recordWarmupSent({
-    required int userId,
-    required String stepKey,
-    required DateTime sentAt,
-  }) {
+  void recordWarmupSent({required int userId, required String stepKey, required DateTime sentAt}) {
     _db.execute(
       '''
       INSERT OR IGNORE INTO warmup_sent (user_id, step_key, sent_at)

@@ -22,9 +22,7 @@ Future<T> retry<T>(
       }
       final wait = delayForError?.call(error, currentDelay) ?? currentDelay;
       await Future<void>.delayed(wait);
-      currentDelay = Duration(
-        milliseconds: (currentDelay.inMilliseconds * backoffFactor).round(),
-      );
+      currentDelay = Duration(milliseconds: (currentDelay.inMilliseconds * backoffFactor).round());
     }
   }
 

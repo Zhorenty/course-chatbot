@@ -13,9 +13,5 @@ abstract interface class ChannelAccessRepository {
     DateTime? revokedAt,
   });
 
-  void markJoined({
-    required int userId,
-    required int launchId,
-    required DateTime joinedAt,
-  });
+  void markJoined({required int userId, required int launchId, required DateTime joinedAt});
 }

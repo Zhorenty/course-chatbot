@@ -1,18 +1,14 @@
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/storage_enum.dart';
 
-enum PaymentRecordStatus {
-  pending,
-  succeeded,
-  canceled,
-}
+enum PaymentRecordStatus { pending, succeeded, canceled }
 
 extension PaymentRecordStatusX on PaymentRecordStatus {
   String get storageValue => switch (this) {
-        PaymentRecordStatus.pending => 'pending',
-        PaymentRecordStatus.succeeded => 'succeeded',
-        PaymentRecordStatus.canceled => 'canceled',
-      };
+    PaymentRecordStatus.pending => 'pending',
+    PaymentRecordStatus.succeeded => 'succeeded',
+    PaymentRecordStatus.canceled => 'canceled',
+  };
 
   static PaymentRecordStatus parse(
     String? raw, {

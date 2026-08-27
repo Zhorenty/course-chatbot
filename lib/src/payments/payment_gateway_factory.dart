@@ -19,11 +19,7 @@ PaymentGateway createPaymentGateway(AppConfig config, {http.Client? httpClient})
       if (shopId.isEmpty || secret.isEmpty) {
         return const ManualPaymentGateway();
       }
-      return YooKassaPaymentGateway(
-        shopId: shopId,
-        secretKey: secret,
-        httpClient: httpClient,
-      );
+      return YooKassaPaymentGateway(shopId: shopId, secretKey: secret, httpClient: httpClient);
     case PaymentProvider.manual:
       return const ManualPaymentGateway();
   }

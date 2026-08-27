@@ -13,12 +13,12 @@ final class RemainderReminderJob {
     required MessageTemplates templates,
     required QuietHours quietHours,
     DateTime Function()? nowProvider,
-  })  : _course = course,
-        _dedupe = dedupe,
-        _sender = sender,
-        _templates = templates,
-        _quietHours = quietHours,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _course = course,
+       _dedupe = dedupe,
+       _sender = sender,
+       _templates = templates,
+       _quietHours = quietHours,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final CourseRepository _course;
   final JobDedupeRepository _dedupe;

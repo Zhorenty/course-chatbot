@@ -40,10 +40,7 @@ final class SqliteCourseRepository extends _SqliteCourseStore
   SqliteCourseRepository({
     required SqliteDatabaseHandle databaseHandle,
     DateTime Function()? nowProvider,
-  }) : super(
-          databaseHandle,
-          nowProvider ?? DateTime.now,
-        );
+  }) : super(databaseHandle, nowProvider ?? DateTime.now);
 
   @override
   void init() {

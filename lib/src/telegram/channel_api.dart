@@ -6,20 +6,9 @@ abstract interface class ChannelApi {
     int? expireDate,
   });
 
-  Future<void> revokeChatInviteLink({
-    required int chatId,
-    required String inviteLink,
-  });
+  Future<void> revokeChatInviteLink({required int chatId, required String inviteLink});
 
-  Future<void> banChatMember(
-    int chatId, {
-    required int userId,
-    bool revokeMessages = true,
-  });
+  Future<void> banChatMember(int chatId, {required int userId, bool revokeMessages = true});
 
-  Future<void> unbanChatMember(
-    int chatId, {
-    required int userId,
-    bool onlyIfBanned = true,
-  });
+  Future<void> unbanChatMember(int chatId, {required int userId, bool onlyIfBanned = true});
 }

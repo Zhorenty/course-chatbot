@@ -24,10 +24,9 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       ''',
       <Object?>[productCode, productTitle],
     );
-    final productId = _db.select(
-      'SELECT id FROM products WHERE code = ?;',
-      <Object?>[productCode],
-    ).first['id'] as int;
+    final productId =
+        _db.select('SELECT id FROM products WHERE code = ?;', <Object?>[productCode]).first['id']
+            as int;
     _db.execute(
       '''
       INSERT INTO launches (
@@ -63,10 +62,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       ],
     );
     _db.execute('UPDATE launches SET is_active = 0;');
-    _db.execute(
-      'UPDATE launches SET is_active = 1 WHERE code = ?;',
-      <Object?>[launchCode],
-    );
+    _db.execute('UPDATE launches SET is_active = 1 WHERE code = ?;', <Object?>[launchCode]);
     return activeLaunch()!;
   }
 
@@ -91,9 +87,9 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (launch == null) {
       return;
     }
-    _db.execute(
-      'UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;',
-      <Object?>[fileId, launch.id],
-    );
+    _db.execute('UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;', <Object?>[
+      fileId,
+      launch.id,
+    ]);
   }
 }

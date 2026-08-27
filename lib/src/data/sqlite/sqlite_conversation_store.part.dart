@@ -69,14 +69,10 @@ mixin _SqliteConversationStore on _SqliteCourseStore {
         .replaceAll(RegExp(r'https://t\.me/joinchat/[A-Za-z0-9_-]+'), '[invite]');
   }
 
-  void pruneConversationLog({
-    required DateTime olderThan,
-    int keepPerUser = 200,
-  }) {
-    _db.execute(
-      'DELETE FROM conversation_log WHERE occurred_at < ?;',
-      <Object?>[olderThan.toUtc().toIso8601String()],
-    );
+  void pruneConversationLog({required DateTime olderThan, int keepPerUser = 200}) {
+    _db.execute('DELETE FROM conversation_log WHERE occurred_at < ?;', <Object?>[
+      olderThan.toUtc().toIso8601String(),
+    ]);
     _db.execute(
       '''
       DELETE FROM conversation_log

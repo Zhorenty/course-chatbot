@@ -4,11 +4,9 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 
 final class WarmupService {
-  const WarmupService({
-    required CourseRepository course,
-    required JobDedupeRepository dedupe,
-  })  : _course = course,
-        _dedupe = dedupe;
+  const WarmupService({required CourseRepository course, required JobDedupeRepository dedupe})
+    : _course = course,
+      _dedupe = dedupe;
 
   static const String firstStepKey = 'warmup_0';
 
@@ -42,11 +40,7 @@ final class WarmupService {
   }
 
   void markSent(WarmupDecision decision, DateTime now) {
-    _course.recordWarmupSent(
-      userId: decision.userId,
-      stepKey: decision.stepKey,
-      sentAt: now,
-    );
+    _course.recordWarmupSent(userId: decision.userId, stepKey: decision.stepKey, sentAt: now);
     if (decision.stepKey != firstStepKey) {
       return;
     }

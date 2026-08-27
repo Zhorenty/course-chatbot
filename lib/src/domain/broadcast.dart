@@ -1,4 +1,1 @@
-enum BroadcastSegment {
-  guideNotPaid,
-  allStarted,
-}
+enum BroadcastSegment { guideNotPaid, allStarted }

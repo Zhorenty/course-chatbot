@@ -20,14 +20,14 @@ final class PaymentWebhookServer {
     String? secret,
     String callbackPath = '/payments/callback',
     JobScheduler? scheduler,
-  })  : _bind = bind,
-        _gateway = gateway,
-        _checkout = checkout,
-        _course = course,
-        _notifier = notifier,
-        _secret = secret?.trim(),
-        _callbackPath = _normalizePath(callbackPath),
-        _scheduler = scheduler;
+  }) : _bind = bind,
+       _gateway = gateway,
+       _checkout = checkout,
+       _course = course,
+       _notifier = notifier,
+       _secret = secret?.trim(),
+       _callbackPath = _normalizePath(callbackPath),
+       _scheduler = scheduler;
 
   static const int maxBodyBytes = 256 * 1024;
 
@@ -47,9 +47,12 @@ final class PaymentWebhookServer {
     final port = int.tryParse(colon == -1 ? _bind : _bind.substring(colon + 1)) ?? 8080;
     _server = await HttpServer.bind(host, port);
     l.i('Payment webhook listening on $host:$port$_callbackPath');
-    _server!.listen(_dispatch, onError: (Object error, StackTrace stackTrace) {
-      l.w('Payment webhook listener error: $error', stackTrace);
-    });
+    _server!.listen(
+      _dispatch,
+      onError: (Object error, StackTrace stackTrace) {
+        l.w('Payment webhook listener error: $error', stackTrace);
+      },
+    );
   }
 
   Future<void> stop() async {
@@ -181,8 +184,9 @@ final class PaymentWebhookServer {
     if (path.isEmpty) {
       return '/';
     }
-    final withoutSlash =
-        path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+    final withoutSlash = path.endsWith('/') && path.length > 1
+        ? path.substring(0, path.length - 1)
+        : path;
     return withoutSlash.startsWith('/') ? withoutSlash : '/$withoutSlash';
   }
 }

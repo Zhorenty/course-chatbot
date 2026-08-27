@@ -21,26 +21,20 @@ mixin _SqliteAnalyticsStore on _SqliteCourseStore implements FunnelAnalyticsRepo
     return FunnelAnalytics(
       generatedAt: nowUtc,
       startedUsersTotal: scalar('SELECT COUNT(*) AS c FROM telegram_users;'),
-      funnelUsers: scalar(
-        '''
+      funnelUsers: scalar('''
         SELECT COUNT(*) AS c FROM telegram_users
         WHERE funnel_phase NOT IN ('cancelled');
-        ''',
-      ),
+        '''),
       guideTaken: scalar(
         'SELECT COUNT(*) AS c FROM telegram_users WHERE magnet_issued_at IS NOT NULL;',
       ),
-      checkoutStarted: scalar(
-        '''
+      checkoutStarted: scalar('''
         SELECT COUNT(DISTINCT user_id) AS c FROM orders;
-        ''',
-      ),
-      paidUsers: scalar(
-        '''
+        '''),
+      paidUsers: scalar('''
         SELECT COUNT(*) AS c FROM telegram_users
         WHERE funnel_phase IN ('paid', 'access_granted');
-        ''',
-      ),
+        '''),
       startedLast7Days: scalar(
         'SELECT COUNT(*) AS c FROM telegram_users WHERE first_started_at >= ?;',
         <Object?>[d7],
@@ -66,12 +60,10 @@ mixin _SqliteAnalyticsStore on _SqliteCourseStore implements FunnelAnalyticsRepo
       phaseCounts: grouped(
         'SELECT funnel_phase AS k, COUNT(*) AS c FROM telegram_users GROUP BY funnel_phase;',
       ),
-      sourceCounts: grouped(
-        '''
+      sourceCounts: grouped('''
         SELECT COALESCE(source, 'unknown') AS k, COUNT(*) AS c
         FROM telegram_users GROUP BY COALESCE(source, 'unknown');
-        ''',
-      ),
+        '''),
     );
   }
 }

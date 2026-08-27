@@ -13,18 +13,9 @@ abstract interface class UserRepository {
 
   UserProfile? getUser(int userId);
 
-  void touchUser({
-    required int userId,
-    String? username,
-    String? firstName,
-    required DateTime now,
-  });
+  void touchUser({required int userId, String? username, String? firstName, required DateTime now});
 
-  void setFunnelPhase({
-    required int userId,
-    required FunnelPhase phase,
-    DateTime? magnetIssuedAt,
-  });
+  void setFunnelPhase({required int userId, required FunnelPhase phase, DateTime? magnetIssuedAt});
 
   void setWarmupOptOut({required int userId, required bool optOut});
 

@@ -17,12 +17,12 @@ final class SqliteMaintenanceJob {
     this.interval = const Duration(hours: 24),
     this.backupEnabled = true,
     DateTime Function()? nowProvider,
-  })  : _handle = databaseHandle,
-        _course = course,
-        _dedupe = dedupe,
-        _sqlitePath = sqlitePath,
-        _backupDir = backupDir,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _handle = databaseHandle,
+       _course = course,
+       _dedupe = dedupe,
+       _sqlitePath = sqlitePath,
+       _backupDir = backupDir,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final SqliteDatabaseHandle _handle;
   final CourseRepository _course;
@@ -53,12 +53,9 @@ final class SqliteMaintenanceJob {
     if (!dir.existsSync()) {
       return true;
     }
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.sqlite'))
-        .toList()
-      ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    final files =
+        dir.listSync().whereType<File>().where((file) => file.path.endsWith('.sqlite')).toList()
+          ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     if (files.isEmpty) {
       return true;
     }
@@ -88,12 +85,9 @@ final class SqliteMaintenanceJob {
     if (!dir.existsSync()) {
       return;
     }
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.sqlite'))
-        .toList()
-      ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    final files =
+        dir.listSync().whereType<File>().where((file) => file.path.endsWith('.sqlite')).toList()
+          ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     for (final extra in files.skip(keep)) {
       extra.deleteSync();
     }

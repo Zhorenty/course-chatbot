@@ -11,9 +11,9 @@ final class AccessService {
     required CourseRepository course,
     required ChannelApi telegram,
     DateTime Function()? nowProvider,
-  })  : _course = course,
-        _telegram = telegram,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _course = course,
+       _telegram = telegram,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   final CourseRepository _course;
   final ChannelApi _telegram;
@@ -36,10 +36,7 @@ final class AccessService {
     }
     if (existing?.inviteLink != null) {
       try {
-        await _telegram.revokeChatInviteLink(
-          chatId: channelId,
-          inviteLink: existing!.inviteLink!,
-        );
+        await _telegram.revokeChatInviteLink(chatId: channelId, inviteLink: existing!.inviteLink!);
       } on TelegramApiException catch (error, stackTrace) {
         l.w('Failed to revoke previous invite for user $userId: $error', stackTrace);
       }
@@ -64,18 +61,12 @@ final class AccessService {
     return link;
   }
 
-  Future<void> revoke({
-    required int userId,
-    required Launch launch,
-  }) async {
+  Future<void> revoke({required int userId, required Launch launch}) async {
     final channelId = launch.channelId;
     final existing = _course.accessFor(userId: userId, launchId: launch.id);
     if (existing?.inviteLink != null && channelId != null) {
       try {
-        await _telegram.revokeChatInviteLink(
-          chatId: channelId,
-          inviteLink: existing!.inviteLink!,
-        );
+        await _telegram.revokeChatInviteLink(chatId: channelId, inviteLink: existing!.inviteLink!);
       } on TelegramApiException catch (error, stackTrace) {
         l.w('Failed to revoke invite for user $userId: $error', stackTrace);
       }
@@ -103,11 +94,7 @@ final class AccessService {
     return _course.accessFor(userId: userId, launchId: launchId);
   }
 
-  void markJoined({
-    required int userId,
-    required int launchId,
-    required DateTime at,
-  }) {
+  void markJoined({required int userId, required int launchId, required DateTime at}) {
     _course.markJoined(userId: userId, launchId: launchId, joinedAt: at);
   }
 }

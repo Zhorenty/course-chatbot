@@ -49,11 +49,7 @@ mixin _SqliteAccessStore on _SqliteCourseStore implements ChannelAccessRepositor
   }
 
   @override
-  void markJoined({
-    required int userId,
-    required int launchId,
-    required DateTime joinedAt,
-  }) {
+  void markJoined({required int userId, required int launchId, required DateTime joinedAt}) {
     _db.execute(
       '''
       UPDATE channel_access

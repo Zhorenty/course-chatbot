@@ -13,10 +13,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     return _send(
       context,
       _templates.offerConsent(launch),
-      replyMarkup: _templates.offerKeyboard(
-        acceptedOffer: false,
-        acceptedPersonalData: false,
-      ),
+      replyMarkup: _templates.offerKeyboard(acceptedOffer: false, acceptedPersonalData: false),
     );
   }
 
@@ -40,11 +37,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     final chatId = context.chatId;
     if (chatId != null && messageId != null) {
       try {
-        await _sender.editMessageReplyMarkup(
-          chatId,
-          messageId: messageId,
-          replyMarkup: markup,
-        );
+        await _sender.editMessageReplyMarkup(chatId, messageId: messageId, replyMarkup: markup);
         return true;
       } on TelegramApiException catch (error, stackTrace) {
         l.w('editMessageReplyMarkup failed: $error', stackTrace);
@@ -61,11 +54,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       return _showEnroll(context);
     }
     if (!flow.offerReady) {
-      await _answerCallback(
-        context,
-        text: _templates.offerNeedBothChecks(),
-        showAlert: true,
-      );
+      await _answerCallback(context, text: _templates.offerNeedBothChecks(), showAlert: true);
       return true;
     }
     await _answerCallback(context);

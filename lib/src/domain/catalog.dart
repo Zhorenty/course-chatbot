@@ -1,9 +1,5 @@
 final class Product {
-  const Product({
-    required this.id,
-    required this.code,
-    required this.title,
-  });
+  const Product({required this.id, required this.code, required this.title});
 
   final int id;
   final String code;

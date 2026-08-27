@@ -1,16 +1,6 @@
-enum ConversationDirection {
-  inbound,
-  outbound,
-}
+enum ConversationDirection { inbound, outbound }
 
-enum ConversationContentType {
-  text,
-  photo,
-  document,
-  video,
-  other,
-  copy,
-}
+enum ConversationContentType { text, photo, document, video, other, copy }
 
 final class ConversationLogEntry {
   const ConversationLogEntry({

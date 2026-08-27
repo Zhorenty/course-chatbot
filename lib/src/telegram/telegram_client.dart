@@ -10,11 +10,9 @@ import 'package:http/http.dart' as http;
 final class TelegramClient implements MessageSender, ChannelApi {
   static const int _maxTelegramMessageLength = 4096;
 
-  TelegramClient({
-    required String token,
-    http.Client? httpClient,
-  })  : _baseUri = Uri.parse('https://api.telegram.org/bot$token'),
-        _httpClient = httpClient ?? http.Client();
+  TelegramClient({required String token, http.Client? httpClient})
+    : _baseUri = Uri.parse('https://api.telegram.org/bot$token'),
+      _httpClient = httpClient ?? http.Client();
 
   final Uri _baseUri;
   final http.Client _httpClient;
@@ -85,7 +83,8 @@ final class TelegramClient implements MessageSender, ChannelApi {
     }
 
     if (response.statusCode != 200 || payload['ok'] != true) {
-      final description = payload['description']?.toString() ??
+      final description =
+          payload['description']?.toString() ??
           (response.statusCode != 200 ? 'HTTP error' : 'Telegram response is not ok');
       throw TelegramApiException(
         description,
@@ -152,9 +151,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
   Future<void> deleteWebhook({bool dropPendingUpdates = false}) async {
     final payload = await _post(
       'deleteWebhook',
-      body: <String, Object?>{
-        'drop_pending_updates': dropPendingUpdates,
-      },
+      body: <String, Object?>{'drop_pending_updates': dropPendingUpdates},
     );
     final result = payload['result'];
     if (result != true) {
@@ -208,10 +205,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
       body['parse_mode'] = parseMode;
     }
 
-    final payload = await _post(
-      'sendMessage',
-      body: body,
-    );
+    final payload = await _post('sendMessage', body: body);
 
     final result = payload['result'];
     if (result is! Map || result['message_id'] is! int) {
@@ -245,11 +239,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
     final nextSeparators = separators.sublist(1);
     final segments = text.split(separator);
     if (segments.length == 1) {
-      return _splitBySeparators(
-        text,
-        separators: nextSeparators,
-        maxLength: maxLength,
-      );
+      return _splitBySeparators(text, separators: nextSeparators, maxLength: maxLength);
     }
 
     final chunks = <String>[];
@@ -267,13 +257,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
         current = segment;
         continue;
       }
-      chunks.addAll(
-        _splitBySeparators(
-          segment,
-          separators: nextSeparators,
-          maxLength: maxLength,
-        ),
-      );
+      chunks.addAll(_splitBySeparators(segment, separators: nextSeparators, maxLength: maxLength));
       current = '';
     }
     if (current.isNotEmpty) {
@@ -427,16 +411,10 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
-  Future<void> revokeChatInviteLink({
-    required int chatId,
-    required String inviteLink,
-  }) async {
+  Future<void> revokeChatInviteLink({required int chatId, required String inviteLink}) async {
     final payload = await _post(
       'revokeChatInviteLink',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'invite_link': inviteLink,
-      },
+      body: <String, Object?>{'chat_id': chatId, 'invite_link': inviteLink},
     );
     final result = payload['result'];
     if (result is! Map) {
@@ -445,18 +423,10 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
-  Future<void> unbanChatMember(
-    int chatId, {
-    required int userId,
-    bool onlyIfBanned = true,
-  }) async {
+  Future<void> unbanChatMember(int chatId, {required int userId, bool onlyIfBanned = true}) async {
     final payload = await _post(
       'unbanChatMember',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'user_id': userId,
-        'only_if_banned': onlyIfBanned,
-      },
+      body: <String, Object?>{'chat_id': chatId, 'user_id': userId, 'only_if_banned': onlyIfBanned},
     );
     final result = payload['result'];
     if (result != true) {
@@ -465,11 +435,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
-  Future<void> banChatMember(
-    int chatId, {
-    required int userId,
-    bool revokeMessages = true,
-  }) async {
+  Future<void> banChatMember(int chatId, {required int userId, bool revokeMessages = true}) async {
     final payload = await _post(
       'banChatMember',
       body: <String, Object?>{

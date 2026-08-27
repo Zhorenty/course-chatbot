@@ -7,8 +7,8 @@ final class LoggingMessageSender implements MessageSender {
   LoggingMessageSender({
     required MessageSender inner,
     required ConversationLogRepository conversationLog,
-  })  : _inner = inner,
-        _conversationLog = conversationLog;
+  }) : _inner = inner,
+       _conversationLog = conversationLog;
 
   final MessageSender _inner;
   final ConversationLogRepository _conversationLog;
@@ -66,16 +66,8 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
-  Future<void> answerCallbackQuery(
-    String callbackQueryId, {
-    String? text,
-    bool showAlert = false,
-  }) {
-    return _inner.answerCallbackQuery(
-      callbackQueryId,
-      text: text,
-      showAlert: showAlert,
-    );
+  Future<void> answerCallbackQuery(String callbackQueryId, {String? text, bool showAlert = false}) {
+    return _inner.answerCallbackQuery(callbackQueryId, text: text, showAlert: showAlert);
   }
 
   @override
@@ -84,11 +76,7 @@ final class LoggingMessageSender implements MessageSender {
     required int messageId,
     Map<String, Object?>? replyMarkup,
   }) {
-    return _inner.editMessageReplyMarkup(
-      chatId,
-      messageId: messageId,
-      replyMarkup: replyMarkup,
-    );
+    return _inner.editMessageReplyMarkup(chatId, messageId: messageId, replyMarkup: replyMarkup);
   }
 
   Future<void> _safeAppend({

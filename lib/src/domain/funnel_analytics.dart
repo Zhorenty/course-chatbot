@@ -36,10 +36,7 @@ final class FunnelAnalytics {
 }
 
 final class FunnelStepCount {
-  const FunnelStepCount({
-    required this.label,
-    required this.count,
-  });
+  const FunnelStepCount({required this.label, required this.count});
 
   final String label;
   final int count;

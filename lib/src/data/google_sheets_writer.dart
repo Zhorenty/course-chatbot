@@ -1,10 +1,7 @@
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 
 abstract interface class GoogleSheetsWriter {
-  Future<void> replaceSheet({
-    required String sheetTitle,
-    required List<List<Object?>> rows,
-  });
+  Future<void> replaceSheet({required String sheetTitle, required List<List<Object?>> rows});
 
   Future<void> replaceDashboard(GoogleSheetsDashboard dashboard);
 
@@ -39,10 +36,7 @@ abstract interface class GoogleSheetsSpreadsheetGateway {
     required int endIndex,
   });
 
-  Future<void> applyDashboardLook({
-    required int sheetId,
-    required GoogleSheetsDashboard dashboard,
-  });
+  Future<void> applyDashboardLook({required int sheetId, required GoogleSheetsDashboard dashboard});
 
   Future<void> close();
 }

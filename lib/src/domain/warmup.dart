@@ -13,11 +13,7 @@ final class WarmupStep {
 }
 
 final class WarmupCandidate {
-  const WarmupCandidate({
-    required this.userId,
-    required this.anchorAt,
-    required this.sentKeys,
-  });
+  const WarmupCandidate({required this.userId, required this.anchorAt, required this.sentKeys});
 
   final int userId;
   final DateTime anchorAt;
@@ -25,10 +21,7 @@ final class WarmupCandidate {
 }
 
 final class WarmupDecision {
-  const WarmupDecision({
-    required this.stepKey,
-    required this.userId,
-  });
+  const WarmupDecision({required this.stepKey, required this.userId});
 
   final String stepKey;
   final int userId;

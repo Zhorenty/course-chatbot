@@ -13,15 +13,15 @@ enum FunnelPhase {
 
 extension FunnelPhaseX on FunnelPhase {
   String get storageValue => switch (this) {
-        FunnelPhase.lead => 'lead',
-        FunnelPhase.magnetIssued => 'magnet_issued',
-        FunnelPhase.warming => 'warming',
-        FunnelPhase.checkout => 'checkout',
-        FunnelPhase.depositPaid => 'deposit_paid',
-        FunnelPhase.paid => 'paid',
-        FunnelPhase.accessGranted => 'access_granted',
-        FunnelPhase.cancelled => 'cancelled',
-      };
+    FunnelPhase.lead => 'lead',
+    FunnelPhase.magnetIssued => 'magnet_issued',
+    FunnelPhase.warming => 'warming',
+    FunnelPhase.checkout => 'checkout',
+    FunnelPhase.depositPaid => 'deposit_paid',
+    FunnelPhase.paid => 'paid',
+    FunnelPhase.accessGranted => 'access_granted',
+    FunnelPhase.cancelled => 'cancelled',
+  };
 
   bool get hasAccess => this == FunnelPhase.accessGranted;
 
@@ -36,15 +36,15 @@ extension FunnelPhaseX on FunnelPhase {
   /// Selling/payment phases only move forward. `cancelled` is a side door:
   /// admin override may return to deposit/paid/access.
   int get rank => switch (this) {
-        FunnelPhase.lead => 0,
-        FunnelPhase.magnetIssued => 1,
-        FunnelPhase.warming => 2,
-        FunnelPhase.checkout => 3,
-        FunnelPhase.depositPaid => 4,
-        FunnelPhase.paid => 5,
-        FunnelPhase.accessGranted => 6,
-        FunnelPhase.cancelled => -1,
-      };
+    FunnelPhase.lead => 0,
+    FunnelPhase.magnetIssued => 1,
+    FunnelPhase.warming => 2,
+    FunnelPhase.checkout => 3,
+    FunnelPhase.depositPaid => 4,
+    FunnelPhase.paid => 5,
+    FunnelPhase.accessGranted => 6,
+    FunnelPhase.cancelled => -1,
+  };
 
   bool canTransitionTo(FunnelPhase next) {
     if (this == next) {
@@ -82,10 +82,7 @@ final class AcquisitionSource {
     'email_guide',
   };
 
-  static const Set<String> coursePayloads = <String>{
-    'tg_announce',
-    'direct_course',
-  };
+  static const Set<String> coursePayloads = <String>{'tg_announce', 'direct_course'};
 
   static String? normalize(String? raw) {
     final trimmed = raw?.trim().toLowerCase();

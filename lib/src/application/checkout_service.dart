@@ -49,11 +49,11 @@ final class CheckoutService {
     required AccessService access,
     DateTime Function()? nowProvider,
     String? returnUrl,
-  })  : _course = course,
-        _gateway = gateway,
-        _access = access,
-        _nowProvider = nowProvider ?? DateTime.now,
-        _returnUrl = returnUrl;
+  }) : _course = course,
+       _gateway = gateway,
+       _access = access,
+       _nowProvider = nowProvider ?? DateTime.now,
+       _returnUrl = returnUrl;
 
   final CourseRepository _course;
   final PaymentGateway _gateway;
@@ -154,10 +154,7 @@ final class CheckoutService {
       rethrow;
     } on Object catch (error, stackTrace) {
       _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
-      Error.throwWithStackTrace(
-        PaymentUnavailableException('Checkout failed: $error'),
-        stackTrace,
-      );
+      Error.throwWithStackTrace(PaymentUnavailableException('Checkout failed: $error'), stackTrace);
     }
 
     final currentPayment = _course.getPayment(payment.id) ?? payment;
@@ -180,12 +177,7 @@ final class CheckoutService {
     );
     _course.updatePayment(payment);
     if (!currentOrder.status.isFullyPaid && currentOrder.status != OrderStatus.depositPaid) {
-      _course.updateOrder(
-        currentOrder.copyWith(
-          status: OrderStatus.awaitingPayment,
-          kind: kind,
-        ),
-      );
+      _course.updateOrder(currentOrder.copyWith(status: OrderStatus.awaitingPayment, kind: kind));
     }
     final user = _course.getUser(order.userId);
     if (user == null || !user.funnelPhase.excludeSellingDrip) {
@@ -260,10 +252,7 @@ final class CheckoutService {
     );
   }
 
-  PaymentApplyResult _applyLocked(
-    PaymentCallback callback, {
-    required Launch launch,
-  }) {
+  PaymentApplyResult _applyLocked(PaymentCallback callback, {required Launch launch}) {
     if (callback.providerPaymentId.isNotEmpty) {
       final existing = _course.findPaymentByProviderId(
         provider: callback.provider,
@@ -362,17 +351,10 @@ final class CheckoutService {
     );
   }
 
-  Future<void> cancel({
-    required CourseOrder order,
-    required Launch launch,
-  }) async {
+  Future<void> cancel({required CourseOrder order, required Launch launch}) async {
     final now = _nowProvider();
     _course.updateOrder(
-      order.copyWith(
-        status: OrderStatus.cancelled,
-        cancelledAt: now,
-        accessGranted: false,
-      ),
+      order.copyWith(status: OrderStatus.cancelled, cancelledAt: now, accessGranted: false),
     );
     _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.cancelled);
     await _access.revoke(userId: order.userId, launch: launch);

@@ -16,10 +16,10 @@ final class LeadPayPaymentGateway implements PaymentGateway {
     required String token,
     String baseUrl = 'https://app.leadpay.ru',
     http.Client? httpClient,
-  })  : _token = token,
-        _baseUrl = baseUrl,
-        _httpClient = httpClient ?? http.Client(),
-        _ownsClient = httpClient == null;
+  }) : _token = token,
+       _baseUrl = baseUrl,
+       _httpClient = httpClient ?? http.Client(),
+       _ownsClient = httpClient == null;
 
   final String _token;
   final String _baseUrl;
@@ -45,9 +45,9 @@ final class LeadPayPaymentGateway implements PaymentGateway {
       );
     }
     final clientId = '${order.userId}_${order.id}_$paymentDbId';
-    final uri = Uri.parse('$_baseUrl/rest/v3/bothelp/link').replace(
-      queryParameters: <String, String>{'client_id': clientId},
-    );
+    final uri = Uri.parse(
+      '$_baseUrl/rest/v3/bothelp/link',
+    ).replace(queryParameters: <String, String>{'client_id': clientId});
     final response = await _httpClient
         .post(
           uri,
@@ -72,11 +72,7 @@ final class LeadPayPaymentGateway implements PaymentGateway {
         'LeadPay response has no result.url. Spike: check cabinet / Open API.',
       );
     }
-    return CheckoutSession(
-      provider: providerId,
-      providerPaymentId: clientId,
-      confirmationUrl: url,
-    );
+    return CheckoutSession(provider: providerId, providerPaymentId: clientId, confirmationUrl: url);
   }
 
   @override
@@ -89,9 +85,11 @@ final class LeadPayPaymentGateway implements PaymentGateway {
     if (clientId == null || clientId.isEmpty) {
       return null;
     }
-    final statusRaw =
-        (map['pay_status'] ?? map['status'] ?? map['payment_status'])?.toString().toLowerCase();
-    final succeeded = statusRaw == 'y' ||
+    final statusRaw = (map['pay_status'] ?? map['status'] ?? map['payment_status'])
+        ?.toString()
+        .toLowerCase();
+    final succeeded =
+        statusRaw == 'y' ||
         statusRaw == 'paid' ||
         statusRaw == 'succeeded' ||
         statusRaw == 'success' ||

@@ -1,9 +1,5 @@
 final class TelegramApiException implements Exception {
-  const TelegramApiException(
-    this.message, {
-    this.statusCode,
-    this.retryAfterSeconds,
-  });
+  const TelegramApiException(this.message, {this.statusCode, this.retryAfterSeconds});
 
   final String message;
   final int? statusCode;

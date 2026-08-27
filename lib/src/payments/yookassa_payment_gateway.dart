@@ -13,10 +13,10 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     required String shopId,
     required String secretKey,
     http.Client? httpClient,
-  })  : _shopId = shopId,
-        _secretKey = secretKey,
-        _httpClient = httpClient ?? http.Client(),
-        _ownsClient = httpClient == null;
+  }) : _shopId = shopId,
+       _secretKey = secretKey,
+       _httpClient = httpClient ?? http.Client(),
+       _ownsClient = httpClient == null;
 
   final String _shopId;
   final String _secretKey;
@@ -44,10 +44,7 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     final amountRub = (amountKopecks / 100).toStringAsFixed(2);
     final idempotenceKey = 'course-$paymentDbId-${kind.storageValue}';
     final body = <String, Object?>{
-      'amount': <String, Object?>{
-        'value': amountRub,
-        'currency': 'RUB',
-      },
+      'amount': <String, Object?>{'value': amountRub, 'currency': 'RUB'},
       'capture': true,
       'description': description ?? 'Курс, заказ ${order.id}',
       'metadata': <String, Object?>{
@@ -82,11 +79,7 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     if (id == null || id.isEmpty) {
       throw const PaymentUnavailableException('YooKassa payment id is missing.');
     }
-    return CheckoutSession(
-      provider: providerId,
-      providerPaymentId: id,
-      confirmationUrl: url,
-    );
+    return CheckoutSession(provider: providerId, providerPaymentId: id, confirmationUrl: url);
   }
 
   @override
@@ -109,12 +102,12 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     if (callback.providerPaymentId.isEmpty) {
       return null;
     }
-    final response = await _httpClient.get(
-      Uri.parse('https://api.yookassa.ru/v3/payments/${callback.providerPaymentId}'),
-      headers: <String, String>{
-        'Authorization': _basicAuth,
-      },
-    ).timeout(PaymentGateway.requestTimeout);
+    final response = await _httpClient
+        .get(
+          Uri.parse('https://api.yookassa.ru/v3/payments/${callback.providerPaymentId}'),
+          headers: <String, String>{'Authorization': _basicAuth},
+        )
+        .timeout(PaymentGateway.requestTimeout);
     final map = decodeJsonObject(response, 'YooKassa');
     return _callbackFromPaymentObject(map);
   }
@@ -130,10 +123,7 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     }
   }
 
-  PaymentCallback? _callbackFromPaymentObject(
-    Map<String, dynamic> object, {
-    String? event,
-  }) {
+  PaymentCallback? _callbackFromPaymentObject(Map<String, dynamic> object, {String? event}) {
     final id = object['id']?.toString();
     if (id == null || id.isEmpty) {
       return null;

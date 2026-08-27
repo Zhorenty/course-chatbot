@@ -27,17 +27,17 @@ final class BotRunner {
     SqliteMaintenanceJob? maintenanceJob,
     GoogleSheetsWriter? googleSheetsWriter,
     PaymentWebhookServer? paymentWebhookServer,
-  })  : _config = config,
-        _client = client,
-        _privateHandlers = privateHandlers,
-        _warmupNudgeJob = warmupNudgeJob,
-        _abandonedPaymentJob = abandonedPaymentJob,
-        _remainderReminderJob = remainderReminderJob,
-        _sheetsExportJob = sheetsExportJob,
-        _maintenanceJob = maintenanceJob,
-        _googleSheetsWriter = googleSheetsWriter,
-        _paymentWebhookServer = paymentWebhookServer,
-        _jobScheduler = jobScheduler ?? JobScheduler();
+  }) : _config = config,
+       _client = client,
+       _privateHandlers = privateHandlers,
+       _warmupNudgeJob = warmupNudgeJob,
+       _abandonedPaymentJob = abandonedPaymentJob,
+       _remainderReminderJob = remainderReminderJob,
+       _sheetsExportJob = sheetsExportJob,
+       _maintenanceJob = maintenanceJob,
+       _googleSheetsWriter = googleSheetsWriter,
+       _paymentWebhookServer = paymentWebhookServer,
+       _jobScheduler = jobScheduler ?? JobScheduler();
 
   final AppConfig _config;
   final TelegramClient _client;
@@ -76,12 +76,7 @@ final class BotRunner {
         final updates = await _client.getUpdates(
           offset: _offset,
           timeoutSeconds: _config.pollTimeoutSeconds,
-          allowedUpdates: const {
-            'message',
-            'callback_query',
-            'chat_member',
-            'my_chat_member',
-          },
+          allowedUpdates: const {'message', 'callback_query', 'chat_member', 'my_chat_member'},
         );
         _conflictRetries = 0;
         for (final update in updates) {
@@ -185,11 +180,7 @@ final class BotRunner {
     }
   }
 
-  void _schedulePeriodic(
-    Duration period,
-    String name,
-    Future<void> Function() action,
-  ) {
+  void _schedulePeriodic(Duration period, String name, Future<void> Function() action) {
     _timers.add(
       Timer.periodic(period, (_) {
         if (_stopping) {

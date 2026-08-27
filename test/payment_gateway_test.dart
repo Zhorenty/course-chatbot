@@ -42,10 +42,7 @@ void main() {
 
     final canceled = gateway.parseCallback(<String, Object?>{
       'event': 'payment.canceled',
-      'object': <String, Object?>{
-        'id': 'pay-2',
-        'status': 'canceled',
-      },
+      'object': <String, Object?>{'id': 'pay-2', 'status': 'canceled'},
     });
     expect(canceled!.succeeded, isFalse);
   });
@@ -74,11 +71,7 @@ void main() {
     });
     final gateway = YooKassaPaymentGateway(shopId: 's', secretKey: 'k', httpClient: client);
     final verified = await gateway.verifyCallback(
-      const PaymentCallback(
-        provider: 'yookassa',
-        providerPaymentId: 'pay-1',
-        succeeded: true,
-      ),
+      const PaymentCallback(provider: 'yookassa', providerPaymentId: 'pay-1', succeeded: true),
     );
     expect(verified, isNotNull);
     expect(verified!.succeeded, isTrue);

@@ -1,21 +1,15 @@
 import 'package:course_chatbot/src/domain/storage_enum.dart';
 
-enum OrderStatus {
-  checkoutStarted,
-  awaitingPayment,
-  depositPaid,
-  paid,
-  cancelled,
-}
+enum OrderStatus { checkoutStarted, awaitingPayment, depositPaid, paid, cancelled }
 
 extension OrderStatusX on OrderStatus {
   String get storageValue => switch (this) {
-        OrderStatus.checkoutStarted => 'checkout_started',
-        OrderStatus.awaitingPayment => 'awaiting_payment',
-        OrderStatus.depositPaid => 'deposit_paid',
-        OrderStatus.paid => 'paid',
-        OrderStatus.cancelled => 'cancelled',
-      };
+    OrderStatus.checkoutStarted => 'checkout_started',
+    OrderStatus.awaitingPayment => 'awaiting_payment',
+    OrderStatus.depositPaid => 'deposit_paid',
+    OrderStatus.paid => 'paid',
+    OrderStatus.cancelled => 'cancelled',
+  };
 
   bool get isOpen =>
       this == OrderStatus.checkoutStarted ||
@@ -34,20 +28,15 @@ extension OrderStatusX on OrderStatus {
   }
 }
 
-enum PaymentKind {
-  full,
-  deposit,
-  remainder,
-  installment,
-}
+enum PaymentKind { full, deposit, remainder, installment }
 
 extension PaymentKindX on PaymentKind {
   String get storageValue => switch (this) {
-        PaymentKind.full => 'full',
-        PaymentKind.deposit => 'deposit',
-        PaymentKind.remainder => 'remainder',
-        PaymentKind.installment => 'installment',
-      };
+    PaymentKind.full => 'full',
+    PaymentKind.deposit => 'deposit',
+    PaymentKind.remainder => 'remainder',
+    PaymentKind.installment => 'installment',
+  };
 
   /// Full payment or an actual installment charge grants channel access.
   bool get grantsAccessOnSuccess =>

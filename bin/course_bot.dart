@@ -29,11 +29,12 @@ void main(List<String> args) {
 
 void _registerShutdown(CourseBotRuntime app) {
   Future<void> stop() {
-    return app.runner.stop().whenComplete(app.close).catchError(
-      (Object error, StackTrace stackTrace) {
-        l.e('Error while stopping: $error', stackTrace);
-      },
-    );
+    return app.runner.stop().whenComplete(app.close).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      l.e('Error while stopping: $error', stackTrace);
+    });
   }
 
   ProcessSignal.sigint.watch().listen((_) {

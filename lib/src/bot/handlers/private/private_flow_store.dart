@@ -1,12 +1,6 @@
 import 'package:course_chatbot/src/domain/order.dart';
 
-enum PrivateFlowStep {
-  idle,
-  offerConsent,
-  adminSearch,
-  adminBroadcastText,
-  adminGuideConfirm,
-}
+enum PrivateFlowStep { idle, offerConsent, adminSearch, adminBroadcastText, adminGuideConfirm }
 
 final class PrivateFlowState {
   const PrivateFlowState({

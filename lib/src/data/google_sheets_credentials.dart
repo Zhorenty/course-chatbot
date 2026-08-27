@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-Map<String, Object?> loadGoogleSheetsServiceAccountJson({
-  String? path,
-  String? inlineJson,
-}) {
+Map<String, Object?> loadGoogleSheetsServiceAccountJson({String? path, String? inlineJson}) {
   final inline = inlineJson?.trim();
   if (inline != null && inline.isNotEmpty) {
     return _decodeCredentials(inline, source: 'GOOGLE_SHEETS_CREDENTIALS_JSON');
@@ -18,15 +15,9 @@ Map<String, Object?> loadGoogleSheetsServiceAccountJson({
   }
   final file = File(credentialsPath);
   if (!file.existsSync()) {
-    throw FileSystemException(
-      'Google Sheets credentials file not found',
-      credentialsPath,
-    );
+    throw FileSystemException('Google Sheets credentials file not found', credentialsPath);
   }
-  return _decodeCredentials(
-    file.readAsStringSync(),
-    source: credentialsPath,
-  );
+  return _decodeCredentials(file.readAsStringSync(), source: credentialsPath);
 }
 
 Map<String, Object?> _decodeCredentials(String raw, {required String source}) {
@@ -34,7 +25,5 @@ Map<String, Object?> _decodeCredentials(String raw, {required String source}) {
   if (decoded is! Map) {
     throw FormatException('Google Sheets credentials in $source must be a JSON object.');
   }
-  return decoded.map(
-    (key, value) => MapEntry(key.toString(), value),
-  );
+  return decoded.map((key, value) => MapEntry(key.toString(), value));
 }

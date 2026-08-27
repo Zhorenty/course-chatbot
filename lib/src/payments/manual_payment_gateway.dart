@@ -18,10 +18,7 @@ final class ManualPaymentGateway implements PaymentGateway {
     String? description,
     String? returnUrl,
   }) async {
-    return CheckoutSession(
-      provider: providerId,
-      providerPaymentId: 'manual-$paymentDbId',
-    );
+    return CheckoutSession(provider: providerId, providerPaymentId: 'manual-$paymentDbId');
   }
 
   @override

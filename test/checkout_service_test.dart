@@ -294,11 +294,7 @@ void main() {
     );
 
     expect(
-      () => harness.checkout.startOrReuseOrder(
-        userId: 42,
-        launch: launch,
-        kind: PaymentKind.full,
-      ),
+      () => harness.checkout.startOrReuseOrder(userId: 42, launch: launch, kind: PaymentKind.full),
       throwsA(
         isA<CheckoutBlockedException>().having(
           (error) => error.reason,
@@ -405,11 +401,7 @@ void main() {
       kind: PaymentKind.full,
     );
     await expectLater(
-      harness.checkout.createCheckout(
-        order: order,
-        kind: PaymentKind.full,
-        amountKopecks: 0,
-      ),
+      harness.checkout.createCheckout(order: order, kind: PaymentKind.full, amountKopecks: 0),
       throwsA(
         isA<CheckoutBlockedException>().having(
           (error) => error.reason,

@@ -24,11 +24,7 @@ abstract interface class MessageSender {
     Map<String, Object?>? replyMarkup,
   });
 
-  Future<void> answerCallbackQuery(
-    String callbackQueryId, {
-    String? text,
-    bool showAlert = false,
-  });
+  Future<void> answerCallbackQuery(String callbackQueryId, {String? text, bool showAlert = false});
 
   Future<void> editMessageReplyMarkup(
     int chatId, {

@@ -6,11 +6,7 @@ import 'package:course_chatbot/src/telegram/telegram_errors.dart';
 import 'package:l/l.dart';
 
 final class BroadcastResult {
-  const BroadcastResult({
-    required this.sent,
-    required this.failed,
-    required this.total,
-  });
+  const BroadcastResult({required this.sent, required this.failed, required this.total});
 
   final int sent;
   final int failed;
@@ -18,11 +14,9 @@ final class BroadcastResult {
 }
 
 final class BroadcastService {
-  BroadcastService({
-    required MessageSender sender,
-    required CourseRepository course,
-  })  : _sender = sender,
-        _course = course;
+  BroadcastService({required MessageSender sender, required CourseRepository course})
+    : _sender = sender,
+      _course = course;
 
   final MessageSender _sender;
   final CourseRepository _course;
@@ -38,12 +32,7 @@ final class BroadcastService {
     for (var i = 0; i < userIds.length; i++) {
       final userId = userIds[i];
       try {
-        await _sender.sendMessage(
-          userId,
-          htmlText,
-          parseMode: 'HTML',
-          replyMarkup: replyMarkup,
-        );
+        await _sender.sendMessage(userId, htmlText, parseMode: 'HTML', replyMarkup: replyMarkup);
         sent++;
       } on TelegramApiException catch (error) {
         failed++;

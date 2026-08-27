@@ -39,20 +39,17 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
     if ((existing.source == null || existing.source!.isEmpty) &&
         source != null &&
         source.isNotEmpty) {
-      _db.execute(
-        'UPDATE telegram_users SET source = ? WHERE user_id = ?;',
-        <Object?>[source, userId],
-      );
+      _db.execute('UPDATE telegram_users SET source = ? WHERE user_id = ?;', <Object?>[
+        source,
+        userId,
+      ]);
     }
     return getUser(userId)!;
   }
 
   @override
   UserProfile? getUser(int userId) {
-    final rows = _db.select(
-      'SELECT * FROM telegram_users WHERE user_id = ?;',
-      <Object?>[userId],
-    );
+    final rows = _db.select('SELECT * FROM telegram_users WHERE user_id = ?;', <Object?>[userId]);
     if (rows.isEmpty) {
       return null;
     }
@@ -66,20 +63,11 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
     String? firstName,
     required DateTime now,
   }) {
-    ensureUser(
-      userId: userId,
-      username: username,
-      firstName: firstName,
-      now: now,
-    );
+    ensureUser(userId: userId, username: username, firstName: firstName, now: now);
   }
 
   @override
-  void setFunnelPhase({
-    required int userId,
-    required FunnelPhase phase,
-    DateTime? magnetIssuedAt,
-  }) {
+  void setFunnelPhase({required int userId, required FunnelPhase phase, DateTime? magnetIssuedAt}) {
     final existing = getUser(userId);
     final nextPhase = existing == null || existing.funnelPhase.canTransitionTo(phase)
         ? phase
@@ -176,12 +164,14 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
   @override
   List<int> listBroadcastUserIds({required BroadcastSegment segment}) {
     final sql = switch (segment) {
-      BroadcastSegment.allStarted => '''
+      BroadcastSegment.allStarted =>
+        '''
         SELECT user_id FROM telegram_users
         WHERE bot_blocked = 0
         ORDER BY user_id;
       ''',
-      BroadcastSegment.guideNotPaid => '''
+      BroadcastSegment.guideNotPaid =>
+        '''
         SELECT user_id FROM telegram_users
         WHERE bot_blocked = 0
           AND magnet_issued_at IS NOT NULL

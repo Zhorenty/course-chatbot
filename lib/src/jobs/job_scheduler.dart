@@ -4,9 +4,8 @@ import 'package:l/l.dart';
 
 /// Runs tracked background work with per-name in-flight guards.
 final class JobScheduler {
-  JobScheduler({
-    void Function(int activeOperations)? onActiveOperationsChanged,
-  }) : _onActiveOperationsChanged = onActiveOperationsChanged;
+  JobScheduler({void Function(int activeOperations)? onActiveOperationsChanged})
+    : _onActiveOperationsChanged = onActiveOperationsChanged;
 
   final void Function(int activeOperations)? _onActiveOperationsChanged;
   final Map<String, bool> _inFlight = <String, bool>{};
@@ -25,11 +24,13 @@ final class JobScheduler {
     }
     _inFlight[name] = true;
     unawaited(
-      _runTracked(action).whenComplete(() {
-        _inFlight[name] = false;
-      }).onError<Object>((error, stackTrace) {
-        l.w('Background $name job failed: $error', stackTrace);
-      }),
+      _runTracked(action)
+          .whenComplete(() {
+            _inFlight[name] = false;
+          })
+          .onError<Object>((error, stackTrace) {
+            l.w('Background $name job failed: $error', stackTrace);
+          }),
     );
   }
 
@@ -50,9 +51,7 @@ final class JobScheduler {
     }
   }
 
-  Future<void> waitForIdle({
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
+  Future<void> waitForIdle({Duration timeout = const Duration(seconds: 15)}) async {
     if (_activeOperations == 0) {
       return;
     }
