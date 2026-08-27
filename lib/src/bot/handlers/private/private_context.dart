@@ -62,7 +62,7 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
     return PrivateMessageContext(
       chat: Map<String, dynamic>.from(chatRaw),
       from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
-      text: message['text']?.toString().trim(),
+      text: _trimmedMessageText(message),
       message: message,
       callbackQueryId: null,
     );
@@ -83,6 +83,15 @@ int? _asInt(Object? value) {
     return int.tryParse(value.trim());
   }
   return null;
+}
+
+String? _trimmedMessageText(Map<String, dynamic> message) {
+  final raw = message['text'] ?? message['caption'];
+  final text = raw?.toString().trim();
+  if (text == null || text.isEmpty) {
+    return null;
+  }
+  return text;
 }
 
 String? extractDocumentFileId(Map<String, dynamic>? message) {

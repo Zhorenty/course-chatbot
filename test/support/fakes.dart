@@ -26,7 +26,13 @@ final class FakeMessageSender implements MessageSender {
       throw error;
     }
     messages.add(
-      SentMessage(chatId: chatId, text: text, parseMode: parseMode, replyMarkup: replyMarkup),
+      SentMessage(
+        chatId: chatId,
+        text: text,
+        parseMode: parseMode,
+        replyMarkup: replyMarkup,
+        disableNotification: disableNotification,
+      ),
     );
     return messages.length;
   }
@@ -67,6 +73,31 @@ final class FakeMessageSender implements MessageSender {
   }) async {
     markupEdits.add(MarkupEdit(chatId: chatId, messageId: messageId, replyMarkup: replyMarkup));
   }
+
+  final List<ForwardedMessage> forwards = <ForwardedMessage>[];
+  Object? throwOnForward;
+
+  @override
+  Future<int> forwardMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    final error = throwOnForward;
+    if (error != null) {
+      throw error;
+    }
+    forwards.add(
+      ForwardedMessage(
+        chatId: chatId,
+        fromChatId: fromChatId,
+        messageId: messageId,
+        disableNotification: disableNotification,
+      ),
+    );
+    return 1000 + forwards.length;
+  }
 }
 
 final class CallbackAnswer {
@@ -86,12 +117,33 @@ final class MarkupEdit {
 }
 
 final class SentMessage {
-  const SentMessage({required this.chatId, required this.text, this.parseMode, this.replyMarkup});
+  const SentMessage({
+    required this.chatId,
+    required this.text,
+    this.parseMode,
+    this.replyMarkup,
+    this.disableNotification = true,
+  });
 
   final int chatId;
   final String text;
   final String? parseMode;
   final Map<String, Object?>? replyMarkup;
+  final bool disableNotification;
+}
+
+final class ForwardedMessage {
+  const ForwardedMessage({
+    required this.chatId,
+    required this.fromChatId,
+    required this.messageId,
+    this.disableNotification = true,
+  });
+
+  final int chatId;
+  final int fromChatId;
+  final int messageId;
+  final bool disableNotification;
 }
 
 final class FakePaymentGateway implements PaymentGateway {
@@ -432,6 +484,31 @@ Map<String, dynamic> privateMessageUpdate({
         'first_name': 'Test',
       },
       'text': text,
+    },
+  };
+}
+
+Map<String, dynamic> privatePhotoUpdate({
+  required int chatId,
+  required int userId,
+  String? caption,
+  String? username,
+}) {
+  return <String, dynamic>{
+    'update_id': 1,
+    'message': <String, dynamic>{
+      'message_id': 11,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
+      'photo': <Map<String, dynamic>>[
+        <String, dynamic>{'file_id': 'photo-small'},
+        <String, dynamic>{'file_id': 'photo-large'},
+      ],
+      if (caption != null) 'caption': caption,
     },
   };
 }

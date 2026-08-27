@@ -157,6 +157,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
+  Map<String, Object?> adminIncomingKeyboard(int userId) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminOpenCard,
+          'callback_data': '${MessageTemplates.cbAdminCard}$userId',
+        },
+      ],
+    ]);
+  }
+
   Map<String, Object?> adminCardKeyboard(int userId) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[

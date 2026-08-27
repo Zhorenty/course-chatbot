@@ -19,14 +19,14 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       firstName: context.firstName,
       now: _nowProvider(),
     );
-    if (context.message != null && context.text != null) {
+    if (context.message != null) {
       _course.appendConversation(
         direction: ConversationDirection.inbound,
         peerUserId: userId,
         peerUsername: context.username,
         chatId: chatId,
         telegramMessageId: asTelegramInt(context.message?['message_id']),
-        contentType: ConversationContentType.text,
+        contentType: _inboundContentType(context.message),
         textPreview: context.text,
       );
     }
@@ -144,14 +144,21 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminInvite),
       );
     }
+    if (data.startsWith(MessageTemplates.cbAdminCard)) {
+      if (!_adminGate.isConfiguredAdmin(context.userId)) {
+        return false;
+      }
+      final targetId = MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCard);
+      if (targetId == null) {
+        return false;
+      }
+      return _showAdminCard(context, '$targetId');
+    }
     return false;
   }
 
   Future<bool> _handleUserText(PrivateMessageContext context) async {
     final text = context.text;
-    if (text == null) {
-      return false;
-    }
     if (text == MessageTemplates.buttonGuide || text == '/guide') {
       return _deliverGuide(context, sendWarmup: true);
     }
@@ -167,7 +174,78 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       }
       return _send(context, _templates.help(), replyMarkup: _homeKeyboard(context.userId!));
     }
-    return _showMenu(context);
+    if (text != null && text.startsWith('/')) {
+      return _showMenu(context);
+    }
+    if (_adminGate.isConfiguredAdmin(context.userId)) {
+      return text == null ? false : _showMenu(context);
+    }
+    if (context.message == null) {
+      return false;
+    }
+    return _escalateToAdmin(context);
+  }
+
+  Future<bool> _escalateToAdmin(PrivateMessageContext context) async {
+    final userId = context.userId!;
+    final chatId = context.chatId!;
+    final user = _course.getUser(userId);
+    if (user == null) {
+      return _showMenu(context);
+    }
+    final targets = _adminGate.notificationChatIds(_adminChatId).difference(<int>{chatId});
+    var delivered = false;
+    for (final target in targets) {
+      try {
+        await _sender.sendMessage(
+          target,
+          _templates.adminIncomingUserMessage(user: user, text: context.text),
+          parseMode: 'HTML',
+          disableNotification: false,
+          replyMarkup: _templates.adminIncomingKeyboard(user.userId),
+        );
+        delivered = true;
+        final messageId = asTelegramInt(context.message?['message_id']);
+        if (messageId == null) {
+          continue;
+        }
+        try {
+          await _sender.forwardMessage(
+            chatId: target,
+            fromChatId: chatId,
+            messageId: messageId,
+            disableNotification: false,
+          );
+        } on TelegramApiException catch (error, stackTrace) {
+          l.w('forward to admin failed: $error', stackTrace);
+        }
+      } on Object catch (error, stackTrace) {
+        l.w('admin notify failed: $error', stackTrace);
+      }
+    }
+    if (!delivered) {
+      return _send(context, _templates.helpForwardFailed(), replyMarkup: _homeKeyboard(userId));
+    }
+    return _send(context, _templates.helpReceived(), replyMarkup: _homeKeyboard(userId));
+  }
+
+  ConversationContentType _inboundContentType(Map<String, dynamic>? message) {
+    if (message == null) {
+      return ConversationContentType.other;
+    }
+    if (message['photo'] != null) {
+      return ConversationContentType.photo;
+    }
+    if (message['document'] != null) {
+      return ConversationContentType.document;
+    }
+    if (message['video'] != null) {
+      return ConversationContentType.video;
+    }
+    if (message['text'] != null) {
+      return ConversationContentType.text;
+    }
+    return ConversationContentType.other;
   }
 
   Future<bool> _send(

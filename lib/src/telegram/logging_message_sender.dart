@@ -79,6 +79,21 @@ final class LoggingMessageSender implements MessageSender {
     return _inner.editMessageReplyMarkup(chatId, messageId: messageId, replyMarkup: replyMarkup);
   }
 
+  @override
+  Future<int> forwardMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) {
+    return _inner.forwardMessage(
+      chatId: chatId,
+      fromChatId: fromChatId,
+      messageId: messageId,
+      disableNotification: disableNotification,
+    );
+  }
+
   Future<void> _safeAppend({
     required int chatId,
     required int telegramMessageId,

@@ -41,6 +41,7 @@ final class HandlerHarness {
 
   Future<void> init({
     Set<int> adminUserIds = const <int>{1},
+    int? adminChatId,
     InteractionWhitelist interactionWhitelist = InteractionWhitelist.permissive,
     int channelId = -1001,
     int priceFullKopecks = 1800000,
@@ -100,6 +101,7 @@ final class HandlerHarness {
       warmup: warmup,
       broadcast: BroadcastService(sender: sender, course: course),
       adminUserIds: adminUserIds,
+      adminChatId: adminChatId,
       interactionWhitelist: interactionWhitelist,
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,

@@ -31,4 +31,11 @@ abstract interface class MessageSender {
     required int messageId,
     Map<String, Object?>? replyMarkup,
   });
+
+  Future<int> forwardMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  });
 }

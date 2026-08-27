@@ -144,6 +144,7 @@ final class CourseBotRuntime {
       warmup: warmup,
       broadcast: broadcast,
       adminUserIds: config.adminUserIds,
+      adminChatId: config.adminChatId,
       interactionWhitelist: InteractionWhitelist.production,
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,

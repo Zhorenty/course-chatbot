@@ -44,6 +44,7 @@ final class MessageTemplates {
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
+  static const String buttonAdminOpenCard = '👤 Карточка';
 
   static const String cbGuide = 'g';
   static const String cbEnroll = 'e';
@@ -65,6 +66,7 @@ final class MessageTemplates {
   static const String cbBroadcastCancel = 'bx';
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
+  static const String cbAdminCard = 'ak:';
 
   String botInDevelopment() {
     return '<b>Бот в разработке</b>\n\n'
@@ -116,6 +118,27 @@ final class MessageTemplates {
     return '<b>Как это устроено</b>\n\n'
         'Гайд «Язык цвета» — бесплатно, в этот чат. Запись на поток — через оплату в боте.\n\n'
         'Если касса зависла или ссылка не открылась, напиши сюда. Сообщение увидит админ.';
+  }
+
+  String helpReceived() {
+    return 'Передал админу. Ответит в этом чате.';
+  }
+
+  String helpForwardFailed() {
+    return 'Не смог передать админу. Напиши ещё раз чуть позже.';
+  }
+
+  String adminIncomingUserMessage({required UserProfile user, String? text}) {
+    final handle = user.username == null || user.username!.trim().isEmpty
+        ? ''
+        : ' · @${escapeHtml(user.username!.trim())}';
+    final body = (text == null || text.trim().isEmpty)
+        ? 'без текста — фото или файл'
+        : escapeHtml(text.trim());
+    return '<b>Написал ${escapeHtml(user.displayName)}</b>\n'
+        'id <code>${user.userId}</code>$handle\n'
+        'фаза: ${escapeHtml(_phaseLabel(user.funnelPhase))}\n\n'
+        '$body';
   }
 
   String guideReady() {

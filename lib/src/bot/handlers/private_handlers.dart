@@ -42,6 +42,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     required WarmupService warmup,
     required BroadcastService broadcast,
     required Set<int> adminUserIds,
+    int? adminChatId,
     InteractionWhitelist interactionWhitelist = InteractionWhitelist.production,
     GoogleSheetsCatalogSync? catalogSync,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
@@ -57,6 +58,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _warmup = warmup,
        _broadcast = broadcast,
        _adminGate = AdminGate(adminUserIds),
+       _adminChatId = adminChatId,
        _interactionWhitelist = interactionWhitelist,
        _catalogSync = catalogSync,
        _sheetsExportJob = sheetsExportJob,
@@ -71,6 +73,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final WarmupService _warmup;
   final BroadcastService _broadcast;
   final AdminGate _adminGate;
+  final int? _adminChatId;
   final InteractionWhitelist _interactionWhitelist;
   final GoogleSheetsCatalogSync? _catalogSync;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;

@@ -486,6 +486,29 @@ final class TelegramClient implements MessageSender, ChannelApi {
     );
   }
 
+  @override
+  Future<int> forwardMessage({
+    required int chatId,
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    final payload = await _post(
+      'forwardMessage',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'from_chat_id': fromChatId,
+        'message_id': messageId,
+        'disable_notification': disableNotification,
+      },
+    );
+    final result = payload['result'];
+    if (result is! Map || result['message_id'] is! int) {
+      throw const TelegramApiException('Telegram did not return message_id');
+    }
+    return result['message_id'] as int;
+  }
+
   void close() {
     _httpClient.close();
   }

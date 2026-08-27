@@ -308,4 +308,99 @@ void main() {
     expect(gated.sender.documents, isNotEmpty);
     expect(gated.course.getUser(8), isNotNull);
   });
+
+  test('free-text help message is forwarded to admins', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.sender.messages.clear();
+
+    final handled = await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: 'касса зависла <b>test</b>'),
+    );
+
+    expect(handled, isTrue);
+    final toAdmin = harness.sender.messages.where((m) => m.chatId == 1);
+    expect(toAdmin, isNotEmpty);
+    expect(toAdmin.first.text, contains('касса зависла'));
+    expect(toAdmin.first.text, contains('&lt;b&gt;test&lt;/b&gt;'));
+    expect(toAdmin.first.text, isNot(contains('<b>test</b>')));
+    expect(toAdmin.first.text, contains('<code>42</code>'));
+    expect(toAdmin.first.disableNotification, isFalse);
+    expect(toAdmin.first.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
+    expect(harness.sender.forwards, hasLength(1));
+    expect(harness.sender.forwards.single.chatId, 1);
+    expect(harness.sender.forwards.single.fromChatId, 42);
+    expect(harness.sender.forwards.single.messageId, 10);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 42 && m.text.contains('Передал админу')),
+      isTrue,
+    );
+    expect(harness.sender.messages.any((m) => m.chatId == 42 && m.text.contains('Меню')), isFalse);
+  });
+
+  test('photo without caption is still forwarded to admin', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.sender.messages.clear();
+
+    await harness.handlers.handle(privatePhotoUpdate(chatId: 42, userId: 42));
+
+    expect(harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('фото')), isTrue);
+    expect(harness.sender.forwards.single.messageId, 11);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 42 && m.text.contains('Передал админу')),
+      isTrue,
+    );
+  });
+
+  test('ADMIN_CHAT_ID gets a copy in addition to admin user ids', () async {
+    final extra = HandlerHarness();
+    addTearDown(extra.dispose);
+    await extra.init(adminUserIds: const <int>{1}, adminChatId: -100500);
+
+    await extra.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    extra.sender.messages.clear();
+    await extra.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: 'ссылка не открылась'),
+    );
+
+    expect(extra.sender.messages.where((m) => m.chatId == 1), isNotEmpty);
+    expect(extra.sender.messages.where((m) => m.chatId == -100500), isNotEmpty);
+    expect(extra.sender.forwards.map((f) => f.chatId), containsAll(<int>[1, -100500]));
+  });
+
+  test('menu and help buttons do not escalate to admin', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.sender.messages.clear();
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonHelp),
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('напиши сюда')), isTrue);
+    expect(harness.sender.forwards, isEmpty);
+    expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
+
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonMenu),
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню')), isTrue);
+    expect(harness.sender.forwards, isEmpty);
+  });
+
+  test('admin card button from incoming notice opens the person card', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'c',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCard}42',
+      ),
+    );
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('Карточка')),
+      isTrue,
+    );
+  });
 }
