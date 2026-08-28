@@ -150,7 +150,7 @@ final class MessageTemplates {
         : escapeHtml(text.trim());
     return '<b>Написал ${escapeHtml(user.displayName)}</b>\n'
         'id <code>${user.userId}</code>$handle\n'
-        'сейчас: ${escapeHtml(_adminPhaseLabel(user.funnelPhase))}\n\n'
+        '${escapeHtml(_adminPhaseLabel(user.funnelPhase))}\n\n'
         '$body';
   }
 
@@ -386,17 +386,24 @@ final class MessageTemplates {
       ..writeln(_adminCardTitle(user))
       ..writeln('id <code>${user.userId}</code>')
       ..writeln(_adminSourceLine(user.source))
-      ..writeln('сейчас: ${escapeHtml(_adminPhaseLabel(user.funnelPhase))}');
+      ..writeln()
+      ..writeln('<b>${escapeHtml(_headline(_adminPhaseLabel(user.funnelPhase)))}</b>');
     for (final line in _adminOrderLines(order)) {
       buf.writeln(line);
     }
     buf
+      ..writeln()
+      ..writeln('<b>Канал</b>')
       ..writeln(_adminChannelLine(access))
+      ..writeln()
+      ..writeln('<b>Связь</b>')
       ..writeln(_adminWarmupLine(user.warmupOptOut))
       ..writeln(_adminBotLine(user.botBlocked));
     if (dialog.isNotEmpty) {
-      buf.writeln('\nПоследние сообщения:');
-      for (final entry in dialog.take(8)) {
+      buf
+        ..writeln()
+        ..writeln('<b>Диалог</b>');
+      for (final entry in _recentDialog(dialog)) {
         final dir = entry.direction == ConversationDirection.outbound ? '→' : '←';
         buf.writeln('$dir ${_dialogPreview(entry)}');
       }
@@ -694,10 +701,10 @@ final class MessageTemplates {
 
   Iterable<String> _adminOrderLines(CourseOrder? order) {
     if (order == null) {
-      return const <String>['заказ: нет'];
+      return const <String>['заказа нет'];
     }
     final lines = <String>[
-      'заказ: #${order.id} · ${_adminPaymentKindLabel(order.kind)} · '
+      'заказ #${order.id} · ${_adminPaymentKindLabel(order.kind)} · '
           '${_adminOrderStatusLabel(order.status)}',
       'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
           'из ${formatRubFromKopecks(order.priceFullKopecks)}',
@@ -726,38 +733,78 @@ final class MessageTemplates {
 
   String _adminChannelLine(ChannelAccess? access) {
     if (access == null) {
-      return 'канал: нет доступа';
+      return 'нет доступа';
     }
     if (access.revokedAt != null) {
       if (access.joinedAt != null) {
-        return 'канал: был вход ${_formatMoscowDateTime(access.joinedAt!)}, invite отозван';
+        return 'был вход ${_formatMoscowDateTime(access.joinedAt!)}, invite отозван';
       }
-      return 'канал: invite отозван, входа не было';
+      return 'invite отозван, входа не было';
     }
     if (access.hasJoined) {
-      return 'канал: вошёл ${_formatMoscowDateTime(access.joinedAt!)}';
+      return 'вошёл ${_formatMoscowDateTime(access.joinedAt!)}';
     }
     final link = access.inviteLink?.trim();
     if (link == null || link.isEmpty) {
-      return 'канал: ссылка не выдана';
+      return 'ссылка не выдана';
     }
-    return 'канал: ссылка выдана, входа нет';
+    return 'ссылка выдана, входа нет';
   }
 
   String _adminWarmupLine(bool optOut) {
-    return optOut ? 'прогрев: не шлём («Не писать»)' : 'прогрев: идёт';
+    return optOut ? 'прогрев не шлём («Не писать»)' : 'прогрев идёт';
   }
 
   String _adminBotLine(bool blocked) {
-    return blocked ? 'бот: заблокирован' : 'бот: на связи';
+    return blocked ? 'заблокировал бота' : 'бот на связи';
+  }
+
+  List<ConversationLogEntry> _recentDialog(List<ConversationLogEntry> dialog, {int limit = 8}) {
+    if (dialog.length <= limit) {
+      return dialog;
+    }
+    return dialog.sublist(dialog.length - limit);
   }
 
   String _dialogPreview(ConversationLogEntry entry) {
     final preview = entry.textPreview?.trim();
-    if (preview != null && preview.isNotEmpty) {
-      return escapeHtml(preview);
+    if (preview == null || preview.isEmpty) {
+      return _conversationContentLabel(entry.contentType);
     }
-    return _conversationContentLabel(entry.contentType);
+    final compact = _compactDialogPreview(preview);
+    if (compact == null || compact.isEmpty) {
+      return _conversationContentLabel(entry.contentType);
+    }
+    return escapeHtml(compact);
+  }
+
+  String? _compactDialogPreview(String preview) {
+    final firstLine = preview
+        .split(RegExp(r'[\r\n]+'))
+        .map((line) => line.trim())
+        .firstWhere((line) => line.isNotEmpty, orElse: () => '');
+    if (firstLine.isEmpty) {
+      return null;
+    }
+    final lower = firstLine.toLowerCase();
+    if (lower.startsWith('document ')) {
+      return 'файл';
+    }
+    if (lower.startsWith('copy ')) {
+      return 'копия';
+    }
+    if (firstLine.length <= 80) {
+      return firstLine;
+    }
+    return '${firstLine.substring(0, 80)}…';
+  }
+
+  String _headline(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+    return '${trimmed.substring(0, 1).toUpperCase()}${trimmed.substring(1)}';
   }
 
   String _conversationContentLabel(ConversationContentType type) => switch (type) {

@@ -251,14 +251,18 @@ void main() {
     expect(text, contains('<b>Карточка</b> Анна &lt;b&gt; · @anna'));
     expect(text, contains('id <code>50</code>'));
     expect(text, contains('источник: Instagram Reels · <code>ig_reels_guide</code>'));
-    expect(text, contains('сейчас: внесена предоплата'));
-    expect(text, contains('заказ: #3 · предоплата · внесена предоплата'));
+    expect(text, contains('<b>Внесена предоплата</b>'));
+    expect(text, contains('заказ #3 · предоплата · внесена предоплата'));
     expect(text, contains('оплачено 5000 ₽ из 18000 ₽'));
     expect(text, contains('остаток 13000 ₽ · до 12.10.2026'));
-    expect(text, contains('канал: вошёл 15.08.2026 15:40'));
-    expect(text, contains('прогрев: не шлём («Не писать»)'));
-    expect(text, contains('бот: заблокирован'));
+    expect(text, contains('<b>Канал</b>'));
+    expect(text, contains('вошёл 15.08.2026 15:40'));
+    expect(text, contains('<b>Связь</b>'));
+    expect(text, contains('прогрев не шлём («Не писать»)'));
+    expect(text, contains('заблокировал бота'));
     expect(text, contains('← фото'));
+    expect(text, isNot(contains('сейчас:')));
+    expect(text, isNot(contains('Сейчас:')));
     expect(text, isNot(contains('оформляешь')));
     expect(text, isNot(contains('гайд уже у тебя')));
     expect(text, isNot(contains('смотришь')));
@@ -292,13 +296,66 @@ void main() {
     );
     expect(templates.menu(checkoutUser), contains('Сейчас: оформление оплаты.'));
     expect(templates.menu(checkoutUser), isNot(contains('оформляешь')));
-    expect(templates.adminCard(user: checkoutUser), contains('сейчас: оформляет оплату'));
+    expect(templates.adminCard(user: checkoutUser), contains('<b>Оформляет оплату</b>'));
+    expect(templates.adminCard(user: checkoutUser), isNot(contains('сейчас:')));
     expect(templates.adminCard(user: checkoutUser), isNot(contains('оформляешь')));
-    expect(
-      templates.adminIncomingUserMessage(user: checkoutUser),
-      contains('сейчас: оформляет оплату'),
-    );
+    expect(templates.adminIncomingUserMessage(user: checkoutUser), contains('оформляет оплату'));
+    expect(templates.adminIncomingUserMessage(user: checkoutUser), isNot(contains('сейчас:')));
     expect(templates.adminIncomingUserMessage(user: checkoutUser), isNot(contains('оформляешь')));
+  });
+
+  test('admin card dialog keeps one line per message and hides file ids', () {
+    final startedAt = DateTime.utc(2026, 8, 1);
+    final text = MessageTemplates().adminCard(
+      user: UserProfile(
+        userId: 50,
+        firstName: 'Анна',
+        funnelPhase: FunnelPhase.checkout,
+        firstStartedAt: startedAt,
+        lastSeenAt: startedAt,
+      ),
+      dialog: <ConversationLogEntry>[
+        ConversationLogEntry(
+          id: 1,
+          occurredAt: DateTime.utc(2026, 8, 15, 10),
+          direction: ConversationDirection.outbound,
+          peerUserId: 50,
+          chatId: 50,
+          contentType: ConversationContentType.document,
+          textPreview:
+              'document BQACAgIAAxkDAAMKao_ubwVvf_X-8R4HIo_gof56x8AAArOhAAJHuoBIHMwPOJ6ookw9BA',
+        ),
+        ConversationLogEntry(
+          id: 2,
+          occurredAt: DateTime.utc(2026, 8, 15, 11),
+          direction: ConversationDirection.outbound,
+          peerUserId: 50,
+          chatId: 50,
+          contentType: ConversationContentType.text,
+          textPreview:
+              'Меню\n\nСейчас: оформляешь оплату.\n\nДальше — гайд, запись на курс или помощь.',
+        ),
+        ConversationLogEntry(
+          id: 3,
+          occurredAt: DateTime.utc(2026, 8, 15, 12),
+          direction: ConversationDirection.inbound,
+          peerUserId: 50,
+          chatId: 50,
+          contentType: ConversationContentType.text,
+          textPreview: MessageTemplates.buttonEnroll,
+        ),
+      ],
+    );
+
+    expect(text, contains('<b>Диалог</b>'));
+    expect(text, contains('→ файл'));
+    expect(text, contains('→ Меню'));
+    expect(text, contains('← ${MessageTemplates.buttonEnroll}'));
+    expect(text, isNot(contains('BQACAgIA')));
+    expect(text, isNot(contains('оформляешь')));
+    expect(text, isNot(contains('Сейчас:')));
+    expect(text, isNot(contains('сейчас:')));
+    expect(text, isNot(contains('Дальше — гайд')));
   });
 
   test('admin card without order shows empty payment and default flags', () {
@@ -312,11 +369,13 @@ void main() {
     );
     expect(text, contains('<b>Карточка</b>'));
     expect(text, contains('источник: без метки'));
-    expect(text, contains('сейчас: пришёл, без гайда'));
-    expect(text, contains('заказ: нет'));
-    expect(text, contains('канал: нет доступа'));
-    expect(text, contains('прогрев: идёт'));
-    expect(text, contains('бот: на связи'));
+    expect(text, contains('<b>Пришёл, без гайда</b>'));
+    expect(text, contains('заказа нет'));
+    expect(text, contains('<b>Канал</b>'));
+    expect(text, contains('нет доступа'));
+    expect(text, contains('прогрев идёт'));
+    expect(text, contains('бот на связи'));
+    expect(text, isNot(contains('сейчас:')));
     expect(text, isNot(contains('остаток')));
   });
 
