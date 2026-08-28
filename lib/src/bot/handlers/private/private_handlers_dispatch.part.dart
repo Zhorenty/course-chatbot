@@ -88,9 +88,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       case MessageTemplates.cbPayRemainder:
         return _showOffer(context, PaymentKind.remainder);
       case MessageTemplates.cbToggleOffer:
-        return _toggleOfferCheck(context, offer: true);
       case MessageTemplates.cbTogglePersonalData:
-        return _toggleOfferCheck(context, offer: false);
+        return _toggleOfferCheck(context);
       case MessageTemplates.cbGoToPay:
         return _confirmOfferAndPay(context);
       case MessageTemplates.cbOptOut:

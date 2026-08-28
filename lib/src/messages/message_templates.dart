@@ -36,8 +36,8 @@ final class MessageTemplates {
   static const String buttonGoToPay = '💳 Перейти к оплате';
   static const String buttonContinuePay = '💳 Продолжить оплату';
   static const String buttonOpenInvite = '🔗 Открыть канал';
-  static const String buttonAcceptOffer = 'Принимаю условия Публичной оферты';
-  static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
+  static const String buttonAcceptConsent =
+      'Принимаю оферту и соглашаюсь на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminAddUser = '➕ Добавить на курс';
   static const String buttonAdminBroadcast = '📣 Рассылка';
@@ -381,7 +381,7 @@ final class MessageTemplates {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null ? 'Поток близко.' : 'Поток $start.';
     return '<b>$startLine</b>\n\n'
-        'Записаться ещё можно из меню внизу. В канал пущу после полной суммы или после списания.';
+        'Записаться ещё можно из меню внизу. Ссылку в канал пришлю после полной оплаты или после списания.';
   }
 
   String optOutConfirmed() {
@@ -398,7 +398,7 @@ final class MessageTemplates {
       ..writeln()
       ..writeln('Стоимость: $price.');
     if (launch.hasDepositOption) {
-      buf.write('Предоплата: ${formatRubFromKopecks(launch.depositKopecks)}.');
+      buf.write('Можно начать с предоплаты ${formatRubFromKopecks(launch.depositKopecks)}.');
       final due = _formatDate(launch.depositDueAt);
       if (due != null) {
         buf.write(' Остаток — до $due');
@@ -408,24 +408,26 @@ final class MessageTemplates {
         }
         buf.write('.');
       }
-      buf.writeln(' В канал пущу после полной суммы.');
+      buf.writeln(' Ссылку в канал пришлю после полной оплаты.');
     }
     buf.writeln('Рассрочка откроется на странице кассы: график ведёт касса, не бот.');
     buf.writeln();
-    buf.write('Выбери, как удобнее закрыть оплату.');
+    buf.write('Выбери удобный способ оплаты.');
     return buf.toString().trim();
   }
 
   String offerConsent(Launch launch) {
     final offerPhrase = _offerPhrase(launch);
-    return 'Нажимая «${MessageTemplates.buttonGoToPay}», ты подтверждаешь, '
+    return 'Чтобы открыть оплату, сначала нажми галочку ниже. '
+        'Без этого кнопка «${MessageTemplates.buttonGoToPay}» не сработает.\n\n'
+        'Нажимая «${MessageTemplates.buttonGoToPay}», ты подтверждаешь, '
         'что принимаешь условия $offerPhrase '
         'на оказание информационно-консультационных/образовательных услуг '
         'и даёшь согласие на обработку персональных данных.';
   }
 
-  String offerNeedBothChecks() {
-    return 'Нужны обе галочки, чтобы открыть оплату.';
+  String offerNeedCheck() {
+    return 'Сначала нажми галочку ниже — без этого оплата не откроется.';
   }
 
   String _offerPhrase(Launch launch) {
@@ -442,7 +444,7 @@ final class MessageTemplates {
     }
     return '💳 Ссылка на оплату готова. После успешного платежа статус в этом чате обновится сам. '
         'Если страница кассы не вернула сюда — всё равно жди сообщение здесь. '
-        'Если это предоплата, в канал пущу после полной суммы.';
+        'Если это предоплата, ссылку в канал пришлю после полной оплаты.';
   }
 
   // TODO(launch): replace the hardcoded @zhorenty support username below with
@@ -453,15 +455,48 @@ final class MessageTemplates {
         'Напиши сюда: @zhorenty — подскажем, как закрыть оплату.';
   }
 
-  String adminPaymentGatewayDown({required int userId, required String provider, String? reason}) {
+  String adminPaymentGatewayDown({
+    required int userId,
+    required String provider,
+    required PaymentKind kind,
+    String? reason,
+    String? username,
+    String? firstName,
+  }) {
     final reasonLine = (reason == null || reason.trim().isEmpty)
         ? ''
         : '\n${escapeHtml(reason.trim())}';
-    return '<b>Касса недоступна</b>\n\n'
-        'Провайдер <code>${escapeHtml(provider)}</code> не отдал ссылку на оплату '
-        'для id <code>$userId</code>.$reasonLine\n\n'
-        'Если человек напишет сюда — отметь оплату вручную из карточки.';
+    return '<b>Ошибка онлайн-оплаты</b>\n\n'
+        'Не получилось открыть ссылку на кассу.\n\n'
+        '${_adminWhoLine(userId: userId, username: username, firstName: firstName)}\n'
+        'Способ: ${_payKindLabel(kind)}\n'
+        'Провайдер <code>${escapeHtml(provider)}</code>.$reasonLine\n\n'
+        'Человеку показан запасной путь через администратора. '
+        'Можно отметить оплату вручную из карточки.';
   }
+
+  String _adminWhoLine({required int userId, String? username, String? firstName}) {
+    final parts = <String>[];
+    final name = firstName?.trim();
+    if (name != null && name.isNotEmpty) {
+      parts.add(escapeHtml(name));
+    }
+    final handle = username?.trim();
+    if (handle != null && handle.isNotEmpty) {
+      parts.add('@${escapeHtml(handle)}');
+    }
+    if (parts.isEmpty) {
+      return 'Кто: id <code>$userId</code>';
+    }
+    return 'Кто: ${parts.join(' · ')} · id <code>$userId</code>';
+  }
+
+  String _payKindLabel(PaymentKind kind) => switch (kind) {
+    PaymentKind.full => 'полная оплата',
+    PaymentKind.deposit => 'предоплата',
+    PaymentKind.remainder => 'доплата',
+    PaymentKind.installment => 'рассрочка',
+  };
 
   String adminGuideMissing({required int userId}) {
     return '<b>Гайд не залит</b>\n\n'
@@ -478,7 +513,7 @@ final class MessageTemplates {
     final due = _dueDateLabel(order.dueAt, fallback: 'по договорённости');
     return '<b>Предоплата дошла</b>\n\n'
         'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due. '
-        'В канал пущу, когда закроется полная сумма.';
+        'Ссылку в канал пришлю, когда закроется полная сумма.';
   }
 
   String inviteMessage(String link) {

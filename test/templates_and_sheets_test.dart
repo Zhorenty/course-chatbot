@@ -24,7 +24,7 @@ void main() {
     expect(MessageTemplates.buttonEnroll, contains('Записаться'));
   });
 
-  test('offer consent copy names the pay button and both checkboxes', () {
+  test('offer consent copy names the pay button and one combined checkbox', () {
     final templates = MessageTemplates();
     const launch = Launch(
       id: 1,
@@ -37,15 +37,17 @@ void main() {
     );
     expect(templates.offerConsent(launch), contains('Перейти к оплате'));
     expect(templates.offerConsent(launch), contains('Публичной оферты'));
-    final keyboard = templates.offerKeyboard(acceptedOffer: true, acceptedPersonalData: false);
+    expect(templates.offerConsent(launch), contains('нажми галочку'));
+    expect(templates.enrollOptions(launch), contains('Ссылку в канал пришлю после полной оплаты'));
+    expect(templates.enrollOptions(launch), isNot(contains('В канал пущу')));
+    final keyboard = templates.offerKeyboard(accepted: false);
     final rows = keyboard['inline_keyboard'] as List<dynamic>;
-    expect(rows[0].toString(), contains('☑️'));
-    expect(rows[0].toString(), contains(MessageTemplates.buttonAcceptOffer));
-    expect(rows[1].toString(), contains('☐'));
-    expect(rows[1].toString(), contains(MessageTemplates.buttonAcceptPersonalData));
-    expect(rows[2].toString(), contains('Перейти к оплате'));
-    expect('☑️ ${MessageTemplates.buttonAcceptOffer}'.length, lessThanOrEqualTo(64));
-    expect('☑️ ${MessageTemplates.buttonAcceptPersonalData}'.length, lessThanOrEqualTo(64));
+    expect(rows, hasLength(2));
+    expect(rows[0].toString(), contains('☐'));
+    expect(rows[0].toString(), contains(MessageTemplates.buttonAcceptConsent));
+    expect(rows[1].toString(), contains('Перейти к оплате'));
+    expect('☑️ ${MessageTemplates.buttonAcceptConsent}'.length, lessThanOrEqualTo(64));
+    expect(templates.offerKeyboard(accepted: true)['inline_keyboard'].toString(), contains('☑️'));
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {

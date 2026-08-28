@@ -18,7 +18,12 @@ void main() {
       harness = HandlerHarness();
       final alertPort = FakePaymentGatewayAlertPort();
       await harness.init(adminUserIds: <int>{1}, alertPort: alertPort);
-      harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+      harness.course.ensureUser(
+        userId: 42,
+        username: 'masha',
+        firstName: 'Маша',
+        now: DateTime.utc(2026, 1, 1),
+      );
       final launch = harness.course.activeLaunch()!;
       final order = harness.checkout.startOrReuseOrder(
         userId: 42,
@@ -42,6 +47,8 @@ void main() {
       expect(alertPort.alerts.single.launchId, launch.id);
       expect(alertPort.alerts.single.provider, 'fake');
       expect(alertPort.alerts.single.reason, contains('leadpay down'));
+      expect(alertPort.alerts.single.username, 'masha');
+      expect(alertPort.alerts.single.firstName, 'Маша');
     },
   );
 
@@ -123,7 +130,59 @@ void main() {
     expect(alertPort.alerts, hasLength(2));
   });
 
-  test('PaymentAlertNotifier pushes every admin chat with a short HTML alert', () async {
+  test('a second person hitting the same outage still alerts admins', () async {
+    harness = HandlerHarness();
+    final alertPort = FakePaymentGatewayAlertPort();
+    await harness.init(adminUserIds: <int>{1}, alertPort: alertPort);
+    final launch = harness.course.activeLaunch()!;
+    harness.gateway.createError = const PaymentUnavailableException('leadpay down');
+
+    for (final userId in <int>[42, 43]) {
+      harness.course.ensureUser(userId: userId, now: DateTime.utc(2026, 1, 1));
+      final order = harness.checkout.startOrReuseOrder(
+        userId: userId,
+        launch: launch,
+        kind: PaymentKind.full,
+      );
+      await expectLater(
+        harness.checkout.createCheckout(
+          order: order,
+          kind: PaymentKind.full,
+          amountKopecks: launch.priceFullKopecks,
+        ),
+        throwsA(isA<PaymentUnavailableException>()),
+      );
+    }
+
+    expect(alertPort.alerts.map((alert) => alert.userId), <int>[42, 43]);
+  });
+
+  test('empty confirmation URL is treated as a kassa error and alerts admins', () async {
+    harness = HandlerHarness();
+    final alertPort = FakePaymentGatewayAlertPort();
+    await harness.init(adminUserIds: <int>{1}, alertPort: alertPort);
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    harness.gateway.url = '';
+
+    await expectLater(
+      harness.checkout.createCheckout(
+        order: order,
+        kind: PaymentKind.full,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      throwsA(isA<PaymentUnavailableException>()),
+    );
+    expect(alertPort.alerts, hasLength(1));
+    expect(alertPort.alerts.single.reason, contains('empty confirmation URL'));
+  });
+
+  test('PaymentAlertNotifier names the person who hit the kassa error', () async {
     harness = HandlerHarness();
     await harness.init(adminUserIds: <int>{1});
     final templates = MessageTemplates();
@@ -141,16 +200,86 @@ void main() {
       kind: PaymentKind.full,
       provider: 'leadpay',
       reason: 'token missing',
+      username: 'masha',
+      firstName: 'Маша',
     );
 
     expect(harness.sender.messages, hasLength(2));
     final chatIds = harness.sender.messages.map((message) => message.chatId).toSet();
     expect(chatIds, <int>{1, 999});
     for (final message in harness.sender.messages) {
+      expect(message.text, contains('Ошибка онлайн-оплаты'));
       expect(message.text, contains('leadpay'));
       expect(message.text, contains('42'));
+      expect(message.text, contains('@masha'));
+      expect(message.text, contains('Маша'));
+      expect(message.text, contains('полная оплата'));
       expect(message.parseMode, 'HTML');
       expect(message.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
     }
+  });
+
+  test('pay button outage writes the person to the admin chat', () async {
+    harness = HandlerHarness();
+    final notifier = PaymentAlertNotifier(
+      sender: harness.sender,
+      templates: MessageTemplates(),
+      notificationChatIds: <int>{1},
+    );
+    await harness.init(adminUserIds: <int>{1}, alertPort: notifier);
+    harness.gateway.createError = const PaymentUnavailableException('leadpay down');
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start', username: 'masha'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbEnroll,
+        username: 'masha',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '2',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbPayFull,
+        username: 'masha',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '3',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbToggleOffer,
+        username: 'masha',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '4',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGoToPay,
+        username: 'masha',
+      ),
+    );
+
+    expect(
+      harness.sender.messages.any(
+        (message) => message.chatId == 42 && message.text.contains('неполадки'),
+      ),
+      isTrue,
+    );
+    final admin = harness.sender.messages.where((message) => message.chatId == 1);
+    expect(admin, isNotEmpty);
+    expect(admin.first.text, contains('@masha'));
+    expect(admin.first.text, contains('42'));
+    expect(admin.first.text, contains('Test'));
+    expect(admin.first.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
   });
 }

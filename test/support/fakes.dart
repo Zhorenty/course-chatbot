@@ -190,7 +190,7 @@ final class CopiedMessage {
 final class FakePaymentGateway implements PaymentGateway {
   FakePaymentGateway({this.url = 'https://pay.example/checkout', this.createError});
 
-  final String? url;
+  String? url;
   Object? createError;
   int creates = 0;
   bool available = true;
@@ -265,6 +265,8 @@ final class GatewayAlert {
     required this.kind,
     required this.provider,
     this.reason,
+    this.username,
+    this.firstName,
   });
 
   final int userId;
@@ -272,6 +274,8 @@ final class GatewayAlert {
   final PaymentKind kind;
   final String provider;
   final String? reason;
+  final String? username;
+  final String? firstName;
 }
 
 final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, AdminAlertPort {
@@ -285,6 +289,8 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
     required PaymentKind kind,
     required String provider,
     String? reason,
+    String? username,
+    String? firstName,
   }) async {
     alerts.add(
       GatewayAlert(
@@ -293,6 +299,8 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
         kind: kind,
         provider: provider,
         reason: reason,
+        username: username,
+        firstName: firstName,
       ),
     );
   }

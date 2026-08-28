@@ -383,7 +383,7 @@ void main() {
     expect(harness.sender.messages.single.text, isNot(contains('Запись на поток')));
   });
 
-  test('checkout is blocked until both offer checkboxes are accepted', () async {
+  test('checkout is blocked until the offer checkbox is accepted', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -403,6 +403,7 @@ void main() {
     );
 
     expect(harness.sender.messages.last.text, contains('Публичной оферты'));
+    expect(harness.sender.messages.last.text, contains('нажми галочку'));
     expect(harness.gateway.creates, 0);
 
     await harness.handlers.handle(
@@ -416,7 +417,7 @@ void main() {
     expect(harness.gateway.creates, 0);
     expect(
       harness.sender.callbackAnswers.any(
-        (answer) => answer.showAlert && (answer.text?.contains('галочки') ?? false),
+        (answer) => answer.showAlert && (answer.text?.contains('галочку') ?? false),
       ),
       isTrue,
     );
@@ -429,19 +430,12 @@ void main() {
         data: MessageTemplates.cbToggleOffer,
       ),
     );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '5',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbTogglePersonalData,
-      ),
-    );
     expect(harness.sender.markupEdits, isNotEmpty);
+    expect(harness.sender.markupEdits.last.replyMarkup.toString(), contains('☑️'));
 
     await harness.handlers.handle(
       privateCallbackUpdate(
-        callbackId: '6',
+        callbackId: '5',
         chatId: 42,
         userId: 42,
         data: MessageTemplates.cbGoToPay,

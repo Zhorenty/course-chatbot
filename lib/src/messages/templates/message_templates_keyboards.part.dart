@@ -67,21 +67,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(rows);
   }
 
-  Map<String, Object?> offerKeyboard({
-    required bool acceptedOffer,
-    required bool acceptedPersonalData,
-  }) {
+  Map<String, Object?> offerKeyboard({required bool accepted}) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': _checkbox(acceptedOffer, MessageTemplates.buttonAcceptOffer),
+          'text': _checkbox(accepted, MessageTemplates.buttonAcceptConsent),
           'callback_data': MessageTemplates.cbToggleOffer,
-        },
-      ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': _checkbox(acceptedPersonalData, MessageTemplates.buttonAcceptPersonalData),
-          'callback_data': MessageTemplates.cbTogglePersonalData,
         },
       ],
       <Map<String, String>>[

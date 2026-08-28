@@ -13,26 +13,21 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     return _send(
       context,
       _templates.offerConsent(launch),
-      replyMarkup: _templates.offerKeyboard(acceptedOffer: false, acceptedPersonalData: false),
+      replyMarkup: _templates.offerKeyboard(accepted: false),
     );
   }
 
-  Future<bool> _toggleOfferCheck(PrivateMessageContext context, {required bool offer}) async {
+  Future<bool> _toggleOfferCheck(PrivateMessageContext context) async {
     final userId = context.userId!;
     final flow = _flowByUserId[userId];
     if (flow == null || flow.step != PrivateFlowStep.offerConsent || flow.pendingPayKind == null) {
       await _answerCallback(context, text: 'Выбери способ оплаты ещё раз.');
       return _showEnroll(context);
     }
-    final next = offer
-        ? flow.copyWith(acceptedOffer: !flow.acceptedOffer)
-        : flow.copyWith(acceptedPersonalData: !flow.acceptedPersonalData);
+    final next = flow.copyWith(acceptedConsent: !flow.acceptedConsent);
     _flowByUserId[userId] = next;
     await _answerCallback(context);
-    final markup = _templates.offerKeyboard(
-      acceptedOffer: next.acceptedOffer,
-      acceptedPersonalData: next.acceptedPersonalData,
-    );
+    final markup = _templates.offerKeyboard(accepted: next.acceptedConsent);
     final messageId = asTelegramInt(context.callbackMessage?['message_id']);
     final chatId = context.chatId;
     if (chatId != null && messageId != null) {
@@ -54,7 +49,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       return _showEnroll(context);
     }
     if (!flow.offerReady) {
-      await _answerCallback(context, text: _templates.offerNeedBothChecks(), showAlert: true);
+      await _answerCallback(context, text: _templates.offerNeedCheck(), showAlert: true);
       return true;
     }
     await _answerCallback(context);

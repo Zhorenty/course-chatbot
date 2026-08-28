@@ -31,11 +31,16 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
     required PaymentKind kind,
     required String provider,
     String? reason,
+    String? username,
+    String? firstName,
   }) async {
     final text = _templates.adminPaymentGatewayDown(
       userId: userId,
       provider: provider,
+      kind: kind,
       reason: reason,
+      username: username,
+      firstName: firstName,
     );
     await _pushAdmins(text, userId: userId);
   }

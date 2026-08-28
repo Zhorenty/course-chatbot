@@ -25,8 +25,7 @@ final class PrivateFlowState {
     this.adminTargetUserId,
     this.pendingGuideFileId,
     this.pendingPayKind,
-    this.acceptedOffer = false,
-    this.acceptedPersonalData = false,
+    this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
   });
 
@@ -39,11 +38,10 @@ final class PrivateFlowState {
   final int? adminTargetUserId;
   final String? pendingGuideFileId;
   final PaymentKind? pendingPayKind;
-  final bool acceptedOffer;
-  final bool acceptedPersonalData;
+  final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
 
-  bool get offerReady => acceptedOffer && acceptedPersonalData;
+  bool get offerReady => acceptedConsent;
 
   bool get hasBroadcastDraft => broadcastFromChatId != null && broadcastMessageId != null;
 
@@ -57,8 +55,7 @@ final class PrivateFlowState {
     Object? adminTargetUserId = _unset,
     Object? pendingGuideFileId = _unset,
     Object? pendingPayKind = _unset,
-    bool? acceptedOffer,
-    bool? acceptedPersonalData,
+    bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
   }) {
     return PrivateFlowState(
@@ -87,8 +84,7 @@ final class PrivateFlowState {
       pendingPayKind: identical(pendingPayKind, _unset)
           ? this.pendingPayKind
           : pendingPayKind as PaymentKind?,
-      acceptedOffer: acceptedOffer ?? this.acceptedOffer,
-      acceptedPersonalData: acceptedPersonalData ?? this.acceptedPersonalData,
+      acceptedConsent: acceptedConsent ?? this.acceptedConsent,
       broadcastExcludeOptOut: broadcastExcludeOptOut ?? this.broadcastExcludeOptOut,
     );
   }

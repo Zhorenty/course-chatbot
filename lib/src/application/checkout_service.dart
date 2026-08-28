@@ -52,6 +52,8 @@ abstract interface class PaymentGatewayAlertPort {
     required PaymentKind kind,
     required String provider,
     String? reason,
+    String? username,
+    String? firstName,
   });
 }
 
@@ -80,9 +82,9 @@ final class CheckoutService {
   final PaymentGatewayAlertPort? _alertPort;
   final Duration _gatewayAlertCooldown;
 
-  /// Per-launch cooldown so a flapping kassa or repeated user retries do not
-  /// spam admins on every checkout attempt.
-  final Map<int, DateTime> _lastGatewayAlertAtByLaunch = <int, DateTime>{};
+  /// Per-user cooldown so one person retrying does not spam admins,
+  /// while each new person who hits the outage still surfaces.
+  final Map<int, DateTime> _lastGatewayAlertAtByUser = <int, DateTime>{};
 
   CourseOrder startOrReuseOrder({
     required int userId,
@@ -177,6 +179,10 @@ final class CheckoutService {
             returnUrl: _returnUrl,
           )
           .timeout(PaymentGateway.requestTimeout);
+      final url = session.confirmationUrl?.trim();
+      if (url == null || url.isEmpty) {
+        throw const PaymentUnavailableException('Checkout returned empty confirmation URL.');
+      }
     } on PaymentUnavailableException catch (error) {
       _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
       await _alertGatewayDown(order: order, kind: kind, error: error);
@@ -227,11 +233,12 @@ final class CheckoutService {
       return;
     }
     final now = _nowProvider();
-    final last = _lastGatewayAlertAtByLaunch[order.launchId];
+    final last = _lastGatewayAlertAtByUser[order.userId];
     if (last != null && now.difference(last) < _gatewayAlertCooldown) {
       return;
     }
-    _lastGatewayAlertAtByLaunch[order.launchId] = now;
+    _lastGatewayAlertAtByUser[order.userId] = now;
+    final user = _course.getUser(order.userId);
     try {
       await port.notifyGatewayUnavailable(
         userId: order.userId,
@@ -239,6 +246,8 @@ final class CheckoutService {
         kind: kind,
         provider: _gateway.providerId,
         reason: error.message,
+        username: user?.username,
+        firstName: user?.firstName,
       );
     } on Object catch (notifyError, stackTrace) {
       l.w('Failed to notify admin about gateway outage: $notifyError', stackTrace);
