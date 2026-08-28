@@ -56,7 +56,7 @@ final class WarmupNudgeJob {
             candidate.userId,
             _templates.warmupStep(decision.stepKey, launch: launch),
             parseMode: 'HTML',
-            replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+            replyMarkup: _templates.warmupKeyboard(),
           ),
         );
         if (delivered) {

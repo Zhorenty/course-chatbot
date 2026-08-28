@@ -103,7 +103,7 @@ final class MessageTemplates {
     return '<b>Гайд «Язык цвета»</b>\n\n'
         'Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает». '
         'PDF пришлю сюда же: без имени, почты и телефона.\n\n'
-        'Нажми кнопку — файл будет в этом чате.';
+        'Нажми «${MessageTemplates.buttonGuide}» в меню внизу — файл будет в этом чате.';
   }
 
   String startCourseCard({Launch? launch}) {
@@ -305,15 +305,17 @@ final class MessageTemplates {
       'warmup_start_d1' => _startNudge(launch),
       _ =>
         '<b>Ещё одно касание</b>\n\n'
-            'Можно записаться на поток, когда будет удобно. Кнопка ниже.',
+            'Можно записаться на поток, когда будет удобно. '
+            '«${MessageTemplates.buttonEnroll}» в меню внизу.',
     };
   }
 
   String _warmupZero(Launch? launch) {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null
-        ? 'Можно записаться с кнопки ниже — когда будет удобно.'
-        : 'Поток стартует $start. Можно записаться сейчас или почитать гайд и вернуться — кнопка никуда не денется.';
+        ? 'Можно записаться, когда будет удобно — «${MessageTemplates.buttonEnroll}» в меню внизу.'
+        : 'Поток стартует $start. Можно записаться сейчас или почитать гайд и вернуться — '
+              'кнопки в меню внизу никуда не денутся.';
     return '<b>Гайд — это алфавит</b>\n\n'
         '«Язык цвета» помогает увидеть, какие оттенки тебе идут. '
         'Курс собирает это в систему: база гардероба и цвета, с которыми проще собираться.\n\n'
@@ -325,7 +327,7 @@ final class MessageTemplates {
         'Часто дело не во вкусе, а в подтоне: холодный розовый на тёплой коже выглядит грязновато, '
         'тёплый беж на холодной — желтит.\n\n'
         'Гайд это подсвечивает. На курсе разбираем, как собрать базу, которая не спорит с кожей. '
-        'Когда будет момент — кнопка записи ниже.';
+        'Когда будет момент — «${MessageTemplates.buttonEnroll}» в меню внизу.';
   }
 
   String _warmupDay3(Launch? launch) {
@@ -353,7 +355,8 @@ final class MessageTemplates {
       ..writeln()
       ..writeln()
       ..write(
-        'В канал потока пускаю после полной суммы или после списания. Записаться — с кнопки ниже.',
+        'В канал потока пускаю после полной суммы или после списания. '
+        'Записаться — «${MessageTemplates.buttonEnroll}» в меню внизу.',
       );
     return buf.toString();
   }
@@ -362,21 +365,23 @@ final class MessageTemplates {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null ? 'Поток ещё можно успеть.' : 'Старт потока $start.';
     return '<b>Неделя с гайдом</b>\n\n'
-        '$startLine Если хочешь собрать гардероб в систему — кнопка записи ниже.';
+        '$startLine Если хочешь собрать гардероб в систему — '
+        '«${MessageTemplates.buttonEnroll}» в меню внизу.';
   }
 
   String _enrollNudge(Launch? launch) {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null ? '' : ' Старт потока $start.';
     return '<b>Гайд и запись ещё здесь</b>\n\n'
-        'Можно забрать «Язык цвета» или записаться на поток.$startLine Кнопки ниже.';
+        'Можно забрать «Язык цвета» или записаться на поток.$startLine '
+        'Кнопки в меню внизу.';
   }
 
   String _startNudge(Launch? launch) {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null ? 'Поток близко.' : 'Поток $start.';
     return '<b>$startLine</b>\n\n'
-        'Записаться ещё можно с кнопки ниже. В канал пущу после полной суммы или после списания.';
+        'Записаться ещё можно из меню внизу. В канал пущу после полной суммы или после списания.';
   }
 
   String optOutConfirmed() {

@@ -32,66 +32,14 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> guideOfferKeyboard({required bool showEnroll}) {
+  Map<String, Object?> warmupKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonGuide,
-          'callback_data': MessageTemplates.cbGuide,
-        },
-      ],
-      if (showEnroll)
-        <Map<String, String>>[
-          <String, String>{
-            'text': MessageTemplates.buttonEnroll,
-            'callback_data': MessageTemplates.cbEnroll,
-          },
-        ],
-      _supportRow(showGuide: false),
-    ]);
-  }
-
-  Map<String, Object?> courseCardKeyboard() {
-    return inlineKeyboard(<List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonEnroll,
-          'callback_data': MessageTemplates.cbEnroll,
-        },
-      ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonGuide,
-          'callback_data': MessageTemplates.cbGuide,
-        },
-      ],
-      _supportRow(showGuide: false),
-    ]);
-  }
-
-  Map<String, Object?> warmupKeyboard({required bool showEnroll, bool showGuide = true}) {
-    return inlineKeyboard(<List<Map<String, String>>>[
-      if (showEnroll)
-        <Map<String, String>>[
-          <String, String>{
-            'text': MessageTemplates.buttonEnroll,
-            'callback_data': MessageTemplates.cbEnroll,
-          },
-        ],
-      if (showGuide)
-        <Map<String, String>>[
-          <String, String>{
-            'text': MessageTemplates.buttonGuide,
-            'callback_data': MessageTemplates.cbGuide,
-          },
-        ],
       <Map<String, String>>[
         <String, String>{
           'text': MessageTemplates.buttonOptOut,
           'callback_data': MessageTemplates.cbOptOut,
         },
       ],
-      _supportRow(showGuide: false),
     ]);
   }
 
@@ -116,7 +64,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       },
     ];
     rows.add(extra);
-    rows.add(_supportRow());
     return inlineKeyboard(rows);
   }
 
@@ -153,7 +100,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonGoToPay, 'url': url},
       ],
-      _supportRow(),
     ]);
   }
 
@@ -165,7 +111,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'callback_data': '${MessageTemplates.cbContinuePay}$orderId',
         },
       ],
-      _supportRow(),
     ]);
   }
 
@@ -177,7 +122,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'callback_data': MessageTemplates.cbPayRemainder,
         },
       ],
-      _supportRow(),
     ]);
   }
 
@@ -187,10 +131,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{'text': MessageTemplates.buttonOpenInvite, 'url': link},
       ],
     ]);
-  }
-
-  Map<String, Object?> accessKeyboard() {
-    return inlineKeyboard(<List<Map<String, String>>>[_supportRow()]);
   }
 
   Map<String, Object?>? courseStatusKeyboard({CourseOrder? order, ChannelAccess? access}) {
@@ -206,20 +146,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       return unjoinedInviteKeyboard(link);
     }
     return null;
-  }
-
-  List<Map<String, String>> _supportRow({bool showGuide = true}) {
-    return <Map<String, String>>[
-      if (showGuide)
-        <String, String>{
-          'text': MessageTemplates.buttonGuide,
-          'callback_data': MessageTemplates.cbGuide,
-        },
-      <String, String>{
-        'text': MessageTemplates.buttonHelp,
-        'callback_data': MessageTemplates.cbHelp,
-      },
-    ];
   }
 
   Map<String, Object?> adminIncomingKeyboard(int userId) {

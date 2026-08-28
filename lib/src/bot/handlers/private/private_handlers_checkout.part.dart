@@ -154,7 +154,6 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
           result.order.userId,
           _templates.inviteUnavailable(),
           parseMode: 'HTML',
-          replyMarkup: _templates.accessKeyboard(),
         );
       }
     }

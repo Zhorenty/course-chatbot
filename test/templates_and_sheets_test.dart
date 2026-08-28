@@ -479,7 +479,7 @@ void main() {
     expect(templates.courseStatusKeyboard(order: paid, access: joined), isNull);
   });
 
-  test('funnel inline keyboards keep guide and help', () {
+  test('funnel inline keyboards do not repeat the reply menu', () {
     final templates = MessageTemplates();
     const launch = Launch(
       id: 1,
@@ -490,34 +490,16 @@ void main() {
       depositKopecks: 500000,
       depositDueDays: 7,
     );
-    expect(
-      _inlineButtonTexts(templates.enrollKeyboard(launch)),
-      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonHelp]),
-    );
-    expect(
-      _inlineButtonTexts(templates.warmupKeyboard(showEnroll: true)),
-      containsAll(<String>[
-        MessageTemplates.buttonGuide,
-        MessageTemplates.buttonHelp,
-        MessageTemplates.buttonEnroll,
-      ]),
-    );
-    expect(
-      _inlineButtonTexts(templates.accessKeyboard()),
-      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonHelp]),
-    );
-    expect(
-      _inlineButtonTexts(templates.accessKeyboard()),
-      isNot(contains(MessageTemplates.buttonOpenInvite)),
-    );
+    final enroll = _inlineButtonTexts(templates.enrollKeyboard(launch));
+    expect(enroll, isNot(contains(MessageTemplates.buttonGuide)));
+    expect(enroll, isNot(contains(MessageTemplates.buttonEnroll)));
+    expect(enroll, isNot(contains(MessageTemplates.buttonHelp)));
+    expect(enroll, contains(MessageTemplates.buttonPayFull));
+    expect(_inlineButtonTexts(templates.warmupKeyboard()), <String>[MessageTemplates.buttonOptOut]);
     expect(_inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')), <String>[
       MessageTemplates.buttonOpenInvite,
     ]);
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
-    expect(
-      _inlineCallbackData(templates.accessKeyboard()),
-      isNot(contains(MessageTemplates.cbNewInvite)),
-    );
     expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
     expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
     expect(templates.unjoinedInviteReminder('https://t.me/+x'), contains('https://t.me/+x'));

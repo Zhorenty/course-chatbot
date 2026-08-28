@@ -90,7 +90,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
           userId,
           _templates.warmupStep(WarmupService.firstStepKey, launch: _launch),
           parseMode: 'HTML',
-          replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+          replyMarkup: _templates.warmupKeyboard(),
         ),
       );
     } on Object catch (error, stackTrace) {

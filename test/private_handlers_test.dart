@@ -52,11 +52,11 @@ void main() {
       privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
-    final courseInline = _inlineButtonTexts(
-      harness.sender.messages.firstWhere((m) => m.text.contains('Поток с')).replyMarkup,
-    );
-    expect(courseInline, contains(MessageTemplates.buttonEnroll));
-    expect(courseInline, contains(MessageTemplates.buttonGuide));
+    final courseOffer = harness.sender.messages.firstWhere((m) => m.text.contains('Поток с'));
+    expect(_inlineButtonTexts(courseOffer.replyMarkup), isEmpty);
+    final courseMenu = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    expect(courseMenu, contains(MessageTemplates.buttonEnroll));
+    expect(courseMenu, contains(MessageTemplates.buttonGuide));
 
     harness.sender.messages.clear();
     await harness.handlers.handle(
@@ -610,19 +610,17 @@ void main() {
     }
   });
 
-  test('/start offers the guide with an inline CTA and pins the reply menu', () async {
+  test('/start offers the guide and pins the reply menu without inline duplicates', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
     );
     expect(harness.sender.messages, hasLength(2));
     final offer = harness.sender.messages.first;
     expect(offer.text, contains('Гайд'));
+    expect(offer.text, contains(MessageTemplates.buttonGuide));
     expect(offer.text, isNot(contains('<b>Профиль</b>')));
     expect(offer.text, isNot(contains('<b>Меню</b>')));
-    final inline = _inlineButtonTexts(offer.replyMarkup);
-    expect(inline, contains(MessageTemplates.buttonGuide));
-    expect(inline, contains(MessageTemplates.buttonEnroll));
-    expect(inline, contains(MessageTemplates.buttonHelp));
+    expect(_inlineButtonTexts(offer.replyMarkup), isEmpty);
     final texts = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
