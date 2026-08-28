@@ -264,7 +264,7 @@ void main() {
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
   });
 
-  test('/start after invite without join resends the existing link', () async {
+  test('/start after invite without join does not resend the invite link', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);
     final launch = harness.course.activeLaunch()!;
@@ -277,10 +277,13 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isFalse);
+    expect(harness.sender.messages.any((m) => m.text.contains('ещё не зашли')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
     expect(harness.channel.created, isEmpty);
     expect(harness.channel.revoked, isEmpty);
+    final reminder = harness.sender.messages.firstWhere((m) => m.text.contains('ещё не зашли'));
+    expect(reminder.replyMarkup, isNull);
     final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(pin, contains(MessageTemplates.buttonGuide));
     expect(pin, contains(MessageTemplates.buttonHelp));
@@ -288,7 +291,7 @@ void main() {
       harness.sender.messages.any(
         (m) => _inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOpenInvite),
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       harness.sender.messages.any(

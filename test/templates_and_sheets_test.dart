@@ -435,6 +435,8 @@ void main() {
     );
     expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
     expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
+    expect(templates.unjoinedInviteReminder(), isNot(contains('t.me/')));
+    expect(templates.unjoinedInviteReminder(), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1)),

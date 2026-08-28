@@ -326,7 +326,9 @@ void main() {
     await job.run();
     final toUser = harness.sender.messages.where((m) => m.chatId == 42).toList();
     expect(toUser, hasLength(1));
-    expect(toUser.single.text, contains('https://t.me/+keep'));
+    expect(toUser.single.text, contains('ещё не зашли'));
+    expect(toUser.single.text, isNot(contains('https://t.me/+keep')));
+    expect(toUser.single.replyMarkup, isNull);
     await job.run();
     expect(harness.sender.messages.where((m) => m.chatId == 42), hasLength(1));
   });

@@ -112,27 +112,6 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     return _showOffer(context, order.kind);
   }
 
-  Future<bool> _issueInviteIfNeeded(PrivateMessageContext context) async {
-    final launch = _launch;
-    final user = _course.getUser(context.userId!);
-    if (launch == null || user == null || !user.funnelPhase.isPaidOrAccess) {
-      return false;
-    }
-    final order = _course.latestOrder(user.userId);
-    if (order == null) {
-      return false;
-    }
-    final link = await _access.issueInvite(userId: user.userId, orderId: order.id, launch: launch);
-    if (link == null) {
-      return _send(context, _templates.inviteUnavailable());
-    }
-    return _send(
-      context,
-      _templates.inviteMessage(link),
-      replyMarkup: _templates.unjoinedInviteKeyboard(link),
-    );
-  }
-
   Future<void> _notifyPaymentResult(PaymentApplyResult result) async {
     if (result.alreadyApplied && !result.repairedInvite) {
       return;

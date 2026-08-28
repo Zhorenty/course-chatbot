@@ -403,9 +403,9 @@ final class MessageTemplates {
         'После полной суммы открою канал потока.';
   }
 
-  String unjoinedInviteReminder(String link) {
-    return '🔗 Ссылка в канал потока ещё не использована:\n${escapeHtml(link)}\n\n'
-        'Открой её с кнопки ниже. Если не сработает — напиши сюда, админ выдаст другую.';
+  String unjoinedInviteReminder() {
+    return '🔗 В канал потока ещё не зашли.\n\n'
+        'Если ссылка не открылась — напиши сюда, админ выдаст другую.';
   }
 
   String inviteAskAdmin() {

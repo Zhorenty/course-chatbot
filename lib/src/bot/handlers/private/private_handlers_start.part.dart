@@ -17,10 +17,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _pinUserMenu(context, hasAccess: true);
     }
     if (user.funnelPhase.isPaidOrAccess) {
-      final handled = await _issueInviteIfNeeded(context);
-      if (!handled) {
-        await _send(context, _templates.inviteUnavailable());
-      }
+      await _send(context, _templates.inviteUnavailable());
       return _pinUserMenu(context, hasAccess: true);
     }
     if (user.funnelPhase == FunnelPhase.depositPaid) {
@@ -73,17 +70,8 @@ extension _PrivateHandlersStart on PrivateHandlers {
   Future<bool> _startAccessReply(PrivateMessageContext context, int userId) {
     final launch = _launch;
     final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
-    final link = access?.inviteLink;
-    if (access != null &&
-        !access.hasJoined &&
-        access.revokedAt == null &&
-        link != null &&
-        link.isNotEmpty) {
-      return _send(
-        context,
-        _templates.unjoinedInviteReminder(link),
-        replyMarkup: _templates.unjoinedInviteKeyboard(link),
-      );
+    if (access != null && !access.hasJoined && access.revokedAt == null) {
+      return _send(context, _templates.unjoinedInviteReminder());
     }
     return _send(context, _templates.alreadyHasAccess(), replyMarkup: _templates.accessKeyboard());
   }
