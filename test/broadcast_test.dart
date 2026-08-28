@@ -33,12 +33,9 @@ void main() {
 
     expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.allStarted), <int>[
       10,
-      11,
       12,
       13,
       14,
-      15,
-      16,
       18,
       19,
     ]);
@@ -55,6 +52,12 @@ void main() {
       15,
     ]);
     expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.cancelled), <int>[16]);
+    harness.course.ensureUser(userId: 21, source: 'tg_announce', now: now);
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.courseLeadNoCheckout),
+      <int>[21],
+    );
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.leadNoGuide), <int>[12]);
 
     for (final segment in BroadcastSegment.values) {
       expect(
@@ -75,11 +78,11 @@ void main() {
     await _openBroadcast(harness);
 
     final picker = harness.sender.messages.last;
-    expect(picker.text, contains('Гайд, не купили — 1'));
+    expect(picker.text, contains('Гайд, без записи — 1'));
     expect(picker.text, contains('Оплатили / доступ — 1'));
-    expect(picker.text, contains('Все — '));
+    expect(picker.text, contains('Все, кроме купивших и отмен — '));
     final buttons = _inlineButtonTexts(picker.replyMarkup);
-    expect(buttons, contains('Гайд, не купили (1)'));
+    expect(buttons, contains('Гайд, без записи (1)'));
     expect(buttons, contains('Оплатили / доступ (1)'));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastCancel));
     final data = _inlineCallbackData(picker.replyMarkup);
@@ -103,7 +106,7 @@ void main() {
     expect(harness.sender.copies.any((c) => c.chatId == 10), isFalse);
     final preview = harness.sender.messages.last;
     expect(preview.text, contains('Превью'));
-    expect(preview.text, contains('Гайд, не купили'));
+    expect(preview.text, contains('Гайд, без записи'));
     expect(preview.text, contains('Получателей: 1'));
     expect(preview.text, contains('текст'));
     expect(preview.text, contains('Привет поток'));
@@ -111,6 +114,7 @@ void main() {
     expect(data, contains(MessageTemplates.cbBroadcastSend));
     expect(data, contains(MessageTemplates.cbBroadcastOtherSegment));
     expect(data, contains(MessageTemplates.cbBroadcastCancel));
+    expect(data, contains(MessageTemplates.cbBroadcastToggleOptOut));
     expect(data, isNot(contains('bg')));
   });
 
@@ -271,9 +275,11 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastSend));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastOtherSegment));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastCancel));
-    expect(texts.join(), isNot(contains('Гайд, не купили')));
+    expect(texts, contains(MessageTemplates.buttonAdminBroadcastSkipOptOut));
+    expect(texts.join(), isNot(contains('Гайд, без записи')));
     expect(data, contains(MessageTemplates.cbBroadcastSend));
     expect(data, contains(MessageTemplates.cbBroadcastOtherSegment));
+    expect(data, contains(MessageTemplates.cbBroadcastToggleOptOut));
     expect(data, isNot(contains('bg')));
   });
 

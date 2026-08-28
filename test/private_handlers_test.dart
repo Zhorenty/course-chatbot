@@ -50,12 +50,27 @@ void main() {
       privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
+    final courseInline = _inlineButtonTexts(
+      harness.sender.messages.firstWhere((m) => m.text.contains('Поток с')).replyMarkup,
+    );
+    expect(courseInline, contains(MessageTemplates.buttonEnroll));
+    expect(courseInline, contains(MessageTemplates.buttonGuide));
 
     harness.sender.messages.clear();
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 8, userId: 8, text: '/start threads_guide'),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
+  });
+
+  test('later bare /start keeps the course card when source was a course payload', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 7, userId: 7, text: '/start'));
+    expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
   test('extra sheet payload with курс opens the course card', () async {
@@ -207,6 +222,24 @@ void main() {
     expect(enroll, contains('05.10.2026'));
     expect(enroll, contains('12.10.2026'));
     expect(enroll, isNot(contains('t.me/+')));
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
+  });
+
+  test('/start after invite without join resends the existing link', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);
+    final launch = harness.course.activeLaunch()!;
+    harness.course.upsertAccess(
+      userId: 42,
+      launchId: launch.id,
+      orderId: 1,
+      inviteLink: 'https://t.me/+keep-me',
+      inviteCreatedAt: DateTime.utc(2026, 10, 1),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
   });
 
   test('checkout is blocked until both offer checkboxes are accepted', () async {
@@ -339,6 +372,22 @@ void main() {
     expect(gated.course.getUser(8), isNotNull);
   });
 
+  test('repeat /start after guide does not re-offer the first screen', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    expect(harness.sender.messages.any((m) => m.text.contains('Ты уже здесь')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
+  });
+
   test('free-text help message is forwarded to admins', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     harness.sender.messages.clear();
@@ -420,15 +469,19 @@ void main() {
     }
   });
 
-  test('/start is a single offer and reply keyboard has no profile or menu', () async {
+  test('/start offers the guide with an inline CTA and pins the reply menu', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
     );
-    expect(harness.sender.messages, hasLength(1));
-    expect(harness.sender.messages.single.text, contains('Гайд'));
-    expect(harness.sender.messages.single.text, isNot(contains('<b>Профиль</b>')));
-    expect(harness.sender.messages.single.text, isNot(contains('<b>Меню</b>')));
-    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
+    expect(harness.sender.messages, hasLength(2));
+    final offer = harness.sender.messages.first;
+    expect(offer.text, contains('Гайд'));
+    expect(offer.text, isNot(contains('<b>Профиль</b>')));
+    expect(offer.text, isNot(contains('<b>Меню</b>')));
+    final inline = _inlineButtonTexts(offer.replyMarkup);
+    expect(inline, contains(MessageTemplates.buttonGuide));
+    expect(inline, contains(MessageTemplates.buttonEnroll));
+    final texts = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonHelp));
@@ -457,6 +510,14 @@ void main() {
 
 List<String> _replyButtonTexts(Map<String, Object?>? markup) {
   final rows = markup?['keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
+}
+
+List<String> _inlineButtonTexts(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
   return <String>[
     for (final row in rows)
       for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,

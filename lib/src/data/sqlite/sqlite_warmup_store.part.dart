@@ -12,6 +12,7 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
             stepKey: row['step_key'] as String,
             delay: Duration(seconds: row['delay_seconds'] as int),
             sortOrder: row['sort_order'] as int,
+            anchor: WarmupAnchorX.parse(row['anchor'] as String?),
             enabled: (row['enabled'] as int) == 1,
           ),
         )
@@ -20,22 +21,13 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
 
   @override
   void seedDefaultWarmupSteps() {
-    final existing = _db.select('SELECT COUNT(*) AS c FROM warmup_steps;');
-    if ((existing.first['c'] as int) > 0) {
-      return;
-    }
-    const steps = <(String, int, int)>[
-      ('warmup_0', 0, 0),
-      ('warmup_d1', 86400, 1),
-      ('warmup_d3', 259200, 2),
-    ];
-    for (final step in steps) {
+    for (final step in WarmupStep.defaults) {
       _db.execute(
         '''
-        INSERT INTO warmup_steps (step_key, delay_seconds, sort_order, enabled)
-        VALUES (?, ?, ?, 1);
+        INSERT OR IGNORE INTO warmup_steps (step_key, delay_seconds, sort_order, enabled, anchor)
+        VALUES (?, ?, ?, 1, ?);
         ''',
-        <Object?>[step.$1, step.$2, step.$3],
+        <Object?>[step.stepKey, step.delay.inSeconds, step.sortOrder, step.anchor.storageValue],
       );
     }
   }
@@ -61,42 +53,30 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
   }
 
   @override
-  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 100}) {
-    final nowIso = now.toUtc().toIso8601String();
+  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200}) {
     final rows = _db.select(
       '''
-      SELECT u.user_id, u.magnet_issued_at, u.first_started_at,
+      SELECT u.user_id, u.magnet_issued_at, u.first_started_at, u.source, u.funnel_phase,
              GROUP_CONCAT(w.step_key) AS sent_keys
       FROM telegram_users u
       LEFT JOIN warmup_sent w ON w.user_id = u.user_id
       WHERE u.bot_blocked = 0
         AND u.warmup_opt_out = 0
-        AND u.funnel_phase IN ('magnet_issued', 'warming')
-        AND EXISTS (
-          SELECT 1 FROM warmup_steps s
-          WHERE s.enabled = 1
-            AND NOT EXISTS (
-              SELECT 1 FROM warmup_sent sent
-              WHERE sent.user_id = u.user_id AND sent.step_key = s.step_key
-            )
-            AND (
-              strftime('%s', ?)
-              - strftime('%s', COALESCE(u.magnet_issued_at, u.first_started_at))
-            ) >= s.delay_seconds
-        )
+        AND u.funnel_phase NOT IN ('checkout', 'deposit_paid', 'paid', 'access_granted', 'cancelled')
       GROUP BY u.user_id
       ORDER BY u.first_started_at
       LIMIT ?;
       ''',
-      <Object?>[nowIso, limit],
+      <Object?>[limit],
     );
     return [
       for (final row in rows)
         WarmupCandidate(
           userId: row['user_id'] as int,
-          anchorAt: DateTime.parse(
-            (row['magnet_issued_at'] as String?) ?? (row['first_started_at'] as String),
-          ),
+          firstStartedAt: DateTime.parse(row['first_started_at'] as String),
+          magnetIssuedAt: parseTime(row['magnet_issued_at'] as String?),
+          source: row['source'] as String?,
+          funnelPhase: FunnelPhaseX.parse(row['funnel_phase'] as String?),
           sentKeys: _splitSentKeys(row['sent_keys'] as String?),
         ),
     ];

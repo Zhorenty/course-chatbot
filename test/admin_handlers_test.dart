@@ -46,6 +46,15 @@ void main() {
         data: '${MessageTemplates.cbAdminPaid}99',
       ),
     );
+    expect(harness.sender.messages.last.text, contains('Отметить'));
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'py',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+      ),
+    );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
     expect(harness.channel.created, isNotEmpty);
   });
@@ -244,6 +253,14 @@ void main() {
         data: '${MessageTemplates.cbAdminCancel}50',
       ),
     );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rmy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancelConfirm}50',
+      ),
+    );
     expect(harness.course.getUser(50)?.funnelPhase, FunnelPhase.cancelled);
     expect(harness.channel.banned, contains(50));
     expect(harness.sender.messages.any((m) => m.text.contains('Убрал с курса')), isTrue);
@@ -261,6 +278,14 @@ void main() {
         data: '${MessageTemplates.cbAdminPaid}99',
       ),
     );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'py',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+      ),
+    );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
     expect(harness.channel.created, isNotEmpty);
 
@@ -270,6 +295,14 @@ void main() {
         chatId: 1,
         userId: 1,
         data: '${MessageTemplates.cbAdminCancel}99',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rmy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancelConfirm}99',
       ),
     );
     expect(harness.course.getUser(99)?.funnelPhase, FunnelPhase.cancelled);

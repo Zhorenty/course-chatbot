@@ -2,18 +2,22 @@ enum BroadcastSegment {
   allStarted,
   leadNoGuide,
   guideNotPaid,
+  courseLeadNoCheckout,
   checkoutOpen,
   depositPaid,
   paidAccess,
+  paidNotJoined,
   cancelled;
 
   String get code => switch (this) {
     BroadcastSegment.allStarted => 'a',
     BroadcastSegment.leadNoGuide => 'l',
     BroadcastSegment.guideNotPaid => 'g',
+    BroadcastSegment.courseLeadNoCheckout => 'k',
     BroadcastSegment.checkoutOpen => 'c',
     BroadcastSegment.depositPaid => 'd',
     BroadcastSegment.paidAccess => 'p',
+    BroadcastSegment.paidNotJoined => 'n',
     BroadcastSegment.cancelled => 'x',
   };
 

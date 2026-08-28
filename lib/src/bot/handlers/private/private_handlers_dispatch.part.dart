@@ -103,6 +103,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _reselectBroadcastSegment(context);
       case MessageTemplates.cbBroadcastCancel:
         return _cancelBroadcast(context);
+      case MessageTemplates.cbBroadcastToggleOptOut:
+        return _toggleBroadcastOptOut(context);
       case MessageTemplates.cbGuideSave:
         return _savePendingGuide(context);
       case MessageTemplates.cbGuideDiscard:
@@ -122,24 +124,45 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         MessageTemplates.idFromCallback(data, MessageTemplates.cbContinuePay),
       );
     }
-    if (data.startsWith(MessageTemplates.cbAdminPaid)) {
+    if (data.startsWith(MessageTemplates.cbAdminPaidConfirm)) {
       return _adminMarkPaid(
         context,
-        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaid),
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaidConfirm),
         PaymentKind.full,
       );
     }
-    if (data.startsWith(MessageTemplates.cbAdminDeposit)) {
+    if (data.startsWith(MessageTemplates.cbAdminPaid)) {
+      return _adminAskConfirm(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaid),
+        kind: _AdminConfirmKind.paid,
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbAdminDepositConfirm)) {
       return _adminMarkPaid(
         context,
-        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDeposit),
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDepositConfirm),
         PaymentKind.deposit,
       );
     }
-    if (data.startsWith(MessageTemplates.cbAdminCancel)) {
+    if (data.startsWith(MessageTemplates.cbAdminDeposit)) {
+      return _adminAskConfirm(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDeposit),
+        kind: _AdminConfirmKind.deposit,
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbAdminCancelConfirm)) {
       return _adminCancel(
         context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancelConfirm),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbAdminCancel)) {
+      return _adminAskConfirm(
+        context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel),
+        kind: _AdminConfirmKind.cancel,
       );
     }
     if (data.startsWith(MessageTemplates.cbAdminInvite)) {
@@ -157,6 +180,18 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return false;
       }
       return _showAdminCard(context, '$targetId');
+    }
+    if (data.startsWith(MessageTemplates.cbAdminDm)) {
+      return _adminAskDm(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDm),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbAdminActionAbort)) {
+      return _adminAbortConfirm(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminActionAbort),
+      );
     }
     if (data.startsWith(MessageTemplates.cbAdminCreate)) {
       final targetId = MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCreate);

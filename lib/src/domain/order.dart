@@ -28,6 +28,9 @@ extension OrderStatusX on OrderStatus {
   }
 }
 
+/// Waves for deposit remainder reminders. Each wave fires once.
+enum RemainderWave { beforeDue, onDueDay, overdue }
+
 enum PaymentKind { full, deposit, remainder, installment }
 
 extension PaymentKindX on PaymentKind {

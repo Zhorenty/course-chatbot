@@ -150,6 +150,7 @@ void main() {
       expect(message.text, contains('leadpay'));
       expect(message.text, contains('42'));
       expect(message.parseMode, 'HTML');
+      expect(message.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
     }
   });
 }

@@ -68,6 +68,15 @@ final class AcquisitionLinkCatalog {
 
   List<AcquisitionLink> get entries => List<AcquisitionLink>.unmodifiable(_entries);
 
+  /// Payloads that open the course card on first `/start`, including ССЫЛКИ extras.
+  Set<String> get courseEntryPayloads {
+    return <String>{
+      ...AcquisitionSource.coursePayloads,
+      for (final link in _entries)
+        if (link.opensCourse) link.payload,
+    };
+  }
+
   void replaceAll(Iterable<AcquisitionLink> links) {
     final next = dedupe(links);
     _entries = next.isEmpty ? List<AcquisitionLink>.from(AcquisitionLink.starters) : next;

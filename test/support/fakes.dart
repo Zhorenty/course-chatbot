@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/application/checkout_service.dart';
+import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
@@ -273,8 +274,9 @@ final class GatewayAlert {
   final String? reason;
 }
 
-final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort {
+final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, AdminAlertPort {
   final List<GatewayAlert> alerts = <GatewayAlert>[];
+  final List<int> guideMissing = <int>[];
 
   @override
   Future<void> notifyGatewayUnavailable({
@@ -293,6 +295,11 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort {
         reason: reason,
       ),
     );
+  }
+
+  @override
+  Future<void> notifyGuideMissing({required int userId}) async {
+    guideMissing.add(userId);
   }
 }
 

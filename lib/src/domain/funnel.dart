@@ -28,6 +28,7 @@ extension FunnelPhaseX on FunnelPhase {
   bool get isPaidOrAccess => this == FunnelPhase.paid || this == FunnelPhase.accessGranted;
 
   bool get excludeSellingDrip =>
+      this == FunnelPhase.checkout ||
       this == FunnelPhase.depositPaid ||
       this == FunnelPhase.paid ||
       this == FunnelPhase.accessGranted ||

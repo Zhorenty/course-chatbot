@@ -38,6 +38,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (_isBroadcastStep(flow?.step)) {
       return _captureBroadcastDraft(context);
     }
+    if (flow?.step == PrivateFlowStep.adminComposeDm) {
+      return _sendAdminDm(context);
+    }
     final step = flow?.step ?? PrivateFlowStep.idle;
     final fileId = extractDocumentFileId(context.message);
     if (step == PrivateFlowStep.idle && fileId != null && text == null) {
@@ -216,6 +219,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
+    if (matches.length > 1) {
+      return _send(
+        context,
+        _templates.adminSearchMatches(matches),
+        replyMarkup: _templates.adminSearchMatchesKeyboard(matches),
+      );
+    }
     return _presentAdminCard(context, matches.first);
   }
 
@@ -235,6 +245,77 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       _templates.adminCard(user: user, order: order, access: access, dialog: dialog),
       replyMarkup: _templates.adminCardKeyboard(user.userId),
     );
+  }
+
+  Future<bool> _adminAskConfirm(
+    PrivateMessageContext context,
+    int? targetUserId, {
+    required _AdminConfirmKind kind,
+  }) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    final (text, yesPrefix) = switch (kind) {
+      _AdminConfirmKind.paid => (
+        _templates.adminConfirmMarkPaid(targetUserId),
+        MessageTemplates.cbAdminPaidConfirm,
+      ),
+      _AdminConfirmKind.deposit => (
+        _templates.adminConfirmMarkDeposit(targetUserId),
+        MessageTemplates.cbAdminDepositConfirm,
+      ),
+      _AdminConfirmKind.cancel => (
+        _templates.adminConfirmCancel(targetUserId),
+        MessageTemplates.cbAdminCancelConfirm,
+      ),
+    };
+    return _send(
+      context,
+      text,
+      replyMarkup: _templates.adminConfirmKeyboard(
+        yesData: '$yesPrefix$targetUserId',
+        noData: '${MessageTemplates.cbAdminActionAbort}$targetUserId',
+      ),
+    );
+  }
+
+  Future<bool> _adminAbortConfirm(PrivateMessageContext context, int? targetUserId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    return _showAdminCard(context, '$targetUserId');
+  }
+
+  Future<bool> _adminAskDm(PrivateMessageContext context, int? targetUserId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    _flowByUserId[context.userId!] = PrivateFlowState(
+      step: PrivateFlowStep.adminComposeDm,
+      adminTargetUserId: targetUserId,
+    );
+    return _send(context, _templates.adminAskDm(targetUserId));
+  }
+
+  Future<bool> _sendAdminDm(PrivateMessageContext context) async {
+    final targetId = _flowByUserId[context.userId!]?.adminTargetUserId;
+    final text = context.text?.trim();
+    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
+    if (targetId == null || text == null || text.isEmpty) {
+      return _send(context, _templates.adminDmEmpty());
+    }
+    try {
+      await _sender.sendMessage(targetId, text, disableNotification: false);
+      await _send(context, _templates.adminDmSent(targetId));
+    } on Object catch (error, stackTrace) {
+      l.w('Admin DM to $targetId failed: $error', stackTrace);
+      await _send(context, _templates.adminDmFailed(targetId));
+    }
+    final user = _course.getUser(targetId);
+    if (user == null) {
+      return true;
+    }
+    return _presentAdminCard(context, user);
   }
 
   Future<bool> _adminMarkPaid(
@@ -323,11 +404,26 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         step == PrivateFlowStep.adminBroadcastCompose;
   }
 
-  Map<BroadcastSegment, int> _broadcastCounts() {
+  Map<BroadcastSegment, int> _broadcastCounts({bool excludeOptOut = false}) {
+    final sources = _funnel.links.courseEntryPayloads;
     return <BroadcastSegment, int>{
       for (final segment in BroadcastSegment.values)
-        segment: _course.countBroadcastUsers(segment: segment),
+        segment: _course.countBroadcastUsers(
+          segment: segment,
+          excludeOptOut: excludeOptOut,
+          courseEntrySources: sources,
+        ),
     };
+  }
+
+  int _broadcastOptOutCount(BroadcastSegment segment) {
+    final sources = _funnel.links.courseEntryPayloads;
+    return _course.countBroadcastUsers(segment: segment, courseEntrySources: sources) -
+        _course.countBroadcastUsers(
+          segment: segment,
+          excludeOptOut: true,
+          courseEntrySources: sources,
+        );
   }
 
   Future<bool> _showBroadcastPicker(PrivateMessageContext context) {
@@ -428,12 +524,32 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       context,
       _templates.adminBroadcastPreview(
         segment: segment,
-        recipientCount: _course.countBroadcastUsers(segment: segment),
+        recipientCount: _course.countBroadcastUsers(
+          segment: segment,
+          excludeOptOut: flow.broadcastExcludeOptOut,
+          courseEntrySources: _funnel.links.courseEntryPayloads,
+        ),
         kind: kind,
         previewText: flow.broadcastPreviewText,
+        optOutCount: _broadcastOptOutCount(segment),
+        excludeOptOut: flow.broadcastExcludeOptOut,
       ),
-      replyMarkup: _templates.broadcastConfirmKeyboard(),
+      replyMarkup: _templates.broadcastConfirmKeyboard(excludeOptOut: flow.broadcastExcludeOptOut),
     );
+  }
+
+  Future<bool> _toggleBroadcastOptOut(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final previous = _flowByUserId[context.userId!];
+    if (previous == null || previous.broadcastSegment == null) {
+      return _showBroadcastPicker(context);
+    }
+    _flowByUserId[context.userId!] = previous.copyWith(
+      broadcastExcludeOptOut: !previous.broadcastExcludeOptOut,
+    );
+    return _showBroadcastPreview(context);
   }
 
   Future<bool> _reselectBroadcastSegment(PrivateMessageContext context) async {
@@ -475,6 +591,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       segment: segment,
       fromChatId: fromChatId,
       messageId: messageId,
+      excludeOptOut: flow?.broadcastExcludeOptOut ?? false,
+      courseEntrySources: _funnel.links.courseEntryPayloads,
     );
     return _send(
       context,

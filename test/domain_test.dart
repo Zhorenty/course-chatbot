@@ -62,7 +62,8 @@ void main() {
     expect(BroadcastSegment.guideNotPaid.code, 'g');
     expect(BroadcastSegment.fromCode('a'), BroadcastSegment.allStarted);
     expect(BroadcastSegment.fromCode('l'), BroadcastSegment.leadNoGuide);
-    expect(BroadcastSegment.fromCode('x'), BroadcastSegment.cancelled);
+    expect(BroadcastSegment.fromCode('n'), BroadcastSegment.paidNotJoined);
+    expect(BroadcastSegment.fromCode('k'), BroadcastSegment.courseLeadNoCheckout);
     expect(BroadcastSegment.fromCode('nope'), isNull);
     expect(MessageTemplates.segmentFromCallback('bs:p'), BroadcastSegment.paidAccess);
   });
@@ -71,6 +72,7 @@ void main() {
     expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.magnetIssued), isFalse);
     expect(FunnelPhase.accessGranted.canTransitionTo(FunnelPhase.checkout), isFalse);
     expect(FunnelPhase.warming.canTransitionTo(FunnelPhase.checkout), isTrue);
+    expect(FunnelPhase.checkout.excludeSellingDrip, isTrue);
     expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.accessGranted), isTrue);
     expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.cancelled), isTrue);
     expect(FunnelPhase.cancelled.canTransitionTo(FunnelPhase.paid), isTrue);

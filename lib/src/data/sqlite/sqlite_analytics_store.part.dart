@@ -23,7 +23,7 @@ mixin _SqliteAnalyticsStore on _SqliteCourseStore implements FunnelAnalyticsRepo
       startedUsersTotal: scalar('SELECT COUNT(*) AS c FROM telegram_users;'),
       funnelUsers: scalar('''
         SELECT COUNT(*) AS c FROM telegram_users
-        WHERE funnel_phase NOT IN ('cancelled');
+        WHERE funnel_phase NOT IN ('cancelled', 'paid', 'access_granted');
         '''),
       guideTaken: scalar(
         'SELECT COUNT(*) AS c FROM telegram_users WHERE magnet_issued_at IS NOT NULL;',
@@ -64,6 +64,43 @@ mixin _SqliteAnalyticsStore on _SqliteCourseStore implements FunnelAnalyticsRepo
         SELECT COALESCE(source, 'unknown') AS k, COUNT(*) AS c
         FROM telegram_users GROUP BY COALESCE(source, 'unknown');
         '''),
+      sourceFunnels: _sourceFunnels(),
+      inviteIssuedNotJoined: scalar('''
+        SELECT COUNT(*) AS c FROM channel_access a
+        JOIN telegram_users u ON u.user_id = a.user_id
+        WHERE a.invite_link IS NOT NULL AND a.invite_link != ''
+          AND a.joined_at IS NULL AND a.revoked_at IS NULL
+          AND u.bot_blocked = 0;
+        '''),
+      warmupOptOutCount: scalar(
+        'SELECT COUNT(*) AS c FROM telegram_users WHERE warmup_opt_out = 1;',
+      ),
+      botBlockedCount: scalar('SELECT COUNT(*) AS c FROM telegram_users WHERE bot_blocked = 1;'),
     );
+  }
+
+  List<SourceFunnelSlice> _sourceFunnels() {
+    final rows = _db.select('''
+      SELECT COALESCE(u.source, 'unknown') AS k,
+             COUNT(*) AS started,
+             SUM(CASE WHEN u.magnet_issued_at IS NOT NULL THEN 1 ELSE 0 END) AS guide_taken,
+             SUM(CASE WHEN EXISTS (
+               SELECT 1 FROM orders o WHERE o.user_id = u.user_id
+             ) THEN 1 ELSE 0 END) AS checkout_started,
+             SUM(CASE WHEN u.funnel_phase IN ('paid', 'access_granted') THEN 1 ELSE 0 END) AS paid
+      FROM telegram_users u
+      GROUP BY COALESCE(u.source, 'unknown')
+      ORDER BY started DESC;
+      ''');
+    return [
+      for (final row in rows)
+        SourceFunnelSlice(
+          source: row['k']?.toString() ?? 'unknown',
+          started: row['started'] as int,
+          guideTaken: row['guide_taken'] as int,
+          checkoutStarted: row['checkout_started'] as int,
+          paid: row['paid'] as int,
+        ),
+    ];
   }
 }

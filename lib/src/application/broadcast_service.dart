@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
@@ -25,8 +26,14 @@ final class BroadcastService {
     required BroadcastSegment segment,
     required int fromChatId,
     required int messageId,
+    bool excludeOptOut = false,
+    Set<String>? courseEntrySources,
   }) async {
-    final userIds = _course.listBroadcastUserIds(segment: segment);
+    final userIds = _course.listBroadcastUserIds(
+      segment: segment,
+      excludeOptOut: excludeOptOut,
+      courseEntrySources: courseEntrySources ?? AcquisitionSource.coursePayloads,
+    );
     var sent = 0;
     var failed = 0;
     for (var i = 0; i < userIds.length; i++) {

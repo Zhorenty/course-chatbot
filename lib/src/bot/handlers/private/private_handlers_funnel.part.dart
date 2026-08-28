@@ -8,9 +8,15 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     final fileId = launch?.leadMagnetFileId;
     final url = launch?.leadMagnetUrl;
     final localPath = leadMagnetPath;
+    final menu = _templates.userMenuKeyboard(hasAccess: false);
     if (fileId != null && fileId.isNotEmpty) {
       await _sender.sendDocument(chatId, document: fileId);
-      await _sender.sendMessage(chatId, _templates.guideReady(), parseMode: 'HTML');
+      await _sender.sendMessage(
+        chatId,
+        _templates.guideReady(),
+        parseMode: 'HTML',
+        replyMarkup: menu,
+      );
     } else if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
       final sent = await _sender.sendDocument(
         chatId,
@@ -22,11 +28,22 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       if (cachedId != null && cachedId.isNotEmpty) {
         _course.setLeadMagnetFileId(cachedId);
       }
-      await _sender.sendMessage(chatId, _templates.guideReady(), parseMode: 'HTML');
+      await _sender.sendMessage(
+        chatId,
+        _templates.guideReady(),
+        parseMode: 'HTML',
+        replyMarkup: menu,
+      );
     } else if (url != null && url.isNotEmpty) {
-      await _sender.sendMessage(chatId, _templates.guideAsUrl(url), parseMode: 'HTML');
+      await _sender.sendMessage(
+        chatId,
+        _templates.guideAsUrl(url),
+        parseMode: 'HTML',
+        replyMarkup: menu,
+      );
     } else {
       await _sender.sendMessage(chatId, _templates.guideMissing(), parseMode: 'HTML');
+      await _notifyGuideMissing(userId);
       return true;
     }
     _funnel.markMagnetIssued(userId);
@@ -34,6 +51,24 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _sendWarmupZero(userId);
     }
     return true;
+  }
+
+  Future<void> _notifyGuideMissing(int userId) async {
+    final port = _adminAlerts;
+    if (port == null) {
+      return;
+    }
+    final now = _nowProvider();
+    final last = _lastGuideMissingAlertAt;
+    if (last != null && now.difference(last) < const Duration(minutes: 15)) {
+      return;
+    }
+    _lastGuideMissingAlertAt = now;
+    try {
+      await port.notifyGuideMissing(userId: userId);
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to alert admins about missing guide: $error', stackTrace);
+    }
   }
 
   Future<void> _sendWarmupZero(int userId) async {
@@ -59,7 +94,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
 
   Future<bool> _optOut(PrivateMessageContext context) async {
     _funnel.optOutWarmup(context.userId!);
-    return _send(context, _templates.optOutConfirmed());
+    return _send(
+      context,
+      _templates.optOutConfirmed(),
+      replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+    );
   }
 
   Future<bool> _showEnroll(PrivateMessageContext context) async {
@@ -75,7 +114,6 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
-    _funnel.markCheckout(context.userId!);
     return _send(
       context,
       _templates.enrollOptions(launch),

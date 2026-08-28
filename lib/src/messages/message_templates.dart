@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
+import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
@@ -22,7 +23,6 @@ final class MessageTemplates {
   final String? _botUsername;
   final DateFormat _date = DateFormat('dd.MM.yyyy');
   final DateFormat _dateTime = DateFormat('dd.MM.yyyy HH:mm');
-  static const int _moscowOffsetHours = 3;
 
   static const String buttonGuide = '📘 Получить гайд';
   static const String buttonEnroll = '✨ Записаться на курс';
@@ -35,6 +35,7 @@ final class MessageTemplates {
   static const String buttonGoToPay = '💳 Перейти к оплате';
   static const String buttonContinuePay = '💳 Продолжить оплату';
   static const String buttonNewInvite = '🔗 Новая ссылка в канал';
+  static const String buttonOpenInvite = '🔗 Открыть канал';
   static const String buttonAcceptOffer = 'Принимаю условия Публичной оферты';
   static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
@@ -47,10 +48,15 @@ final class MessageTemplates {
   static const String buttonAdminMarkDeposit = '💵 Предоплата';
   static const String buttonAdminCancel = '🚫 Убрать с курса';
   static const String buttonAdminReinvite = '🔗 Новый invite';
+  static const String buttonAdminDm = '✉️ Написать';
+  static const String buttonAdminConfirmYes = 'Да';
+  static const String buttonAdminConfirmNo = 'Нет';
   static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
   static const String buttonAdminBroadcastOtherSegment = 'Другой сегмент';
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
+  static const String buttonAdminBroadcastSkipOptOut = 'Кроме «Не писать»';
+  static const String buttonAdminBroadcastIncludeOptOut = 'Включая отписавшихся';
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
   static const String buttonAdminOpenCard = '👤 Карточка';
@@ -68,14 +74,20 @@ final class MessageTemplates {
   static const String cbContinuePay = 'cp:';
   static const String cbNewInvite = 'ni';
   static const String cbAdminPaid = 'ap:';
+  static const String cbAdminPaidConfirm = 'apy:';
   static const String cbAdminDeposit = 'ad:';
+  static const String cbAdminDepositConfirm = 'ady:';
   static const String cbAdminCancel = 'ac:';
+  static const String cbAdminCancelConfirm = 'acy:';
   static const String cbAdminInvite = 'ai:';
   static const String cbAdminCreate = 'an:';
+  static const String cbAdminDm = 'am:';
+  static const String cbAdminActionAbort = 'az:';
   static const String cbBroadcastSegment = 'bs:';
   static const String cbBroadcastSend = 'bp';
   static const String cbBroadcastOtherSegment = 'br';
   static const String cbBroadcastCancel = 'bx';
+  static const String cbBroadcastToggleOptOut = 'bt';
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
   static const String cbAdminCard = 'ak:';
@@ -114,6 +126,15 @@ final class MessageTemplates {
     return buf.toString();
   }
 
+  String alreadyInFunnel() {
+    return '<b>Ты уже здесь</b>\n\n'
+        'Гайд у тебя в чате. Записаться на поток — с кнопки ниже.';
+  }
+
+  String menuPinned() {
+    return 'Меню внизу: гайд, запись и помощь всегда под рукой.';
+  }
+
   String alreadyHasAccess() {
     return '<b>Ты уже в канале этого потока</b>\n\n'
         'Если ссылка потерялась — нажми «${MessageTemplates.buttonNewInvite}». '
@@ -123,7 +144,10 @@ final class MessageTemplates {
   String help() {
     return '<b>Как это устроено</b>\n\n'
         'Гайд «Язык цвета» — бесплатно, в этот чат. Запись на поток — через оплату в боте.\n\n'
-        'Если касса зависла или ссылка не открылась, напиши сюда. Сообщение увидит админ.';
+        'Гайд не пришёл — нажми «${MessageTemplates.buttonGuide}» ещё раз.\n'
+        'Ссылка на кассу не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
+        'Ссылка в канал потерялась — «${MessageTemplates.buttonNewInvite}».\n\n'
+        'Если касса зависла или что-то ещё сломалось — напиши сюда. Сообщение увидит админ.';
   }
 
   String helpReceived() {
@@ -165,6 +189,12 @@ final class MessageTemplates {
       'warmup_0' => _warmupZero(launch),
       'warmup_d1' => _warmupDay1(),
       'warmup_d3' => _warmupDay3(launch),
+      'warmup_d7' => _warmupDay7(launch),
+      'enroll_d1' => _enrollNudge(launch),
+      'enroll_d3' => _enrollNudge(launch),
+      'warmup_start_d7' => _startNudge(launch),
+      'warmup_start_d3' => _startNudge(launch),
+      'warmup_start_d1' => _startNudge(launch),
       _ =>
         '<b>Ещё одно касание</b>\n\n'
             'Можно записаться на поток, когда будет удобно. Кнопка ниже.',
@@ -220,6 +250,27 @@ final class MessageTemplates {
     return buf.toString();
   }
 
+  String _warmupDay7(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null ? 'Поток ещё можно успеть.' : 'Старт потока $start.';
+    return '<b>Неделя с гайдом</b>\n\n'
+        '$startLine Если хочешь собрать гардероб в систему — кнопка записи ниже.';
+  }
+
+  String _enrollNudge(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null ? '' : ' Старт потока $start.';
+    return '<b>Гайд и запись ещё здесь</b>\n\n'
+        'Можно забрать «Язык цвета» или записаться на поток.$startLine Кнопки ниже.';
+  }
+
+  String _startNudge(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null ? 'Поток близко.' : 'Поток $start.';
+    return '<b>$startLine</b>\n\n'
+        'Записаться ещё можно с кнопки ниже. В канал пущу после полной суммы или после списания.';
+  }
+
   String optOutConfirmed() {
     return '⏸ Ок, продающие сообщения больше не пришлю.\n\n'
         'Гайд и запись остаются. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
@@ -246,10 +297,7 @@ final class MessageTemplates {
       }
       buf.writeln(' В канал пущу после полной суммы.');
     }
-    buf.writeln(
-      'Рассрочка откроется на странице кассы: график ведёт касса, не бот. '
-      'Доступ — после списания, не после «заявка одобрена».',
-    );
+    buf.writeln('Рассрочка откроется на странице кассы: график ведёт касса, не бот.');
     buf.writeln();
     buf.write('Выбери, как удобнее закрыть оплату.');
     return buf.toString().trim();
@@ -257,10 +305,10 @@ final class MessageTemplates {
 
   String offerConsent(Launch launch) {
     final offerPhrase = _offerPhrase(launch);
-    return 'Нажимая «${MessageTemplates.buttonGoToPay}», вы подтверждаете, '
-        'что ознакомились и соглашаетесь с условиями $offerPhrase '
+    return 'Нажимая «${MessageTemplates.buttonGoToPay}», ты подтверждаешь, '
+        'что принимаешь условия $offerPhrase '
         'на оказание информационно-консультационных/образовательных услуг '
-        'и даёте согласие на обработку персональных данных.';
+        'и даёшь согласие на обработку персональных данных.';
   }
 
   String offerNeedBothChecks() {
@@ -279,7 +327,8 @@ final class MessageTemplates {
     if (url.isEmpty) {
       return payManualFallback();
     }
-    return '💳 Ссылка на оплату готова. После успешного платежа статус в боте обновится сам. '
+    return '💳 Ссылка на оплату готова. После успешного платежа статус в этом чате обновится сам. '
+        'Если страница кассы не вернула сюда — всё равно жди сообщение здесь. '
         'Если это предоплата, в канал пущу после полной суммы.';
   }
 
@@ -288,7 +337,7 @@ final class MessageTemplates {
   String payManualFallback() {
     return '💳 Сейчас временные технические неполадки с онлайн-оплатой, '
         'запись временно оформляется через администратора.\n\n'
-        'Напиши сюда: @zhorenty — зафиксируем твоё место.';
+        'Напиши сюда: @zhorenty — подскажем, как закрыть оплату.';
   }
 
   String adminPaymentGatewayDown({required int userId, required String provider, String? reason}) {
@@ -301,16 +350,22 @@ final class MessageTemplates {
         'Если человек напишет сюда — отметь оплату вручную из карточки.';
   }
 
+  String adminGuideMissing({required int userId}) {
+    return '<b>Гайд не залит</b>\n\n'
+        'Человек id <code>$userId</code> нажал «получить гайд», а файла нет. '
+        'Пришли PDF в этот чат и сохрани как гайд запуска.';
+  }
+
   String paymentSucceeded() {
     return '<b>Оплата прошла</b>\n\n'
         'Дальше — одноразовая ссылка в канал этого потока. На одного человека.';
   }
 
   String depositSucceeded(CourseOrder order) {
-    final due = order.dueAt == null ? 'по договорённости' : _date.format(order.dueAt!.toLocal());
+    final due = _dueDateLabel(order.dueAt, fallback: 'по договорённости');
     return '<b>Предоплата дошла</b>\n\n'
         'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due. '
-        'В канал пущу, когда закроется полная сумма. Место никто не бронирует: лимита нет.';
+        'В канал пущу, когда закроется полная сумма.';
   }
 
   String inviteMessage(String link) {
@@ -330,10 +385,25 @@ final class MessageTemplates {
     return '💳 Напоминаю про незакрытую оплату. Ссылка ещё действует — если поток всё ещё в планах.';
   }
 
+  String abandonedPrestart() {
+    return '💳 Поток близко, а оплата ещё не закрылась. Можно продолжить с того же места.';
+  }
+
+  String remainderBeforeDue(CourseOrder order) {
+    final due = _dueDateLabel(order.dueAt, fallback: 'скоро');
+    return '💳 Напоминаю про доплату: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due. '
+        'После полной суммы открою канал потока.';
+  }
+
   String remainderReminder(CourseOrder order) {
-    final due = order.dueAt == null ? 'скоро' : _date.format(order.dueAt!.toLocal());
+    final due = _dueDateLabel(order.dueAt, fallback: 'скоро');
     return '💳 Доплата по курсу: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due. '
         'После полной суммы открою канал потока.';
+  }
+
+  String unjoinedInviteReminder(String link) {
+    return '🔗 Ссылка в канал потока ещё не использована:\n${escapeHtml(link)}\n\n'
+        'Открой её с кнопки ниже. Если не сработает — запроси новую, эта отключится.';
   }
 
   String adminMenu() {
@@ -429,13 +499,22 @@ final class MessageTemplates {
     required int recipientCount,
     required BroadcastContentKind kind,
     String? previewText,
+    int optOutCount = 0,
+    bool excludeOptOut = false,
   }) {
     final buf = StringBuffer()
       ..writeln('<b>Превью</b>')
       ..writeln()
       ..writeln('Сегмент: ${escapeHtml(broadcastSegmentLabel(segment))}')
-      ..writeln('Получателей: $recipientCount')
-      ..write('Содержимое: ${escapeHtml(broadcastContentKindLabel(kind))}');
+      ..writeln('Получателей: $recipientCount');
+    if (optOutCount > 0) {
+      buf.writeln(
+        excludeOptOut
+            ? '«Не писать» в сегменте: $optOutCount — не включены'
+            : '«Не писать» в сегменте: $optOutCount — будут включены',
+      );
+    }
+    buf.write('Содержимое: ${escapeHtml(broadcastContentKindLabel(kind))}');
     final preview = previewText?.trim();
     if (preview != null && preview.isNotEmpty) {
       buf
@@ -470,6 +549,49 @@ final class MessageTemplates {
 
   String adminCancelled() =>
       '🚫 Убрал с курса. Статус снят, invite отозван, из канала выкинул, если был.';
+
+  String adminConfirmMarkPaid(int userId) {
+    return 'Отметить id <code>$userId</code> оплаченным полностью?';
+  }
+
+  String adminConfirmMarkDeposit(int userId) {
+    return 'Отметить id <code>$userId</code> предоплату?';
+  }
+
+  String adminConfirmCancel(int userId) {
+    return 'Убрать id <code>$userId</code> с курса? Invite отзову, из канала выкину.';
+  }
+
+  String adminAskDm(int userId) {
+    return 'Напиши текст — отправлю id <code>$userId</code> от имени бота.';
+  }
+
+  String adminDmEmpty() {
+    return 'Пустое сообщение не отправлю. Напиши текст.';
+  }
+
+  String adminDmSent(int userId) => 'Отправил id <code>$userId</code>.';
+
+  String adminDmFailed(int userId) =>
+      'Не отправилось id <code>$userId</code>. Возможно, бот заблокирован.';
+
+  String adminSearchMatches(List<UserProfile> users) {
+    final buf = StringBuffer()
+      ..writeln('<b>Несколько совпадений</b>')
+      ..writeln()
+      ..writeln('Выбери карточку:');
+    for (final user in users) {
+      final name = user.firstName?.trim();
+      final handle = user.username?.trim();
+      final label = <String>[
+        if (name != null && name.isNotEmpty) escapeHtml(name),
+        if (handle != null && handle.isNotEmpty) '@${escapeHtml(handle)}',
+        '<code>${user.userId}</code>',
+      ].join(' · ');
+      buf.writeln(label);
+    }
+    return buf.toString();
+  }
 
   String adminGuideSaved(String fileId) {
     return '📘 Гайд сохранён. file_id: <code>${escapeHtml(fileId)}</code>';
@@ -591,12 +713,14 @@ final class MessageTemplates {
   }
 
   String broadcastSegmentLabel(BroadcastSegment segment) => switch (segment) {
-    BroadcastSegment.allStarted => 'Все',
-    BroadcastSegment.leadNoGuide => 'Зашли, без гайда',
-    BroadcastSegment.guideNotPaid => 'Гайд, не купили',
+    BroadcastSegment.allStarted => 'Все, кроме купивших и отмен',
+    BroadcastSegment.leadNoGuide => 'Гайд-вход, без гайда',
+    BroadcastSegment.guideNotPaid => 'Гайд, без записи',
+    BroadcastSegment.courseLeadNoCheckout => 'Курс, без записи',
     BroadcastSegment.checkoutOpen => 'Начали оплату',
     BroadcastSegment.depositPaid => 'Предоплата',
     BroadcastSegment.paidAccess => 'Оплатили / доступ',
+    BroadcastSegment.paidNotJoined => 'Оплатили, не вошли',
     BroadcastSegment.cancelled => 'Отмена / возврат',
   };
 
@@ -802,11 +926,15 @@ final class MessageTemplates {
     if (value == null) {
       return null;
     }
-    return _date.format(value.toUtc());
+    return _date.format(MoscowTime.toMoscow(value));
+  }
+
+  String _dueDateLabel(DateTime? value, {required String fallback}) {
+    return _formatDate(value) ?? fallback;
   }
 
   String _formatMoscowDateTime(DateTime value) {
-    final moscow = value.toUtc().add(const Duration(hours: _moscowOffsetHours));
+    final moscow = MoscowTime.toMoscow(value);
     return _dateTime.format(moscow);
   }
 

@@ -109,7 +109,7 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
       SELECT o.*
       FROM orders o
       JOIN telegram_users u ON u.user_id = o.user_id
-      WHERE o.status = 'awaiting_payment'
+      WHERE o.status IN ('awaiting_payment', 'checkout_started')
         AND o.checkout_started_at <= ?
         AND u.bot_blocked = 0
         AND (
@@ -126,13 +126,62 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
     return rows.map(mapOrder).toList(growable: false);
   }
 
-  List<CourseOrder> listRemainderDue({
+  List<CourseOrder> listAbandonedPrestart({
     required DateTime now,
-    String? excludeDedupeDayKey,
+    required Duration windowBeforeStart,
+    Duration minAge = Duration.zero,
+    Duration afterStartGrace = const Duration(hours: 12),
+    String excludeDedupeSuffix = 'prestart',
     int limit = 100,
   }) {
-    final nowIso = now.toUtc().toIso8601String();
-    final dayKey = excludeDedupeDayKey;
+    final nowUtc = now.toUtc();
+    final windowEnd = nowUtc.add(windowBeforeStart).toIso8601String();
+    final windowStart = nowUtc.subtract(afterStartGrace).toIso8601String();
+    final ageThreshold = nowUtc.subtract(minAge).toIso8601String();
+    final rows = _db.select(
+      '''
+      SELECT o.*
+      FROM orders o
+      JOIN telegram_users u ON u.user_id = o.user_id
+      JOIN launches l ON l.id = o.launch_id
+      WHERE o.status IN ('awaiting_payment', 'checkout_started')
+        AND o.checkout_started_at <= ?
+        AND u.bot_blocked = 0
+        AND l.course_start_at IS NOT NULL
+        AND l.course_start_at <= ?
+        AND l.course_start_at >= ?
+        AND NOT EXISTS (
+          SELECT 1 FROM job_dedupe_log d
+          WHERE d.dedupe_key = 'abandon:' || o.id || ':' || ?
+        )
+      ORDER BY o.id
+      LIMIT ?;
+      ''',
+      <Object?>[ageThreshold, windowEnd, windowStart, excludeDedupeSuffix, limit],
+    );
+    return rows.map(mapOrder).toList(growable: false);
+  }
+
+  List<CourseOrder> listRemainderDue({
+    required DateTime now,
+    required RemainderWave wave,
+    String? excludeDedupeSuffix,
+    int limit = 100,
+  }) {
+    final suffix = excludeDedupeSuffix;
+    final dayStart = MoscowTime.dayStartUtc(now);
+    final nextDay = dayStart.add(const Duration(days: 1));
+    final inFourDays = dayStart.add(const Duration(days: 4));
+    final waveSql = switch (wave) {
+      RemainderWave.beforeDue => 'o.due_at >= ? AND o.due_at < ?',
+      RemainderWave.onDueDay => 'o.due_at >= ? AND o.due_at < ?',
+      RemainderWave.overdue => 'o.due_at < ?',
+    };
+    final waveParams = switch (wave) {
+      RemainderWave.beforeDue => <Object?>[nextDay.toIso8601String(), inFourDays.toIso8601String()],
+      RemainderWave.onDueDay => <Object?>[dayStart.toIso8601String(), nextDay.toIso8601String()],
+      RemainderWave.overdue => <Object?>[dayStart.toIso8601String()],
+    };
     final rows = _db.select(
       '''
       SELECT o.*
@@ -140,7 +189,7 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
       JOIN telegram_users u ON u.user_id = o.user_id
       WHERE o.status = 'deposit_paid'
         AND o.due_at IS NOT NULL
-        AND o.due_at <= ?
+        AND $waveSql
         AND u.bot_blocked = 0
         AND (
           ? IS NULL OR NOT EXISTS (
@@ -151,7 +200,7 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
       ORDER BY o.due_at
       LIMIT ?;
       ''',
-      <Object?>[nowIso, dayKey, dayKey ?? '', limit],
+      <Object?>[...waveParams, suffix, suffix ?? '', limit],
     );
     return rows.map(mapOrder).toList(growable: false);
   }

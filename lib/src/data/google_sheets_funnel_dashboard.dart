@@ -38,6 +38,8 @@ abstract final class GoogleSheetsFunnelDashboard {
     sheet.writeFunnel(analytics);
     sheet.writeDynamics(analytics);
     sheet.writeWhereNow(analytics);
+    sheet.writeSourceFunnel(analytics);
+    sheet.writeQuality(analytics);
     return GoogleSheetsDashboard(
       sheetTitle: sheetTitle,
       rows: sheet.rows,
@@ -159,9 +161,9 @@ final class _FunnelSheetBuilder {
     _add(<Object?>[
       'новых Start 7д: ${analytics.startedLast7Days}',
       '',
+      'без купивших и отмен',
+      '',
       'Start 30д: ${analytics.startedLast30Days}',
-      '',
-      '',
       '',
       '',
       '',
@@ -385,6 +387,99 @@ final class _FunnelSheetBuilder {
           widthPixels: 420,
           heightPixels: 280,
           pieHole: 0.45,
+        ),
+      );
+    }
+  }
+
+  void writeSourceFunnel(FunnelAnalytics analytics) {
+    _blank();
+    _section('Конверсия по источникам');
+    _add(const <Object?>['Источник', 'Start', 'Гайд', 'Оплата', 'Купили', 'CR в оплату']);
+    final headerRow = nextRow - 1;
+    final firstData = nextRow;
+    for (final slice in analytics.sourceFunnels) {
+      _add(<Object?>[
+        _sourceLabel(slice.source),
+        slice.started,
+        slice.guideTaken,
+        slice.checkoutStarted,
+        slice.paid,
+        _ratioOrDash(slice.paidConversion),
+      ]);
+    }
+    if (analytics.sourceFunnels.isEmpty) {
+      _add(const <Object?>['—', 0, 0, 0, 0, '—']);
+    }
+    _table(headerRow, nextRow, 0, 6);
+    _percentColumns(firstData, nextRow, const <int>[5]);
+  }
+
+  void writeQuality(FunnelAnalytics analytics) {
+    _blank();
+    _section('Качество базы');
+    final labelRow = nextRow;
+    _add(const <Object?>[
+      'Invite выдан, не вошли',
+      '',
+      '«Не писать»',
+      '',
+      'Заблокировали бота',
+      '',
+    ]);
+    final valueRow = nextRow;
+    _add(<Object?>[
+      analytics.inviteIssuedNotJoined,
+      '',
+      analytics.warmupOptOutCount,
+      '',
+      analytics.botBlockedCount,
+      '',
+    ]);
+    const cards = <(int, GoogleSheetsRgb)>[
+      (0, GoogleSheetsFunnelDashboard.kpiA),
+      (2, GoogleSheetsFunnelDashboard.kpiB),
+      (4, GoogleSheetsFunnelDashboard.kpiC),
+    ];
+    for (final card in cards) {
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: labelRow,
+          endRowExclusive: labelRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          background: card.$2,
+          foreground: GoogleSheetsFunnelDashboard.muted,
+          bold: true,
+          fontSize: 9,
+          merge: true,
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+          wrap: true,
+        ),
+      );
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: valueRow,
+          endRowExclusive: valueRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          background: card.$2,
+          foreground: GoogleSheetsFunnelDashboard.ink,
+          bold: true,
+          fontSize: 18,
+          merge: true,
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+        ),
+      );
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: labelRow,
+          endRowExclusive: valueRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          borders: true,
         ),
       );
     }

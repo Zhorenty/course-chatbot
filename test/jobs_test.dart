@@ -4,8 +4,10 @@ import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
+import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -180,5 +182,152 @@ void main() {
     await job.run();
     expect(harness.sender.messages.where((m) => m.chatId == 1), isEmpty);
     expect(harness.sender.messages.where((m) => m.chatId == 2), isNotEmpty);
+  });
+
+  test('warmup job nudges course-card leads who never took the guide', () async {
+    harness.course.ensureUser(userId: 7, source: 'tg_announce', now: DateTime.utc(2026, 1, 1));
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      ),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 2, 12),
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    expect(
+      harness.sender.messages.any(
+        (m) => m.chatId == 7 && m.text.contains('Гайд и запись ещё здесь'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('warmup job nudges organic leads who never took the guide', () async {
+    harness.course.ensureUser(userId: 8, now: DateTime.utc(2026, 1, 1));
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      ),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 2, 12),
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    expect(
+      harness.sender.messages.any(
+        (m) => m.chatId == 8 && m.text.contains('Гайд и запись ещё здесь'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('remainder job reminds before the due date', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.deposit,
+    );
+    final deposit = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.deposit,
+      amountKopecks: launch.depositKopecks,
+    );
+    await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: deposit.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.deposit,
+        orderId: order.id,
+        paymentDbId: deposit.id,
+        userId: 42,
+        amountKopecks: launch.depositKopecks,
+      ),
+      launch: launch,
+    );
+    final due = harness.course.getOrder(order.id)!;
+    harness.course.updateOrder(due.copyWith(dueAt: DateTime.utc(2026, 1, 5, 12)));
+
+    final job = RemainderReminderJob(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 3, 12),
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    expect(harness.sender.messages.any((m) => m.text.contains('Напоминаю про доплату')), isTrue);
+  });
+
+  test('course-start warmup uses the current slot and skips a missed week copy', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final launch = harness.course.activeLaunch()!;
+    const sent = <String>{
+      'warmup_0',
+      'warmup_d1',
+      'warmup_d3',
+      'warmup_d7',
+      'enroll_d1',
+      'enroll_d3',
+    };
+    final candidate = WarmupCandidate(
+      userId: 1,
+      firstStartedAt: DateTime.utc(2026, 10, 1),
+      magnetIssuedAt: DateTime.utc(2026, 10, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: sent,
+    );
+    final decision = warmup.nextFor(
+      candidate,
+      DateTime.utc(2026, 10, 10, 12),
+      steps: WarmupStep.defaults,
+      launch: launch,
+    );
+    expect(decision?.stepKey, 'warmup_start_d3');
+  });
+
+  test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);
+    final launch = harness.course.activeLaunch()!;
+    harness.course.upsertAccess(
+      userId: 42,
+      launchId: launch.id,
+      orderId: 1,
+      inviteLink: 'https://t.me/+keep',
+      inviteCreatedAt: DateTime.utc(2026, 10, 9, 12),
+    );
+    final job = UnjoinedInviteJob(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 10, 10, 12),
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    final toUser = harness.sender.messages.where((m) => m.chatId == 42).toList();
+    expect(toUser, hasLength(1));
+    expect(toUser.single.text, contains('https://t.me/+keep'));
+    await job.run();
+    expect(harness.sender.messages.where((m) => m.chatId == 42), hasLength(1));
   });
 }

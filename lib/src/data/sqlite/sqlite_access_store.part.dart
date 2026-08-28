@@ -59,4 +59,23 @@ mixin _SqliteAccessStore on _SqliteCourseStore implements ChannelAccessRepositor
       <Object?>[joinedAt.toUtc().toIso8601String(), userId, launchId],
     );
   }
+
+  @override
+  List<ChannelAccess> listUnjoinedInvites({int limit = 100}) {
+    final rows = _db.select(
+      '''
+      SELECT a.*
+      FROM channel_access a
+      JOIN telegram_users u ON u.user_id = a.user_id
+      WHERE a.invite_link IS NOT NULL AND a.invite_link != ''
+        AND a.joined_at IS NULL
+        AND a.revoked_at IS NULL
+        AND u.bot_blocked = 0
+      ORDER BY a.invite_created_at
+      LIMIT ?;
+      ''',
+      <Object?>[limit],
+    );
+    return rows.map(mapAccess).toList(growable: false);
+  }
 }

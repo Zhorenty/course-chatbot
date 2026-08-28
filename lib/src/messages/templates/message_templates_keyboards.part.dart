@@ -47,13 +47,37 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> warmupKeyboard({required bool showEnroll}) {
+  Map<String, Object?> courseCardKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonEnroll,
+          'callback_data': MessageTemplates.cbEnroll,
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonGuide,
+          'callback_data': MessageTemplates.cbGuide,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> warmupKeyboard({required bool showEnroll, bool showGuide = true}) {
     return inlineKeyboard(<List<Map<String, String>>>[
       if (showEnroll)
         <Map<String, String>>[
           <String, String>{
             'text': MessageTemplates.buttonEnroll,
             'callback_data': MessageTemplates.cbEnroll,
+          },
+        ],
+      if (showGuide)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonGuide,
+            'callback_data': MessageTemplates.cbGuide,
           },
         ],
       <Map<String, String>>[
@@ -74,20 +98,18 @@ extension MessageTemplateKeyboards on MessageTemplates {
         },
       ],
     ];
-    if (launch.hasDepositOption) {
-      rows.add(<Map<String, String>>[
+    final extra = <Map<String, String>>[
+      if (launch.hasDepositOption)
         <String, String>{
           'text': MessageTemplates.buttonPayDeposit,
           'callback_data': MessageTemplates.cbPayDeposit,
         },
-      ]);
-    }
-    rows.add(<Map<String, String>>[
       <String, String>{
         'text': MessageTemplates.buttonPayInstallment,
         'callback_data': MessageTemplates.cbPayInstallment,
       },
-    ]);
+    ];
+    rows.add(extra);
     return inlineKeyboard(rows);
   }
 
@@ -149,6 +171,20 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
+  Map<String, Object?> unjoinedInviteKeyboard(String link) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonOpenInvite, 'url': link},
+      ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonNewInvite,
+          'callback_data': MessageTemplates.cbNewInvite,
+        },
+      ],
+    ]);
+  }
+
   Map<String, Object?> accessKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
@@ -175,6 +211,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
+          'text': MessageTemplates.buttonAdminDm,
+          'callback_data': '${MessageTemplates.cbAdminDm}$userId',
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
           'text': MessageTemplates.buttonAdminMarkPaid,
           'callback_data': '${MessageTemplates.cbAdminPaid}$userId',
         },
@@ -198,6 +240,39 @@ extension MessageTemplateKeyboards on MessageTemplates {
         },
       ],
     ]);
+  }
+
+  Map<String, Object?> adminConfirmKeyboard({required String yesData, required String noData}) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminConfirmYes, 'callback_data': yesData},
+        <String, String>{'text': MessageTemplates.buttonAdminConfirmNo, 'callback_data': noData},
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminSearchMatchesKeyboard(List<UserProfile> users) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (final user in users.take(8))
+        <Map<String, String>>[
+          <String, String>{
+            'text': _searchMatchLabel(user),
+            'callback_data': '${MessageTemplates.cbAdminCard}${user.userId}',
+          },
+        ],
+    ]);
+  }
+
+  String _searchMatchLabel(UserProfile user) {
+    final handle = user.username?.trim();
+    if (handle != null && handle.isNotEmpty) {
+      return '@$handle';
+    }
+    final name = user.firstName?.trim();
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+    return '${user.userId}';
   }
 
   Map<String, Object?> adminCreateUserKeyboard(int userId) {
@@ -230,12 +305,20 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(rows);
   }
 
-  Map<String, Object?> broadcastConfirmKeyboard() {
+  Map<String, Object?> broadcastConfirmKeyboard({bool excludeOptOut = false}) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
           'text': MessageTemplates.buttonAdminBroadcastSend,
           'callback_data': MessageTemplates.cbBroadcastSend,
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': excludeOptOut
+              ? MessageTemplates.buttonAdminBroadcastIncludeOptOut
+              : MessageTemplates.buttonAdminBroadcastSkipOptOut,
+          'callback_data': MessageTemplates.cbBroadcastToggleOptOut,
         },
       ],
       <Map<String, String>>[

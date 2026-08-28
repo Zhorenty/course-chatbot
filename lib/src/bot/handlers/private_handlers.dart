@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
+import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private/admin_gate.dart';
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
@@ -47,6 +48,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     GoogleSheetsCatalogSync? catalogSync,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     DateTime Function()? nowProvider,
+    AdminAlertPort? adminAlerts,
     this.leadMagnetPath,
     this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
   }) : _sender = sender,
@@ -62,6 +64,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _interactionWhitelist = interactionWhitelist,
        _catalogSync = catalogSync,
        _sheetsExportJob = sheetsExportJob,
+       _adminAlerts = adminAlerts,
        _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
@@ -77,10 +80,12 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final InteractionWhitelist _interactionWhitelist;
   final GoogleSheetsCatalogSync? _catalogSync;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
+  final AdminAlertPort? _adminAlerts;
   final DateTime Function() _nowProvider;
   final String? leadMagnetPath;
   final String leadMagnetFilename;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  DateTime? _lastGuideMissingAlertAt;
 
   Launch? get _launch => _course.activeLaunch();
 
@@ -112,3 +117,5 @@ final class PrivateHandlers implements PaymentResultNotifier {
     return _notifyPaymentResult(result);
   }
 }
+
+enum _AdminConfirmKind { paid, deposit, cancel }

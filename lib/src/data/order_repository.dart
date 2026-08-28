@@ -51,9 +51,19 @@ abstract interface class OrderRepository {
     int limit = 100,
   });
 
+  List<CourseOrder> listAbandonedPrestart({
+    required DateTime now,
+    required Duration windowBeforeStart,
+    Duration minAge = Duration.zero,
+    Duration afterStartGrace = const Duration(hours: 12),
+    String excludeDedupeSuffix = 'prestart',
+    int limit = 100,
+  });
+
   List<CourseOrder> listRemainderDue({
     required DateTime now,
-    String? excludeDedupeDayKey,
+    required RemainderWave wave,
+    String? excludeDedupeSuffix,
     int limit = 100,
   });
 }

@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
+import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
@@ -121,6 +122,8 @@ final class HandlerHarness {
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: leadMagnetPath,
+      nowProvider: nowProvider,
+      adminAlerts: alertPort is AdminAlertPort ? alertPort as AdminAlertPort : null,
     );
   }
 

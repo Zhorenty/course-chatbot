@@ -24,6 +24,7 @@ import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
+import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -129,19 +130,20 @@ final class CourseBotRuntime {
       ...config.adminUserIds,
       if (config.adminChatId != null) config.adminChatId!,
     };
+    final adminAlerts = adminNotificationChatIds.isEmpty
+        ? null
+        : PaymentAlertNotifier(
+            sender: sender,
+            templates: templates,
+            notificationChatIds: adminNotificationChatIds,
+          );
     final checkout = CheckoutService(
       course: course,
       gateway: paymentGateway,
       access: access,
       returnUrl:
           config.yookassaReturnUrl ?? (botUsername == null ? null : 'https://t.me/$botUsername'),
-      alertPort: adminNotificationChatIds.isEmpty
-          ? null
-          : PaymentAlertNotifier(
-              sender: sender,
-              templates: templates,
-              notificationChatIds: adminNotificationChatIds,
-            ),
+      alertPort: adminAlerts,
     );
     final warmup = WarmupService(course: course, dedupe: jobDedupe);
     final broadcast = BroadcastService(sender: sender, course: course);
@@ -166,6 +168,7 @@ final class CourseBotRuntime {
       interactionWhitelist: InteractionWhitelist.production,
       catalogSync: catalogSync,
       sheetsExportJob: sheetsExportJob,
+      adminAlerts: adminAlerts,
       leadMagnetPath: config.leadMagnetPath,
       leadMagnetFilename: config.leadMagnetFilename,
     );
@@ -209,6 +212,13 @@ final class CourseBotRuntime {
         secondDelay: Duration(hours: config.abandonSecondDelayHours),
       ),
       remainderReminderJob: RemainderReminderJob(
+        course: course,
+        dedupe: jobDedupe,
+        sender: sender,
+        templates: templates,
+        quietHours: quietHours,
+      ),
+      unjoinedInviteJob: UnjoinedInviteJob(
         course: course,
         dedupe: jobDedupe,
         sender: sender,

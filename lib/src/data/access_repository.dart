@@ -14,4 +14,6 @@ abstract interface class ChannelAccessRepository {
   });
 
   void markJoined({required int userId, required int launchId, required DateTime joinedAt});
+
+  List<ChannelAccess> listUnjoinedInvites({int limit = 100});
 }

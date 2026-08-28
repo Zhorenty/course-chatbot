@@ -9,5 +9,5 @@ abstract interface class WarmupRepository {
 
   void recordWarmupSent({required int userId, required String stepKey, required DateTime sentAt});
 
-  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 100});
+  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200});
 }

@@ -180,9 +180,11 @@ final class SqliteDatabaseHandle {
         step_key TEXT PRIMARY KEY,
         delay_seconds INTEGER NOT NULL,
         sort_order INTEGER NOT NULL,
-        enabled INTEGER NOT NULL DEFAULT 1
+        enabled INTEGER NOT NULL DEFAULT 1,
+        anchor TEXT NOT NULL DEFAULT 'magnet'
       );
     ''');
+    _ensureColumn(db, 'warmup_steps', 'anchor', "TEXT NOT NULL DEFAULT 'magnet'");
     db.execute('''
       CREATE TABLE IF NOT EXISTS warmup_sent (
         user_id INTEGER NOT NULL,

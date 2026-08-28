@@ -11,6 +11,7 @@ enum PrivateFlowStep {
   adminBroadcastSegment,
   adminBroadcastCompose,
   adminGuideConfirm,
+  adminComposeDm,
 }
 
 final class PrivateFlowState {
@@ -26,6 +27,7 @@ final class PrivateFlowState {
     this.pendingPayKind,
     this.acceptedOffer = false,
     this.acceptedPersonalData = false,
+    this.broadcastExcludeOptOut = false,
   });
 
   final PrivateFlowStep step;
@@ -39,6 +41,7 @@ final class PrivateFlowState {
   final PaymentKind? pendingPayKind;
   final bool acceptedOffer;
   final bool acceptedPersonalData;
+  final bool broadcastExcludeOptOut;
 
   bool get offerReady => acceptedOffer && acceptedPersonalData;
 
@@ -56,6 +59,7 @@ final class PrivateFlowState {
     Object? pendingPayKind = _unset,
     bool? acceptedOffer,
     bool? acceptedPersonalData,
+    bool? broadcastExcludeOptOut,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -85,6 +89,7 @@ final class PrivateFlowState {
           : pendingPayKind as PaymentKind?,
       acceptedOffer: acceptedOffer ?? this.acceptedOffer,
       acceptedPersonalData: acceptedPersonalData ?? this.acceptedPersonalData,
+      broadcastExcludeOptOut: broadcastExcludeOptOut ?? this.broadcastExcludeOptOut,
     );
   }
 }

@@ -36,6 +36,7 @@ final class WarmupNudgeJob {
     }
     final now = _nowProvider();
     final steps = _course.listWarmupSteps();
+    final launch = _course.activeLaunch();
     final candidates = _course.listWarmupCandidates(now: now);
     var sent = 0;
     for (final candidate in candidates) {
@@ -44,7 +45,7 @@ final class WarmupNudgeJob {
         if (user == null || user.funnelPhase.excludeSellingDrip || user.warmupOptOut) {
           continue;
         }
-        final decision = _warmup.nextFor(candidate, now, steps: steps);
+        final decision = _warmup.nextFor(candidate, now, steps: steps, launch: launch);
         if (decision == null) {
           continue;
         }
@@ -53,7 +54,7 @@ final class WarmupNudgeJob {
           now: now,
           send: () => _sender.sendMessage(
             candidate.userId,
-            _templates.warmupStep(decision.stepKey, launch: _course.activeLaunch()),
+            _templates.warmupStep(decision.stepKey, launch: launch),
             parseMode: 'HTML',
             replyMarkup: _templates.warmupKeyboard(showEnroll: true),
           ),

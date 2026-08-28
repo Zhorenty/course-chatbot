@@ -68,6 +68,8 @@ void main() {
     final flat = dashboard.rows.map((row) => row.join(' ')).join('\n');
     expect(flat, contains('Взяли гайд'));
     expect(flat, contains('Instagram Reels'));
+    expect(flat, contains('Конверсия по источникам'));
+    expect(flat, contains('Invite выдан, не вошли'));
     expect(flat, isNot(contains('квиз')));
     expect(dashboard.charts, isNotEmpty);
     expect(dashboard.sheetTitle, 'ВОРОНКА');

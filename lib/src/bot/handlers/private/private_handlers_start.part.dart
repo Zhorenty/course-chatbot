@@ -13,11 +13,14 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     if (user.funnelPhase.hasAccess) {
-      return _send(
-        context,
-        _templates.alreadyHasAccess(),
-        replyMarkup: _templates.accessKeyboard(),
-      );
+      return _startAccessReply(context, user.userId);
+    }
+    if (user.funnelPhase.isPaidOrAccess) {
+      final handled = await _reissueInvite(context);
+      if (handled) {
+        return true;
+      }
+      return _send(context, _templates.inviteUnavailable());
     }
     if (user.funnelPhase == FunnelPhase.depositPaid) {
       final order = _course.latestOpenOrder(user.userId);
@@ -29,18 +32,66 @@ extension _PrivateHandlersStart on PrivateHandlers {
         );
       }
     }
-    if (_funnel.opensCourseCard(payload)) {
+    if (user.funnelPhase == FunnelPhase.checkout) {
+      return _showEnroll(context);
+    }
+    if (user.funnelPhase == FunnelPhase.magnetIssued || user.funnelPhase == FunnelPhase.warming) {
       return _send(
         context,
-        _templates.startCourseCard(launch: _launch),
-        replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
+        _templates.alreadyInFunnel(),
+        replyMarkup: _templates.warmupKeyboard(showEnroll: true),
       );
     }
-    return _send(
+    final justCreated =
+        _nowProvider().toUtc().difference(user.firstStartedAt.toUtc()).abs() <
+        const Duration(seconds: 2);
+    final destination = user.source ?? payload;
+    if (_funnel.opensCourseCard(destination)) {
+      await _send(
+        context,
+        _templates.startCourseCard(launch: _launch),
+        replyMarkup: _templates.courseCardKeyboard(),
+      );
+      if (justCreated) {
+        await _pinUserMenu(context, user.userId);
+      }
+      return true;
+    }
+    await _send(
       context,
       _templates.startGuideOffer(),
-      replyMarkup: _templates.userMenuKeyboard(hasAccess: user.funnelPhase.hasAccess),
+      replyMarkup: _templates.guideOfferKeyboard(showEnroll: true),
     );
+    if (justCreated) {
+      await _pinUserMenu(context, user.userId);
+    }
+    return true;
+  }
+
+  Future<bool> _pinUserMenu(PrivateMessageContext context, int userId) {
+    return _send(
+      context,
+      _templates.menuPinned(),
+      replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
+    );
+  }
+
+  Future<bool> _startAccessReply(PrivateMessageContext context, int userId) {
+    final launch = _launch;
+    final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
+    final link = access?.inviteLink;
+    if (access != null &&
+        !access.hasJoined &&
+        access.revokedAt == null &&
+        link != null &&
+        link.isNotEmpty) {
+      return _send(
+        context,
+        _templates.unjoinedInviteReminder(link),
+        replyMarkup: _templates.unjoinedInviteKeyboard(link),
+      );
+    }
+    return _send(context, _templates.alreadyHasAccess(), replyMarkup: _templates.accessKeyboard());
   }
 
   Future<bool> _showHome(PrivateMessageContext context) async {

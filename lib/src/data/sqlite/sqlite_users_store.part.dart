@@ -162,35 +162,100 @@ mixin _SqliteUsersStore on _SqliteCourseStore implements UserRepository {
   }
 
   @override
-  List<int> listBroadcastUserIds({required BroadcastSegment segment}) {
+  List<int> listBroadcastUserIds({
+    required BroadcastSegment segment,
+    bool excludeOptOut = false,
+    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
+  }) {
+    final params = <Object?>[];
+    final where = _broadcastWhere(
+      segment,
+      excludeOptOut: excludeOptOut,
+      courseEntrySources: courseEntrySources,
+      params: params,
+    );
     return _db
-        .select(
-          'SELECT user_id FROM telegram_users WHERE ${_broadcastWhere(segment)} ORDER BY user_id;',
-        )
+        .select('SELECT user_id FROM telegram_users WHERE $where ORDER BY user_id;', params)
         .map((row) => row['user_id'] as int)
         .toList(growable: false);
   }
 
   @override
-  int countBroadcastUsers({required BroadcastSegment segment}) {
-    final rows = _db.select(
-      'SELECT COUNT(*) AS c FROM telegram_users WHERE ${_broadcastWhere(segment)};',
+  int countBroadcastUsers({
+    required BroadcastSegment segment,
+    bool excludeOptOut = false,
+    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
+  }) {
+    final params = <Object?>[];
+    final where = _broadcastWhere(
+      segment,
+      excludeOptOut: excludeOptOut,
+      courseEntrySources: courseEntrySources,
+      params: params,
     );
+    final rows = _db.select('SELECT COUNT(*) AS c FROM telegram_users WHERE $where;', params);
     return rows.first['c'] as int;
   }
 
-  String _broadcastWhere(BroadcastSegment segment) {
-    return switch (segment) {
-      BroadcastSegment.allStarted => 'bot_blocked = 0',
+  String _broadcastWhere(
+    BroadcastSegment segment, {
+    required bool excludeOptOut,
+    required Set<String> courseEntrySources,
+    required List<Object?> params,
+  }) {
+    final optOut = excludeOptOut ? ' AND warmup_opt_out = 0' : '';
+    final core = switch (segment) {
+      BroadcastSegment.allStarted =>
+        "bot_blocked = 0 AND funnel_phase NOT IN ('paid', 'access_granted', 'cancelled')$optOut",
       BroadcastSegment.leadNoGuide =>
-        "bot_blocked = 0 AND funnel_phase = 'lead' AND magnet_issued_at IS NULL",
+        "bot_blocked = 0 AND funnel_phase = 'lead' AND magnet_issued_at IS NULL$optOut"
+            '${_sourceNotIn(courseEntrySources, params)}',
       BroadcastSegment.guideNotPaid =>
-        "bot_blocked = 0 AND magnet_issued_at IS NOT NULL AND funnel_phase NOT IN ('paid', 'access_granted', 'cancelled', 'deposit_paid')",
-      BroadcastSegment.checkoutOpen => "bot_blocked = 0 AND funnel_phase = 'checkout'",
-      BroadcastSegment.depositPaid => "bot_blocked = 0 AND funnel_phase = 'deposit_paid'",
+        'bot_blocked = 0 AND magnet_issued_at IS NOT NULL '
+            'AND funnel_phase NOT IN (\'paid\', \'access_granted\', \'cancelled\', \'deposit_paid\', \'checkout\')$optOut',
+      BroadcastSegment.courseLeadNoCheckout => _courseLeadWhere(
+        courseEntrySources,
+        params,
+        excludeOptOut: excludeOptOut,
+      ),
+      BroadcastSegment.checkoutOpen => "bot_blocked = 0 AND funnel_phase = 'checkout'$optOut",
+      BroadcastSegment.depositPaid => "bot_blocked = 0 AND funnel_phase = 'deposit_paid'$optOut",
       BroadcastSegment.paidAccess =>
-        "bot_blocked = 0 AND funnel_phase IN ('paid', 'access_granted')",
-      BroadcastSegment.cancelled => "bot_blocked = 0 AND funnel_phase = 'cancelled'",
+        "bot_blocked = 0 AND funnel_phase IN ('paid', 'access_granted')$optOut",
+      BroadcastSegment.paidNotJoined =>
+        "bot_blocked = 0 AND funnel_phase IN ('paid', 'access_granted')$optOut "
+            'AND EXISTS ('
+            '  SELECT 1 FROM channel_access a '
+            '  WHERE a.user_id = telegram_users.user_id '
+            '    AND a.invite_link IS NOT NULL AND a.invite_link != \'\' '
+            '    AND a.joined_at IS NULL AND a.revoked_at IS NULL'
+            ')',
+      BroadcastSegment.cancelled => "bot_blocked = 0 AND funnel_phase = 'cancelled'$optOut",
     };
+    return core;
+  }
+
+  String _courseLeadWhere(
+    Set<String> courseEntrySources,
+    List<Object?> params, {
+    required bool excludeOptOut,
+  }) {
+    final optOut = excludeOptOut ? ' AND warmup_opt_out = 0' : '';
+    if (courseEntrySources.isEmpty) {
+      return '0';
+    }
+    final placeholders = List<String>.filled(courseEntrySources.length, '?').join(', ');
+    params.addAll(courseEntrySources);
+    return "bot_blocked = 0 AND funnel_phase = 'lead' AND magnet_issued_at IS NULL "
+        'AND source IN ($placeholders)$optOut';
+  }
+
+  String _sourceNotIn(Set<String> sources, List<Object?> params) {
+    if (sources.isEmpty) {
+      return '';
+    }
+    final placeholders = List<String>.filled(sources.length, '?').join(', ');
+    params.addAll(sources);
+    return ' AND (source IS NULL OR source NOT IN ($placeholders))';
   }
 }

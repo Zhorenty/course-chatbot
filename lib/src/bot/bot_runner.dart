@@ -8,6 +8,7 @@ import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
+import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/payments/payment_webhook_server.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
@@ -23,6 +24,7 @@ final class BotRunner {
     WarmupNudgeJob? warmupNudgeJob,
     AbandonedPaymentJob? abandonedPaymentJob,
     RemainderReminderJob? remainderReminderJob,
+    UnjoinedInviteJob? unjoinedInviteJob,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     SqliteMaintenanceJob? maintenanceJob,
     GoogleSheetsWriter? googleSheetsWriter,
@@ -33,6 +35,7 @@ final class BotRunner {
        _warmupNudgeJob = warmupNudgeJob,
        _abandonedPaymentJob = abandonedPaymentJob,
        _remainderReminderJob = remainderReminderJob,
+       _unjoinedInviteJob = unjoinedInviteJob,
        _sheetsExportJob = sheetsExportJob,
        _maintenanceJob = maintenanceJob,
        _googleSheetsWriter = googleSheetsWriter,
@@ -45,6 +48,7 @@ final class BotRunner {
   final WarmupNudgeJob? _warmupNudgeJob;
   final AbandonedPaymentJob? _abandonedPaymentJob;
   final RemainderReminderJob? _remainderReminderJob;
+  final UnjoinedInviteJob? _unjoinedInviteJob;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final SqliteMaintenanceJob? _maintenanceJob;
   final GoogleSheetsWriter? _googleSheetsWriter;
@@ -166,6 +170,10 @@ final class BotRunner {
     final remainder = _remainderReminderJob;
     if (remainder != null) {
       _schedulePeriodic(const Duration(minutes: 15), 'remainder', remainder.run);
+    }
+    final unjoined = _unjoinedInviteJob;
+    if (unjoined != null) {
+      _schedulePeriodic(const Duration(minutes: 15), 'unjoined', unjoined.run);
     }
     final sheets = _sheetsExportJob;
     if (sheets != null) {

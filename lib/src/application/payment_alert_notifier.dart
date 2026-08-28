@@ -4,10 +4,14 @@ import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
+abstract interface class AdminAlertPort {
+  Future<void> notifyGuideMissing({required int userId});
+}
+
 /// Pushes the same admin chats used for `_escalateToAdmin` (see
-/// `AdminGate.notificationChatIds`) the moment the kassa is down, so the
-/// admin does not depend on the user writing in manually.
-final class PaymentAlertNotifier implements PaymentGatewayAlertPort {
+/// `AdminGate.notificationChatIds`) the moment the kassa is down or the
+/// lead magnet is missing, so the admin does not depend on the user writing in.
+final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertPort {
   PaymentAlertNotifier({
     required MessageSender sender,
     required MessageTemplates templates,
@@ -33,11 +37,27 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort {
       provider: provider,
       reason: reason,
     );
+    await _pushAdmins(text, userId: userId);
+  }
+
+  @override
+  Future<void> notifyGuideMissing({required int userId}) {
+    return _pushAdmins(_templates.adminGuideMissing(userId: userId), userId: userId);
+  }
+
+  Future<void> _pushAdmins(String text, {required int userId}) async {
+    final markup = _templates.adminIncomingKeyboard(userId);
     for (final chatId in _notificationChatIds) {
       try {
-        await _sender.sendMessage(chatId, text, parseMode: 'HTML', disableNotification: false);
+        await _sender.sendMessage(
+          chatId,
+          text,
+          parseMode: 'HTML',
+          disableNotification: false,
+          replyMarkup: markup,
+        );
       } on Object catch (error, stackTrace) {
-        l.w('Failed to notify admin $chatId about gateway outage: $error', stackTrace);
+        l.w('Failed to notify admin $chatId: $error', stackTrace);
       }
     }
   }
