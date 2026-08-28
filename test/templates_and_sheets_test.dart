@@ -278,7 +278,9 @@ void main() {
         lastSeenAt: startedAt,
       ),
     );
-    expect(menu, contains('гайд уже у тебя'));
+    expect(menu, contains('Сейчас: гайд выдан.'));
+    expect(menu, isNot(contains('гайд уже у тебя')));
+    expect(menu, isNot(contains('оформляешь')));
 
     final checkoutUser = UserProfile(
       userId: 50,
@@ -288,6 +290,8 @@ void main() {
       firstStartedAt: startedAt,
       lastSeenAt: startedAt,
     );
+    expect(templates.menu(checkoutUser), contains('Сейчас: оформление оплаты.'));
+    expect(templates.menu(checkoutUser), isNot(contains('оформляешь')));
     expect(templates.adminCard(user: checkoutUser), contains('сейчас: оформляет оплату'));
     expect(templates.adminCard(user: checkoutUser), isNot(contains('оформляешь')));
     expect(

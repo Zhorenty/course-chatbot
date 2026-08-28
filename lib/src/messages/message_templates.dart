@@ -633,9 +633,9 @@ final class MessageTemplates {
 
   String _phaseLabel(FunnelPhase phase) => switch (phase) {
     FunnelPhase.lead => 'только зашёл',
-    FunnelPhase.magnetIssued => 'гайд уже у тебя',
-    FunnelPhase.warming => 'смотришь гайд',
-    FunnelPhase.checkout => 'оформляешь оплату',
+    FunnelPhase.magnetIssued => 'гайд выдан',
+    FunnelPhase.warming => 'в прогреве',
+    FunnelPhase.checkout => 'оформление оплаты',
     FunnelPhase.depositPaid => 'есть предоплата',
     FunnelPhase.paid => 'оплачено',
     FunnelPhase.accessGranted => 'доступ в канал есть',
