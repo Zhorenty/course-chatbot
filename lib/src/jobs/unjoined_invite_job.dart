@@ -89,10 +89,12 @@ final class UnjoinedInviteJob {
       userId: (item) => item.access.userId,
       course: _course,
       send: (item) async {
+        final link = item.access.inviteLink!;
         await _sender.sendMessage(
           item.access.userId,
-          _templates.unjoinedInviteReminder(),
+          _templates.unjoinedInviteReminder(link),
           parseMode: 'HTML',
+          replyMarkup: _templates.unjoinedInviteKeyboard(link),
         );
         for (final extra in item.alsoClaim) {
           _dedupe.tryClaim('unjoined:${item.access.userId}:${item.access.launchId}:$extra');

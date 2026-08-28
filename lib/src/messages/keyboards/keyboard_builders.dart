@@ -4,7 +4,7 @@ Map<String, Object?> replyKeyboard(List<List<Map<String, String>>> rows) {
     'resize_keyboard': true,
     'one_time_keyboard': false,
     'is_persistent': true,
-    'input_field_placeholder': 'Напиши сюда — сообщение увидит админ',
+    'input_field_placeholder': 'Если что-то не так — напиши сюда, перешлю админу',
   };
 }
 

@@ -417,26 +417,18 @@ void main() {
       _inlineButtonTexts(templates.accessKeyboard()),
       isNot(contains(MessageTemplates.buttonOpenInvite)),
     );
-    expect(
-      _inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')),
-      containsAll(<String>[
-        MessageTemplates.buttonOpenInvite,
-        MessageTemplates.buttonGuide,
-        MessageTemplates.buttonHelp,
-      ]),
-    );
-    expect(
-      _inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')),
-      isNot(contains(MessageTemplates.cbNewInvite)),
-    );
+    expect(_inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')), <String>[
+      MessageTemplates.buttonOpenInvite,
+    ]);
+    expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
     expect(
       _inlineCallbackData(templates.accessKeyboard()),
       isNot(contains(MessageTemplates.cbNewInvite)),
     );
     expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
     expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
-    expect(templates.unjoinedInviteReminder(), isNot(contains('t.me/')));
-    expect(templates.unjoinedInviteReminder(), isNot(contains('запроси новую')));
+    expect(templates.unjoinedInviteReminder('https://t.me/+x'), contains('https://t.me/+x'));
+    expect(templates.unjoinedInviteReminder('https://t.me/+x'), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1)),

@@ -70,8 +70,17 @@ extension _PrivateHandlersStart on PrivateHandlers {
   Future<bool> _startAccessReply(PrivateMessageContext context, int userId) {
     final launch = _launch;
     final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
-    if (access != null && !access.hasJoined && access.revokedAt == null) {
-      return _send(context, _templates.unjoinedInviteReminder());
+    final link = access?.inviteLink;
+    if (access != null &&
+        !access.hasJoined &&
+        access.revokedAt == null &&
+        link != null &&
+        link.isNotEmpty) {
+      return _send(
+        context,
+        _templates.unjoinedInviteReminder(link),
+        replyMarkup: _templates.unjoinedInviteKeyboard(link),
+      );
     }
     return _send(context, _templates.alreadyHasAccess(), replyMarkup: _templates.accessKeyboard());
   }

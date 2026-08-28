@@ -183,7 +183,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonOpenInvite, 'url': link},
       ],
-      _supportRow(),
     ]);
   }
 
