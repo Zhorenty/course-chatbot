@@ -95,6 +95,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _confirmOfferAndPay(context);
       case MessageTemplates.cbOptOut:
         return _optOut(context);
+      case MessageTemplates.cbHelp:
+        return _showHome(context);
       case MessageTemplates.cbNewInvite:
         return _reissueInvite(context);
       case MessageTemplates.cbBroadcastSend:

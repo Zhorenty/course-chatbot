@@ -44,6 +44,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     } else {
       await _sender.sendMessage(chatId, _templates.guideMissing(), parseMode: 'HTML');
       await _notifyGuideMissing(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.menuPinned(),
+        parseMode: 'HTML',
+        replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
+      );
       return true;
     }
     _funnel.markMagnetIssued(userId);
@@ -97,7 +103,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     return _send(
       context,
       _templates.optOutConfirmed(),
-      replyMarkup: _templates.warmupKeyboard(showEnroll: true),
+      replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
     );
   }
 

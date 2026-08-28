@@ -71,6 +71,7 @@ final class MessageTemplates {
   static const String cbTogglePersonalData = 'op';
   static const String cbGoToPay = 'og';
   static const String cbOptOut = 'o';
+  static const String cbHelp = 'hp';
   static const String cbContinuePay = 'cp:';
   static const String cbNewInvite = 'ni';
   static const String cbAdminPaid = 'ap:';
@@ -128,11 +129,14 @@ final class MessageTemplates {
 
   String alreadyInFunnel() {
     return '<b>Ты уже здесь</b>\n\n'
-        'Гайд у тебя в чате. Записаться на поток — с кнопки ниже.';
+        'Гайд можно запросить снова — «${MessageTemplates.buttonGuide}». '
+        'Запись на поток — «${MessageTemplates.buttonEnroll}». '
+        'Написать админу — «${MessageTemplates.buttonHelp}» или просто сообщение в этот чат.';
   }
 
   String menuPinned() {
-    return 'Меню внизу: гайд, запись и помощь всегда под рукой.';
+    return 'Меню внизу всегда под рукой: гайд, запись и помощь. '
+        'Любое сообщение в этот чат увидит админ.';
   }
 
   String alreadyHasAccess() {
@@ -143,11 +147,11 @@ final class MessageTemplates {
 
   String help() {
     return '<b>Как это устроено</b>\n\n'
-        'Гайд «Язык цвета» — бесплатно, в этот чат. Запись на поток — через оплату в боте.\n\n'
-        'Гайд не пришёл — нажми «${MessageTemplates.buttonGuide}» ещё раз.\n'
+        'Кнопки внизу: гайд, запись на поток и помощь. Они никуда не деваются.\n\n'
+        'Гайд потерялся или не пришёл — нажми «${MessageTemplates.buttonGuide}», пришлю ещё раз.\n'
         'Ссылка на кассу не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
         'Ссылка в канал потерялась — «${MessageTemplates.buttonNewInvite}».\n\n'
-        'Если касса зависла или что-то ещё сломалось — напиши сюда. Сообщение увидит админ.';
+        'Написать админу — просто напиши сюда, без команд. Сообщение увидит админ.';
   }
 
   String helpReceived() {
@@ -273,7 +277,7 @@ final class MessageTemplates {
 
   String optOutConfirmed() {
     return '⏸ Ок, продающие сообщения больше не пришлю.\n\n'
-        'Гайд и запись остаются. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
+        'Гайд и запись остаются в меню внизу. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
   }
 
   String enrollOptions(Launch launch) {

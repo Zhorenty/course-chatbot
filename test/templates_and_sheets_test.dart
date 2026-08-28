@@ -385,10 +385,47 @@ void main() {
     expect(withAccess, contains(MessageTemplates.buttonHelp));
     expect(withAccess, isNot(contains('👤 Профиль')));
   });
+
+  test('funnel inline keyboards keep guide and help', () {
+    final templates = MessageTemplates();
+    const launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+    );
+    expect(
+      _inlineButtonTexts(templates.enrollKeyboard(launch)),
+      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonHelp]),
+    );
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard(showEnroll: true)),
+      containsAll(<String>[
+        MessageTemplates.buttonGuide,
+        MessageTemplates.buttonHelp,
+        MessageTemplates.buttonEnroll,
+      ]),
+    );
+    expect(
+      _inlineButtonTexts(templates.accessKeyboard()),
+      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonHelp]),
+    );
+  });
 }
 
 List<String> _replyButtonTexts(Map<String, Object?> markup) {
   final rows = markup['keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
+}
+
+List<String> _inlineButtonTexts(Map<String, Object?> markup) {
+  final rows = markup['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
   return <String>[
     for (final row in rows)
       for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,

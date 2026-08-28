@@ -121,6 +121,45 @@ void main() {
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
 
+  test('repeat /start after the guide restores guide, enroll and help', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
+    expect(texts, contains(MessageTemplates.buttonGuide));
+    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(harness.sender.messages.single.text, contains('можно запросить снова'));
+  });
+
+  test('help callback opens help and does not escalate', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'help',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbHelp,
+      ),
+    );
+    expect(harness.sender.messages.single.text, contains('напиши сюда'));
+    expect(harness.sender.forwards, isEmpty);
+    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
+    expect(texts, contains(MessageTemplates.buttonGuide));
+    expect(texts, contains(MessageTemplates.buttonHelp));
+  });
+
   test('opt-out stops selling drip copy but enroll remains available', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
@@ -240,6 +279,9 @@ void main() {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
+    final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    expect(pin, contains(MessageTemplates.buttonGuide));
+    expect(pin, contains(MessageTemplates.buttonHelp));
   });
 
   test('checkout is blocked until both offer checkboxes are accepted', () async {
@@ -481,6 +523,7 @@ void main() {
     final inline = _inlineButtonTexts(offer.replyMarkup);
     expect(inline, contains(MessageTemplates.buttonGuide));
     expect(inline, contains(MessageTemplates.buttonEnroll));
+    expect(inline, contains(MessageTemplates.buttonHelp));
     final texts = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
