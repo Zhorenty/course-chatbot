@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
-import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -398,7 +397,7 @@ void main() {
     expect(extra.sender.forwards.map((f) => f.chatId), containsAll(<int>[1, -100500]));
   });
 
-  test('profile and help buttons do not escalate to admin', () async {
+  test('help button does not escalate to admin', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     harness.sender.messages.clear();
 
@@ -408,84 +407,33 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('напиши сюда')), isTrue);
     expect(harness.sender.forwards, isEmpty);
     expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
-
-    harness.sender.messages.clear();
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonProfile),
-    );
-    expect(harness.sender.messages.any((m) => m.text.contains('<b>Профиль</b>')), isTrue);
-    expect(harness.sender.forwards, isEmpty);
-    expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
   });
 
-  test('profile button, /profile and /menu open the pupil card', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
-    );
-    final afterStart = harness.sender.messages.last;
-    expect(afterStart.text, contains('<b>Профиль</b> Test'));
-    expect(afterStart.text, contains('Запуск'));
-    expect(afterStart.text, contains('пока не записан'));
-    expect(afterStart.text, isNot(contains('ig_reels_guide')));
-    expect(afterStart.text, isNot(contains('📋 Меню')));
-    expect(_replyButtonTexts(afterStart.replyMarkup), contains(MessageTemplates.buttonProfile));
-    expect(_replyButtonTexts(afterStart.replyMarkup), isNot(contains('📋 Меню')));
-
-    for (final command in <String>[MessageTemplates.buttonProfile, '/profile', '/menu']) {
+  test('retired profile and menu entries do not escalate to admin', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    for (final command in <String>['👤 Профиль', '📋 Меню', '/profile', '/menu']) {
       harness.sender.messages.clear();
       await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: command));
-      expect(harness.sender.messages, hasLength(1));
-      expect(harness.sender.messages.single.text, contains('<b>Профиль</b>'));
-      expect(harness.sender.messages.single.text, contains('пока не записан'));
+      expect(harness.sender.messages.single.text, contains('Как это устроено'));
       expect(harness.sender.forwards, isEmpty);
+      expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
     }
   });
 
-  test('profile with an order shows launch title and paid X of Y', () async {
-    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    final launch = harness.course.activeLaunch()!;
-    final order = harness.course.createOrder(
-      userId: 42,
-      launchId: launch.id,
-      kind: PaymentKind.deposit,
-      priceFullKopecks: launch.priceFullKopecks,
-      amountDueKopecks: launch.priceFullKopecks - launch.depositKopecks,
-      now: DateTime.utc(2026, 8, 10),
-      dueAt: launch.depositDueAt,
-    );
-    harness.course.updateOrder(
-      order.copyWith(status: OrderStatus.depositPaid, amountPaidKopecks: launch.depositKopecks),
-    );
-    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.depositPaid);
-
-    harness.sender.messages.clear();
-    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/profile'));
-    final text = harness.sender.messages.single.text;
-    expect(text, contains('Запуск'));
-    expect(text, contains('есть предоплата'));
-    expect(text, contains('оплачено 5000 ₽ из 18000 ₽'));
-    expect(text, contains('остаток 13000 ₽'));
-    expect(text, isNot(contains('пока не записан')));
-    expect(text, isNot(contains('https://t.me/')));
-  });
-
-  test('admin profile command stays on admin menu and does not escalate', () async {
-    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/start'));
-    harness.sender.messages.clear();
-
-    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/profile'));
-    expect(harness.sender.messages.single.text, contains('Админка'));
-    expect(harness.sender.messages.single.text, isNot(contains('пока не записан')));
-    expect(harness.sender.messages.single.text, isNot(contains('<b>Профиль</b>')));
-    expect(harness.sender.forwards, isEmpty);
-
-    harness.sender.messages.clear();
+  test('/start is a single offer and reply keyboard has no profile or menu', () async {
     await harness.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonProfile),
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
     );
-    expect(harness.sender.messages.single.text, contains('Админка'));
+    expect(harness.sender.messages, hasLength(1));
+    expect(harness.sender.messages.single.text, contains('Гайд'));
     expect(harness.sender.messages.single.text, isNot(contains('<b>Профиль</b>')));
-    expect(harness.sender.forwards, isEmpty);
+    expect(harness.sender.messages.single.text, isNot(contains('<b>Меню</b>')));
+    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
+    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(MessageTemplates.buttonGuide));
+    expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(texts, isNot(contains('👤 Профиль')));
+    expect(texts, isNot(contains('📋 Меню')));
   });
 
   test('admin card button from incoming notice opens the person card', () async {

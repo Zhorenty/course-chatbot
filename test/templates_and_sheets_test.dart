@@ -176,7 +176,6 @@ void main() {
     expect(texts.last, MessageTemplates.buttonAdminBroadcast);
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
-    expect(texts, isNot(contains(MessageTemplates.buttonProfile)));
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
   });
 
@@ -319,7 +318,7 @@ void main() {
           chatId: 50,
           contentType: ConversationContentType.text,
           textPreview:
-              'Профиль\n\nСейчас: оформляешь оплату.\n\nДальше — гайд, запись на курс или помощь.',
+              'Как это устроено\n\nСейчас: оформляешь оплату.\n\nДальше — гайд, запись на курс или помощь.',
         ),
         ConversationLogEntry(
           id: 3,
@@ -335,7 +334,7 @@ void main() {
 
     expect(text, contains('<b>Диалог</b>'));
     expect(text, contains('→ файл'));
-    expect(text, contains('→ Профиль'));
+    expect(text, contains('→ Как это устроено'));
     expect(text, contains('← ${MessageTemplates.buttonEnroll}'));
     expect(text, isNot(contains('BQACAgIA')));
     expect(text, isNot(contains('оформляешь')));
@@ -365,13 +364,13 @@ void main() {
     expect(text, isNot(contains('остаток')));
   });
 
-  test('user reply keyboard has profile, not menu, and no admin actions', () {
+  test('user reply keyboard has enroll, guide, help and no admin actions', () {
     final templates = MessageTemplates();
     final texts = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: false));
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, contains(MessageTemplates.buttonProfile));
     expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
@@ -381,220 +380,8 @@ void main() {
     final withAccess = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: true));
     expect(withAccess, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(withAccess, contains(MessageTemplates.buttonGuide));
-    expect(withAccess, contains(MessageTemplates.buttonProfile));
     expect(withAccess, contains(MessageTemplates.buttonHelp));
-  });
-
-  test('user profile is a pupil snapshot: stream, status, guide, payment, next step', () {
-    final templates = MessageTemplates();
-    final startedAt = DateTime.utc(2026, 8, 1);
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1800000,
-      depositKopecks: 500000,
-      depositDueDays: 7,
-      courseStartAt: DateTime.utc(2026, 10, 12),
-    );
-
-    final magnet = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна <b>',
-        source: 'ig_reels_guide',
-        funnelPhase: FunnelPhase.magnetIssued,
-        magnetIssuedAt: startedAt,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-    );
-    expect(magnet, contains('<b>Профиль</b> Анна &lt;b&gt;'));
-    expect(magnet, contains('<b>Курс</b>'));
-    expect(magnet, contains('Запуск'));
-    expect(magnet, contains('старт 12.10.2026'));
-    expect(magnet, contains('пока не записан'));
-    expect(magnet, contains('гайд выдан'));
-    expect(magnet, contains('<b>Гайд</b>'));
-    expect(magnet, contains('выдан'));
-    expect(magnet, contains('оплаты ещё не было'));
-    expect(magnet, isNot(contains('18000')));
-    expect(magnet, isNot(contains('Анна <b>')));
-    expect(magnet, isNot(contains('ig_reels_guide')));
-    expect(magnet, isNot(contains('id 50')));
-    expect(magnet, isNot(contains('<code>50</code>')));
-    expect(magnet, isNot(contains('<b>Канал</b>')));
-
-    final checkout = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна',
-        funnelPhase: FunnelPhase.checkout,
-        magnetIssuedAt: startedAt,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-      order: CourseOrder(
-        id: 9,
-        userId: 50,
-        launchId: 1,
-        status: OrderStatus.checkoutStarted,
-        kind: PaymentKind.full,
-        priceFullKopecks: 1800000,
-        amountPaidKopecks: 0,
-        amountDueKopecks: 1800000,
-        checkoutStartedAt: DateTime.utc(2026, 8, 10),
-      ),
-    );
-    expect(checkout, contains('оформление оплаты'));
-    expect(checkout, contains('полная'));
-    expect(checkout, contains('оплачено 0 ₽ из 18000 ₽'));
-    expect(checkout, contains('в канал пущу после полной оплаты'));
-    expect(checkout, isNot(contains('пока не записан')));
-    expect(checkout, isNot(contains('awaiting_payment')));
-    expect(checkout, isNot(contains('заказ #9')));
-
-    final deposit = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна',
-        funnelPhase: FunnelPhase.depositPaid,
-        magnetIssuedAt: startedAt,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-      order: CourseOrder(
-        id: 3,
-        userId: 50,
-        launchId: 1,
-        status: OrderStatus.depositPaid,
-        kind: PaymentKind.deposit,
-        priceFullKopecks: 1800000,
-        amountPaidKopecks: 500000,
-        amountDueKopecks: 1300000,
-        checkoutStartedAt: DateTime.utc(2026, 8, 10),
-        dueAt: DateTime.utc(2026, 10, 5),
-      ),
-    );
-    expect(deposit, contains('есть предоплата'));
-    expect(deposit, contains('предоплата'));
-    expect(deposit, contains('оплачено 5000 ₽ из 18000 ₽'));
-    expect(deposit, contains('остаток 13000 ₽ — до 05.10.2026'));
-    expect(deposit, contains('в канал пущу после полной оплаты'));
-    expect(deposit, contains(MessageTemplates.buttonEnroll));
-    expect(deposit, isNot(contains('https://t.me/')));
-
-    final invited = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна',
-        funnelPhase: FunnelPhase.accessGranted,
-        magnetIssuedAt: startedAt,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-      order: CourseOrder(
-        id: 4,
-        userId: 50,
-        launchId: 1,
-        status: OrderStatus.paid,
-        kind: PaymentKind.full,
-        priceFullKopecks: 1800000,
-        amountPaidKopecks: 1800000,
-        amountDueKopecks: 0,
-        checkoutStartedAt: DateTime.utc(2026, 8, 10),
-        accessGranted: true,
-      ),
-      access: const ChannelAccess(
-        id: 1,
-        userId: 50,
-        launchId: 1,
-        orderId: 4,
-        inviteLink: 'https://t.me/+secret',
-      ),
-    );
-    expect(invited, contains('доступ в канал есть'));
-    expect(invited, contains('ссылка в канал выдана'));
-    expect(invited, contains(MessageTemplates.buttonNewInvite));
-    expect(invited, isNot(contains('https://t.me/+secret')));
-    expect(invited, isNot(contains('-1001')));
-
-    final joined = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна',
-        funnelPhase: FunnelPhase.accessGranted,
-        magnetIssuedAt: startedAt,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-      order: CourseOrder(
-        id: 4,
-        userId: 50,
-        launchId: 1,
-        status: OrderStatus.paid,
-        kind: PaymentKind.full,
-        priceFullKopecks: 1800000,
-        amountPaidKopecks: 1800000,
-        amountDueKopecks: 0,
-        checkoutStartedAt: DateTime.utc(2026, 8, 10),
-        accessGranted: true,
-      ),
-      access: ChannelAccess(
-        id: 1,
-        userId: 50,
-        launchId: 1,
-        orderId: 4,
-        inviteLink: 'https://t.me/+secret',
-        joinedAt: DateTime.utc(2026, 8, 15, 12, 40),
-      ),
-    );
-    expect(joined, contains('ты в канале этого потока'));
-    expect(joined, isNot(contains('https://t.me/+secret')));
-
-    final cancelled = templates.profile(
-      user: UserProfile(
-        userId: 50,
-        firstName: 'Анна',
-        funnelPhase: FunnelPhase.cancelled,
-        warmupOptOut: true,
-        firstStartedAt: startedAt,
-        lastSeenAt: startedAt,
-      ),
-      launch: launch,
-      order: CourseOrder(
-        id: 5,
-        userId: 50,
-        launchId: 1,
-        status: OrderStatus.cancelled,
-        kind: PaymentKind.full,
-        priceFullKopecks: 1800000,
-        amountPaidKopecks: 0,
-        amountDueKopecks: 1800000,
-        checkoutStartedAt: DateTime.utc(2026, 8, 10),
-      ),
-      access: ChannelAccess(
-        id: 2,
-        userId: 50,
-        launchId: 1,
-        orderId: 5,
-        inviteLink: 'https://t.me/+old',
-        revokedAt: DateTime.utc(2026, 8, 20),
-      ),
-    );
-    expect(cancelled, contains('оплата отменена'));
-    expect(cancelled, contains('ссылки в канал нет'));
-    expect(cancelled, contains('прогрев выключен'));
-    expect(cancelled, contains(MessageTemplates.buttonHelp));
-    expect(cancelled, isNot(contains('https://t.me/+old')));
-    expect(cancelled, isNot(contains('revokedAt')));
-    expect(cancelled, isNot(contains('<b>Связь</b>')));
+    expect(withAccess, isNot(contains('👤 Профиль')));
   });
 }
 

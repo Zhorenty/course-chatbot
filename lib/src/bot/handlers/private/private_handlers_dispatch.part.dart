@@ -176,11 +176,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (text == MessageTemplates.buttonEnroll || text == '/enroll') {
       return _showEnroll(context);
     }
-    if (text == MessageTemplates.buttonProfile ||
-        text == MessageTemplates.buttonMenu ||
-        text == '/profile' ||
-        text == '/menu') {
-      return _showMenu(context);
+    if (text == '👤 Профиль' || text == '📋 Меню' || text == '/profile' || text == '/menu') {
+      return _showHome(context);
     }
     if (text == MessageTemplates.buttonHelp || text == '/help') {
       if (_adminGate.isConfiguredAdmin(context.userId)) {
@@ -189,10 +186,10 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       return _send(context, _templates.help(), replyMarkup: _homeKeyboard(context.userId!));
     }
     if (text != null && text.startsWith('/')) {
-      return _showMenu(context);
+      return _showHome(context);
     }
     if (_adminGate.isConfiguredAdmin(context.userId)) {
-      return text == null ? false : _showMenu(context);
+      return text == null ? false : _showHome(context);
     }
     if (context.message == null) {
       return false;
@@ -205,7 +202,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     final chatId = context.chatId!;
     final user = _course.getUser(userId);
     if (user == null) {
-      return _showMenu(context);
+      return _showHome(context);
     }
     final targets = _adminGate.notificationChatIds(_adminChatId).difference(<int>{chatId});
     var delivered = false;

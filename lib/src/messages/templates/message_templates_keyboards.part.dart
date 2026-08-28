@@ -8,7 +8,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{'text': MessageTemplates.buttonGuide},
       ],
       <Map<String, String>>[
-        <String, String>{'text': MessageTemplates.buttonProfile},
         <String, String>{'text': MessageTemplates.buttonHelp},
       ],
     ]);
