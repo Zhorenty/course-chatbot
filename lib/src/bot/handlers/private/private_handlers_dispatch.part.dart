@@ -217,6 +217,9 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (text == MessageTemplates.buttonEnroll || text == '/enroll') {
       return _showEnroll(context);
     }
+    if (text == MessageTemplates.buttonCourseStatus || text == '/course') {
+      return _showCourseStatus(context);
+    }
     if (text == '👤 Профиль' || text == '📋 Меню' || text == '/profile' || text == '/menu') {
       return _showHome(context);
     }

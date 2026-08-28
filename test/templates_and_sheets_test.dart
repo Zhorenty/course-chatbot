@@ -366,12 +366,13 @@ void main() {
     expect(text, isNot(contains('остаток')));
   });
 
-  test('user reply keyboard has enroll, guide, help and no admin actions', () {
+  test('user reply keyboard swaps enroll for course status after payment', () {
     final templates = MessageTemplates();
-    final texts = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: false));
+    final texts = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: false));
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(texts, isNot(contains(MessageTemplates.buttonCourseStatus)));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
@@ -379,11 +380,103 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSearch)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminMenu)));
 
-    final withAccess = _replyButtonTexts(templates.userMenuKeyboard(hasAccess: true));
-    expect(withAccess, isNot(contains(MessageTemplates.buttonEnroll)));
-    expect(withAccess, contains(MessageTemplates.buttonGuide));
-    expect(withAccess, contains(MessageTemplates.buttonHelp));
-    expect(withAccess, isNot(contains('👤 Профиль')));
+    final paid = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: true));
+    expect(paid, contains(MessageTemplates.buttonCourseStatus));
+    expect(paid, isNot(contains(MessageTemplates.buttonEnroll)));
+    expect(paid, contains(MessageTemplates.buttonGuide));
+    expect(paid, contains(MessageTemplates.buttonHelp));
+    expect(paid, isNot(contains('👤 Профиль')));
+  });
+
+  test('course status names payment, start and channel without a permanent invite', () {
+    final templates = MessageTemplates();
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      depositDueAt: DateTime.utc(2026, 10, 5),
+      courseStartAt: DateTime.utc(2026, 10, 12),
+    );
+    final deposit = CourseOrder(
+      id: 3,
+      userId: 42,
+      launchId: 1,
+      status: OrderStatus.depositPaid,
+      kind: PaymentKind.deposit,
+      priceFullKopecks: 1800000,
+      amountPaidKopecks: 500000,
+      amountDueKopecks: 1300000,
+      checkoutStartedAt: DateTime.utc(2026, 8, 10),
+      dueAt: DateTime.utc(2026, 10, 5),
+    );
+    final beforeStart = templates.courseStatus(
+      launch: launch,
+      order: deposit,
+      now: DateTime.utc(2026, 10, 1),
+    );
+    expect(beforeStart, contains('предоплата'));
+    expect(beforeStart, contains('5000 ₽'));
+    expect(beforeStart, contains('18000 ₽'));
+    expect(beforeStart, contains('13000 ₽'));
+    expect(beforeStart, contains('05.10.2026'));
+    expect(beforeStart, contains('ещё не начался'));
+    expect(beforeStart, contains('после полной суммы'));
+    expect(beforeStart, contains('доплатить остаток'));
+    expect(
+      _inlineButtonTexts(templates.courseStatusKeyboard(order: deposit)!),
+      contains(MessageTemplates.buttonPayRemainder),
+    );
+
+    final paid = deposit.copyWith(
+      status: OrderStatus.paid,
+      kind: PaymentKind.full,
+      amountPaidKopecks: 1800000,
+      amountDueKopecks: 0,
+      accessGranted: true,
+    );
+    final unjoined = ChannelAccess(
+      id: 1,
+      userId: 42,
+      launchId: 1,
+      orderId: 3,
+      inviteLink: 'https://t.me/+keep-me',
+    );
+    final waiting = templates.courseStatus(
+      launch: launch,
+      order: paid,
+      access: unjoined,
+      now: DateTime.utc(2026, 10, 1),
+    );
+    expect(waiting, contains('закрыта'));
+    expect(waiting, contains('https://t.me/+keep-me'));
+    expect(waiting, contains('входа пока нет'));
+    expect(
+      _inlineButtonTexts(templates.courseStatusKeyboard(order: paid, access: unjoined)!),
+      <String>[MessageTemplates.buttonOpenInvite],
+    );
+
+    final joined = ChannelAccess(
+      id: 1,
+      userId: 42,
+      launchId: 1,
+      orderId: 3,
+      inviteLink: 'https://t.me/+keep-me',
+      joinedAt: DateTime.utc(2026, 10, 12),
+    );
+    final started = templates.courseStatus(
+      launch: launch,
+      order: paid,
+      access: joined,
+      now: DateTime.utc(2026, 10, 13),
+    );
+    expect(started, contains('идёт с 12.10.2026'));
+    expect(started, contains('уже внутри'));
+    expect(started, isNot(contains('https://t.me/+')));
+    expect(templates.courseStatusKeyboard(order: paid, access: joined), isNull);
   });
 
   test('funnel inline keyboards keep guide and help', () {

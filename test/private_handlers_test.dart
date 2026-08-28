@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
+import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -216,6 +218,11 @@ void main() {
     );
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.paid);
     expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
+    final texts = _replyButtonTexts(
+      harness.sender.messages.lastWhere((m) => m.replyMarkup != null).replyMarkup,
+    );
+    expect(texts, contains(MessageTemplates.buttonCourseStatus));
+    expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
   });
 
   test('bundled PDF is uploaded when Telegram file_id is empty', () async {
@@ -287,8 +294,93 @@ void main() {
     expect(_inlineButtonTexts(reminder.replyMarkup), <String>[MessageTemplates.buttonOpenInvite]);
     expect(_inlineCallbackData(reminder.replyMarkup), isEmpty);
     final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    expect(pin, contains(MessageTemplates.buttonCourseStatus));
+    expect(pin, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(pin, contains(MessageTemplates.buttonGuide));
     expect(pin, contains(MessageTemplates.buttonHelp));
+  });
+
+  test('course status button shows paid amount, start date and remainder CTA', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.deposit,
+    );
+    harness.course.updateOrder(
+      order.copyWith(
+        status: OrderStatus.depositPaid,
+        amountPaidKopecks: launch.depositKopecks,
+        amountDueKopecks: launch.priceFullKopecks - launch.depositKopecks,
+        dueAt: launch.depositDueAt,
+      ),
+    );
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.depositPaid);
+    harness.sender.messages.clear();
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonCourseStatus),
+    );
+    final status = harness.sender.messages.single;
+    expect(status.text, contains('предоплата'));
+    expect(status.text, contains('5000 ₽'));
+    expect(status.text, contains('13000 ₽'));
+    expect(status.text, contains('05.10.2026'));
+    expect(status.text, contains('12.10.2026'));
+    expect(status.text, contains('ещё не начался'));
+    expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
+
+    harness.sender.messages.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    expect(pin, contains(MessageTemplates.buttonCourseStatus));
+    expect(pin, isNot(contains(MessageTemplates.buttonEnroll)));
+  });
+
+  test('full payment swaps enroll for course status in the reply menu', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    final result = await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.notifyPaymentResult(result);
+
+    expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
+    final menu = harness.sender.messages.firstWhere(
+      (m) => _replyButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonCourseStatus),
+    );
+    expect(_replyButtonTexts(menu.replyMarkup), isNot(contains(MessageTemplates.buttonEnroll)));
+
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
+    );
+    expect(harness.sender.messages.single.text, contains('Твой поток'));
+    expect(harness.sender.messages.single.text, contains('закрыта'));
+    expect(harness.sender.messages.single.text, isNot(contains('Запись на поток')));
   });
 
   test('checkout is blocked until both offer checkboxes are accepted', () async {

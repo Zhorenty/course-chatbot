@@ -94,7 +94,16 @@ final class PrivateHandlers implements PaymentResultNotifier {
       return _templates.adminMenuKeyboard();
     }
     return _templates.userMenuKeyboard(
-      hasAccess: _course.getUser(userId)?.funnelPhase.hasAccess ?? false,
+      showCourseStatus: _course.getUser(userId)?.funnelPhase.showsCourseStatus ?? false,
+    );
+  }
+
+  Future<void> _pinCourseMenu(int userId) {
+    return _sender.sendMessage(
+      userId,
+      _templates.courseMenuPinned(),
+      parseMode: 'HTML',
+      replyMarkup: _homeKeyboard(userId),
     );
   }
 

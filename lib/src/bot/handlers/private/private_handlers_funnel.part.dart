@@ -8,7 +8,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     final fileId = launch?.leadMagnetFileId;
     final url = launch?.leadMagnetUrl;
     final localPath = leadMagnetPath;
-    final menu = _templates.userMenuKeyboard(hasAccess: false);
+    final menu = _homeKeyboard(userId);
     if (fileId != null && fileId.isNotEmpty) {
       await _sender.sendDocument(chatId, document: fileId);
       await _sender.sendMessage(
@@ -48,7 +48,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
         chatId,
         _templates.menuPinned(),
         parseMode: 'HTML',
-        replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
+        replyMarkup: _homeKeyboard(userId),
       );
       return true;
     }
@@ -103,18 +103,14 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     return _send(
       context,
       _templates.optOutConfirmed(),
-      replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
+      replyMarkup: _homeKeyboard(context.userId!),
     );
   }
 
   Future<bool> _showEnroll(PrivateMessageContext context) async {
     final user = _course.getUser(context.userId!);
-    if (user != null && user.funnelPhase.hasAccess) {
-      return _send(
-        context,
-        _templates.alreadyHasAccess(),
-        replyMarkup: _templates.accessKeyboard(),
-      );
+    if (user != null && user.funnelPhase.showsCourseStatus) {
+      return _showCourseStatus(context);
     }
     final launch = _launch;
     if (launch == null) {
@@ -124,6 +120,22 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       context,
       _templates.enrollOptions(launch),
       replyMarkup: _templates.enrollKeyboard(launch),
+    );
+  }
+
+  Future<bool> _showCourseStatus(PrivateMessageContext context) async {
+    final userId = context.userId!;
+    final user = _course.getUser(userId);
+    if (user == null || !user.funnelPhase.showsCourseStatus) {
+      return _showEnroll(context);
+    }
+    final launch = _launch;
+    final order = _course.latestOrder(userId);
+    final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
+    return _send(
+      context,
+      _templates.courseStatus(launch: launch, order: order, access: access, now: _nowProvider()),
+      replyMarkup: _templates.courseStatusKeyboard(order: order, access: access),
     );
   }
 }

@@ -49,5 +49,5 @@ final class FunnelService {
     _course.setWarmupOptOut(userId: userId, optOut: true);
   }
 
-  bool shouldOfferEnroll(UserProfile user) => !user.funnelPhase.hasAccess;
+  bool shouldOfferEnroll(UserProfile user) => !user.funnelPhase.showsCourseStatus;
 }

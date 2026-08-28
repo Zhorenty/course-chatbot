@@ -26,6 +26,7 @@ final class MessageTemplates {
 
   static const String buttonGuide = '📘 Получить гайд';
   static const String buttonEnroll = '✨ Записаться на курс';
+  static const String buttonCourseStatus = '📋 Мой курс';
   static const String buttonHelp = '❓ Помощь';
   static const String buttonOptOut = '⏸ Не писать';
   static const String buttonPayFull = '💳 Оплатить полностью';
@@ -134,18 +135,123 @@ final class MessageTemplates {
   }
 
   String menuPinned() {
-    return 'Меню внизу всегда под рукой: гайд, запись и помощь. '
+    return 'Меню внизу всегда под рукой: гайд, запись или статус курса, помощь. '
         'Если что-то не получается — напиши сюда в чат, перешлю админу.';
   }
 
-  String alreadyHasAccess() {
-    return '<b>Ты уже в канале этого потока</b>\n\n'
-        'Если вход не открывается — напиши сюда, админ выдаст ссылку из карточки.';
+  String courseMenuPinned() {
+    return 'В меню внизу вместо записи — «${MessageTemplates.buttonCourseStatus}»: '
+        'оплата, старт потока и канал.';
+  }
+
+  String courseStatus({
+    Launch? launch,
+    CourseOrder? order,
+    ChannelAccess? access,
+    required DateTime now,
+  }) {
+    final buf = StringBuffer()
+      ..writeln('<b>Твой поток</b>')
+      ..writeln()
+      ..writeln(_coursePaymentLine(order))
+      ..writeln(_courseStartLine(launch, now))
+      ..write(_courseChannelLine(order: order, access: access));
+    final next = _courseStatusNextStep(order: order, access: access);
+    if (next != null) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(next);
+    }
+    return buf.toString();
+  }
+
+  String _coursePaymentLine(CourseOrder? order) {
+    if (order == null) {
+      return 'Оплата: доступ к этому потоку уже есть.';
+    }
+    final paid = formatRubFromKopecks(order.amountPaidKopecks);
+    final full = formatRubFromKopecks(order.priceFullKopecks);
+    switch (order.status) {
+      case OrderStatus.depositPaid:
+        final due = _dueDateLabel(order.dueAt, fallback: 'по договорённости');
+        return 'Оплата: предоплата, $paid из $full. '
+            'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due.';
+      case OrderStatus.paid:
+        if (order.kind == PaymentKind.installment) {
+          return 'Оплата: списание по рассрочке, $paid.';
+        }
+        return 'Оплата: закрыта, $paid из $full.';
+      case OrderStatus.checkoutStarted:
+      case OrderStatus.awaitingPayment:
+        return 'Оплата: ещё не закрыта, пока $paid из $full.';
+      case OrderStatus.cancelled:
+        return 'Оплата: отменена.';
+    }
+  }
+
+  String _courseStartLine(Launch? launch, DateTime now) {
+    final start = _formatDate(launch?.courseStartAt);
+    if (start == null) {
+      return 'Курс: дата старта пока не указана.';
+    }
+    if (_courseHasStarted(launch?.courseStartAt, now)) {
+      return 'Курс: идёт с $start.';
+    }
+    return 'Курс: старт $start, ещё не начался.';
+  }
+
+  String _courseChannelLine({CourseOrder? order, ChannelAccess? access}) {
+    if (order != null && order.hasRemainder) {
+      return 'Канал: открою после полной суммы.';
+    }
+    if (access == null) {
+      return 'Канал: оплата есть, канал ещё не привязан. Напиши сюда — админ выдаст доступ.';
+    }
+    if (access.revokedAt != null) {
+      return 'Канал: доступ снят. Напиши сюда, если это ошибка.';
+    }
+    if (access.hasJoined) {
+      return 'Канал: ты уже внутри.';
+    }
+    final link = access.inviteLink?.trim();
+    if (link == null || link.isEmpty) {
+      return 'Канал: ссылка ещё не выдана. Напиши сюда — админ выдаст из карточки.';
+    }
+    return 'Канал: ссылка выдана, входа пока нет.\n\n'
+        '🔗 ${escapeHtml(link)}';
+  }
+
+  String? _courseStatusNextStep({CourseOrder? order, ChannelAccess? access}) {
+    if (order != null && order.hasRemainder) {
+      return 'Дальше — доплатить остаток.';
+    }
+    if (access != null &&
+        access.revokedAt == null &&
+        !access.hasJoined &&
+        (access.inviteLink?.trim().isNotEmpty ?? false)) {
+      return 'Открой канал с кнопки ниже. Если не сработает — напиши сюда, админ выдаст другую ссылку.';
+    }
+    if (access == null || access.revokedAt != null || access.inviteLink == null) {
+      return null;
+    }
+    if (access.hasJoined) {
+      return 'Если что-то не так — напиши сюда, перешлю админу.';
+    }
+    return null;
+  }
+
+  bool _courseHasStarted(DateTime? startAt, DateTime now) {
+    if (startAt == null) {
+      return false;
+    }
+    return !MoscowTime.calendarDate(now).isBefore(MoscowTime.calendarDate(startAt));
   }
 
   String help() {
     return '<b>Как это устроено</b>\n\n'
-        'Кнопки внизу: гайд, запись на поток и помощь. Они никуда не деваются.\n\n'
+        'Кнопки внизу: гайд, запись на поток и помощь. После оплаты вместо записи — '
+        '«${MessageTemplates.buttonCourseStatus}»: сколько закрыто, старт потока и канал.\n\n'
         'Гайд потерялся или не пришёл — нажми «${MessageTemplates.buttonGuide}», пришлю ещё раз.\n'
         'Ссылка на кассу не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
         'Ссылка в канал потерялась или не открылась — напиши сюда, админ выдаст другую.\n\n'

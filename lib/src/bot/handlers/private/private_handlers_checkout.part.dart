@@ -83,11 +83,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       return _send(context, _templates.payButton(url), replyMarkup: _templates.payUrlKeyboard(url));
     } on CheckoutBlockedException catch (error) {
       if (error.reason == CheckoutBlockReason.alreadyPaid) {
-        return _send(
-          context,
-          _templates.alreadyHasAccess(),
-          replyMarkup: _templates.accessKeyboard(),
-        );
+        return _showCourseStatus(context);
       }
       return _send(context, _templates.payManualFallback());
     } on PaymentUnavailableException catch (error, stackTrace) {
@@ -135,6 +131,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
         parseMode: 'HTML',
         replyMarkup: _templates.remainderKeyboard(),
       );
+      await _pinCourseMenu(result.order.userId);
       return;
     }
     if (result.grantedAccess) {
@@ -142,6 +139,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
         result.order.userId,
         _templates.paymentSucceeded(),
         parseMode: 'HTML',
+        replyMarkup: _homeKeyboard(result.order.userId),
       );
       final link = result.inviteLink;
       if (link != null) {

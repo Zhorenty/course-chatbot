@@ -12,35 +12,16 @@ extension _PrivateHandlersStart on PrivateHandlers {
     if (_adminGate.isConfiguredAdmin(user.userId)) {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
-    if (user.funnelPhase.hasAccess) {
-      await _startAccessReply(context, user.userId);
-      return _pinUserMenu(context, hasAccess: true);
-    }
-    if (user.funnelPhase.isPaidOrAccess) {
-      await _send(context, _templates.inviteUnavailable());
-      return _pinUserMenu(context, hasAccess: true);
-    }
-    if (user.funnelPhase == FunnelPhase.depositPaid) {
-      final order = _course.latestOpenOrder(user.userId);
-      if (order != null) {
-        await _send(
-          context,
-          _templates.depositSucceeded(order),
-          replyMarkup: _templates.remainderKeyboard(),
-        );
-        return _pinUserMenu(context, hasAccess: false);
-      }
+    if (user.funnelPhase.showsCourseStatus) {
+      await _showCourseStatus(context);
+      return _pinUserMenu(context);
     }
     if (user.funnelPhase == FunnelPhase.checkout) {
       await _showEnroll(context);
-      return _pinUserMenu(context, hasAccess: false);
+      return _pinUserMenu(context);
     }
     if (user.funnelPhase == FunnelPhase.magnetIssued || user.funnelPhase == FunnelPhase.warming) {
-      return _send(
-        context,
-        _templates.alreadyInFunnel(),
-        replyMarkup: _templates.userMenuKeyboard(hasAccess: false),
-      );
+      return _send(context, _templates.alreadyInFunnel(), replyMarkup: _homeKeyboard(user.userId));
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
@@ -49,40 +30,18 @@ extension _PrivateHandlersStart on PrivateHandlers {
         _templates.startCourseCard(launch: _launch),
         replyMarkup: _templates.courseCardKeyboard(),
       );
-      return _pinUserMenu(context, hasAccess: false);
+      return _pinUserMenu(context);
     }
     await _send(
       context,
       _templates.startGuideOffer(),
       replyMarkup: _templates.guideOfferKeyboard(showEnroll: true),
     );
-    return _pinUserMenu(context, hasAccess: false);
+    return _pinUserMenu(context);
   }
 
-  Future<bool> _pinUserMenu(PrivateMessageContext context, {required bool hasAccess}) {
-    return _send(
-      context,
-      _templates.menuPinned(),
-      replyMarkup: _templates.userMenuKeyboard(hasAccess: hasAccess),
-    );
-  }
-
-  Future<bool> _startAccessReply(PrivateMessageContext context, int userId) {
-    final launch = _launch;
-    final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
-    final link = access?.inviteLink;
-    if (access != null &&
-        !access.hasJoined &&
-        access.revokedAt == null &&
-        link != null &&
-        link.isNotEmpty) {
-      return _send(
-        context,
-        _templates.unjoinedInviteReminder(link),
-        replyMarkup: _templates.unjoinedInviteKeyboard(link),
-      );
-    }
-    return _send(context, _templates.alreadyHasAccess(), replyMarkup: _templates.accessKeyboard());
+  Future<bool> _pinUserMenu(PrivateMessageContext context) {
+    return _send(context, _templates.menuPinned(), replyMarkup: _homeKeyboard(context.userId!));
   }
 
   Future<bool> _showHome(PrivateMessageContext context) async {

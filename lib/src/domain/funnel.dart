@@ -27,6 +27,12 @@ extension FunnelPhaseX on FunnelPhase {
 
   bool get isPaidOrAccess => this == FunnelPhase.paid || this == FunnelPhase.accessGranted;
 
+  /// Deposit, full payment, or access: enroll CTA is replaced by course status.
+  bool get showsCourseStatus =>
+      this == FunnelPhase.depositPaid ||
+      this == FunnelPhase.paid ||
+      this == FunnelPhase.accessGranted;
+
   bool get excludeSellingDrip =>
       this == FunnelPhase.checkout ||
       this == FunnelPhase.depositPaid ||

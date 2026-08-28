@@ -1,10 +1,13 @@
 part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplateKeyboards on MessageTemplates {
-  Map<String, Object?> userMenuKeyboard({required bool hasAccess}) {
+  Map<String, Object?> userMenuKeyboard({required bool showCourseStatus}) {
     return replyKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
-        if (!hasAccess) <String, String>{'text': MessageTemplates.buttonEnroll},
+        if (showCourseStatus)
+          <String, String>{'text': MessageTemplates.buttonCourseStatus}
+        else
+          <String, String>{'text': MessageTemplates.buttonEnroll},
         <String, String>{'text': MessageTemplates.buttonGuide},
       ],
       <Map<String, String>>[
@@ -188,6 +191,21 @@ extension MessageTemplateKeyboards on MessageTemplates {
 
   Map<String, Object?> accessKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[_supportRow()]);
+  }
+
+  Map<String, Object?>? courseStatusKeyboard({CourseOrder? order, ChannelAccess? access}) {
+    if (order != null && order.hasRemainder) {
+      return remainderKeyboard();
+    }
+    final link = access?.inviteLink?.trim();
+    if (access != null &&
+        access.revokedAt == null &&
+        !access.hasJoined &&
+        link != null &&
+        link.isNotEmpty) {
+      return unjoinedInviteKeyboard(link);
+    }
+    return null;
   }
 
   List<Map<String, String>> _supportRow({bool showGuide = true}) {
