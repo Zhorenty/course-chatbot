@@ -385,7 +385,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         targetUserId,
         _templates.inviteMessage(link),
         parseMode: 'HTML',
-        replyMarkup: _templates.accessKeyboard(),
+        replyMarkup: _templates.unjoinedInviteKeyboard(link),
       );
     }
     await _send(

@@ -17,7 +17,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _pinUserMenu(context, hasAccess: true);
     }
     if (user.funnelPhase.isPaidOrAccess) {
-      final handled = await _reissueInvite(context);
+      final handled = await _issueInviteIfNeeded(context);
       if (!handled) {
         await _send(context, _templates.inviteUnavailable());
       }

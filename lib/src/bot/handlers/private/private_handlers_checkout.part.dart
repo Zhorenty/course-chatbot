@@ -112,7 +112,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     return _showOffer(context, order.kind);
   }
 
-  Future<bool> _reissueInvite(PrivateMessageContext context) async {
+  Future<bool> _issueInviteIfNeeded(PrivateMessageContext context) async {
     final launch = _launch;
     final user = _course.getUser(context.userId!);
     if (launch == null || user == null || !user.funnelPhase.isPaidOrAccess) {
@@ -122,16 +122,15 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (order == null) {
       return false;
     }
-    final link = await _access.issueInvite(
-      userId: user.userId,
-      orderId: order.id,
-      launch: launch,
-      reissue: true,
-    );
+    final link = await _access.issueInvite(userId: user.userId, orderId: order.id, launch: launch);
     if (link == null) {
       return _send(context, _templates.inviteUnavailable());
     }
-    return _send(context, _templates.inviteMessage(link), replyMarkup: _templates.accessKeyboard());
+    return _send(
+      context,
+      _templates.inviteMessage(link),
+      replyMarkup: _templates.unjoinedInviteKeyboard(link),
+    );
   }
 
   Future<void> _notifyPaymentResult(PaymentApplyResult result) async {
@@ -145,7 +144,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
           result.order.userId,
           _templates.inviteMessage(link),
           parseMode: 'HTML',
-          replyMarkup: _templates.accessKeyboard(),
+          replyMarkup: _templates.unjoinedInviteKeyboard(link),
         );
       }
       return;
@@ -171,7 +170,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
           result.order.userId,
           _templates.inviteMessage(link),
           parseMode: 'HTML',
-          replyMarkup: _templates.accessKeyboard(),
+          replyMarkup: _templates.unjoinedInviteKeyboard(link),
         );
       } else {
         await _sender.sendMessage(

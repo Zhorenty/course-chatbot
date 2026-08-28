@@ -279,9 +279,23 @@ void main() {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
+    expect(harness.channel.created, isEmpty);
+    expect(harness.channel.revoked, isEmpty);
     final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(pin, contains(MessageTemplates.buttonGuide));
     expect(pin, contains(MessageTemplates.buttonHelp));
+    expect(
+      harness.sender.messages.any(
+        (m) => _inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOpenInvite),
+      ),
+      isTrue,
+    );
+    expect(
+      harness.sender.messages.any(
+        (m) => _inlineCallbackData(m.replyMarkup).contains(MessageTemplates.cbNewInvite),
+      ),
+      isFalse,
+    );
   });
 
   test('checkout is blocked until both offer checkboxes are accepted', () async {
@@ -549,6 +563,32 @@ void main() {
       isTrue,
     );
   });
+
+  test('client new-invite callback does not mint a channel link', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);
+    final launch = harness.course.activeLaunch()!;
+    harness.course.upsertAccess(
+      userId: 42,
+      launchId: launch.id,
+      orderId: 1,
+      inviteLink: 'https://t.me/+keep-me',
+      inviteCreatedAt: DateTime.utc(2026, 10, 1),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ni',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbNewInvite,
+      ),
+    );
+    expect(harness.channel.created, isEmpty);
+    expect(harness.channel.revoked, isEmpty);
+    expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
+  });
 }
 
 List<String> _replyButtonTexts(Map<String, Object?>? markup) {
@@ -565,4 +605,18 @@ List<String> _inlineButtonTexts(Map<String, Object?>? markup) {
     for (final row in rows)
       for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
   ];
+}
+
+List<String> _inlineCallbackData(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  final data = <String>[];
+  for (final row in rows) {
+    for (final cell in row as List<dynamic>) {
+      final callback = (cell as Map)['callback_data'];
+      if (callback is String) {
+        data.add(callback);
+      }
+    }
+  }
+  return data;
 }

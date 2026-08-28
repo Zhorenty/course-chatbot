@@ -183,26 +183,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonOpenInvite, 'url': link},
       ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonNewInvite,
-          'callback_data': MessageTemplates.cbNewInvite,
-        },
-      ],
       _supportRow(),
     ]);
   }
 
   Map<String, Object?> accessKeyboard() {
-    return inlineKeyboard(<List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonNewInvite,
-          'callback_data': MessageTemplates.cbNewInvite,
-        },
-      ],
-      _supportRow(),
-    ]);
+    return inlineKeyboard(<List<Map<String, String>>>[_supportRow()]);
   }
 
   List<Map<String, String>> _supportRow({bool showGuide = true}) {

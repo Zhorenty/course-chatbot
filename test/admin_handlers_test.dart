@@ -310,6 +310,60 @@ void main() {
     expect(harness.channel.revoked, isNotEmpty);
     expect(harness.channel.banned, contains(99));
   });
+
+  test('admin reinvite from the card mints a new link and sends it to the person', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'p',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminPaid}99',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'py',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+      ),
+    );
+    expect(harness.channel.created, hasLength(1));
+    final first = harness.channel.created.single;
+    harness.sender.messages.clear();
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ai',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminInvite}99',
+      ),
+    );
+
+    expect(harness.channel.created, hasLength(2));
+    expect(harness.channel.revoked, contains(first));
+    final next = harness.channel.created.last;
+    expect(harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains(next)), isTrue);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('отправил')),
+      isTrue,
+    );
+    final toUser = harness.sender.messages.where((m) => m.chatId == 99);
+    expect(
+      toUser.any(
+        (m) => _inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOpenInvite),
+      ),
+      isTrue,
+    );
+    expect(
+      toUser.any((m) => _inlineCallbackData(m.replyMarkup).contains(MessageTemplates.cbNewInvite)),
+      isFalse,
+    );
+  });
 }
 
 List<String> _replyButtonTexts(Map<String, Object?>? markup) {
@@ -318,4 +372,26 @@ List<String> _replyButtonTexts(Map<String, Object?>? markup) {
     for (final row in rows)
       for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
   ];
+}
+
+List<String> _inlineButtonTexts(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
+}
+
+List<String> _inlineCallbackData(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  final data = <String>[];
+  for (final row in rows) {
+    for (final cell in row as List<dynamic>) {
+      final callback = (cell as Map)['callback_data'];
+      if (callback is String) {
+        data.add(callback);
+      }
+    }
+  }
+  return data;
 }

@@ -34,7 +34,6 @@ final class MessageTemplates {
   static const String buttonPayRemainder = '💳 Доплатить';
   static const String buttonGoToPay = '💳 Перейти к оплате';
   static const String buttonContinuePay = '💳 Продолжить оплату';
-  static const String buttonNewInvite = '🔗 Новая ссылка в канал';
   static const String buttonOpenInvite = '🔗 Открыть канал';
   static const String buttonAcceptOffer = 'Принимаю условия Публичной оферты';
   static const String buttonAcceptPersonalData = 'Согласие на обработку персональных данных';
@@ -47,7 +46,7 @@ final class MessageTemplates {
   static const String buttonAdminMarkPaid = '✅ Отметить оплаченным';
   static const String buttonAdminMarkDeposit = '💵 Предоплата';
   static const String buttonAdminCancel = '🚫 Убрать с курса';
-  static const String buttonAdminReinvite = '🔗 Новый invite';
+  static const String buttonAdminReinvite = '🔗 Выдать ссылку в канал';
   static const String buttonAdminDm = '✉️ Написать';
   static const String buttonAdminConfirmYes = 'Да';
   static const String buttonAdminConfirmNo = 'Нет';
@@ -141,8 +140,7 @@ final class MessageTemplates {
 
   String alreadyHasAccess() {
     return '<b>Ты уже в канале этого потока</b>\n\n'
-        'Если ссылка потерялась — нажми «${MessageTemplates.buttonNewInvite}». '
-        'Старая отключится, новая будет на одного человека.';
+        'Если вход не открывается — напиши сюда, админ выдаст ссылку из карточки.';
   }
 
   String help() {
@@ -150,7 +148,7 @@ final class MessageTemplates {
         'Кнопки внизу: гайд, запись на поток и помощь. Они никуда не деваются.\n\n'
         'Гайд потерялся или не пришёл — нажми «${MessageTemplates.buttonGuide}», пришлю ещё раз.\n'
         'Ссылка на кассу не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
-        'Ссылка в канал потерялась — «${MessageTemplates.buttonNewInvite}».\n\n'
+        'Ссылка в канал потерялась или не открылась — напиши сюда, админ выдаст другую.\n\n'
         'Написать админу — просто напиши сюда, без команд. Сообщение увидит админ.';
   }
 
@@ -374,7 +372,7 @@ final class MessageTemplates {
 
   String inviteMessage(String link) {
     return '🔗 Одноразовая ссылка в канал потока:\n${escapeHtml(link)}\n\n'
-        'На одного человека. Если не открылась — запроси новую, эта отключится.';
+        'На одного человека. Если не открылась — напиши сюда, админ выдаст другую.';
   }
 
   String inviteUnavailable() {
@@ -407,7 +405,11 @@ final class MessageTemplates {
 
   String unjoinedInviteReminder(String link) {
     return '🔗 Ссылка в канал потока ещё не использована:\n${escapeHtml(link)}\n\n'
-        'Открой её с кнопки ниже. Если не сработает — запроси новую, эта отключится.';
+        'Открой её с кнопки ниже. Если не сработает — напиши сюда, админ выдаст другую.';
+  }
+
+  String inviteAskAdmin() {
+    return 'Новую ссылку в канал выдаёт админ. Напиши сюда — передам.';
   }
 
   String adminMenu() {
@@ -427,7 +429,7 @@ final class MessageTemplates {
     return '<b>Добавить на курс</b>\n\n'
         'Пришли числовой Telegram id человека (как в @userinfobot). '
         'Можно переслать сюда его сообщение — подставлю id сам.\n\n'
-        'Карточку создам, если её ещё нет. Дальше из карточки: оплата, invite или убрать с курса.';
+        'Карточку создам, если её ещё нет. Дальше из карточки: оплата, ссылка в канал или убрать с курса.';
   }
 
   String adminNeedNumericId() {
@@ -608,7 +610,9 @@ final class MessageTemplates {
 
   String adminGuideDiscarded() => 'Файл не сохранён как гайд.';
 
-  String adminInviteReissued() => '🔗 Invite перевыдан.';
+  String adminInviteReissued() {
+    return '🔗 Ссылку в канал отправил человеку. Предыдущая больше не действует.';
+  }
 
   String adminSheetsUpdated({Launch? launch}) {
     return adminSheetsRefreshResult(

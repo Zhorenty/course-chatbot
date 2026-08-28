@@ -413,6 +413,33 @@ void main() {
       _inlineButtonTexts(templates.accessKeyboard()),
       containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonHelp]),
     );
+    expect(
+      _inlineButtonTexts(templates.accessKeyboard()),
+      isNot(contains(MessageTemplates.buttonOpenInvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')),
+      containsAll(<String>[
+        MessageTemplates.buttonOpenInvite,
+        MessageTemplates.buttonGuide,
+        MessageTemplates.buttonHelp,
+      ]),
+    );
+    expect(
+      _inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')),
+      isNot(contains(MessageTemplates.cbNewInvite)),
+    );
+    expect(
+      _inlineCallbackData(templates.accessKeyboard()),
+      isNot(contains(MessageTemplates.cbNewInvite)),
+    );
+    expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
+    expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
+    expect(templates.help(), isNot(contains('Новая ссылка')));
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      contains(MessageTemplates.buttonAdminReinvite),
+    );
   });
 }
 
@@ -430,4 +457,18 @@ List<String> _inlineButtonTexts(Map<String, Object?> markup) {
     for (final row in rows)
       for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
   ];
+}
+
+List<String> _inlineCallbackData(Map<String, Object?> markup) {
+  final rows = markup['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  final data = <String>[];
+  for (final row in rows) {
+    for (final cell in row as List<dynamic>) {
+      final callback = (cell as Map)['callback_data'];
+      if (callback is String) {
+        data.add(callback);
+      }
+    }
+  }
+  return data;
 }
