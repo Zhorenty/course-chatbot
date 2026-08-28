@@ -21,6 +21,8 @@ final class MessageTemplates {
 
   final String? _botUsername;
   final DateFormat _date = DateFormat('dd.MM.yyyy');
+  final DateFormat _dateTime = DateFormat('dd.MM.yyyy HH:mm');
+  static const int _moscowOffsetHours = 3;
 
   static const String buttonGuide = '📘 Получить гайд';
   static const String buttonEnroll = '✨ Записаться на курс';
@@ -148,7 +150,7 @@ final class MessageTemplates {
         : escapeHtml(text.trim());
     return '<b>Написал ${escapeHtml(user.displayName)}</b>\n'
         'id <code>${user.userId}</code>$handle\n'
-        'фаза: ${escapeHtml(_phaseLabel(user.funnelPhase))}\n\n'
+        'сейчас: ${escapeHtml(_adminPhaseLabel(user.funnelPhase))}\n\n'
         '$body';
   }
 
@@ -380,32 +382,23 @@ final class MessageTemplates {
     ChannelAccess? access,
     List<ConversationLogEntry> dialog = const <ConversationLogEntry>[],
   }) {
-    final source = user.source ?? '—';
-    final orderLine = order == null
-        ? 'заказа нет'
-        : '#${order.id} ${order.status.storageValue}, '
-              'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
-              'из ${formatRubFromKopecks(order.priceFullKopecks)}';
-    final channel = access == null
-        ? 'канала нет'
-        : (access.hasJoined
-              ? 'вошёл ${access.joinedAt!.toIso8601String()}'
-              : (access.inviteLink == null ? 'ссылка не выдана' : 'ссылка выдана, входа нет'));
-    final opt = user.warmupOptOut ? 'да' : 'нет';
-    final blocked = user.botBlocked ? 'да' : 'нет';
     final buf = StringBuffer()
-      ..writeln('<b>Карточка</b> ${escapeHtml(user.displayName)}')
+      ..writeln(_adminCardTitle(user))
       ..writeln('id <code>${user.userId}</code>')
-      ..writeln('источник: <code>${escapeHtml(source)}</code>')
-      ..writeln('фаза: ${escapeHtml(_phaseLabel(user.funnelPhase))}')
-      ..writeln('заказ: ${escapeHtml(orderLine)}')
-      ..writeln('канал: ${escapeHtml(channel)}')
-      ..writeln('не писать: $opt · блок бота: $blocked');
+      ..writeln(_adminSourceLine(user.source))
+      ..writeln('сейчас: ${escapeHtml(_adminPhaseLabel(user.funnelPhase))}');
+    for (final line in _adminOrderLines(order)) {
+      buf.writeln(line);
+    }
+    buf
+      ..writeln(_adminChannelLine(access))
+      ..writeln(_adminWarmupLine(user.warmupOptOut))
+      ..writeln(_adminBotLine(user.botBlocked));
     if (dialog.isNotEmpty) {
       buf.writeln('\nПоследние сообщения:');
       for (final entry in dialog.take(8)) {
         final dir = entry.direction == ConversationDirection.outbound ? '→' : '←';
-        buf.writeln('$dir ${escapeHtml(entry.textPreview ?? entry.contentType.name)}');
+        buf.writeln('$dir ${_dialogPreview(entry)}');
       }
     }
     return buf.toString();
@@ -649,11 +642,143 @@ final class MessageTemplates {
     FunnelPhase.cancelled => 'оплата отменена',
   };
 
+  String _adminPhaseLabel(FunnelPhase phase) => switch (phase) {
+    FunnelPhase.lead => 'пришёл, без гайда',
+    FunnelPhase.magnetIssued => 'гайд выдан',
+    FunnelPhase.warming => 'в прогреве',
+    FunnelPhase.checkout => 'оформляет оплату',
+    FunnelPhase.depositPaid => 'внесена предоплата',
+    FunnelPhase.paid => 'оплачено полностью',
+    FunnelPhase.accessGranted => 'доступ в канал выдан',
+    FunnelPhase.cancelled => 'оплата отменена',
+  };
+
+  String _adminCardTitle(UserProfile user) {
+    final name = user.firstName?.trim();
+    final handle = user.username?.trim();
+    final parts = <String>[];
+    if (name != null && name.isNotEmpty) {
+      parts.add(escapeHtml(name));
+    }
+    if (handle != null && handle.isNotEmpty) {
+      parts.add('@${escapeHtml(handle)}');
+    }
+    if (parts.isEmpty) {
+      return '<b>Карточка</b>';
+    }
+    return '<b>Карточка</b> ${parts.join(' · ')}';
+  }
+
+  String _adminSourceLine(String? source) {
+    final raw = source?.trim();
+    if (raw == null || raw.isEmpty) {
+      return 'источник: без метки';
+    }
+    final label = _adminSourceLabel(raw);
+    if (label == raw) {
+      return 'источник: <code>${escapeHtml(raw)}</code>';
+    }
+    return 'источник: $label · <code>${escapeHtml(raw)}</code>';
+  }
+
+  String _adminSourceLabel(String raw) => switch (raw) {
+    'ig_reels_guide' => 'Instagram Reels',
+    'threads_guide' => 'Threads',
+    'tg_announce' => 'Telegram, анонс',
+    'direct_course' => 'прямая ссылка',
+    'ig_stories_guide' => 'Stories',
+    'email_guide' => 'рассылка',
+    AcquisitionSource.adminManual => 'админ',
+    _ => raw,
+  };
+
+  Iterable<String> _adminOrderLines(CourseOrder? order) {
+    if (order == null) {
+      return const <String>['заказ: нет'];
+    }
+    final lines = <String>[
+      'заказ: #${order.id} · ${_adminPaymentKindLabel(order.kind)} · '
+          '${_adminOrderStatusLabel(order.status)}',
+      'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
+          'из ${formatRubFromKopecks(order.priceFullKopecks)}',
+    ];
+    if (order.hasRemainder) {
+      final due = _formatDate(order.dueAt) ?? 'срок не указан';
+      lines.add('остаток ${formatRubFromKopecks(order.amountDueKopecks)} · до $due');
+    }
+    return lines;
+  }
+
+  String _adminPaymentKindLabel(PaymentKind kind) => switch (kind) {
+    PaymentKind.full => 'полная оплата',
+    PaymentKind.deposit => 'предоплата',
+    PaymentKind.remainder => 'доплата',
+    PaymentKind.installment => 'рассрочка',
+  };
+
+  String _adminOrderStatusLabel(OrderStatus status) => switch (status) {
+    OrderStatus.checkoutStarted => 'оформление начато',
+    OrderStatus.awaitingPayment => 'ждёт оплату',
+    OrderStatus.depositPaid => 'внесена предоплата',
+    OrderStatus.paid => 'оплачено',
+    OrderStatus.cancelled => 'отменён',
+  };
+
+  String _adminChannelLine(ChannelAccess? access) {
+    if (access == null) {
+      return 'канал: нет доступа';
+    }
+    if (access.revokedAt != null) {
+      if (access.joinedAt != null) {
+        return 'канал: был вход ${_formatMoscowDateTime(access.joinedAt!)}, invite отозван';
+      }
+      return 'канал: invite отозван, входа не было';
+    }
+    if (access.hasJoined) {
+      return 'канал: вошёл ${_formatMoscowDateTime(access.joinedAt!)}';
+    }
+    final link = access.inviteLink?.trim();
+    if (link == null || link.isEmpty) {
+      return 'канал: ссылка не выдана';
+    }
+    return 'канал: ссылка выдана, входа нет';
+  }
+
+  String _adminWarmupLine(bool optOut) {
+    return optOut ? 'прогрев: не шлём («Не писать»)' : 'прогрев: идёт';
+  }
+
+  String _adminBotLine(bool blocked) {
+    return blocked ? 'бот: заблокирован' : 'бот: на связи';
+  }
+
+  String _dialogPreview(ConversationLogEntry entry) {
+    final preview = entry.textPreview?.trim();
+    if (preview != null && preview.isNotEmpty) {
+      return escapeHtml(preview);
+    }
+    return _conversationContentLabel(entry.contentType);
+  }
+
+  String _conversationContentLabel(ConversationContentType type) => switch (type) {
+    ConversationContentType.text => 'текст',
+    ConversationContentType.photo => 'фото',
+    ConversationContentType.document => 'файл',
+    ConversationContentType.video => 'видео',
+    ConversationContentType.other => 'сообщение',
+    ConversationContentType.copy => 'копия',
+  };
+
   String? _formatDate(DateTime? value) {
     if (value == null) {
       return null;
     }
     return _date.format(value.toUtc());
+  }
+
+  String _formatMoscowDateTime(DateTime value) {
+    final moscow = value.toUtc().add(const Duration(hours: _moscowOffsetHours));
+    return _dateTime.format(moscow);
   }
 
   String? _formatPrice(int? kopecks) {

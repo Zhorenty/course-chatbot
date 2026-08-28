@@ -3,8 +3,13 @@ import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/channel_access.dart';
+import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
+import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -168,6 +173,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
     expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
+    expect(texts.last, MessageTemplates.buttonAdminBroadcast);
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
     expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
@@ -190,6 +196,124 @@ void main() {
     expect(data, contains(MessageTemplates.cbBroadcastSend));
     expect(data, isNot(contains('bg')));
     expect(texts.join(), isNot(contains('получили гайд и не купили')));
+  });
+
+  test('admin card is a declarative snapshot, not a pupil address', () {
+    final templates = MessageTemplates();
+    final startedAt = DateTime.utc(2026, 8, 1);
+    final user = UserProfile(
+      userId: 50,
+      username: 'anna',
+      firstName: 'Анна <b>',
+      source: 'ig_reels_guide',
+      funnelPhase: FunnelPhase.depositPaid,
+      warmupOptOut: true,
+      botBlocked: true,
+      firstStartedAt: startedAt,
+      lastSeenAt: startedAt,
+    );
+    final order = CourseOrder(
+      id: 3,
+      userId: 50,
+      launchId: 1,
+      status: OrderStatus.depositPaid,
+      kind: PaymentKind.deposit,
+      priceFullKopecks: 1800000,
+      amountPaidKopecks: 500000,
+      amountDueKopecks: 1300000,
+      checkoutStartedAt: DateTime.utc(2026, 8, 10),
+      dueAt: DateTime.utc(2026, 10, 12),
+    );
+    final access = ChannelAccess(
+      id: 1,
+      userId: 50,
+      launchId: 1,
+      orderId: 3,
+      inviteLink: 'https://t.me/+secret',
+      joinedAt: DateTime.utc(2026, 8, 15, 12, 40),
+    );
+    final text = templates.adminCard(
+      user: user,
+      order: order,
+      access: access,
+      dialog: <ConversationLogEntry>[
+        ConversationLogEntry(
+          id: 1,
+          occurredAt: DateTime.utc(2026, 8, 15),
+          direction: ConversationDirection.inbound,
+          peerUserId: 50,
+          chatId: 50,
+          contentType: ConversationContentType.photo,
+        ),
+      ],
+    );
+
+    expect(text, contains('<b>Карточка</b> Анна &lt;b&gt; · @anna'));
+    expect(text, contains('id <code>50</code>'));
+    expect(text, contains('источник: Instagram Reels · <code>ig_reels_guide</code>'));
+    expect(text, contains('сейчас: внесена предоплата'));
+    expect(text, contains('заказ: #3 · предоплата · внесена предоплата'));
+    expect(text, contains('оплачено 5000 ₽ из 18000 ₽'));
+    expect(text, contains('остаток 13000 ₽ · до 12.10.2026'));
+    expect(text, contains('канал: вошёл 15.08.2026 15:40'));
+    expect(text, contains('прогрев: не шлём («Не писать»)'));
+    expect(text, contains('бот: заблокирован'));
+    expect(text, contains('← фото'));
+    expect(text, isNot(contains('оформляешь')));
+    expect(text, isNot(contains('гайд уже у тебя')));
+    expect(text, isNot(contains('смотришь')));
+    expect(text, isNot(contains('checkout_started')));
+    expect(text, isNot(contains('deposit_paid')));
+    expect(text, isNot(contains('2026-08-15T')));
+    expect(text, isNot(contains('не писать: да')));
+    expect(text, isNot(contains('Анна <b>')));
+    expect(text, isNot(contains('https://t.me/+secret')));
+    expect(text, isNot(contains('photo')));
+
+    final menu = templates.menu(
+      UserProfile(
+        userId: 50,
+        funnelPhase: FunnelPhase.magnetIssued,
+        firstStartedAt: startedAt,
+        lastSeenAt: startedAt,
+      ),
+    );
+    expect(menu, contains('гайд уже у тебя'));
+
+    final checkoutUser = UserProfile(
+      userId: 50,
+      username: 'anna',
+      firstName: 'Анна',
+      funnelPhase: FunnelPhase.checkout,
+      firstStartedAt: startedAt,
+      lastSeenAt: startedAt,
+    );
+    expect(templates.adminCard(user: checkoutUser), contains('сейчас: оформляет оплату'));
+    expect(templates.adminCard(user: checkoutUser), isNot(contains('оформляешь')));
+    expect(
+      templates.adminIncomingUserMessage(user: checkoutUser),
+      contains('сейчас: оформляет оплату'),
+    );
+    expect(templates.adminIncomingUserMessage(user: checkoutUser), isNot(contains('оформляешь')));
+  });
+
+  test('admin card without order shows empty payment and default flags', () {
+    final text = MessageTemplates().adminCard(
+      user: UserProfile(
+        userId: 7,
+        funnelPhase: FunnelPhase.lead,
+        firstStartedAt: DateTime.utc(2026, 8, 1),
+        lastSeenAt: DateTime.utc(2026, 8, 1),
+      ),
+    );
+    expect(text, contains('<b>Карточка</b>'));
+    expect(text, contains('источник: без метки'));
+    expect(text, contains('сейчас: пришёл, без гайда'));
+    expect(text, contains('заказ: нет'));
+    expect(text, contains('канал: нет доступа'));
+    expect(text, contains('прогрев: идёт'));
+    expect(text, contains('бот: на связи'));
+    expect(text, isNot(contains('остаток')));
   });
 
   test('user reply keyboard has no admin actions', () {

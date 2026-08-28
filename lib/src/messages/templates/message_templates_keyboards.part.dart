@@ -21,11 +21,11 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{'text': MessageTemplates.buttonAdminAddUser},
       ],
       <Map<String, String>>[
-        <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
-      ],
-      <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminLinks},
         <String, String>{'text': MessageTemplates.buttonAdminSheets},
+      ],
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
     ]);
   }
