@@ -26,7 +26,10 @@ final class MessageTemplates {
 
   static const String buttonGuide = '📘 Получить гайд';
   static const String buttonEnroll = '✨ Записаться на курс';
-  static const String buttonMenu = '📋 Меню';
+  static const String buttonProfile = '👤 Профиль';
+
+  /// Alias of [buttonProfile] for old `/menu` muscle memory.
+  static const String buttonMenu = buttonProfile;
   static const String buttonHelp = '❓ Помощь';
   static const String buttonOptOut = '⏸ Не писать';
   static const String buttonPayFull = '💳 Оплатить полностью';
@@ -121,10 +124,47 @@ final class MessageTemplates {
         'Старая отключится, новая будет на одного человека.';
   }
 
-  String menu(UserProfile user) {
-    return '<b>Меню</b>\n\n'
-        'Сейчас: ${escapeHtml(_phaseLabel(user.funnelPhase))}.\n\n'
-        'Дальше — гайд, запись на курс или помощь.';
+  String profile({
+    required UserProfile user,
+    Launch? launch,
+    CourseOrder? order,
+    ChannelAccess? access,
+  }) {
+    final buf = StringBuffer()
+      ..writeln(_profileTitle(user))
+      ..writeln()
+      ..writeln('<b>Курс</b>');
+    for (final line in _profileCourseLines(launch: launch, order: order)) {
+      buf.writeln(line);
+    }
+    buf
+      ..writeln()
+      ..writeln('<b>Статус</b>')
+      ..writeln(escapeHtml(_phaseLabel(user.funnelPhase)));
+    if (user.warmupOptOut) {
+      buf.writeln('прогрев выключен');
+    }
+    buf
+      ..writeln()
+      ..writeln('<b>Гайд</b>')
+      ..writeln(user.magnetIssuedAt == null ? 'ещё не забирал' : 'выдан')
+      ..writeln()
+      ..writeln('<b>Оплата</b>');
+    for (final line in _profilePaymentLines(order)) {
+      buf.writeln(line);
+    }
+    final channel = _profileChannelLine(user: user, order: order, access: access);
+    if (channel != null) {
+      buf
+        ..writeln()
+        ..writeln('<b>Канал</b>')
+        ..writeln(channel);
+    }
+    buf
+      ..writeln()
+      ..writeln('<b>Дальше</b>')
+      ..write(_profileNextStep(user: user, order: order));
+    return buf.toString();
   }
 
   String help() {
@@ -229,7 +269,7 @@ final class MessageTemplates {
 
   String optOutConfirmed() {
     return '⏸ Ок, продающие сообщения больше не пришлю.\n\n'
-        'Меню, гайд и запись остаются. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
+        'Профиль, гайд и запись остаются. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
   }
 
   String enrollOptions(Launch launch) {
@@ -636,6 +676,117 @@ final class MessageTemplates {
       return payload;
     }
     return 'https://t.me/$bot?start=$payload';
+  }
+
+  String _profileTitle(UserProfile user) {
+    final name = user.firstName?.trim();
+    if (name == null || name.isEmpty) {
+      return '<b>Профиль</b>';
+    }
+    return '<b>Профиль</b> ${escapeHtml(name)}';
+  }
+
+  Iterable<String> _profileCourseLines({Launch? launch, CourseOrder? order}) {
+    final lines = <String>[];
+    final title = launch?.title.trim();
+    if (title != null && title.isNotEmpty) {
+      lines.add(escapeHtml(title));
+    }
+    final start = _formatDate(launch?.courseStartAt);
+    if (start != null) {
+      lines.add('старт $start');
+    }
+    if (order == null) {
+      lines.add('пока не записан — можно забрать гайд или записаться');
+    }
+    if (lines.isEmpty) {
+      return const <String>['пока не записан'];
+    }
+    return lines;
+  }
+
+  Iterable<String> _profilePaymentLines(CourseOrder? order) {
+    if (order == null) {
+      return const <String>['оплаты ещё не было'];
+    }
+    final lines = <String>[_profilePaymentKindLabel(order.kind)];
+    if (order.priceFullKopecks > 0) {
+      lines.add(
+        'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
+        'из ${formatRubFromKopecks(order.priceFullKopecks)}',
+      );
+    }
+    if (order.hasRemainder) {
+      final due = _formatDate(order.dueAt);
+      final dueText = due == null ? '' : ' — до $due';
+      lines.add('остаток ${formatRubFromKopecks(order.amountDueKopecks)}$dueText');
+    }
+    if (order.kind == PaymentKind.installment &&
+        !order.accessGranted &&
+        !order.status.isFullyPaid) {
+      lines.add('рассрочка на стороне кассы — доступ после списания');
+    }
+    return lines;
+  }
+
+  String _profilePaymentKindLabel(PaymentKind kind) => switch (kind) {
+    PaymentKind.full => 'полная',
+    PaymentKind.deposit => 'предоплата',
+    PaymentKind.remainder => 'доплата',
+    PaymentKind.installment => 'рассрочка',
+  };
+
+  String? _profileChannelLine({
+    required UserProfile user,
+    CourseOrder? order,
+    ChannelAccess? access,
+  }) {
+    final phase = user.funnelPhase;
+    final early =
+        phase == FunnelPhase.lead ||
+        phase == FunnelPhase.magnetIssued ||
+        phase == FunnelPhase.warming;
+    if (early && order == null && access == null) {
+      return null;
+    }
+    if (phase == FunnelPhase.cancelled || access?.revokedAt != null) {
+      return 'ссылки в канал нет';
+    }
+    if (access != null && access.hasJoined) {
+      return 'ты в канале этого потока';
+    }
+    if (phase.hasAccess || phase == FunnelPhase.paid || _inviteWasIssued(access)) {
+      return 'ссылка в канал выдана';
+    }
+    return 'в канал пущу после полной оплаты';
+  }
+
+  bool _inviteWasIssued(ChannelAccess? access) {
+    if (access == null || !access.isActive) {
+      return false;
+    }
+    final link = access.inviteLink?.trim();
+    return (link != null && link.isNotEmpty) || access.inviteCreatedAt != null;
+  }
+
+  String _profileNextStep({required UserProfile user, CourseOrder? order}) {
+    final phase = user.funnelPhase;
+    if (phase == FunnelPhase.cancelled) {
+      return 'Напиши в «${MessageTemplates.buttonHelp}».';
+    }
+    if (phase.hasAccess) {
+      return 'Если ссылка потерялась — «${MessageTemplates.buttonNewInvite}».';
+    }
+    if (phase == FunnelPhase.depositPaid || (order?.hasRemainder ?? false)) {
+      return 'Доплатить — «${MessageTemplates.buttonEnroll}» внизу.';
+    }
+    if (phase == FunnelPhase.checkout || order != null) {
+      return 'Продолжить оплату — «${MessageTemplates.buttonEnroll}» внизу.';
+    }
+    if (user.magnetIssuedAt == null) {
+      return 'Забрать гайд или записаться — кнопки внизу.';
+    }
+    return 'Записаться на курс — кнопка внизу.';
   }
 
   String _phaseLabel(FunnelPhase phase) => switch (phase) {

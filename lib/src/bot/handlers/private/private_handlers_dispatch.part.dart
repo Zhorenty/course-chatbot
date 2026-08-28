@@ -176,7 +176,10 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (text == MessageTemplates.buttonEnroll || text == '/enroll') {
       return _showEnroll(context);
     }
-    if (text == MessageTemplates.buttonMenu || text == '/menu') {
+    if (text == MessageTemplates.buttonProfile ||
+        text == MessageTemplates.buttonMenu ||
+        text == '/profile' ||
+        text == '/menu') {
       return _showMenu(context);
     }
     if (text == MessageTemplates.buttonHelp || text == '/help') {

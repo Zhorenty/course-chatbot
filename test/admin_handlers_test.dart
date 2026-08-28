@@ -69,7 +69,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
-    expect(texts, isNot(contains(MessageTemplates.buttonMenu)));
+    expect(texts, isNot(contains(MessageTemplates.buttonProfile)));
   });
 
   test('admin sheets button pulls COURSES and writes ВОРОНКА', () async {
