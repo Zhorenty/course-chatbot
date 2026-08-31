@@ -387,6 +387,32 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
+  Map<String, Object?> adminCatalogKeepCodeKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogKeepCode,
+          'callback_data': MessageTemplates.cbCatalogKeepCode,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogSkipChannelKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogSkipChannel,
+          'callback_data': MessageTemplates.cbCatalogSkipChannel,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogClearInlineKeyboard() {
+    return inlineKeyboard(const <List<Map<String, String>>>[]);
+  }
+
   Map<String, Object?> adminCatalogActiveKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[

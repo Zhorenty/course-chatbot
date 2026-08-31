@@ -601,6 +601,74 @@ void main() {
     expect(sheets.sender.messages.last.text, contains('launch-1'));
   });
 
+  test('admin catalog wizard skips channel on dash and does not dump to admin menu', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await _runCatalogCreateWizardToChannel(sheets);
+    expect(
+      _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+    );
+    expect(sheets.sender.messages.last.text, isNot(contains('Пусто')));
+
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+    expect(sheets.sender.messages.last.text, contains('активным'));
+    expect(sheets.sender.messages.last.text, isNot(contains('Админка')));
+    expect(
+      _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogYes),
+    );
+  });
+
+  test('admin catalog wizard skips channel on unicode minus copied from the prompt', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await _runCatalogCreateWizardToChannel(sheets);
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '−'));
+    expect(sheets.sender.messages.last.text, contains('активным'));
+    expect(sheets.sender.messages.last.text, isNot(contains('Админка')));
+  });
+
+  test('admin catalog wizard skips channel from the inline button', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await _runCatalogCreateWizardToChannel(sheets);
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'csk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogSkipChannel,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('активным'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'can',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogActiveNo,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('канал: не указан'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ccy',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogCreateYes,
+      ),
+    );
+    expect(sheets.course.launchByCode('nov-26'), isNotNull);
+    expect(sheets.course.launchByCode('nov-26')!.channelId, isNull);
+  });
+
   test('admin catalog wizard create writes COURSES row and sqlite', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
@@ -891,6 +959,52 @@ void main() {
     expect(sheets.sender.messages.last.text, contains('Код запуска'));
   });
 
+  test('admin catalog keep-code button accepts the suggested slug', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cn',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogNew,
+      ),
+    );
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
+    final prompt = sheets.sender.messages.last;
+    expect(prompt.text, contains('Код запуска'));
+    expect(prompt.text, contains('служебный id'));
+    expect(prompt.text, contains('не на русском'));
+    expect(prompt.text, contains('noyabr'));
+    expect(
+      _inlineButtonTexts(prompt.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogKeepCode),
+    );
+
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'ноябрь'));
+    expect(sheets.sender.messages.last.text, contains('не кириллица'));
+    expect(
+      _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogKeepCode),
+    );
+
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ckc',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogKeepCode,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('Полная цена'));
+    expect(_inlineButtonTexts(sheets.sender.messages.last.replyMarkup), isEmpty);
+  });
+
   test('admin catalog create refuses a code that already exists on COURSES', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
@@ -978,6 +1092,57 @@ void main() {
     expect('$cell', anyOf('', 'null'));
   });
 
+  test('admin catalog edit skip-channel button clears the COURSES cell', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ce',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogEdit}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cf',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.channel),
+      ),
+    );
+    expect(
+      _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'csk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogSkipChannel,
+      ),
+    );
+    final cell = _coursesRowByCode(
+      sheets.sheetsGateway!.valuesBySheetId[0]!,
+      'launch-1',
+    )![CoursesSheet.headers.indexOf(CoursesSheet.channelId)];
+    expect('$cell', anyOf('', 'null'));
+  });
+
   test('admin catalog delete still drops sqlite when COURSES row is already gone', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
@@ -1031,11 +1196,10 @@ void main() {
   });
 }
 
-Future<void> _runCatalogCreateWizard(
+Future<void> _runCatalogCreateWizardToChannel(
   HandlerHarness sheets, {
-  required String title,
-  required String code,
-  required bool active,
+  String title = 'Ноябрь',
+  String code = 'nov-26',
   bool openCatalog = true,
 }) async {
   if (openCatalog) {
@@ -1056,6 +1220,21 @@ Future<void> _runCatalogCreateWizard(
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '20000'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '0'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '01.11.2026'));
+}
+
+Future<void> _runCatalogCreateWizard(
+  HandlerHarness sheets, {
+  required String title,
+  required String code,
+  required bool active,
+  bool openCatalog = true,
+}) async {
+  await _runCatalogCreateWizardToChannel(
+    sheets,
+    title: title,
+    code: code,
+    openCatalog: openCatalog,
+  );
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
   await sheets.handlers.handle(
     privateCallbackUpdate(

@@ -65,6 +65,24 @@ void main() {
     expect(parsed.skippedInvalidCount, 2);
   });
 
+  test('parser keeps a row whose channel cell is a dash skip token', () {
+    final row = List<Object?>.from(CoursesSheet.seedDataRow())
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.channelId)] = '-';
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
+    expect(parsed.rows, hasLength(1));
+    expect(parsed.active!.channelId, isNull);
+  });
+
+  test('parseChannelId treats dash variants as omitted and parses unicode minus ids', () {
+    expect(CoursesSheetParser.isOmittedChannelId('-'), isTrue);
+    expect(CoursesSheetParser.isOmittedChannelId('—'), isTrue);
+    expect(CoursesSheetParser.isOmittedChannelId('−'), isTrue);
+    expect(CoursesSheetParser.isOmittedChannelId('–'), isTrue);
+    expect(CoursesSheetParser.parseChannelId('-'), isNull);
+    expect(CoursesSheetParser.parseChannelId('−100123'), -100123);
+    expect(CoursesSheetParser.parseChannelId('-100123'), -100123);
+  });
+
   test('parser keeps a full-price row without deposit due date', () {
     final row = List<Object?>.from(CoursesSheet.seedDataRow())
       ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = ''

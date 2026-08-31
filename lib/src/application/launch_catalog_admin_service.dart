@@ -95,11 +95,10 @@ final class LaunchCatalogAdminService {
   }
 
   static CatalogFieldError? validateChannel(String raw) {
-    final text = raw.trim();
-    if (text.isEmpty || text == '-' || text == '—') {
+    if (CoursesSheetParser.isOmittedChannelId(raw)) {
       return null;
     }
-    final id = CoursesSheetParser.parseChannelId(text);
+    final id = CoursesSheetParser.parseChannelId(raw);
     if (id == null || id >= 0) {
       return CatalogFieldError.badChannel;
     }

@@ -65,8 +65,11 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskCode(String suggested) {
     return '<b>Код запуска</b>\n\n'
-        'Можно оставить <code>${escapeHtml(suggested)}</code> или прислать другой: '
-        'латиница, цифры, _ и -. Без кода строка в бота не попадёт.';
+        'Это служебный id потока в таблице и диплинках, не название для учеников. '
+        'Только латиница, цифры, _ и - — <b>не на русском</b>. '
+        'Без кода строка в бота не попадёт.\n\n'
+        'Предлагаю <code>${escapeHtml(suggested)}</code>. '
+        'Кнопка ниже оставит его, или пришли другой.';
   }
 
   String adminCatalogAskPrice() {
@@ -86,8 +89,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskChannel() {
-    return 'ID канала этого потока (число вида −100…). '
-        'Пусто или — — без своего канала; при синке возьмётся запасной.';
+    return 'ID канала этого потока (число вида −100…).\n\n'
+        'Своего канала нет — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
+        'или напиши «-». При синке возьмётся запасной.';
   }
 
   String adminCatalogAskActive() {
@@ -149,7 +153,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.depositDue => 'Новая дата доплаты, как 19.08.2026.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
       CatalogLaunchField.channel =>
-        'Новый ID канала (число вида −100…). Пусто или — — сбросить свой канал.',
+        'Новый ID канала (число вида −100…).\n\n'
+            'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
+            'или напиши «-».',
     };
   }
 
@@ -165,7 +171,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return switch (error) {
       CatalogFieldError.emptyTitle => 'Название пустое. Пришли, как поток назовут в боте.',
       CatalogFieldError.badCode =>
-        'Код не подойдёт. Латиница, цифры, _ и -, без пробелов, до 64 символов.',
+        'Код не подойдёт. Латиница, цифры, _ и - — не кириллица, без пробелов, до 64 символов.',
       CatalogFieldError.codeTaken => 'Такой код уже есть. Пришли другой.',
       CatalogFieldError.badPrice => 'Это не цена. Пришли число, как 18000 или 18 000.',
       CatalogFieldError.badDeposit =>
@@ -173,7 +179,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogFieldError.needDueDate => 'Для предоплаты нужна дата доплаты, как 19.08.2026.',
       CatalogFieldError.badDate => 'Дата не разобралась. Формат 19.08.2026.',
       CatalogFieldError.badChannel =>
-        'ID канала — отрицательное число вида −100…. Или пусто / —, чтобы без своего канала.',
+        'ID канала — отрицательное число вида −100…. '
+            'Или «-» / «${MessageTemplates.buttonAdminCatalogSkipChannel}», чтобы без своего канала.',
     };
   }
 

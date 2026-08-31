@@ -495,13 +495,38 @@ abstract final class CoursesSheetParser {
     return parseRubStringToKopecks(compact);
   }
 
-  static int? parseChannelId(String? raw) {
+  /// Telegram cannot send an empty DM. Admins type ASCII `-`, copy `—` / `−`
+  /// from the prompt, or tap «Без своего канала». All of those mean “no channel”.
+  static bool isOmittedChannelId(String? raw) {
     final text = raw?.trim() ?? '';
     if (text.isEmpty) {
+      return true;
+    }
+    for (final rune in text.runes) {
+      if (!_channelOmitRunes.contains(rune)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static int? parseChannelId(String? raw) {
+    final text = raw?.trim() ?? '';
+    if (isOmittedChannelId(text)) {
       return null;
     }
-    final compact = text.replaceAll('\u00a0', '').replaceAll(' ', '').replaceAll('−', '-');
-    return int.tryParse(compact);
+    final buffer = StringBuffer();
+    for (final rune in text.runes) {
+      if (rune == 0x00A0 || rune == 0x0020) {
+        continue;
+      }
+      if (_channelOmitRunes.contains(rune)) {
+        buffer.writeCharCode(0x002D);
+        continue;
+      }
+      buffer.writeCharCode(rune);
+    }
+    return int.tryParse(buffer.toString());
   }
 
   static String suggestLaunchCode(String title, {Set<String> existing = const <String>{}}) {
@@ -706,8 +731,8 @@ abstract final class CoursesSheetParser {
     }
     final channelRaw = _cell(raw, headerIndex, CoursesSheet.channelId);
     int? channelId;
-    if (channelRaw != null && channelRaw.isNotEmpty) {
-      channelId = int.tryParse(channelRaw);
+    if (channelRaw != null && channelRaw.isNotEmpty && !isOmittedChannelId(channelRaw)) {
+      channelId = parseChannelId(channelRaw);
       if (channelId == null) {
         return null;
       }
@@ -790,6 +815,19 @@ abstract final class CoursesSheetParser {
 
 final _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
 final _dottedDate = RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$');
+
+/// ASCII hyphen, unicode dashes, and minus sign — what admins type or copy
+/// when Telegram will not send an empty message.
+const Set<int> _channelOmitRunes = <int>{
+  0x002D, // hyphen-minus
+  0x2010, // hyphen
+  0x2011, // non-breaking hyphen
+  0x2012, // figure dash
+  0x2013, // en dash
+  0x2014, // em dash
+  0x2015, // horizontal bar
+  0x2212, // minus sign
+};
 
 DateTime? _parseIsoDate(String? raw) {
   final trimmed = raw?.trim() ?? '';

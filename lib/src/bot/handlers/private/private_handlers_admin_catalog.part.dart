@@ -138,25 +138,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateCode,
           catalogDraft: draft.copyWith(title: text, code: suggested),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskCode(suggested));
+        return _presentCatalogAskCode(context, suggested);
       case PrivateFlowStep.adminCatalogCreateCode:
         final raw = text.isEmpty ? (draft.code ?? '') : text;
-        final error = LaunchCatalogAdminService.validateCode(
-          raw,
-          taken: _catalogAdmin?.takenLaunchCodes() ?? const <String>{},
-        );
-        if (error != null) {
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskCode(raw)),
-          );
-        }
-        _setCatalogFlow(
-          context.userId!,
-          PrivateFlowStep.adminCatalogCreatePrice,
-          catalogDraft: draft.copyWith(code: raw.trim()),
-        );
-        return _presentCatalog(context, _templates.adminCatalogAskPrice());
+        return _acceptCatalogCreateCode(context, raw);
       case PrivateFlowStep.adminCatalogCreatePrice:
         final error = LaunchCatalogAdminService.validatePrice(text);
         if (error != null) {
@@ -228,32 +213,107 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateChannel,
           catalogDraft: draft.copyWith(courseStartAt: CoursesSheetParser.parseDate(text)),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskChannel());
+        return _presentCatalogAskChannel(context);
       case PrivateFlowStep.adminCatalogCreateChannel:
-        final error = LaunchCatalogAdminService.validateChannel(text);
-        if (error != null) {
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskChannel()),
-          );
-        }
-        final skipped = text.isEmpty || text == '-' || text == '—';
-        _setCatalogFlow(
-          context.userId!,
-          PrivateFlowStep.adminCatalogCreateActive,
-          catalogDraft: draft.copyWith(
-            channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
-            channelSkipped: skipped,
-          ),
-        );
-        return _presentCatalog(
-          context,
-          _templates.adminCatalogAskActive(),
-          replyMarkup: _templates.adminCatalogActiveKeyboard(),
-        );
+        return _acceptCatalogCreateChannel(context, text);
       default:
-        return false;
+        return true;
     }
+  }
+
+  Future<bool> _presentCatalogAskChannel(
+    PrivateMessageContext context, {
+    CatalogFieldError? error,
+  }) {
+    final ask = _templates.adminCatalogAskChannel();
+    return _presentCatalog(
+      context,
+      error == null ? ask : _templates.adminCatalogAskWithError(error, ask),
+      replyMarkup: _templates.adminCatalogSkipChannelKeyboard(),
+    );
+  }
+
+  Future<bool> _acceptCatalogCreateChannel(PrivateMessageContext context, String raw) {
+    final error = LaunchCatalogAdminService.validateChannel(raw);
+    if (error != null) {
+      return _presentCatalogAskChannel(context, error: error);
+    }
+    final skipped = CoursesSheetParser.isOmittedChannelId(raw);
+    final draft = _flowByUserId[context.userId!]?.catalogDraft ?? const CatalogWizardDraft();
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreateActive,
+      catalogDraft: draft.copyWith(
+        channelId: skipped ? null : CoursesSheetParser.parseChannelId(raw),
+        channelSkipped: skipped,
+      ),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskActive(),
+      replyMarkup: _templates.adminCatalogActiveKeyboard(),
+    );
+  }
+
+  Future<bool> _skipCatalogChannel(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final flow = _flowByUserId[context.userId!];
+    if (flow?.step == PrivateFlowStep.adminCatalogCreateChannel) {
+      return _acceptCatalogCreateChannel(context, '-');
+    }
+    if (flow?.step == PrivateFlowStep.adminCatalogEditValue &&
+        flow?.catalogDraft?.editField == CatalogLaunchField.channel) {
+      return _captureCatalogEdit(context, rawOverride: '-');
+    }
+    return true;
+  }
+
+  Future<bool> _keepCatalogCreateCode(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final flow = _flowByUserId[context.userId!];
+    if (flow?.step != PrivateFlowStep.adminCatalogCreateCode) {
+      return true;
+    }
+    return _acceptCatalogCreateCode(context, flow?.catalogDraft?.code ?? '');
+  }
+
+  Future<bool> _acceptCatalogCreateCode(PrivateMessageContext context, String raw) async {
+    final draft = _flowByUserId[context.userId!]?.catalogDraft ?? const CatalogWizardDraft();
+    final suggested = draft.code ?? raw;
+    final error = LaunchCatalogAdminService.validateCode(
+      raw,
+      taken: _catalogAdmin?.takenLaunchCodes() ?? const <String>{},
+    );
+    if (error != null) {
+      return _presentCatalogAskCode(context, suggested, error: error);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreatePrice,
+      catalogDraft: draft.copyWith(code: raw.trim()),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskPrice(),
+      replyMarkup: _templates.adminCatalogClearInlineKeyboard(),
+    );
+  }
+
+  Future<bool> _presentCatalogAskCode(
+    PrivateMessageContext context,
+    String suggested, {
+    CatalogFieldError? error,
+  }) {
+    final ask = _templates.adminCatalogAskCode(suggested);
+    return _presentCatalog(
+      context,
+      error == null ? ask : _templates.adminCatalogAskWithError(error, ask),
+      replyMarkup: _templates.adminCatalogKeepCodeKeyboard(),
+    );
   }
 
   Future<bool> _setCatalogCreateActive(PrivateMessageContext context, bool isActive) async {
@@ -331,10 +391,16 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       PrivateFlowStep.adminCatalogEditValue,
       catalogDraft: CatalogWizardDraft(editLaunchId: launchId, editField: field),
     );
-    return _presentCatalog(context, _templates.adminCatalogAskField(field));
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskField(field),
+      replyMarkup: field == CatalogLaunchField.channel
+          ? _templates.adminCatalogSkipChannelKeyboard()
+          : null,
+    );
   }
 
-  Future<bool> _captureCatalogEdit(PrivateMessageContext context) async {
+  Future<bool> _captureCatalogEdit(PrivateMessageContext context, {String? rawOverride}) async {
     final admin = _catalogAdmin;
     final flow = _flowByUserId[context.userId!]?.catalogDraft;
     final launchId = flow?.editLaunchId;
@@ -343,7 +409,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (admin == null || launch == null || field == null) {
       return _showCatalogList(context);
     }
-    final text = context.text?.trim() ?? '';
+    final text = rawOverride ?? context.text?.trim() ?? '';
     var overlay = admin.draftFromLaunch(launch);
     switch (field) {
       case CatalogLaunchField.title:
@@ -431,9 +497,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           return _presentCatalog(
             context,
             _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+            replyMarkup: _templates.adminCatalogSkipChannelKeyboard(),
           );
         }
-        final skipped = text.isEmpty || text == '-' || text == '—';
+        final skipped = CoursesSheetParser.isOmittedChannelId(text);
         overlay = overlay.copyWith(
           channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
         );

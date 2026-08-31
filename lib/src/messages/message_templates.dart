@@ -76,6 +76,8 @@ final class MessageTemplates {
   static const String buttonAdminCatalogDelete = '🗑 Удалить';
   static const String buttonAdminCatalogBack = '↩️ К списку';
   static const String buttonAdminCatalogSave = '💾 Записать';
+  static const String buttonAdminCatalogKeepCode = '✅ Оставить этот код';
+  static const String buttonAdminCatalogSkipChannel = 'Без своего канала';
   static const String buttonAdminCatalogYes = '✅ Да';
   static const String buttonAdminCatalogNo = '❌ Нет';
 
@@ -124,6 +126,8 @@ final class MessageTemplates {
   static const String cbCatalogCreateNo = 'ccn';
   static const String cbCatalogActiveYes = 'cay';
   static const String cbCatalogActiveNo = 'can';
+  static const String cbCatalogKeepCode = 'ckc';
+  static const String cbCatalogSkipChannel = 'csk';
   // TODO(mvp-reset): remove with buttonAdminClearFunnel.
   static const String cbAdminClearFunnelConfirm = 'cfy';
   static const String cbAdminClearFunnelAbort = 'cfn';

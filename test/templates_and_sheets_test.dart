@@ -243,12 +243,30 @@ void main() {
       ..._inlineCallbackData(templates.adminCatalogListKeyboard(<Launch>[launch])),
       ..._inlineCallbackData(templates.adminCatalogCardKeyboard(launch)),
       ..._inlineCallbackData(templates.adminCatalogFieldsKeyboard(launch.id)),
+      ..._inlineCallbackData(templates.adminCatalogKeepCodeKeyboard()),
+      ..._inlineCallbackData(templates.adminCatalogSkipChannelKeyboard()),
     ];
     expect(data, isNotEmpty);
     expect(data.every((item) => item.length <= 64), isTrue);
     expect(data, contains(MessageTemplates.cbCatalogNew));
     expect(data, contains('${MessageTemplates.cbCatalogOpen}12'));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.price)));
+    expect(data, contains(MessageTemplates.cbCatalogKeepCode));
+    expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
+  });
+
+  test('admin catalog channel prompt does not ask for an empty Telegram message', () {
+    final templates = MessageTemplates();
+    expect(
+      templates.adminCatalogAskChannel(),
+      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+    );
+    expect(templates.adminCatalogAskChannel(), isNot(contains('Пусто')));
+    expect(templates.adminCatalogAskField(CatalogLaunchField.channel), isNot(contains('Пусто')));
+    expect(
+      templates.adminCatalogFieldError(CatalogFieldError.badChannel),
+      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+    );
   });
 
   test('admin clear-funnel copy asks to confirm', () {

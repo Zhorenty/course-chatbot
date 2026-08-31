@@ -87,6 +87,10 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _setCatalogCreateActive(context, true);
       case MessageTemplates.cbCatalogActiveNo:
         return _setCatalogCreateActive(context, false);
+      case MessageTemplates.cbCatalogKeepCode:
+        return _keepCatalogCreateCode(context);
+      case MessageTemplates.cbCatalogSkipChannel:
+        return _skipCatalogChannel(context);
       case MessageTemplates.cbGuide:
         return _deliverGuide(context, sendWarmup: true);
       case MessageTemplates.cbEnroll:
