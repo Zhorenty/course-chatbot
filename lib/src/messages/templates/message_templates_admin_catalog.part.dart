@@ -3,8 +3,7 @@ part of 'package:course_chatbot/src/messages/message_templates.dart';
 extension MessageTemplatesAdminCatalog on MessageTemplates {
   String adminCatalogOpened() {
     return '<b>Управление курсами</b>\n\n'
-        'Список ниже. «${MessageTemplates.buttonAdminBroadcastCancel}» или '
-        '«${MessageTemplates.buttonAdminMenu}» — выход в админку.';
+        'Список ниже. «${MessageTemplates.buttonAdminBroadcastCancel}» — выход в админку.';
   }
 
   String adminCatalogList(List<Launch> launches, {String? notice}) {

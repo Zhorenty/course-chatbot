@@ -316,7 +316,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return replyKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcastCancel},
-        <String, String>{'text': MessageTemplates.buttonAdminMenu},
       ],
     ]);
   }

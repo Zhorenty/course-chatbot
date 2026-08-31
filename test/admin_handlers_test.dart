@@ -536,6 +536,14 @@ void main() {
     expect(_inlineButtonTexts(list.replyMarkup), contains(MessageTemplates.buttonAdminCatalogNew));
     expect(
       _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
+      contains(MessageTemplates.buttonAdminBroadcastCancel),
+    );
+    expect(
+      _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminMenu)),
+    );
+    expect(
+      _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminCatalogNew)),
     );
     expect(_inlineCallbackData(list.replyMarkup).every((data) => data.length <= 64), isTrue);
