@@ -74,31 +74,36 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       );
     }
 
+    final progressId = await _sendProgress(context, _templates.adminSheetsRefreshing());
     CatalogSyncResult? catalogResult;
     String? catalogError;
-    if (sync != null) {
-      try {
-        catalogResult = await sync.sync();
-        if (!catalogResult.ok) {
-          catalogError = catalogResult.error;
-        }
-      } on Object catch (error, stackTrace) {
-        l.w('Admin COURSES catalog refresh failed: $error', stackTrace);
-        catalogError = '$error';
-      }
-    }
-
     var funnelOk = job == null;
     String? funnelError;
-    if (job != null) {
-      try {
-        await job.export();
-        funnelOk = true;
-      } on Object catch (error, stackTrace) {
-        l.w('Admin Google Sheets ВОРОНКА refresh failed: $error', stackTrace);
-        funnelOk = false;
-        funnelError = '$error';
+    try {
+      if (sync != null) {
+        try {
+          catalogResult = await sync.sync();
+          if (!catalogResult.ok) {
+            catalogError = catalogResult.error;
+          }
+        } on Object catch (error, stackTrace) {
+          l.w('Admin COURSES catalog refresh failed: $error', stackTrace);
+          catalogError = '$error';
+        }
       }
+
+      if (job != null) {
+        try {
+          await job.export();
+          funnelOk = true;
+        } on Object catch (error, stackTrace) {
+          l.w('Admin Google Sheets ВОРОНКА refresh failed: $error', stackTrace);
+          funnelOk = false;
+          funnelError = '$error';
+        }
+      }
+    } finally {
+      await _deleteProgress(context, progressId);
     }
 
     return _send(
@@ -118,11 +123,16 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
 
   Future<bool> _adminShowDeepLinks(PrivateMessageContext context) async {
     final sync = _catalogSync;
+    final progressId = sync == null
+        ? null
+        : await _sendProgress(context, _templates.adminDeepLinksRefreshing());
     if (sync != null) {
       try {
-        await sync.sync();
+        await sync.syncLinks();
       } on Object catch (error, stackTrace) {
         l.w('Admin ССЫЛКИ sync failed: $error', stackTrace);
+      } finally {
+        await _deleteProgress(context, progressId);
       }
     }
     return _send(
@@ -130,6 +140,31 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       _templates.adminDeepLinks(_funnel.links.entries),
       replyMarkup: _templates.adminMenuKeyboard(),
     );
+  }
+
+  Future<int?> _sendProgress(PrivateMessageContext context, String text) async {
+    final chatId = context.chatId;
+    if (chatId == null) {
+      return null;
+    }
+    try {
+      return await _sender.sendMessage(chatId, text, parseMode: 'HTML');
+    } on Object catch (error, stackTrace) {
+      l.w('Admin progress message failed: $error', stackTrace);
+      return null;
+    }
+  }
+
+  Future<void> _deleteProgress(PrivateMessageContext context, int? messageId) async {
+    final chatId = context.chatId;
+    if (chatId == null || messageId == null) {
+      return;
+    }
+    try {
+      await _sender.deleteMessage(chatId, messageId: messageId);
+    } on Object catch (error, stackTrace) {
+      l.w('Admin progress delete failed: $error', stackTrace);
+    }
   }
 
   Future<bool> _handleAdminPersonLookup(

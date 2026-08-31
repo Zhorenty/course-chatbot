@@ -63,14 +63,22 @@ final class GoogleSheetsCatalogSync {
     return retry(_syncOnce, shouldRetry: _shouldRetry);
   }
 
+  Future<void> syncLinks() {
+    return retry(_syncLinksOnce, shouldRetry: _shouldRetry);
+  }
+
   Future<CatalogSyncResult> _syncOnce() async {
-    final result = await _syncCoursesOnce();
-    try {
-      await _syncLinksOnce();
-    } on Object catch (error, stackTrace) {
-      l.w('ССЫЛКИ catalog sync failed: $error', stackTrace);
-    }
-    return result;
+    final outcomes = await Future.wait<Object?>(<Future<Object?>>[
+      _syncCoursesOnce(),
+      () async {
+        try {
+          await _syncLinksOnce();
+        } on Object catch (error, stackTrace) {
+          l.w('ССЫЛКИ catalog sync failed: $error', stackTrace);
+        }
+      }(),
+    ]);
+    return outcomes.first! as CatalogSyncResult;
   }
 
   Future<CatalogSyncResult> _syncCoursesOnce() async {

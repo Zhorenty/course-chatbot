@@ -165,6 +165,12 @@ void main() {
     expect(text, isNot(contains('Reels <b>')));
   });
 
+  test('admin progress copy is a short wait hint', () {
+    final templates = MessageTemplates();
+    expect(templates.adminSheetsRefreshing(), contains('Обновляю таблицу'));
+    expect(templates.adminDeepLinksRefreshing(), contains(LinksSheet.tabTitle));
+  });
+
   test('admin deep-link copy without username does not invent t.me URLs', () {
     final text = MessageTemplates().adminDeepLinks(AcquisitionLink.starters);
     expect(text, contains('неизвестен'));

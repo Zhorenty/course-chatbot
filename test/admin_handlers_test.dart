@@ -105,6 +105,8 @@ void main() {
     );
     expect(sheetsHarness.sheetsWriter!.replaceDashboardCount, 1);
     expect(sheetsHarness.course.activeLaunch()?.priceFullKopecks, 2100000);
+    expect(sheetsHarness.sender.deletedMessages, hasLength(1));
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Обновляю таблицу')), isFalse);
     expect(
       sheetsHarness.sender.messages.any(
         (m) =>
@@ -121,6 +123,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
+    expect(harness.sender.deletedMessages, isEmpty);
   });
 
   test('admin Диплинки without Sheets still returns four starter links', () async {
@@ -131,6 +134,7 @@ void main() {
     await named.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminLinks),
     );
+    expect(named.sender.deletedMessages, isEmpty);
     final text = named.sender.messages.last.text;
     expect(text, contains('https://t.me/course_bot?start=ig_reels_guide'));
     expect(text, contains('https://t.me/course_bot?start=threads_guide'));
@@ -148,9 +152,17 @@ void main() {
     );
     addTearDown(sheetsHarness.dispose);
 
+    final catalog = sheetsHarness.sheetsGateway!.valuesBySheetId[0]!;
+    final priceCol = CoursesSheetParser.columnIndex(catalog, CoursesSheet.priceFullRub)!;
+    final dataRow = CoursesSheetParser.headerRowIndex(catalog)! + 1;
+    catalog[dataRow][priceCol] = 21000;
+
     await sheetsHarness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/links'));
+    expect(sheetsHarness.sender.deletedMessages, hasLength(1));
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Собираю диплинки')), isFalse);
     final text = sheetsHarness.sender.messages.last.text;
     expect(text, contains('?start=ig_reels_guide'));
+    expect(sheetsHarness.course.activeLaunch()?.priceFullKopecks, 1800000);
     final tab = sheetsHarness.sheetsGateway!.sheets.firstWhere(
       (sheet) => sheet.title == LinksSheet.tabTitle,
     );

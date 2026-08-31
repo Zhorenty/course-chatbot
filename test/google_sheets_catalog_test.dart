@@ -385,5 +385,25 @@ void main() {
         isFalse,
       );
     });
+
+    test('syncLinks seeds ССЫЛКИ without rewriting COURSES', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.syncLinks();
+      expect(course.activeLaunch(), isNull);
+      expect(links.entries, hasLength(4));
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      expect(
+        gateway.valuesBySheetId[tab.sheetId]!.any(
+          (row) => row.contains('https://t.me/course_bot?start=direct_course'),
+        ),
+        isTrue,
+      );
+    });
   });
 }

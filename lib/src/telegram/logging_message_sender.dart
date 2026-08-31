@@ -80,6 +80,11 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
+  Future<void> deleteMessage(int chatId, {required int messageId}) {
+    return _inner.deleteMessage(chatId, messageId: messageId);
+  }
+
+  @override
   Future<int> forwardMessage({
     required int chatId,
     required int fromChatId,

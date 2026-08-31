@@ -11,8 +11,10 @@ import 'package:course_chatbot/src/telegram/message_sender.dart';
 
 final class FakeMessageSender implements MessageSender {
   final List<SentMessage> messages = <SentMessage>[];
+  final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<String> documents = <String>[];
   Object? throwOnSend;
+  int _nextMessageId = 0;
 
   @override
   Future<int> sendMessage(
@@ -27,16 +29,18 @@ final class FakeMessageSender implements MessageSender {
     if (error != null) {
       throw error;
     }
+    _nextMessageId += 1;
     messages.add(
       SentMessage(
         chatId: chatId,
+        messageId: _nextMessageId,
         text: text,
         parseMode: parseMode,
         replyMarkup: replyMarkup,
         disableNotification: disableNotification,
       ),
     );
-    return messages.length;
+    return _nextMessageId;
   }
 
   @override
@@ -74,6 +78,12 @@ final class FakeMessageSender implements MessageSender {
     Map<String, Object?>? replyMarkup,
   }) async {
     markupEdits.add(MarkupEdit(chatId: chatId, messageId: messageId, replyMarkup: replyMarkup));
+  }
+
+  @override
+  Future<void> deleteMessage(int chatId, {required int messageId}) async {
+    deletedMessages.add(DeletedMessage(chatId: chatId, messageId: messageId));
+    messages.removeWhere((m) => m.chatId == chatId && m.messageId == messageId);
   }
 
   final List<ForwardedMessage> forwards = <ForwardedMessage>[];
@@ -143,9 +153,17 @@ final class MarkupEdit {
   final Map<String, Object?>? replyMarkup;
 }
 
+final class DeletedMessage {
+  const DeletedMessage({required this.chatId, required this.messageId});
+
+  final int chatId;
+  final int messageId;
+}
+
 final class SentMessage {
   const SentMessage({
     required this.chatId,
+    required this.messageId,
     required this.text,
     this.parseMode,
     this.replyMarkup,
@@ -153,6 +171,7 @@ final class SentMessage {
   });
 
   final int chatId;
+  final int messageId;
   final String text;
   final String? parseMode;
   final Map<String, Object?>? replyMarkup;

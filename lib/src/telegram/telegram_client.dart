@@ -487,6 +487,14 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
+  Future<void> deleteMessage(int chatId, {required int messageId}) async {
+    await _post(
+      'deleteMessage',
+      body: <String, Object?>{'chat_id': chatId, 'message_id': messageId},
+    );
+  }
+
+  @override
   Future<int> forwardMessage({
     required int chatId,
     required int fromChatId,

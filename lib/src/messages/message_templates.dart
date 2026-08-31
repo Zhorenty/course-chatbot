@@ -47,9 +47,9 @@ final class MessageTemplates {
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminMenu = '🛠 Админка';
   static const String buttonAdminChangeStatus = '✏️ Изменить статус';
-  static const String buttonAdminStatusUnpaid = 'Не оплачено';
-  static const String buttonAdminStatusDeposit = 'Предоплата';
-  static const String buttonAdminStatusPaid = 'Оплачено полностью';
+  static const String buttonAdminStatusUnpaid = '⏳ Не оплачено';
+  static const String buttonAdminStatusDeposit = '💵 Предоплата';
+  static const String buttonAdminStatusPaid = '✅ Оплачено полностью';
   static const String buttonAdminCancel = '🚫 Убрать с курса';
   static const String buttonAdminStatusBack = '↩️ К карточке';
   static const String buttonAdminReinvite = '🔗 Выдать ссылку в канал';
@@ -792,6 +792,15 @@ final class MessageTemplates {
 
   String adminInviteReissued() {
     return '🔗 Ссылку в канал отправил человеку. Предыдущая больше не действует.';
+  }
+
+  String adminSheetsRefreshing() {
+    return 'Обновляю таблицу — читаю набор и перезаписываю воронку. Подожди несколько секунд.';
+  }
+
+  String adminDeepLinksRefreshing() {
+    return 'Собираю диплинки с листа ${escapeHtml(LinksSheet.tabTitle)}. '
+        'Подожди несколько секунд.';
   }
 
   String adminSheetsUpdated({Launch? launch}) {

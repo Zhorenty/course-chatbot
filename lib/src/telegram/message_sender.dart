@@ -32,6 +32,8 @@ abstract interface class MessageSender {
     Map<String, Object?>? replyMarkup,
   });
 
+  Future<void> deleteMessage(int chatId, {required int messageId});
+
   Future<int> forwardMessage({
     required int chatId,
     required int fromChatId,
