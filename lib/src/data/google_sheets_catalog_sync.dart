@@ -134,15 +134,6 @@ final class GoogleSheetsCatalogSync {
           ? CoursesSheet.extraDataRows
           : dataRowCount,
     );
-    await _gateway
-        .applyDashboardLook(
-          sheetId: CoursesSheet.sheetId,
-          dashboard: GoogleSheetsCoursesCatalog.build(
-            headerRow: headerAt,
-            dataRowCount: dataRowCount,
-          ),
-        )
-        .timeout(requestTimeout);
 
     final draft = parsed.active;
     if (draft == null) {
@@ -198,6 +189,19 @@ final class GoogleSheetsCatalogSync {
         seeded: seeded,
         error: 'active launch missing after sync',
       );
+    }
+    try {
+      await _gateway
+          .applyDashboardLook(
+            sheetId: CoursesSheet.sheetId,
+            dashboard: GoogleSheetsCoursesCatalog.build(
+              headerRow: headerAt,
+              dataRowCount: dataRowCount,
+            ),
+          )
+          .timeout(requestTimeout);
+    } on Object catch (error, stackTrace) {
+      l.w('COURSES catalog look failed: $error', stackTrace);
     }
     l.i(
       'COURSES catalog synced. launch=${launch.code} '
@@ -287,18 +291,22 @@ final class GoogleSheetsCatalogSync {
         ? LinksSheet.extraDataRows
         : filled + 3;
     final coursesSource = await _coursesDropdownSource();
-    await _gateway
-        .applyDashboardLook(
-          sheetId: tab.sheetId,
-          dashboard: GoogleSheetsLinksCatalog.build(
-            headerRow: headerAt,
-            dataRowCount: dataRowCount,
-            coursesSheetTitle: coursesSource.title,
-            coursesHeaderRow: coursesSource.headerRow,
-            launchTitles: coursesSource.launchTitles,
-          ),
-        )
-        .timeout(requestTimeout);
+    try {
+      await _gateway
+          .applyDashboardLook(
+            sheetId: tab.sheetId,
+            dashboard: GoogleSheetsLinksCatalog.build(
+              headerRow: headerAt,
+              dataRowCount: dataRowCount,
+              coursesSheetTitle: coursesSource.title,
+              coursesHeaderRow: coursesSource.headerRow,
+              launchTitles: coursesSource.launchTitles,
+            ),
+          )
+          .timeout(requestTimeout);
+    } on Object catch (error, stackTrace) {
+      l.w('ССЫЛКИ catalog look failed: $error', stackTrace);
+    }
 
     _links.replaceAll(parsed.rows);
     l.i(

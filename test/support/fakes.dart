@@ -422,6 +422,8 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   int applyLookCount = 0;
   GoogleSheetsDashboard? lastLook;
   final Map<int, GoogleSheetsDashboard> looksBySheetId = <int, GoogleSheetsDashboard>{};
+  final List<GoogleSheetsMerge> unmerged = <GoogleSheetsMerge>[];
+  Object? applyLookError;
 
   @override
   Future<Set<String>> listSheetTitles() async {
@@ -544,6 +546,15 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required GoogleSheetsDashboard dashboard,
   }) async {
     applyLookCount += 1;
+    for (final sheet in sheets) {
+      if (sheet.sheetId == sheetId) {
+        unmerged.addAll(sheet.merges);
+        break;
+      }
+    }
+    if (applyLookError != null) {
+      throw applyLookError!;
+    }
     lastLook = dashboard;
     looksBySheetId[sheetId] = dashboard;
   }

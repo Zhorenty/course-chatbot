@@ -175,6 +175,41 @@ void main() {
 
     tearDown(() => db.dispose());
 
+    test('look unmerge uses the existing merged range, not a subset', () async {
+      gateway.sheets = const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(
+          title: 'КУРСЫ',
+          sheetId: CoursesSheet.sheetId,
+          merges: <GoogleSheetsMerge>[
+            GoogleSheetsMerge(
+              startRow: 0,
+              endRowExclusive: 1,
+              startColumn: 0,
+              endColumnExclusive: 14,
+            ),
+          ],
+        ),
+      ];
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      expect(gateway.unmerged, hasLength(1));
+      expect(gateway.unmerged.single.endColumnExclusive, 14);
+    });
+
+    test('catalog still upserts when sheet look fails to apply', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      gateway.applyLookError = StateError(
+        'Invalid requests[18].unmergeCells: You must select all cells '
+        'in a merged range to merge or unmerge them.',
+      );
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      expect(course.activeLaunch()?.code, CoursesSheet.seedLaunchCode);
+    });
+
     test('empty gid=0 is seeded once and upserted', () async {
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
       final first = await sync.sync();

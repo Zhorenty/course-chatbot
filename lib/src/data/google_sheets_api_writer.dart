@@ -258,7 +258,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   Future<List<GoogleSheetsSheetInfo>> describeSheets() async {
     final spreadsheet = await _api.spreadsheets.get(
       _spreadsheetId,
-      $fields: 'sheets.properties(sheetId,title),sheets.charts.chartId',
+      $fields: 'sheets.properties(sheetId,title),sheets.charts.chartId,sheets.merges',
     );
     final result = <GoogleSheetsSheetInfo>[];
     for (final sheet in spreadsheet.sheets ?? const <Sheet>[]) {
@@ -277,6 +277,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                   .whereType<int>()
                   .toList(growable: false) ??
               const <int>[],
+          merges: _mergesFromSheet(sheet),
         ),
       );
     }
@@ -396,7 +397,9 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required int sheetId,
     required GoogleSheetsDashboard dashboard,
   }) async {
+    final existing = await _mergesOnSheet(sheetId);
     final formatRequests = <Request>[
+      ..._unmergeRequests(sheetId, existing),
       ..._sheetChromeRequests(sheetId, dashboard),
       ..._columnWidthRequests(sheetId, dashboard.columnWidthsPx),
       ..._rowHeightRequests(sheetId, dashboard.rowHeightsPx),
@@ -579,7 +582,6 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         endColumnIndex: style.endColumnExclusive,
       );
       if (style.merge) {
-        requests.add(Request(unmergeCells: UnmergeCellsRequest(range: range)));
         requests.add(
           Request(
             mergeCells: MergeCellsRequest(range: range, mergeType: 'MERGE_ALL'),
@@ -824,6 +826,58 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       return null;
     }
     return Color(red: rgb.red, green: rgb.green, blue: rgb.blue);
+  }
+
+  Future<List<GoogleSheetsMerge>> _mergesOnSheet(int sheetId) async {
+    final sheets = await describeSheets();
+    for (final sheet in sheets) {
+      if (sheet.sheetId == sheetId) {
+        return sheet.merges;
+      }
+    }
+    return const <GoogleSheetsMerge>[];
+  }
+
+  static List<GoogleSheetsMerge> _mergesFromSheet(Sheet sheet) {
+    final result = <GoogleSheetsMerge>[];
+    for (final merge in sheet.merges ?? const <GridRange>[]) {
+      final startRow = merge.startRowIndex;
+      final endRow = merge.endRowIndex;
+      final startColumn = merge.startColumnIndex;
+      final endColumn = merge.endColumnIndex;
+      if (startRow == null || endRow == null || startColumn == null || endColumn == null) {
+        continue;
+      }
+      if (endRow <= startRow || endColumn <= startColumn) {
+        continue;
+      }
+      result.add(
+        GoogleSheetsMerge(
+          startRow: startRow,
+          endRowExclusive: endRow,
+          startColumn: startColumn,
+          endColumnExclusive: endColumn,
+        ),
+      );
+    }
+    return result;
+  }
+
+  static List<Request> _unmergeRequests(int sheetId, List<GoogleSheetsMerge> merges) {
+    return <Request>[
+      for (final merge in merges)
+        Request(
+          unmergeCells: UnmergeCellsRequest(
+            range: GridRange(
+              sheetId: sheetId,
+              startRowIndex: merge.startRow,
+              endRowIndex: merge.endRowExclusive,
+              startColumnIndex: merge.startColumn,
+              endColumnIndex: merge.endColumnExclusive,
+            ),
+          ),
+        ),
+    ];
   }
 
   @override

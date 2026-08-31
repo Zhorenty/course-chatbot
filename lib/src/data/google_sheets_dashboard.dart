@@ -165,14 +165,30 @@ final class GoogleSheetsDashboard {
   final List<GoogleSheetsValidation> validations;
 }
 
+final class GoogleSheetsMerge {
+  const GoogleSheetsMerge({
+    required this.startRow,
+    required this.endRowExclusive,
+    required this.startColumn,
+    required this.endColumnExclusive,
+  });
+
+  final int startRow;
+  final int endRowExclusive;
+  final int startColumn;
+  final int endColumnExclusive;
+}
+
 final class GoogleSheetsSheetInfo {
   const GoogleSheetsSheetInfo({
     required this.title,
     required this.sheetId,
     this.chartIds = const <int>[],
+    this.merges = const <GoogleSheetsMerge>[],
   });
 
   final String title;
   final int sheetId;
   final List<int> chartIds;
+  final List<GoogleSheetsMerge> merges;
 }
