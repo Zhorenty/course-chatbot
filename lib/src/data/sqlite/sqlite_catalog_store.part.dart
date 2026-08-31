@@ -184,6 +184,53 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   @override
+  List<Launch> listLaunches() {
+    final rows = _db.select('SELECT * FROM launches ORDER BY is_active DESC, id ASC;');
+    return <Launch>[for (final row in rows) mapLaunch(row)];
+  }
+
+  @override
+  LaunchUsage launchUsage(int launchId) {
+    int count(String table) {
+      final rows = _db.select('SELECT COUNT(*) AS c FROM $table WHERE launch_id = ?;', <Object?>[
+        launchId,
+      ]);
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    return LaunchUsage(
+      enrollments: count('user_enrollments'),
+      orders: count('orders'),
+      channelAccess: count('channel_access'),
+      acquisitionEvents: count('acquisition_events'),
+      warmupSent: count('warmup_sent'),
+    );
+  }
+
+  @override
+  void renameLaunchCode({required String from, required String to}) {
+    final previous = from.trim();
+    final next = to.trim();
+    if (previous.isEmpty || next.isEmpty || previous == next) {
+      return;
+    }
+    final taken = launchByCode(next);
+    if (taken != null) {
+      throw StateError('launch code "$next" is taken');
+    }
+    _db.execute('UPDATE launches SET code = ? WHERE code = ?;', <Object?>[next, previous]);
+  }
+
+  @override
+  bool tryDeleteLaunch(int id) {
+    if (launchUsage(id).hasPeople) {
+      return false;
+    }
+    _db.execute('DELETE FROM launches WHERE id = ?;', <Object?>[id]);
+    return true;
+  }
+
+  @override
   void setLeadMagnetFileId(String fileId, {int? launchId}) {
     final id = launchId ?? activeLaunch()?.id;
     if (id == null) {

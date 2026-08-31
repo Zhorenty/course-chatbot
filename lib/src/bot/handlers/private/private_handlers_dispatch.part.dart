@@ -75,6 +75,18 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
   Future<bool> _handleCallback(PrivateMessageContext context) async {
     final data = context.callbackData ?? '';
     switch (data) {
+      case MessageTemplates.cbCatalogMenu:
+        return _showCatalogList(context);
+      case MessageTemplates.cbCatalogNew:
+        return _startCatalogCreate(context);
+      case MessageTemplates.cbCatalogCreateYes:
+        return _confirmCatalogCreate(context);
+      case MessageTemplates.cbCatalogCreateNo:
+        return _showCatalogList(context);
+      case MessageTemplates.cbCatalogActiveYes:
+        return _setCatalogCreateActive(context, true);
+      case MessageTemplates.cbCatalogActiveNo:
+        return _setCatalogCreateActive(context, false);
       case MessageTemplates.cbGuide:
         return _deliverGuide(context, sendWarmup: true);
       case MessageTemplates.cbEnroll:
@@ -213,6 +225,40 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return false;
       }
       return _adminEnsureAndShowCard(context, targetId);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDeleteYes)) {
+      return _confirmCatalogDelete(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogDeleteYes),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDelete)) {
+      return _askCatalogDelete(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogDelete),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogField)) {
+      final parsed = MessageTemplates.catalogFieldFromCallback(data);
+      return _askCatalogEditField(context, parsed?.id, parsed?.field);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogEdit)) {
+      return _showCatalogFields(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogEdit),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogActivate)) {
+      return _activateCatalogLaunch(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogActivate),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogOpen)) {
+      return _showCatalogCard(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogOpen),
+      );
     }
     return false;
   }

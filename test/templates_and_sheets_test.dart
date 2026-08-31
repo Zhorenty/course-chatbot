@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
@@ -197,6 +198,8 @@ void main() {
     final templates = MessageTemplates();
     final texts = _replyButtonTexts(templates.adminMenuKeyboard());
     expect(texts, contains(MessageTemplates.buttonAdminSearch));
+    expect(texts, contains(MessageTemplates.buttonAdminAddUser));
+    expect(texts, contains(MessageTemplates.buttonAdminCatalog));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
     expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
@@ -205,6 +208,30 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+  });
+
+  test('admin catalog inline callbacks stay short', () {
+    const launch = Launch(
+      id: 12,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      isActive: true,
+    );
+    final templates = MessageTemplates();
+    final data = <String>[
+      ..._inlineCallbackData(templates.adminCatalogListKeyboard(<Launch>[launch])),
+      ..._inlineCallbackData(templates.adminCatalogCardKeyboard(launch)),
+      ..._inlineCallbackData(templates.adminCatalogFieldsKeyboard(launch.id)),
+    ];
+    expect(data, isNotEmpty);
+    expect(data.every((item) => item.length <= 64), isTrue);
+    expect(data, contains(MessageTemplates.cbCatalogNew));
+    expect(data, contains('${MessageTemplates.cbCatalogOpen}12'));
+    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.price)));
   });
 
   test('admin clear-funnel copy asks to confirm', () {

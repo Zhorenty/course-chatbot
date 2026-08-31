@@ -419,6 +419,7 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   final List<int> renamedSheetIds = <int>[];
   final List<String> clearedRanges = <String>[];
   int updateValuesCount = 0;
+  final List<String> updatedRanges = <String>[];
   int applyLookCount = 0;
   GoogleSheetsDashboard? lastLook;
   final Map<int, GoogleSheetsDashboard> looksBySheetId = <int, GoogleSheetsDashboard>{};
@@ -493,6 +494,7 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     String valueInputOption = 'RAW',
   }) async {
     updateValuesCount += 1;
+    updatedRanges.add(a1Range);
     final title = _titleFromRange(a1Range);
     final sheet = _sheetByTitle(title);
     if (sheet == null) {
@@ -532,13 +534,39 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     return _copyRows(valuesBySheetId[sheet.sheetId] ?? const <List<Object?>>[]);
   }
 
+  final List<DeletedDimension> deletedDimensions = <DeletedDimension>[];
+
   @override
   Future<void> deleteDimension({
     required int sheetId,
     required String dimension,
     required int startIndex,
     required int endIndex,
-  }) async {}
+  }) async {
+    deletedDimensions.add(
+      DeletedDimension(
+        sheetId: sheetId,
+        dimension: dimension,
+        startIndex: startIndex,
+        endIndex: endIndex,
+      ),
+    );
+    if (dimension != 'ROWS') {
+      return;
+    }
+    final grid = valuesBySheetId[sheetId];
+    if (grid == null || startIndex < 0 || startIndex >= grid.length) {
+      return;
+    }
+    final end = endIndex > grid.length ? grid.length : endIndex;
+    if (end <= startIndex) {
+      return;
+    }
+    valuesBySheetId[sheetId] = <List<Object?>>[
+      ...grid.sublist(0, startIndex),
+      ...grid.sublist(end),
+    ];
+  }
 
   @override
   Future<void> applyDashboardLook({
@@ -601,6 +629,20 @@ final class FakeGoogleSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   static List<List<Object?>> _copyRows(List<List<Object?>> rows) {
     return <List<Object?>>[for (final row in rows) List<Object?>.from(row)];
   }
+}
+
+final class DeletedDimension {
+  const DeletedDimension({
+    required this.sheetId,
+    required this.dimension,
+    required this.startIndex,
+    required this.endIndex,
+  });
+
+  final int sheetId;
+  final String dimension;
+  final int startIndex;
+  final int endIndex;
 }
 
 Map<String, dynamic> privateMessageUpdate({

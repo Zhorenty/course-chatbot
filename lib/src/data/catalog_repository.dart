@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 
 abstract interface class CatalogRepository {
   Launch upsertLaunch({
@@ -45,6 +46,14 @@ abstract interface class CatalogRepository {
   Launch? launchByTitle(String title);
 
   Launch? launchByChannelId(int channelId);
+
+  List<Launch> listLaunches();
+
+  LaunchUsage launchUsage(int launchId);
+
+  void renameLaunchCode({required String from, required String to});
+
+  bool tryDeleteLaunch(int id);
 
   void setLeadMagnetFileId(String fileId, {int? launchId});
 }

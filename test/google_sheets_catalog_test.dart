@@ -160,6 +160,14 @@ void main() {
     expect(CoursesSheet.headerNotes, hasLength(CoursesSheet.columnCount));
   });
 
+  test('suggestLaunchCode transliterates a Russian title', () {
+    expect(CoursesSheetParser.suggestLaunchCode('Ноябрь 2026'), 'noyabr-2026');
+    expect(
+      CoursesSheetParser.suggestLaunchCode('Запуск', existing: const <String>{'zapusk'}),
+      'zapusk-2',
+    );
+  });
+
   group('GoogleSheetsCatalogSync', () {
     late Database db;
     late SqliteCourseRepository course;
@@ -575,6 +583,62 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('upsertCourseRow appends a spec row without wiping chrome', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.sync();
+      await sync.upsertCourseRow(
+        draft: CatalogLaunchDraft(
+          productCode: CoursesSheet.seedProductCode,
+          productTitle: CoursesSheet.seedProductTitle,
+          launchCode: 'nov-26',
+          launchTitle: 'Ноябрь',
+          isActive: true,
+          priceFullKopecks: 2000000,
+          depositKopecks: 0,
+          depositDueDays: 7,
+          courseStartAt: DateTime.utc(2026, 11, 1),
+        ),
+      );
+      final sheet = gateway.valuesBySheetId[0]!;
+      expect(sheet.first.first, CoursesSheet.title);
+      expect(sheet[CoursesSheet.defaultHeaderRow].first, 'Код продукта');
+      final codes = <String>[
+        for (var i = CoursesSheet.defaultHeaderRow + 1; i < sheet.length; i++)
+          if (i < sheet.length &&
+              sheet[i].length > 2 &&
+              sheet[i][2] != null &&
+              sheet[i][2].toString().isNotEmpty)
+            sheet[i][2].toString(),
+      ];
+      expect(codes, containsAll(<String>['launch-1', 'nov-26']));
+      expect(gateway.deletedSheetIds, isEmpty);
+    });
+
+    test('deleteCourseRow removes one data row and keeps gid=0', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.upsertCourseRow(
+        draft: CatalogLaunchDraft(
+          productCode: CoursesSheet.seedProductCode,
+          productTitle: CoursesSheet.seedProductTitle,
+          launchCode: 'nov-26',
+          launchTitle: 'Ноябрь',
+          isActive: false,
+          priceFullKopecks: 2000000,
+          depositKopecks: 0,
+          depositDueDays: 7,
+          courseStartAt: DateTime.utc(2026, 11, 1),
+        ),
+      );
+      await sync.deleteCourseRow(launchCode: 'nov-26');
+      final sheet = gateway.valuesBySheetId[0]!;
+      expect(sheet.first.first, CoursesSheet.title);
+      expect(sheet.any((row) => row.length > 2 && row[2] == 'nov-26'), isFalse);
+      expect(gateway.deletedSheetIds, isEmpty);
+      expect(gateway.deletedDimensions, hasLength(1));
     });
   });
 }

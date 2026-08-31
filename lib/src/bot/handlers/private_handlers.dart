@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
+import 'package:course_chatbot/src/application/launch_catalog_admin_service.dart';
 import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private/admin_gate.dart';
@@ -14,7 +15,9 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -32,6 +35,7 @@ part 'private/private_handlers_start.part.dart';
 part 'private/private_handlers_funnel.part.dart';
 part 'private/private_handlers_checkout.part.dart';
 part 'private/private_handlers_admin.part.dart';
+part 'private/private_handlers_admin_catalog.part.dart';
 part 'private/private_handlers_chat_member.part.dart';
 
 final class PrivateHandlers implements PaymentResultNotifier {
@@ -48,6 +52,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     int? adminChatId,
     InteractionWhitelist interactionWhitelist = InteractionWhitelist.production,
     GoogleSheetsCatalogSync? catalogSync,
+    LaunchCatalogAdminService? catalogAdmin,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     DateTime Function()? nowProvider,
     AdminAlertPort? adminAlerts,
@@ -65,6 +70,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _adminChatId = adminChatId,
        _interactionWhitelist = interactionWhitelist,
        _catalogSync = catalogSync,
+       _catalogAdmin = catalogAdmin,
        _sheetsExportJob = sheetsExportJob,
        _adminAlerts = adminAlerts,
        _nowProvider = nowProvider ?? DateTime.now;
@@ -81,6 +87,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final int? _adminChatId;
   final InteractionWhitelist _interactionWhitelist;
   final GoogleSheetsCatalogSync? _catalogSync;
+  final LaunchCatalogAdminService? _catalogAdmin;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final AdminAlertPort? _adminAlerts;
   final DateTime Function() _nowProvider;

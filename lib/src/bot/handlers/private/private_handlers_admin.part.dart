@@ -9,6 +9,12 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.idle);
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
+    if (text == MessageTemplates.buttonAdminBroadcastCancel && _isCatalogStep(flow?.step)) {
+      return _cancelCatalog(context);
+    }
+    if (text == MessageTemplates.buttonAdminCatalog) {
+      return _openCatalogFromMenu(context);
+    }
     if (text == MessageTemplates.buttonAdminSearch) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminSearch);
       return _send(
@@ -41,6 +47,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     if (_isBroadcastStep(flow?.step)) {
       return _captureBroadcastDraft(context);
+    }
+    if (_isCatalogStep(flow?.step)) {
+      return _captureCatalog(context);
     }
     if (flow?.step == PrivateFlowStep.adminComposeDm) {
       return _sendAdminDm(context);

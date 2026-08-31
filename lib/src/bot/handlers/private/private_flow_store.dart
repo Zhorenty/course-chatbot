@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/broadcast.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 
 const Object _unset = Object();
@@ -12,6 +13,77 @@ enum PrivateFlowStep {
   adminBroadcastCompose,
   adminGuideConfirm,
   adminComposeDm,
+  adminCatalogMenu,
+  adminCatalogCreateTitle,
+  adminCatalogCreateCode,
+  adminCatalogCreatePrice,
+  adminCatalogCreateDeposit,
+  adminCatalogCreateDepositDue,
+  adminCatalogCreateStart,
+  adminCatalogCreateChannel,
+  adminCatalogCreateActive,
+  adminCatalogCreateConfirm,
+  adminCatalogEditValue,
+}
+
+final class CatalogWizardDraft {
+  const CatalogWizardDraft({
+    this.title,
+    this.code,
+    this.priceKopecks,
+    this.depositKopecks,
+    this.depositDueAt,
+    this.courseStartAt,
+    this.channelId,
+    this.channelSkipped = false,
+    this.isActive,
+    this.editLaunchId,
+    this.editField,
+  });
+
+  final String? title;
+  final String? code;
+  final int? priceKopecks;
+  final int? depositKopecks;
+  final DateTime? depositDueAt;
+  final DateTime? courseStartAt;
+  final int? channelId;
+  final bool channelSkipped;
+  final bool? isActive;
+  final int? editLaunchId;
+  final CatalogLaunchField? editField;
+
+  CatalogWizardDraft copyWith({
+    Object? title = _unset,
+    Object? code = _unset,
+    Object? priceKopecks = _unset,
+    Object? depositKopecks = _unset,
+    Object? depositDueAt = _unset,
+    Object? courseStartAt = _unset,
+    Object? channelId = _unset,
+    bool? channelSkipped,
+    Object? isActive = _unset,
+    Object? editLaunchId = _unset,
+    Object? editField = _unset,
+  }) {
+    return CatalogWizardDraft(
+      title: identical(title, _unset) ? this.title : title as String?,
+      code: identical(code, _unset) ? this.code : code as String?,
+      priceKopecks: identical(priceKopecks, _unset) ? this.priceKopecks : priceKopecks as int?,
+      depositKopecks: identical(depositKopecks, _unset)
+          ? this.depositKopecks
+          : depositKopecks as int?,
+      depositDueAt: identical(depositDueAt, _unset) ? this.depositDueAt : depositDueAt as DateTime?,
+      courseStartAt: identical(courseStartAt, _unset)
+          ? this.courseStartAt
+          : courseStartAt as DateTime?,
+      channelId: identical(channelId, _unset) ? this.channelId : channelId as int?,
+      channelSkipped: channelSkipped ?? this.channelSkipped,
+      isActive: identical(isActive, _unset) ? this.isActive : isActive as bool?,
+      editLaunchId: identical(editLaunchId, _unset) ? this.editLaunchId : editLaunchId as int?,
+      editField: identical(editField, _unset) ? this.editField : editField as CatalogLaunchField?,
+    );
+  }
 }
 
 final class PrivateFlowState {
@@ -28,6 +100,7 @@ final class PrivateFlowState {
     this.pendingLaunchId,
     this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
+    this.catalogDraft,
   });
 
   final PrivateFlowStep step;
@@ -42,6 +115,7 @@ final class PrivateFlowState {
   final int? pendingLaunchId;
   final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
+  final CatalogWizardDraft? catalogDraft;
 
   bool get offerReady => acceptedConsent;
 
@@ -60,6 +134,7 @@ final class PrivateFlowState {
     Object? pendingLaunchId = _unset,
     bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
+    Object? catalogDraft = _unset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -92,6 +167,9 @@ final class PrivateFlowState {
           : pendingLaunchId as int?,
       acceptedConsent: acceptedConsent ?? this.acceptedConsent,
       broadcastExcludeOptOut: broadcastExcludeOptOut ?? this.broadcastExcludeOptOut,
+      catalogDraft: identical(catalogDraft, _unset)
+          ? this.catalogDraft
+          : catalogDraft as CatalogWizardDraft?,
     );
   }
 }

@@ -28,6 +28,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
+        <String, String>{'text': MessageTemplates.buttonAdminCatalog},
       ],
       // TODO(mvp-reset): remove this row after the first live launch.
       <Map<String, String>>[
@@ -307,6 +308,112 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{
           'text': MessageTemplates.buttonAdminGuideDiscard,
           'callback_data': MessageTemplates.cbGuideDiscard,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogFlowKeyboard() {
+    return replyKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminBroadcastCancel},
+        <String, String>{'text': MessageTemplates.buttonAdminMenu},
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogListKeyboard(List<Launch> launches) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (final launch in launches.take(12))
+        <Map<String, String>>[
+          <String, String>{
+            'text': adminCatalogListButton(launch),
+            'callback_data': '${MessageTemplates.cbCatalogOpen}${launch.id}',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogNew,
+          'callback_data': MessageTemplates.cbCatalogNew,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogCardKeyboard(Launch launch) {
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogEdit,
+          'callback_data': '${MessageTemplates.cbCatalogEdit}${launch.id}',
+        },
+      ],
+      if (!launch.isActive)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminCatalogActivate,
+            'callback_data': '${MessageTemplates.cbCatalogActivate}${launch.id}',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogDelete,
+          'callback_data': '${MessageTemplates.cbCatalogDelete}${launch.id}',
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': MessageTemplates.cbCatalogMenu,
+        },
+      ],
+    ];
+    return inlineKeyboard(rows);
+  }
+
+  Map<String, Object?> adminCatalogFieldsKeyboard(int launchId) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (final field in CatalogLaunchField.values)
+        <Map<String, String>>[
+          <String, String>{
+            'text': adminCatalogFieldLabel(field),
+            'callback_data': MessageTemplates.catalogFieldData(launchId, field),
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogActiveKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminConfirmYes,
+          'callback_data': MessageTemplates.cbCatalogActiveYes,
+        },
+        <String, String>{
+          'text': MessageTemplates.buttonAdminConfirmNo,
+          'callback_data': MessageTemplates.cbCatalogActiveNo,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogConfirmCreateKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogSave,
+          'callback_data': MessageTemplates.cbCatalogCreateYes,
+        },
+        <String, String>{
+          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'callback_data': MessageTemplates.cbCatalogCreateNo,
         },
       ],
     ]);

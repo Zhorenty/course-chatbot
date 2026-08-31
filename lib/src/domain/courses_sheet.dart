@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/domain/money.dart';
 
-/// Human-editable catalog on spreadsheet `gid=0`. Bot reads; ВОРОНКА must not live here.
+/// Human-editable catalog on spreadsheet `gid=0`. Admin writes rows from the bot
+/// or by hand; ВОРОНКА must not live here.
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
@@ -26,10 +27,11 @@ abstract final class CoursesSheet {
   static const String status = 'status';
 
   static const String title = 'Курс · Каталог запусков';
-  static const String titleAside = 'Правят руками';
+  static const String titleAside = 'Админ в боте или руками';
   static const String hint =
       'Поставь «да» в одной строке — это текущий набор. Цены в рублях, даты как 19.08.2026. '
-      'После правок нажми в боте «Обновить Google Sheets».';
+      'Править можно в боте («Управление курсами») или здесь. '
+      'После правок в таблице нажми в боте «Обновить Google Sheets».';
 
   static const List<String> headers = <String>[
     productCode,
@@ -170,6 +172,43 @@ abstract final class CoursesSheet {
     ];
   }
 
+  static String formatDottedDate(
+    DateTime date, {
+    int timezoneOffsetHours = defaultTimezoneOffsetHours,
+  }) {
+    final local = date.toUtc().add(Duration(hours: timezoneOffsetHours));
+    final dd = local.day.toString().padLeft(2, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    return '$dd.$mm.${local.year}';
+  }
+
+  static Object priceCell(int kopecks) {
+    if (kopecks <= 0) {
+      return '';
+    }
+    if (kopecks % 100 == 0) {
+      return kopecks ~/ 100;
+    }
+    return (kopecks / 100).toStringAsFixed(2);
+  }
+
+  static List<Object?> rowFromDraft(CatalogLaunchDraft draft, {required int rowNumber}) {
+    return padded(<Object?>[
+      draft.productCode,
+      draft.productTitle,
+      draft.launchCode,
+      draft.launchTitle,
+      draft.isActive ? 'да' : '',
+      priceCell(draft.priceFullKopecks),
+      draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : '',
+      draft.depositDueAt == null ? '' : formatDottedDate(draft.depositDueAt!),
+      draft.courseStartAt == null ? '' : formatDottedDate(draft.courseStartAt!),
+      draft.channelId ?? '',
+      draft.leadMagnetFileId ?? '',
+      statusFormula(row: rowNumber),
+    ]);
+  }
+
   static List<Object?> toDisplayHeaders(List<Object?> headerRow) {
     final mapped = <Object?>[
       for (var i = 0; i < headerRow.length; i++)
@@ -267,7 +306,51 @@ final class CatalogLaunchDraft {
       leadMagnetUrl: this.leadMagnetUrl ?? leadMagnetUrl,
     );
   }
+
+  CatalogLaunchDraft copyWith({
+    String? productCode,
+    String? productTitle,
+    String? launchCode,
+    String? launchTitle,
+    bool? isActive,
+    int? priceFullKopecks,
+    int? depositKopecks,
+    int? depositDueDays,
+    Object? depositDueAt = _catalogDraftUnset,
+    Object? courseStartAt = _catalogDraftUnset,
+    Object? channelId = _catalogDraftUnset,
+    Object? offerUrl = _catalogDraftUnset,
+    Object? leadMagnetFileId = _catalogDraftUnset,
+    Object? leadMagnetUrl = _catalogDraftUnset,
+  }) {
+    return CatalogLaunchDraft(
+      productCode: productCode ?? this.productCode,
+      productTitle: productTitle ?? this.productTitle,
+      launchCode: launchCode ?? this.launchCode,
+      launchTitle: launchTitle ?? this.launchTitle,
+      isActive: isActive ?? this.isActive,
+      priceFullKopecks: priceFullKopecks ?? this.priceFullKopecks,
+      depositKopecks: depositKopecks ?? this.depositKopecks,
+      depositDueDays: depositDueDays ?? this.depositDueDays,
+      depositDueAt: identical(depositDueAt, _catalogDraftUnset)
+          ? this.depositDueAt
+          : depositDueAt as DateTime?,
+      courseStartAt: identical(courseStartAt, _catalogDraftUnset)
+          ? this.courseStartAt
+          : courseStartAt as DateTime?,
+      channelId: identical(channelId, _catalogDraftUnset) ? this.channelId : channelId as int?,
+      offerUrl: identical(offerUrl, _catalogDraftUnset) ? this.offerUrl : offerUrl as String?,
+      leadMagnetFileId: identical(leadMagnetFileId, _catalogDraftUnset)
+          ? this.leadMagnetFileId
+          : leadMagnetFileId as String?,
+      leadMagnetUrl: identical(leadMagnetUrl, _catalogDraftUnset)
+          ? this.leadMagnetUrl
+          : leadMagnetUrl as String?,
+    );
+  }
 }
+
+const Object _catalogDraftUnset = Object();
 
 final class CoursesSheetParseResult {
   const CoursesSheetParseResult({
@@ -364,6 +447,102 @@ abstract final class CoursesSheetParser {
       return null;
     }
     return _headerIndex(rows[headerAt])[canonical];
+  }
+
+  static Map<String, int> headerIndexMap(List<Object?> headerRow) => _headerIndex(headerRow);
+
+  static String? cellOf(List<Object?> raw, Map<String, int> headerIndex, String column) {
+    return _cell(raw, headerIndex, column);
+  }
+
+  static bool isVacantDataRow(List<Object?> raw, Map<String, int> headerIndex) {
+    for (final name in CoursesSheet.headers) {
+      if (name == CoursesSheet.status) {
+        continue;
+      }
+      if (_cell(raw, headerIndex, name) != null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static final RegExp launchCodePattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
+  static bool isValidLaunchCode(String raw) => launchCodePattern.hasMatch(raw.trim());
+
+  static DateTime? parseDate(String? raw) => _parseIsoDate(raw);
+
+  static DateTime? parseDateEndOfDay(
+    String? raw, {
+    int timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
+  }) {
+    return _parseIsoDateEndOfDay(raw, timezoneOffsetHours: timezoneOffsetHours);
+  }
+
+  static int? parsePriceKopecks(String? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final compact = raw.trim().replaceAll('\u00a0', '').replaceAll(' ', '');
+    if (compact.isEmpty) {
+      return null;
+    }
+    return parseRubStringToKopecks(compact);
+  }
+
+  static int? parseChannelId(String? raw) {
+    final text = raw?.trim() ?? '';
+    if (text.isEmpty) {
+      return null;
+    }
+    final compact = text.replaceAll('\u00a0', '').replaceAll(' ', '').replaceAll('−', '-');
+    return int.tryParse(compact);
+  }
+
+  static String suggestLaunchCode(String title, {Set<String> existing = const <String>{}}) {
+    final buffer = StringBuffer();
+    for (final rune in title.trim().toLowerCase().runes) {
+      final char = String.fromCharCode(rune);
+      final mapped = _slugTranslit[char];
+      if (mapped != null) {
+        buffer.write(mapped);
+        continue;
+      }
+      if (RegExp(r'[a-z0-9]').hasMatch(char)) {
+        buffer.write(char);
+        continue;
+      }
+      if (char == '_' || char == '-') {
+        buffer.write(char);
+        continue;
+      }
+      buffer.write('-');
+    }
+    var slug = buffer
+        .toString()
+        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (slug.isEmpty) {
+      slug = 'launch';
+    }
+    if (slug.length > 32) {
+      slug = slug.substring(0, 32).replaceAll(RegExp(r'-+$'), '');
+    }
+    if (slug.isEmpty) {
+      slug = 'launch';
+    }
+    final taken = existing.map((code) => code.toLowerCase()).toSet();
+    if (!taken.contains(slug.toLowerCase())) {
+      return slug;
+    }
+    for (var i = 2; i < 100; i++) {
+      final candidate = '$slug-$i';
+      if (!taken.contains(candidate.toLowerCase())) {
+        return candidate;
+      }
+    }
+    return '$slug-new';
   }
 
   static bool headerMatchesSpec(List<Object?> headerRow) {
@@ -625,7 +804,11 @@ DateTime? _utcDate(String yearRaw, String monthRaw, String dayRaw) {
   if (month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }
-  return DateTime.utc(year, month, day);
+  final date = DateTime.utc(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) {
+    return null;
+  }
+  return date;
 }
 
 DateTime? _parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours}) {
@@ -642,3 +825,39 @@ DateTime? _parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours})
     59,
   ).subtract(Duration(hours: timezoneOffsetHours));
 }
+
+const Map<String, String> _slugTranslit = <String, String>{
+  'а': 'a',
+  'б': 'b',
+  'в': 'v',
+  'г': 'g',
+  'д': 'd',
+  'е': 'e',
+  'ё': 'e',
+  'ж': 'zh',
+  'з': 'z',
+  'и': 'i',
+  'й': 'j',
+  'к': 'k',
+  'л': 'l',
+  'м': 'm',
+  'н': 'n',
+  'о': 'o',
+  'п': 'p',
+  'р': 'r',
+  'с': 's',
+  'т': 't',
+  'у': 'u',
+  'ф': 'f',
+  'х': 'h',
+  'ц': 'c',
+  'ч': 'ch',
+  'ш': 'sh',
+  'щ': 'sch',
+  'ъ': '',
+  'ы': 'y',
+  'ь': '',
+  'э': 'e',
+  'ю': 'yu',
+  'я': 'ya',
+};

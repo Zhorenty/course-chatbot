@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
@@ -17,6 +18,7 @@ import 'package:course_chatbot/src/messages/keyboards/keyboard_builders.dart';
 import 'package:intl/intl.dart';
 
 part 'templates/message_templates_keyboards.part.dart';
+part 'templates/message_templates_admin_catalog.part.dart';
 
 /// User-facing copy and keyboards. Marketing tone lives here, not in handlers.
 final class MessageTemplates {
@@ -42,6 +44,7 @@ final class MessageTemplates {
       'Принимаю оферту и соглашаюсь на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminAddUser = '➕ Добавить на курс';
+  static const String buttonAdminCatalog = '📚 Управление курсами';
   static const String buttonAdminBroadcast = '📣 Рассылка';
   static const String buttonAdminLinks = '🔗 Диплинки';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
@@ -67,6 +70,12 @@ final class MessageTemplates {
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
   static const String buttonAdminOpenCard = '👤 Карточка';
+  static const String buttonAdminCatalogNew = '➕ Новый курс';
+  static const String buttonAdminCatalogEdit = 'Изменить поле';
+  static const String buttonAdminCatalogActivate = 'Сделать активным';
+  static const String buttonAdminCatalogDelete = 'Удалить';
+  static const String buttonAdminCatalogBack = '↩️ К списку';
+  static const String buttonAdminCatalogSave = 'Записать';
 
   static const String cbGuide = 'g';
   static const String cbEnroll = 'e';
@@ -101,6 +110,18 @@ final class MessageTemplates {
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
   static const String cbAdminCard = 'ak:';
+  static const String cbCatalogMenu = 'cm';
+  static const String cbCatalogNew = 'cn';
+  static const String cbCatalogOpen = 'cl:';
+  static const String cbCatalogEdit = 'ce:';
+  static const String cbCatalogField = 'cf:';
+  static const String cbCatalogActivate = 'ca:';
+  static const String cbCatalogDelete = 'cd:';
+  static const String cbCatalogDeleteYes = 'cdy:';
+  static const String cbCatalogCreateYes = 'ccy';
+  static const String cbCatalogCreateNo = 'ccn';
+  static const String cbCatalogActiveYes = 'cay';
+  static const String cbCatalogActiveNo = 'can';
   // TODO(mvp-reset): remove with buttonAdminClearFunnel.
   static const String cbAdminClearFunnelConfirm = 'cfy';
   static const String cbAdminClearFunnelAbort = 'cfn';
@@ -572,7 +593,7 @@ final class MessageTemplates {
 
   String adminMenu() {
     return '<b>Админка</b>\n\n'
-        'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
+        'Поиск и карточка человека, добавить на курс, управление курсами, ручной статус, рассылка сегменту. '
         'Диплинки — «${MessageTemplates.buttonAdminLinks}». '
         'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}». '
         // TODO(mvp-reset): drop this sentence with the clear-funnel button.
@@ -923,6 +944,27 @@ final class MessageTemplates {
 
   static String adminStatusSetData(AdminPaymentStatus status, int userId) {
     return '$cbAdminStatusSet${status.code}:$userId';
+  }
+
+  static String catalogFieldData(int launchId, CatalogLaunchField field) {
+    return '$cbCatalogField$launchId:${field.token}';
+  }
+
+  static ({int id, CatalogLaunchField field})? catalogFieldFromCallback(String data) {
+    if (!data.startsWith(cbCatalogField)) {
+      return null;
+    }
+    final rest = data.substring(cbCatalogField.length);
+    final sep = rest.indexOf(':');
+    if (sep <= 0) {
+      return null;
+    }
+    final id = int.tryParse(rest.substring(0, sep));
+    final field = CatalogLaunchField.fromToken(rest.substring(sep + 1));
+    if (id == null || field == null) {
+      return null;
+    }
+    return (id: id, field: field);
   }
 
   static ({AdminPaymentStatus status, int userId})? adminStatusFromCallback(String data) {

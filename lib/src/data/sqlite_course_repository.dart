@@ -10,6 +10,7 @@ import 'package:course_chatbot/src/data/warmup_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_event.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
@@ -195,6 +196,7 @@ class _SqliteCourseStore {
       offerUrl: row['offer_url'] as String?,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
       leadMagnetUrl: row['lead_magnet_url'] as String?,
+      isActive: (row['is_active'] as int?) == 1,
     );
   }
 

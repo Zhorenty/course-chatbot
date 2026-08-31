@@ -67,6 +67,207 @@ final class GoogleSheetsCatalogSync {
     return retry(_syncLinksOnce, shouldRetry: _shouldRetry);
   }
 
+  Future<void> upsertCourseRow({required CatalogLaunchDraft draft, String? previousLaunchCode}) {
+    return retry(
+      () => _upsertCourseRowOnce(draft: draft, previousLaunchCode: previousLaunchCode),
+      shouldRetry: _shouldRetry,
+    );
+  }
+
+  Future<void> deleteCourseRow({required String launchCode}) {
+    return retry(() => _deleteCourseRowOnce(launchCode), shouldRetry: _shouldRetry);
+  }
+
+  Future<void> _upsertCourseRowOnce({
+    required CatalogLaunchDraft draft,
+    String? previousLaunchCode,
+  }) async {
+    final layout = await _coursesLayout();
+    final headerAt = layout.headerAt;
+    final headerIndex = layout.headerIndex;
+    final rows = layout.rows;
+    final lookup = (previousLaunchCode ?? draft.launchCode).trim();
+    final existingAt = _rowIndexForLaunchCode(
+      rows,
+      headerAt: headerAt,
+      headerIndex: headerIndex,
+      code: lookup,
+    );
+    final newCodeAt = _rowIndexForLaunchCode(
+      rows,
+      headerAt: headerAt,
+      headerIndex: headerIndex,
+      code: draft.launchCode,
+    );
+    if (existingAt == null && newCodeAt != null) {
+      throw StateError('launch code "${draft.launchCode}" already exists');
+    }
+    if (existingAt != null && newCodeAt != null && newCodeAt != existingAt) {
+      throw StateError('launch code "${draft.launchCode}" already exists');
+    }
+
+    final targetAt =
+        existingAt ?? _firstVacantDataRow(rows, headerAt: headerAt, headerIndex: headerIndex);
+
+    final preserved = existingAt == null
+        ? draft
+        : _overlayDraft(draft, rows[existingAt], headerIndex);
+    final cells = CoursesSheet.rowFromDraft(preserved, rowNumber: targetAt + 1);
+    await _gateway
+        .updateValues(
+          a1Range: '${layout.quoted}!A${targetAt + 1}',
+          rows: <List<Object?>>[cells],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+
+    if (preserved.isActive) {
+      await _writeActiveFlags(
+        quoted: layout.quoted,
+        rows: rows,
+        headerAt: headerAt,
+        headerIndex: headerIndex,
+        activeRow: targetAt,
+        activeCode: preserved.launchCode,
+      );
+    }
+  }
+
+  Future<void> _deleteCourseRowOnce(String launchCode) async {
+    final layout = await _coursesLayout();
+    final index = _rowIndexForLaunchCode(
+      layout.rows,
+      headerAt: layout.headerAt,
+      headerIndex: layout.headerIndex,
+      code: launchCode,
+    );
+    if (index == null) {
+      throw StateError('COURSES row "$launchCode" is missing.');
+    }
+    if (index <= layout.headerAt) {
+      throw StateError('Refusing to delete COURSES header or chrome.');
+    }
+    await _gateway
+        .deleteDimension(
+          sheetId: CoursesSheet.sheetId,
+          dimension: 'ROWS',
+          startIndex: index,
+          endIndex: index + 1,
+        )
+        .timeout(requestTimeout);
+  }
+
+  Future<
+    ({
+      String title,
+      String quoted,
+      int headerAt,
+      Map<String, int> headerIndex,
+      List<List<Object?>> rows,
+    })
+  >
+  _coursesLayout() async {
+    final sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    final catalogSheet = _sheetById(sheets, CoursesSheet.sheetId);
+    if (catalogSheet == null) {
+      throw StateError('COURSES catalog sheet gid=0 is missing.');
+    }
+    final quoted = quoteA1SheetTitle(catalogSheet.title);
+    final rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    final headerAt = CoursesSheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      throw StateError('COURSES is missing the launch_code header.');
+    }
+    return (
+      title: catalogSheet.title,
+      quoted: quoted,
+      headerAt: headerAt,
+      headerIndex: CoursesSheetParser.headerIndexMap(rows[headerAt]),
+      rows: rows,
+    );
+  }
+
+  int? _rowIndexForLaunchCode(
+    List<List<Object?>> rows, {
+    required int headerAt,
+    required Map<String, int> headerIndex,
+    required String code,
+  }) {
+    final wanted = code.trim();
+    if (wanted.isEmpty) {
+      return null;
+    }
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final cell = CoursesSheetParser.cellOf(rows[i], headerIndex, CoursesSheet.launchCode);
+      if (cell == wanted) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  int _firstVacantDataRow(
+    List<List<Object?>> rows, {
+    required int headerAt,
+    required Map<String, int> headerIndex,
+  }) {
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      if (CoursesSheetParser.isVacantDataRow(rows[i], headerIndex)) {
+        return i;
+      }
+    }
+    return rows.length;
+  }
+
+  CatalogLaunchDraft _overlayDraft(
+    CatalogLaunchDraft draft,
+    List<Object?> existing,
+    Map<String, int> headerIndex,
+  ) {
+    String? cell(String column) => CoursesSheetParser.cellOf(existing, headerIndex, column);
+    return draft.copyWith(
+      productCode: _blankToNull(cell(CoursesSheet.productCode)) ?? draft.productCode,
+      productTitle: _blankToNull(cell(CoursesSheet.productTitle)) ?? draft.productTitle,
+      offerUrl: draft.offerUrl ?? cell(CoursesSheet.offerUrl),
+      leadMagnetFileId: draft.leadMagnetFileId ?? cell(CoursesSheet.leadMagnetFileId),
+      leadMagnetUrl: draft.leadMagnetUrl ?? cell(CoursesSheet.leadMagnetUrl),
+    );
+  }
+
+  Future<void> _writeActiveFlags({
+    required String quoted,
+    required List<List<Object?>> rows,
+    required int headerAt,
+    required Map<String, int> headerIndex,
+    required int activeRow,
+    required String activeCode,
+  }) async {
+    final col = headerIndex[CoursesSheet.isActive];
+    if (col == null) {
+      return;
+    }
+    final letter = CoursesSheet.columnLetter(col);
+    final last = rows.length > activeRow + 1 ? rows.length : activeRow + 1;
+    final flags = <List<Object?>>[];
+    for (var i = headerAt + 1; i < last; i++) {
+      final code = i < rows.length
+          ? CoursesSheetParser.cellOf(rows[i], headerIndex, CoursesSheet.launchCode)
+          : null;
+      final isTarget = i == activeRow || code == activeCode;
+      flags.add(<Object?>[isTarget ? 'да' : '']);
+    }
+    if (flags.isEmpty) {
+      return;
+    }
+    await _gateway
+        .updateValues(
+          a1Range: '$quoted!$letter${headerAt + 2}',
+          rows: flags,
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+  }
+
   Future<CatalogSyncResult> _syncOnce() async {
     final outcomes = await Future.wait<Object?>(<Future<Object?>>[
       _syncCoursesOnce(),

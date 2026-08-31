@@ -21,6 +21,7 @@ final class Launch {
     this.offerUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
+    this.isActive = false,
   });
 
   final int id;
@@ -36,6 +37,7 @@ final class Launch {
   final String? offerUrl;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
+  final bool isActive;
 
   bool get hasDepositOption => depositKopecks > 0 && depositKopecks < priceFullKopecks;
 
