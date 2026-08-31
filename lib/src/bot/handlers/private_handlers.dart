@@ -14,6 +14,7 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';

@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
@@ -13,6 +14,7 @@ import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
+import 'support/fakes.dart';
 import 'support/harness.dart';
 
 Launch _launch2(
@@ -337,5 +339,194 @@ void main() {
       },
     });
     expect(harness.course.accessFor(userId: 42, launchId: launch1.id)?.joinedAt, isNotNull);
+  });
+
+  test(
+    'course card and checkout stay on active when the deep link has another launch_code',
+    () async {
+      final launch2 = _launch2(harness, activate: false);
+      harness.funnel.links.replaceAll(<AcquisitionLink>[
+        ...AcquisitionLink.starters,
+        AcquisitionLink(
+          origin: 'Таргет',
+          destination: AcquisitionDestination.course,
+          payload: 'ads_nov',
+          launchCode: launch2.code,
+        ),
+      ]);
+      await harness.handlers.handle(
+        privateMessageUpdate(chatId: 42, userId: 42, text: '/start ads_nov'),
+      );
+      final texts = harness.sender.messages.map((m) => m.text).join('\n');
+      expect(texts, contains('18000 ₽'));
+      expect(texts, isNot(contains('21000 ₽')));
+      expect(harness.funnel.resolveLaunch('ads_nov')?.id, launch2.id);
+    },
+  );
+
+  test('phaseOf after switching active is lead even if the profile still says paid', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.accessGranted,
+      launchId: launch1.id,
+    );
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.accessGranted);
+    _launch2(harness);
+    expect(harness.funnel.phaseOf(harness.course.getUser(42)!), FunnelPhase.lead);
+    expect(harness.funnel.shouldOfferEnroll(harness.course.getUser(42)!), isTrue);
+  });
+
+  test('warmup candidates skip enrollments on an inactive launch', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+      launchId: launch1.id,
+    );
+    final launch2 = _launch2(harness, activate: false);
+    harness.course.ensureEnrollment(
+      userId: 42,
+      launchId: launch2.id,
+      now: DateTime.utc(2026, 1, 2),
+    );
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 2),
+      launchId: launch2.id,
+    );
+    final candidates = harness.course.listWarmupCandidates(now: DateTime.utc(2026, 1, 3, 12));
+    expect(candidates.map((c) => c.launchId), <int>[launch1.id]);
+  });
+
+  test('paidNotJoined is scoped to the enrollment launch', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.accessGranted,
+      launchId: launch1.id,
+    );
+    harness.course.upsertAccess(
+      userId: 42,
+      launchId: launch1.id,
+      orderId: 1,
+      inviteLink: 'https://t.me/+old',
+    );
+    final launch2 = _launch2(harness);
+    harness.course.ensureEnrollment(
+      userId: 42,
+      launchId: launch2.id,
+      now: DateTime.utc(2026, 1, 2),
+    );
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.accessGranted,
+      launchId: launch2.id,
+    );
+    harness.course.upsertAccess(
+      userId: 42,
+      launchId: launch2.id,
+      orderId: 2,
+      inviteLink: 'https://t.me/+new',
+      joinedAt: DateTime.utc(2026, 1, 2, 12),
+    );
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.paidNotJoined), isEmpty);
+  });
+
+  test('callback without order or payment id does not guess the latest open checkout', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    final order1 = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch1,
+      kind: PaymentKind.full,
+    );
+    final launch2 = _launch2(harness);
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 2));
+    final order2 = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch2,
+      kind: PaymentKind.full,
+    );
+
+    await expectLater(
+      harness.checkout.applyCallback(
+        PaymentCallback(
+          provider: 'fake',
+          providerPaymentId: 'orphan-pay',
+          succeeded: true,
+          charged: true,
+          kind: PaymentKind.full,
+          userId: 42,
+          amountKopecks: launch2.priceFullKopecks,
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(harness.course.getOrder(order1.id)?.status, OrderStatus.checkoutStarted);
+    expect(harness.course.getOrder(order2.id)?.status, OrderStatus.checkoutStarted);
+  });
+
+  test('remainder after active switch charges the deposit launch, not the new one', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch1,
+      kind: PaymentKind.deposit,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.deposit,
+      amountKopecks: launch1.depositKopecks,
+    );
+    await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.deposit,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch1.depositKopecks,
+      ),
+    );
+    _launch2(harness);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'r1',
+        chatId: 42,
+        userId: 42,
+        data: '${MessageTemplates.cbPayRemainder}${order.id}',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'r2',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbToggleOffer,
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'r3',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGoToPay,
+      ),
+    );
+
+    expect(harness.course.getOrder(order.id)?.launchId, launch1.id);
+    expect(harness.course.latestOrder(42, launchId: launch1.id)?.id, order.id);
+    expect(harness.course.latestOrder(42, launchId: harness.course.activeLaunch()!.id), isNull);
   });
 }

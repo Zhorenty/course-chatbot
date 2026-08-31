@@ -1,20 +1,46 @@
 part of 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 
 extension _PrivateHandlersCheckout on PrivateHandlers {
-  Future<bool> _showOffer(PrivateMessageContext context, PaymentKind kind) async {
-    final launch = _launch;
-    if (launch == null) {
+  Future<bool> _showOffer(
+    PrivateMessageContext context,
+    PaymentKind kind, {
+    Launch? launch,
+    int? orderId,
+  }) async {
+    final resolved = _launchForPay(kind, userId: context.userId, launch: launch, orderId: orderId);
+    if (resolved == null) {
       return _send(context, _templates.payManualFallback());
     }
     _flowByUserId[context.userId!] = PrivateFlowState(
       step: PrivateFlowStep.offerConsent,
       pendingPayKind: kind,
+      pendingLaunchId: resolved.id,
     );
     return _send(
       context,
-      _templates.offerConsent(launch),
+      _templates.offerConsent(resolved),
       replyMarkup: _templates.offerKeyboard(accepted: false),
     );
+  }
+
+  Launch? _launchForPay(PaymentKind kind, {int? userId, Launch? launch, int? orderId}) {
+    if (launch != null) {
+      return launch;
+    }
+    if (orderId != null) {
+      final order = _course.getOrder(orderId);
+      if (order != null && (userId == null || order.userId == userId)) {
+        return _course.getLaunch(order.launchId);
+      }
+    }
+    if (kind == PaymentKind.remainder && userId != null) {
+      for (final order in _course.listOrdersForUser(userId)) {
+        if (order.status == OrderStatus.depositPaid) {
+          return _course.getLaunch(order.launchId) ?? _launch;
+        }
+      }
+    }
+    return _launch;
   }
 
   Future<bool> _toggleOfferCheck(PrivateMessageContext context) async {
@@ -30,6 +56,12 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     final markup = _templates.offerKeyboard(accepted: next.acceptedConsent);
     final messageId = asTelegramInt(context.callbackMessage?['message_id']);
     final chatId = context.chatId;
+    final launch = flow.pendingLaunchId == null
+        ? _launch
+        : _course.getLaunch(flow.pendingLaunchId!) ?? _launch;
+    if (launch == null) {
+      return _send(context, _templates.payManualFallback());
+    }
     if (chatId != null && messageId != null) {
       try {
         await _sender.editMessageReplyMarkup(chatId, messageId: messageId, replyMarkup: markup);
@@ -38,7 +70,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
         l.w('editMessageReplyMarkup failed: $error', stackTrace);
       }
     }
-    return _send(context, _templates.offerConsent(_launch!), replyMarkup: markup);
+    return _send(context, _templates.offerConsent(launch), replyMarkup: markup);
   }
 
   Future<bool> _confirmOfferAndPay(PrivateMessageContext context) async {
@@ -53,19 +85,20 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       return true;
     }
     await _answerCallback(context);
+    final launch = flow.pendingLaunchId == null ? null : _course.getLaunch(flow.pendingLaunchId!);
     _flowByUserId.remove(context.userId);
-    return _startPay(context, kind);
+    return _startPay(context, kind, launch: launch);
   }
 
-  Future<bool> _startPay(PrivateMessageContext context, PaymentKind kind) async {
-    final launch = _launch;
+  Future<bool> _startPay(PrivateMessageContext context, PaymentKind kind, {Launch? launch}) async {
+    final resolved = launch ?? _launch;
     final userId = context.userId!;
-    if (launch == null) {
+    if (resolved == null) {
       return _send(context, _templates.payManualFallback());
     }
     try {
-      final order = _checkout.startOrReuseOrder(userId: userId, launch: launch, kind: kind);
-      final amount = _checkout.amountFor(launch, order, kind);
+      final order = _checkout.startOrReuseOrder(userId: userId, launch: resolved, kind: kind);
+      final amount = _checkout.amountFor(resolved, order, kind);
       final payment = await _checkout.createCheckout(
         order: order,
         kind: kind,
@@ -100,7 +133,12 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (url != null && url.isNotEmpty) {
       return _send(context, _templates.payButton(url), replyMarkup: _templates.payUrlKeyboard(url));
     }
-    return _showOffer(context, order.kind);
+    return _showOffer(
+      context,
+      order.kind,
+      launch: _course.getLaunch(order.launchId),
+      orderId: order.id,
+    );
   }
 
   Future<void> _notifyPaymentResult(PaymentApplyResult result) async {
@@ -124,7 +162,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
         result.order.userId,
         _templates.depositSucceeded(result.order),
         parseMode: 'HTML',
-        replyMarkup: _templates.remainderKeyboard(),
+        replyMarkup: _templates.remainderKeyboard(result.order.id),
       );
       await _pinCourseMenu(result.order.userId);
       return;

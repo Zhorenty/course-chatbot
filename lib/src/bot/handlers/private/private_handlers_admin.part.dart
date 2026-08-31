@@ -231,7 +231,16 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
 
   Future<bool> _presentAdminCard(PrivateMessageContext context, UserProfile user) async {
     final launch = _launch;
-    final enrollment = _funnel.enrollmentFor(user.userId, launch: launch);
+    final enrollment =
+        _funnel.enrollmentFor(user.userId, launch: launch) ??
+        (launch == null
+            ? null
+            : UserEnrollment(
+                userId: user.userId,
+                launchId: launch.id,
+                funnelPhase: FunnelPhase.lead,
+                startedAt: user.firstStartedAt,
+              ));
     final order = launch == null
         ? _course.latestOrder(user.userId)
         : _course.latestOrder(user.userId, launchId: launch.id);

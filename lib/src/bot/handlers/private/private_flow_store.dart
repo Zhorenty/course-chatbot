@@ -25,6 +25,7 @@ final class PrivateFlowState {
     this.adminTargetUserId,
     this.pendingGuideFileId,
     this.pendingPayKind,
+    this.pendingLaunchId,
     this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
   });
@@ -38,6 +39,7 @@ final class PrivateFlowState {
   final int? adminTargetUserId;
   final String? pendingGuideFileId;
   final PaymentKind? pendingPayKind;
+  final int? pendingLaunchId;
   final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
 
@@ -55,6 +57,7 @@ final class PrivateFlowState {
     Object? adminTargetUserId = _unset,
     Object? pendingGuideFileId = _unset,
     Object? pendingPayKind = _unset,
+    Object? pendingLaunchId = _unset,
     bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
   }) {
@@ -84,6 +87,9 @@ final class PrivateFlowState {
       pendingPayKind: identical(pendingPayKind, _unset)
           ? this.pendingPayKind
           : pendingPayKind as PaymentKind?,
+      pendingLaunchId: identical(pendingLaunchId, _unset)
+          ? this.pendingLaunchId
+          : pendingLaunchId as int?,
       acceptedConsent: acceptedConsent ?? this.acceptedConsent,
       broadcastExcludeOptOut: broadcastExcludeOptOut ?? this.broadcastExcludeOptOut,
     );

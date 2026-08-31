@@ -67,7 +67,7 @@ final class MessageTemplates {
   static const String cbPayFull = 'pf';
   static const String cbPayDeposit = 'pd';
   static const String cbPayInstallment = 'pi';
-  static const String cbPayRemainder = 'pr';
+  static const String cbPayRemainder = 'pr:';
   static const String cbToggleOffer = 'oo';
   static const String cbTogglePersonalData = 'op';
   static const String cbGoToPay = 'og';
@@ -267,7 +267,7 @@ final class MessageTemplates {
     return 'Не смог передать админу. Напиши ещё раз чуть позже.';
   }
 
-  String adminIncomingUserMessage({required UserProfile user, String? text}) {
+  String adminIncomingUserMessage({required UserProfile user, String? text, FunnelPhase? phase}) {
     final handle = user.username == null || user.username!.trim().isEmpty
         ? ''
         : ' · @${escapeHtml(user.username!.trim())}';
@@ -276,7 +276,7 @@ final class MessageTemplates {
         : escapeHtml(text.trim());
     return '<b>Написал ${escapeHtml(user.displayName)}</b>\n'
         'id <code>${user.userId}</code>$handle\n'
-        '${escapeHtml(_adminPhaseLabel(user.funnelPhase))}\n\n'
+        '${escapeHtml(_adminPhaseLabel(phase ?? user.funnelPhase))}\n\n'
         '$body';
   }
 

@@ -164,14 +164,7 @@ final class GoogleSheetsCatalogSync {
     );
     Launch? launch;
     for (final row in parsed.rows) {
-      final applied = row.launchCode == appliedActive.launchCode
-          ? appliedActive
-          : row.withFallbacks(
-              channelId: fallbackChannelId,
-              offerUrl: _blankToNull(fallbackOfferUrl),
-              leadMagnetFileId: _blankToNull(fallbackLeadMagnetFileId),
-              leadMagnetUrl: _blankToNull(fallbackLeadMagnetUrl),
-            );
+      final applied = row.launchCode == appliedActive.launchCode ? appliedActive : row;
       launch = _catalog.upsertLaunch(
         productCode: applied.productCode,
         productTitle: applied.productTitle,

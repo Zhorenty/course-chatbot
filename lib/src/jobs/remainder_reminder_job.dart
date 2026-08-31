@@ -71,7 +71,7 @@ final class RemainderReminderJob {
           order.userId,
           textOf(order),
           parseMode: 'HTML',
-          replyMarkup: _templates.remainderKeyboard(),
+          replyMarkup: _templates.remainderKeyboard(order.id),
         );
       },
     );

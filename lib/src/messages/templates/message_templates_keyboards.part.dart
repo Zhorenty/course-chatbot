@@ -105,12 +105,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> remainderKeyboard() {
+  Map<String, Object?> remainderKeyboard(int orderId) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
           'text': MessageTemplates.buttonPayRemainder,
-          'callback_data': MessageTemplates.cbPayRemainder,
+          'callback_data': '${MessageTemplates.cbPayRemainder}$orderId',
         },
       ],
     ]);
@@ -126,7 +126,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
 
   Map<String, Object?>? courseStatusKeyboard({CourseOrder? order, ChannelAccess? access}) {
     if (order != null && order.hasRemainder) {
-      return remainderKeyboard();
+      return remainderKeyboard(order.id);
     }
     final link = access?.inviteLink?.trim();
     if (access != null &&

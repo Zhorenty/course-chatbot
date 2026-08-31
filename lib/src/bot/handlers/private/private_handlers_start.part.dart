@@ -26,10 +26,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
-      await _send(
-        context,
-        _templates.startCourseCard(launch: _funnel.resolveLaunch(destination) ?? _launch),
-      );
+      await _send(context, _templates.startCourseCard(launch: _launch));
       return _pinUserMenu(context);
     }
     await _send(context, _templates.startGuideOffer());

@@ -368,7 +368,6 @@ final class CheckoutService {
     var order = payment != null
         ? _course.getOrder(payment.orderId)
         : (callback.orderId != null ? _course.getOrder(callback.orderId!) : null);
-    order ??= callback.userId != null ? _course.latestOpenOrder(callback.userId!) : null;
     if (order == null) {
       throw StateError('Payment callback has no matching order.');
     }
@@ -451,7 +450,7 @@ final class CheckoutService {
       phase: FunnelPhase.cancelled,
       launchId: order.launchId,
     );
-    await _access.revoke(userId: order.userId, launch: launch);
+    await _access.revoke(userId: order.userId, launch: _course.getLaunch(order.launchId) ?? launch);
   }
 
   /// Drops the person off this launch: cancel the order if any, revoke invite, kick.

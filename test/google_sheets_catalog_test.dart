@@ -259,6 +259,27 @@ void main() {
       expect(course.launchByCode('launch-2')?.priceFullKopecks, 2100000);
       expect(course.launchByCode('launch-1')?.priceFullKopecks, 1800000);
     });
+
+    test('env channel fallback applies only to the active COURSES row', () async {
+      final second = List<Object?>.from(CoursesSheet.seedDataRow())
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-2'
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)] = 'Ноябрь'
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.isActive)] = ''
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 21000;
+      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+      gateway.valuesBySheetId[0] = CoursesSheet.withChrome(
+        dataRows: <List<Object?>>[CoursesSheet.seedDataRow(), second],
+      );
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: -1001,
+      );
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      expect(course.activeLaunch()?.channelId, -1001);
+      expect(course.launchByCode('launch-2')?.channelId, isNull);
+    });
   });
 
   group('ССЫЛКИ catalog', () {

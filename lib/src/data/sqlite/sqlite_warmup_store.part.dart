@@ -72,7 +72,7 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
     final rows = _db.select(
       '''
       SELECT e.user_id, e.launch_id, e.magnet_issued_at, e.started_at, e.funnel_phase,
-             u.first_started_at, u.source,
+             u.source,
              GROUP_CONCAT(w.step_key) AS sent_keys
       FROM user_enrollments e
       JOIN telegram_users u ON u.user_id = e.user_id
@@ -80,6 +80,10 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
       WHERE u.bot_blocked = 0
         AND e.warmup_opt_out = 0
         AND e.funnel_phase NOT IN ('checkout', 'deposit_paid', 'paid', 'access_granted', 'cancelled')
+        AND e.launch_id = COALESCE(
+          (SELECT id FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1),
+          (SELECT id FROM launches ORDER BY id DESC LIMIT 1)
+        )
       GROUP BY e.user_id, e.launch_id
       ORDER BY e.started_at
       LIMIT ?;

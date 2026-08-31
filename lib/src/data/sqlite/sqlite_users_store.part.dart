@@ -258,6 +258,7 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
             phase: 'e.funnel_phase',
             magnet: 'e.magnet_issued_at',
             opt: 'e.warmup_opt_out',
+            accessLaunch: 'e.launch_id',
           )
         : (
             user: 'user_id',
@@ -266,6 +267,7 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
             phase: 'funnel_phase',
             magnet: 'magnet_issued_at',
             opt: 'warmup_opt_out',
+            accessLaunch: null,
           );
     final where = _broadcastWhere(
       segment,
@@ -285,7 +287,15 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
     required bool excludeOptOut,
     required Set<String> courseEntrySources,
     required List<Object?> params,
-    required ({String user, String blocked, String source, String phase, String magnet, String opt})
+    required ({
+      String user,
+      String blocked,
+      String source,
+      String phase,
+      String magnet,
+      String opt,
+      String? accessLaunch,
+    })
     cols,
   }) {
     final optOut = excludeOptOut ? ' AND ${cols.opt} = 0' : '';
@@ -316,13 +326,22 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
             '  WHERE a.user_id = ${cols.user} '
             '    AND a.invite_link IS NOT NULL AND a.invite_link != \'\' '
             '    AND a.joined_at IS NULL AND a.revoked_at IS NULL'
+            '${cols.accessLaunch == null ? '' : ' AND a.launch_id = ${cols.accessLaunch}'}'
             ')',
       BroadcastSegment.cancelled => "${cols.blocked} = 0 AND ${cols.phase} = 'cancelled'$optOut",
     };
   }
 
   String _courseLeadWhere({
-    required ({String user, String blocked, String source, String phase, String magnet, String opt})
+    required ({
+      String user,
+      String blocked,
+      String source,
+      String phase,
+      String magnet,
+      String opt,
+      String? accessLaunch,
+    })
     cols,
     required Set<String> courseEntrySources,
     required List<Object?> params,

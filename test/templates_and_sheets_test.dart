@@ -102,6 +102,7 @@ void main() {
     expect(look.frozenRowCount, 4);
     expect(look.columnCount, 5);
     expect(look.notes, hasLength(5));
+    expect(look.notes[3].text, contains('атрибуции'));
     expect(look.notes.last.text, contains('t.me'));
     expect(LinksSheet.extraDataRows, greaterThanOrEqualTo(24));
     expect(look.rowCount, greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + 24));

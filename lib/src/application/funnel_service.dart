@@ -20,7 +20,8 @@ final class FunnelService {
 
   bool opensCourseCard(String? payload) => links.opensCourseCard(payload);
 
-  /// Resolves a start payload to a launch. Missing `launch_code` on the link → active launch.
+  /// Launch for attribution (`acquisition_events`, optional enrollment row).
+  /// Missing or unknown `launch_code` → active launch. MVP card/checkout still use active.
   Launch? resolveLaunch(String? payload) {
     final link = links.byPayload(payload);
     final code = link?.launchCode?.trim();
@@ -39,7 +40,14 @@ final class FunnelService {
   }
 
   FunnelPhase phaseOf(UserProfile user, {Launch? launch}) {
-    return enrollmentFor(user.userId, launch: launch)?.funnelPhase ?? user.funnelPhase;
+    final enrollment = enrollmentFor(user.userId, launch: launch);
+    if (enrollment != null) {
+      return enrollment.funnelPhase;
+    }
+    if ((launch ?? _course.activeLaunch()) != null) {
+      return FunnelPhase.lead;
+    }
+    return user.funnelPhase;
   }
 
   UserProfile start({required int userId, String? username, String? firstName, String? payload}) {

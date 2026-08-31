@@ -85,8 +85,6 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _showOffer(context, PaymentKind.deposit);
       case MessageTemplates.cbPayInstallment:
         return _showOffer(context, PaymentKind.installment);
-      case MessageTemplates.cbPayRemainder:
-        return _showOffer(context, PaymentKind.remainder);
       case MessageTemplates.cbToggleOffer:
       case MessageTemplates.cbTogglePersonalData:
         return _toggleOfferCheck(context);
@@ -123,6 +121,13 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       return _continuePay(
         context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbContinuePay),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbPayRemainder)) {
+      return _showOffer(
+        context,
+        PaymentKind.remainder,
+        orderId: MessageTemplates.idFromCallback(data, MessageTemplates.cbPayRemainder),
       );
     }
     if (data.startsWith(MessageTemplates.cbAdminPaidConfirm)) {
@@ -249,7 +254,11 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       try {
         await _sender.sendMessage(
           target,
-          _templates.adminIncomingUserMessage(user: user, text: context.text),
+          _templates.adminIncomingUserMessage(
+            user: user,
+            text: context.text,
+            phase: _funnel.phaseOf(user),
+          ),
           parseMode: 'HTML',
           disableNotification: false,
           replyMarkup: _templates.adminIncomingKeyboard(user.userId),
