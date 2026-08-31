@@ -67,9 +67,17 @@ final class GoogleSheetsCatalogSync {
     return retry(_syncLinksOnce, shouldRetry: _shouldRetry);
   }
 
-  Future<void> upsertCourseRow({required CatalogLaunchDraft draft, String? previousLaunchCode}) {
+  Future<void> upsertCourseRow({
+    required CatalogLaunchDraft draft,
+    String? previousLaunchCode,
+    bool insertOnly = false,
+  }) {
     return retry(
-      () => _upsertCourseRowOnce(draft: draft, previousLaunchCode: previousLaunchCode),
+      () => _upsertCourseRowOnce(
+        draft: draft,
+        previousLaunchCode: previousLaunchCode,
+        insertOnly: insertOnly,
+      ),
       shouldRetry: _shouldRetry,
     );
   }
@@ -81,6 +89,7 @@ final class GoogleSheetsCatalogSync {
   Future<void> _upsertCourseRowOnce({
     required CatalogLaunchDraft draft,
     String? previousLaunchCode,
+    bool insertOnly = false,
   }) async {
     final layout = await _coursesLayout();
     final headerAt = layout.headerAt;
@@ -99,6 +108,9 @@ final class GoogleSheetsCatalogSync {
       headerIndex: headerIndex,
       code: draft.launchCode,
     );
+    if (insertOnly && (existingAt != null || newCodeAt != null)) {
+      throw StateError('launch code "${draft.launchCode}" already exists');
+    }
     if (existingAt == null && newCodeAt != null) {
       throw StateError('launch code "${draft.launchCode}" already exists');
     }
@@ -142,7 +154,7 @@ final class GoogleSheetsCatalogSync {
       code: launchCode,
     );
     if (index == null) {
-      throw StateError('COURSES row "$launchCode" is missing.');
+      return;
     }
     if (index <= layout.headerAt) {
       throw StateError('Refusing to delete COURSES header or chrome.');

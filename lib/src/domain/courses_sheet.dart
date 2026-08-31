@@ -71,7 +71,8 @@ abstract final class CoursesSheet {
     'Поставь «да», если это текущий набор. «Да» должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
     'Полная цена курса в рублях. Пиши число: 18000 или 18 000.',
     'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты.',
-    'Дата. Выбери в календаре. Формат 19.08.2026. До этого дня нужно доплатить остаток.',
+    'Дата. Выбери в календаре. Формат 19.08.2026. Нужна, только если есть предоплата. '
+        'Если предоплаты нет — оставь пустым.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
     'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
     'Не заполняй. Бот сам запомнит файл гайда. Сюда пишет только тот, кто меняет гайд в Telegram.',
@@ -152,14 +153,17 @@ abstract final class CoursesSheet {
 
     final statusIndex = headers.indexOf(status);
     final dataRange = '${columnLetter(0)}$row:${columnLetter(statusIndex - 1)}$row';
-    const required = <String>[launchCode, priceFullRub, depositDueDate, courseStartDate];
+    final dueOk = 'OR(${cell(depositRub)}=""$formulaSep ${cell(depositDueDate)}<>"")';
     final allRequired = <String>[
-      for (final name in required) '${cell(name)}<>""',
+      '${cell(launchCode)}<>""',
+      '${cell(priceFullRub)}<>""',
+      '${cell(courseStartDate)}<>""',
+      dueOk,
     ].join('$formulaSep ');
     final missing = <String>[
       'IF(${cell(launchCode)}="";"нет кода запуска";"")',
       'IF(${cell(priceFullRub)}="";"нет цены";"")',
-      'IF(${cell(depositDueDate)}="";"нет даты доплаты";"")',
+      'IF(AND(${cell(depositRub)}<>""$formulaSep ${cell(depositDueDate)}="");"нет даты доплаты";"")',
       'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
     ].join('$formulaSep ');
     return '=IF(SUMPRODUCT(LEN($dataRange))=0;"";IF(AND($allRequired);"готово";'
@@ -695,6 +699,9 @@ abstract final class CoursesSheetParser {
     }
     final depositKopecks = _priceKopecks(raw, headerIndex, CoursesSheet.depositRub) ?? 0;
     if (depositKopecks < 0) {
+      return null;
+    }
+    if (depositKopecks > 0 && depositDueAt == null) {
       return null;
     }
     final channelRaw = _cell(raw, headerIndex, CoursesSheet.channelId);

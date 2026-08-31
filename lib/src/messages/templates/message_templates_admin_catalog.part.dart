@@ -82,7 +82,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskChannel() {
-    return 'ID канала этого потока (число вида −100…). Пусто — оставить как есть, при синке возьмётся запасной.';
+    return 'ID канала этого потока (число вида −100…). '
+        'Пусто или — — без своего канала; при синке возьмётся запасной.';
   }
 
   String adminCatalogAskActive() {
@@ -144,7 +145,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.depositDue => 'Новая дата доплаты, как 19.08.2026.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
       CatalogLaunchField.channel =>
-        'Новый ID канала (число вида −100…). Пусто — оставить как есть.',
+        'Новый ID канала (число вида −100…). Пусто или — — сбросить свой канал.',
     };
   }
 
@@ -168,7 +169,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogFieldError.needDueDate => 'Для предоплаты нужна дата доплаты, как 19.08.2026.',
       CatalogFieldError.badDate => 'Дата не разобралась. Формат 19.08.2026.',
       CatalogFieldError.badChannel =>
-        'ID канала — отрицательное число вида −100…. Или пусто, чтобы не менять.',
+        'ID канала — отрицательное число вида −100…. Или пусто / —, чтобы без своего канала.',
     };
   }
 
@@ -189,6 +190,15 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogWriting() {
     return 'Пишу строку в COURSES и обновляю бота. Подожди несколько секунд.';
+  }
+
+  String adminCatalogRefreshing() {
+    return 'Читаю COURSES. Подожди несколько секунд.';
+  }
+
+  String adminCatalogRefreshFailed(String? detail) {
+    return 'Не получилось прочитать COURSES'
+        '${detail == null || detail.isEmpty ? '.' : ': ${escapeHtml(detail)}'}';
   }
 
   String adminCatalogFieldLabel(CatalogLaunchField field) => switch (field) {

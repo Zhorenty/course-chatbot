@@ -44,6 +44,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         _templates.adminCatalogOpened(),
         replyMarkup: _templates.adminCatalogFlowKeyboard(),
       );
+      await _refreshCatalogFromSheets(context);
     }
     final launches = _course.listLaunches();
     return _send(
@@ -104,7 +105,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (step == PrivateFlowStep.adminCatalogEditValue) {
       return _captureCatalogEdit(context);
     }
-    if (step == PrivateFlowStep.adminCatalogCreateActive ||
+    if (step == PrivateFlowStep.adminCatalogMenu ||
+        step == PrivateFlowStep.adminCatalogCreateActive ||
         step == PrivateFlowStep.adminCatalogCreateConfirm) {
       return true;
     }
@@ -372,9 +374,9 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           return _send(context, _templates.adminCatalogFieldError(error));
         }
         final skipped = text.isEmpty || text == '-' || text == '—';
-        if (!skipped) {
-          overlay = overlay.copyWith(channelId: CoursesSheetParser.parseChannelId(text));
-        }
+        overlay = overlay.copyWith(
+          channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
+        );
     }
     return _runCatalogWrite(
       context,
@@ -481,6 +483,25 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       ),
     );
     return false;
+  }
+
+  Future<void> _refreshCatalogFromSheets(PrivateMessageContext context) async {
+    final sync = _catalogSync;
+    if (sync == null) {
+      return;
+    }
+    final progressId = await _sendProgress(context, _templates.adminCatalogRefreshing());
+    try {
+      final result = await sync.sync();
+      if (!result.ok) {
+        await _send(context, _templates.adminCatalogRefreshFailed(result.error));
+      }
+    } on Object catch (error, stackTrace) {
+      l.w('Admin COURSES catalog refresh failed: $error', stackTrace);
+      await _send(context, _templates.adminCatalogRefreshFailed('$error'));
+    } finally {
+      await _deleteProgress(context, progressId);
+    }
   }
 
   CatalogLaunchDraft? _wizardToDraft(CatalogWizardDraft? draft) {

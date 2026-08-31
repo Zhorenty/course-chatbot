@@ -65,6 +65,24 @@ void main() {
     expect(parsed.skippedInvalidCount, 2);
   });
 
+  test('parser keeps a full-price row without deposit due date', () {
+    final row = List<Object?>.from(CoursesSheet.seedDataRow())
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = ''
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = '';
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
+    expect(parsed.rows, hasLength(1));
+    expect(parsed.active!.depositKopecks, 0);
+    expect(parsed.active!.depositDueAt, isNull);
+  });
+
+  test('parser skips a deposit row without a due date', () {
+    final row = List<Object?>.from(CoursesSheet.seedDataRow())
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = '';
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
+    expect(parsed.rows, isEmpty);
+    expect(parsed.skippedInvalidCount, 1);
+  });
+
   test('Russian headers and dotted dates parse', () {
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.displayHeaders,
@@ -149,6 +167,8 @@ void main() {
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));
     expect(formula, contains('нет даты доплаты'));
+    expect(formula, contains('OR(G5=""; H5<>"")'));
+    expect(formula, contains('AND(G5<>""; H5="")'));
     expect(formula, isNot(contains('.env')));
     expect(CoursesSheet.headerNotes[7], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
@@ -617,6 +637,35 @@ void main() {
       expect(gateway.deletedSheetIds, isEmpty);
     });
 
+    test('insertOnly upsert refuses a launch_code already on COURSES', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.sync();
+      await expectLater(
+        sync.upsertCourseRow(
+          insertOnly: true,
+          draft: CatalogLaunchDraft(
+            productCode: CoursesSheet.seedProductCode,
+            productTitle: CoursesSheet.seedProductTitle,
+            launchCode: 'launch-1',
+            launchTitle: 'Overwrite',
+            isActive: false,
+            priceFullKopecks: 2000000,
+            depositKopecks: 0,
+            depositDueDays: 7,
+            courseStartAt: DateTime.utc(2026, 11, 1),
+          ),
+        ),
+        throwsA(
+          isA<StateError>().having((error) => error.message, 'message', contains('already exists')),
+        ),
+      );
+      final row = gateway.valuesBySheetId[0]!.firstWhere(
+        (cells) => cells.length > 2 && cells[2] == 'launch-1',
+      );
+      expect(row[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Запуск');
+    });
+
     test('deleteCourseRow removes one data row and keeps gid=0', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
@@ -639,6 +688,15 @@ void main() {
       expect(sheet.any((row) => row.length > 2 && row[2] == 'nov-26'), isFalse);
       expect(gateway.deletedSheetIds, isEmpty);
       expect(gateway.deletedDimensions, hasLength(1));
+    });
+
+    test('deleteCourseRow is a no-op when the launch_code is already gone', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.deleteCourseRow(launchCode: 'ghost-26');
+      expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
+      expect(gateway.deletedDimensions, isEmpty);
+      expect(gateway.deletedSheetIds, isEmpty);
     });
   });
 }

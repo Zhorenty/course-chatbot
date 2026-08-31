@@ -770,6 +770,145 @@ void main() {
     expect(sheets.course.launchByCode('dec-26'), isNotNull);
   });
 
+  test('admin catalog open syncs a COURSES-only row into sqlite', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    sheets.sheetsGateway!.valuesBySheetId[0]!.add(
+      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: '', due: ''),
+    );
+    expect(sheets.course.launchByCode('hand-26'), isNull);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    expect(sheets.course.launchByCode('hand-26')?.title, 'Руками');
+    expect(sheets.sender.messages.any((m) => m.text.contains('hand-26')), isTrue);
+  });
+
+  test('admin catalog list ignores stray text', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final before = sheets.sender.messages.length;
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'случайно'));
+    expect(sheets.sender.messages, hasLength(before));
+    expect(sheets.sender.messages.last.text, contains('Курсы'));
+  });
+
+  test('admin catalog create refuses a code that already exists on COURSES', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    sheets.sheetsGateway!.valuesBySheetId[0]!.add(
+      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: '', due: ''),
+    );
+    await _runCatalogCreateWizard(
+      sheets,
+      title: 'Overwrite',
+      code: 'hand-26',
+      active: false,
+      openCatalog: false,
+    );
+    expect(sheets.sender.messages.last.text, contains('уже есть'));
+    final row = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'hand-26')!;
+    expect(row[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Руками');
+    expect(sheets.course.launchByCode('hand-26'), isNull);
+  });
+
+  test('admin catalog edit empty channel clears the COURSES cell', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ce',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogEdit}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cf',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.channel),
+      ),
+    );
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-100555'));
+    expect(
+      _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'launch-1')![CoursesSheet.headers
+          .indexOf(CoursesSheet.channelId)],
+      -100555,
+    );
+
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ce2',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogEdit}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cf2',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.channel),
+      ),
+    );
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+    final cell = _coursesRowByCode(
+      sheets.sheetsGateway!.valuesBySheetId[0]!,
+      'launch-1',
+    )![CoursesSheet.headers.indexOf(CoursesSheet.channelId)];
+    expect('$cell', anyOf('', 'null'));
+  });
+
+  test('admin catalog delete still drops sqlite when COURSES row is already gone', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await _runCatalogCreateWizard(sheets, title: 'Ноябрь', code: 'nov-26', active: false);
+    final empty = sheets.course.launchByCode('nov-26')!;
+    sheets.sheetsGateway!.valuesBySheetId[0]!.removeWhere(
+      (row) => row.length > 2 && row[2] == 'nov-26',
+    );
+
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cdy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDeleteYes}${empty.id}',
+      ),
+    );
+    expect(sheets.course.launchByCode('nov-26'), isNull);
+    expect(_coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'launch-1'), isNotNull);
+  });
+
   test('admin catalog cancel returns to admin menu', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
@@ -802,10 +941,13 @@ Future<void> _runCatalogCreateWizard(
   required String title,
   required String code,
   required bool active,
+  bool openCatalog = true,
 }) async {
-  await sheets.handlers.handle(
-    privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
-  );
+  if (openCatalog) {
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+  }
   await sheets.handlers.handle(
     privateCallbackUpdate(
       callbackId: 'cn-$code',
@@ -836,6 +978,21 @@ Future<void> _runCatalogCreateWizard(
       data: MessageTemplates.cbCatalogCreateYes,
     ),
   );
+}
+
+List<Object?> _coursesDataRow({
+  required String code,
+  required String title,
+  String isActive = '',
+  Object? deposit = 0,
+  Object? due = '',
+}) {
+  return List<Object?>.from(CoursesSheet.seedDataRow())
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = code
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)] = title
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.isActive)] = isActive
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = deposit
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = due;
 }
 
 List<Object?>? _coursesRowByCode(List<List<Object?>> sheet, String code) {

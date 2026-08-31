@@ -140,7 +140,7 @@ final class LaunchCatalogAdminService {
     if (_catalog.launchByCode(draft.launchCode) != null) {
       return const CatalogAdminResult.invalid(CatalogFieldError.codeTaken);
     }
-    return _write(draft: draft);
+    return _write(draft: draft, insertOnly: true);
   }
 
   Future<CatalogAdminResult> update({
@@ -248,9 +248,14 @@ final class LaunchCatalogAdminService {
   Future<CatalogAdminResult> _write({
     required CatalogLaunchDraft draft,
     String? previousLaunchCode,
+    bool insertOnly = false,
   }) async {
     try {
-      await _sync.upsertCourseRow(draft: draft, previousLaunchCode: previousLaunchCode);
+      await _sync.upsertCourseRow(
+        draft: draft,
+        previousLaunchCode: previousLaunchCode,
+        insertOnly: insertOnly,
+      );
       final synced = await _sync.sync();
       if (!synced.ok) {
         return CatalogAdminResult.fail(
