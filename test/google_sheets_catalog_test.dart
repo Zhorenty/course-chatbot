@@ -86,6 +86,47 @@ void main() {
     expect(parsed.active!.courseStartAt, DateTime.utc(2026, 10, 12));
   });
 
+  test('legacy Оферта and Ссылка на гайд still parse', () {
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[
+      <Object?>[
+        'Код продукта',
+        'Продукт',
+        'Код запуска',
+        'Название запуска',
+        'Активен',
+        'Цена, ₽',
+        'Предоплата, ₽',
+        'Доплата до',
+        'Старт курса',
+        'ID канала',
+        'Оферта',
+        'Файл гайда',
+        'Ссылка на гайд',
+        'статус',
+      ],
+      <Object?>[
+        'course',
+        'Курс',
+        'launch-1',
+        'Запуск',
+        'да',
+        18000,
+        5000,
+        '05.10.2026',
+        '12.10.2026',
+        '',
+        'https://offer.example',
+        'file-1',
+        'https://guide.example',
+        '',
+      ],
+    ]);
+    expect(parsed.rows, hasLength(1));
+    expect(parsed.active!.offerUrl, 'https://offer.example');
+    expect(parsed.active!.leadMagnetFileId, 'file-1');
+    expect(parsed.active!.leadMagnetUrl, 'https://guide.example');
+  });
+
   test('pretty seed layout has chrome, Russian headers, status and parses', () {
     final rows = CoursesSheet.seedRows();
     expect(rows[0].first, CoursesSheet.title);
@@ -112,6 +153,8 @@ void main() {
     expect(CoursesSheet.headerNotes[7], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
     expect(CoursesSheet.displayHeaders, isNot(contains('file_id гайда')));
+    expect(CoursesSheet.displayHeaders, isNot(contains('Оферта')));
+    expect(CoursesSheet.displayHeaders, isNot(contains('Ссылка на гайд')));
     expect(CoursesSheet.headers.last, CoursesSheet.status);
     expect(CoursesSheet.displayHeaders, hasLength(CoursesSheet.columnCount));
     expect(CoursesSheet.headerNotes, hasLength(CoursesSheet.columnCount));
@@ -140,8 +183,8 @@ void main() {
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
       expect(gateway.applyLookCount, 2);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(14));
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 14);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(12));
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 12);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -228,6 +271,61 @@ void main() {
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       expect(gateway.valuesBySheetId[0]![3].first, 'Код продукта');
       expect(gateway.valuesBySheetId[0]![3].last, 'статус');
+      expect(course.activeLaunch()?.code, 'launch-1');
+    });
+
+    test('sync drops offer and guide URL columns from an older COURSES layout', () async {
+      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+      gateway.valuesBySheetId[0] = <List<Object?>>[
+        <Object?>[CoursesSheet.title],
+        <Object?>[CoursesSheet.hint],
+        <Object?>[],
+        <Object?>[
+          'Код продукта',
+          'Продукт',
+          'Код запуска',
+          'Название запуска',
+          'Активен',
+          'Цена, ₽',
+          'Предоплата, ₽',
+          'Доплата до',
+          'Старт курса',
+          'ID канала',
+          'Оферта',
+          'Файл гайда',
+          'Ссылка на гайд',
+          'статус',
+        ],
+        <Object?>[
+          'course',
+          'Курс',
+          'launch-1',
+          'Запуск',
+          'да',
+          18000,
+          5000,
+          '05.10.2026',
+          '12.10.2026',
+          '',
+          'https://offer.example',
+          'cached-file',
+          'https://guide.example',
+          '',
+        ],
+      ];
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      final sheet = gateway.valuesBySheetId[0]!;
+      final header = sheet[CoursesSheet.defaultHeaderRow];
+      expect(header, isNot(contains('Оферта')));
+      expect(header, isNot(contains('Ссылка на гайд')));
+      expect(header, contains('Файл гайда'));
+      expect(header.last, 'статус');
+      expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+      expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
+      expect(course.activeLaunch()?.offerUrl, isNull);
+      expect(course.activeLaunch()?.leadMagnetUrl, isNull);
       expect(course.activeLaunch()?.code, 'launch-1');
     });
 

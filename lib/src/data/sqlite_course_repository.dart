@@ -58,6 +58,25 @@ final class SqliteCourseRepository extends _SqliteCourseStore
 
   @override
   T transaction<T>(T Function() action) => _handle.transaction(action);
+
+  // TODO(mvp-reset): remove with the admin «Очистить воронку» button.
+  @override
+  int clearFunnelPeople() {
+    return transaction(() {
+      final count =
+          (_db.select('SELECT COUNT(*) AS n FROM telegram_users;').first['n'] as int?) ?? 0;
+      _db.execute('DELETE FROM payments;');
+      _db.execute('DELETE FROM channel_access;');
+      _db.execute('DELETE FROM orders;');
+      _db.execute('DELETE FROM warmup_sent;');
+      _db.execute('DELETE FROM acquisition_events;');
+      _db.execute('DELETE FROM user_enrollments;');
+      _db.execute('DELETE FROM conversation_log;');
+      _db.execute('DELETE FROM telegram_users;');
+      _db.execute('DELETE FROM job_dedupe_log;');
+      return count;
+    });
+  }
 }
 
 class _SqliteCourseStore {

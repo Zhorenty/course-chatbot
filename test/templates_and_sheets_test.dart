@@ -87,9 +87,9 @@ void main() {
     expect(look.hideGridlines, isTrue);
     expect(look.frozenRowCount, 4);
     expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
-    expect(look.columnWidthsPx, hasLength(14));
-    expect(look.columnCount, 14);
-    expect(look.notes, hasLength(14));
+    expect(look.columnWidthsPx, hasLength(12));
+    expect(look.columnCount, 12);
+    expect(look.notes, hasLength(12));
     expect(look.notes[7].text, contains('Выбери в календаре'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
@@ -200,10 +200,17 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
     expect(texts, contains(MessageTemplates.buttonAdminLinks));
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
-    expect(texts.last, MessageTemplates.buttonAdminBroadcast);
+    expect(texts, contains(MessageTemplates.buttonAdminClearFunnel));
+    expect(texts.last, MessageTemplates.buttonAdminClearFunnel);
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+  });
+
+  test('admin clear-funnel copy asks to confirm', () {
+    final templates = MessageTemplates();
+    expect(templates.adminAskClearFunnel(), contains('Сотру людей'));
+    expect(templates.adminFunnelCleared(people: 3), contains('3'));
   });
 
   test('broadcast confirm keyboard is not locked to one segment', () {

@@ -113,14 +113,13 @@ final class GoogleSheetsCatalogSync {
       seeded = true;
       rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
       parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
-    } else if (parsed.rows.isNotEmpty && CoursesSheetParser.headerRowIndex(rows) == 0) {
-      final headerAt = 0;
-      final wrapped = CoursesSheet.withChrome(
-        headerRow: rows[headerAt],
-        dataRows: rows.sublist(headerAt + 1),
-      );
+    } else if (CoursesSheetParser.needsLayoutRewrite(rows, hasValidRows: parsed.rows.isNotEmpty)) {
       await _gateway
-          .updateValues(a1Range: '$quoted!A1', rows: wrapped, valueInputOption: 'USER_ENTERED')
+          .updateValues(
+            a1Range: '$quoted!A1',
+            rows: CoursesSheetParser.projectToSpec(rows),
+            valueInputOption: 'USER_ENTERED',
+          )
           .timeout(requestTimeout);
       rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
       parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);

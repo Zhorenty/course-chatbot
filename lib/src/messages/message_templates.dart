@@ -45,6 +45,8 @@ final class MessageTemplates {
   static const String buttonAdminBroadcast = '📣 Рассылка';
   static const String buttonAdminLinks = '🔗 Диплинки';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
+  // TODO(mvp-reset): remove this debug button after the first live launch.
+  static const String buttonAdminClearFunnel = '🧹 Очистить воронку';
   static const String buttonAdminMenu = '🛠 Админка';
   static const String buttonAdminChangeStatus = '✏️ Изменить статус';
   static const String buttonAdminStatusUnpaid = '⏳ Не оплачено';
@@ -99,6 +101,9 @@ final class MessageTemplates {
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
   static const String cbAdminCard = 'ak:';
+  // TODO(mvp-reset): remove with buttonAdminClearFunnel.
+  static const String cbAdminClearFunnelConfirm = 'cfy';
+  static const String cbAdminClearFunnelAbort = 'cfn';
 
   String botInDevelopment() {
     return '<b>Бот в разработке</b>\n\n'
@@ -569,7 +574,9 @@ final class MessageTemplates {
     return '<b>Админка</b>\n\n'
         'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
         'Диплинки — «${MessageTemplates.buttonAdminLinks}». '
-        'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}».';
+        'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}». '
+        // TODO(mvp-reset): drop this sentence with the clear-funnel button.
+        'Временно: «${MessageTemplates.buttonAdminClearFunnel}» сотрёт людей из бота.';
   }
 
   String adminAskSearch() {
@@ -887,6 +894,16 @@ final class MessageTemplates {
       '«${MessageTemplates.buttonAdminSheets}» или снова «${MessageTemplates.buttonAdminLinks}».',
     );
     return buf.toString().trim();
+  }
+
+  String adminAskClearFunnel() {
+    return '<b>Очистить воронку</b>\n\n'
+        'Сотру людей, оплаты, прогрев и лог. Каталог запусков не трогаю. '
+        'Это для тестов — потом кнопку уберём.';
+  }
+
+  String adminFunnelCleared({required int people}) {
+    return 'Воронка очищена. Было людей: $people. Каталог запусков на месте.';
   }
 
   String adminSheetsDisabled() {

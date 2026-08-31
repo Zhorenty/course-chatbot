@@ -29,6 +29,10 @@ extension MessageTemplateKeyboards on MessageTemplates {
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
+      // TODO(mvp-reset): remove this row after the first live launch.
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminClearFunnel},
+      ],
     ]);
   }
 

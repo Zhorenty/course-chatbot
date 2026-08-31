@@ -4,7 +4,7 @@ import 'package:course_chatbot/src/domain/money.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 14;
+  static const int columnCount = 12;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -42,9 +42,7 @@ abstract final class CoursesSheet {
     depositDueDate,
     courseStartDate,
     channelId,
-    offerUrl,
     leadMagnetFileId,
-    leadMagnetUrl,
     status,
   ];
 
@@ -59,9 +57,7 @@ abstract final class CoursesSheet {
     'Доплата до',
     'Старт курса',
     'ID канала',
-    'Оферта',
     'Файл гайда',
-    'Ссылка на гайд',
     'статус',
   ];
 
@@ -76,9 +72,7 @@ abstract final class CoursesSheet {
     'Дата. Выбери в календаре. Формат 19.08.2026. До этого дня нужно доплатить остаток.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
     'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
-    'Ссылка на текст публичной оферты. Если пусто — в боте останется согласие без ссылки на документ.',
     'Не заполняй. Бот сам запомнит файл гайда. Сюда пишет только тот, кто меняет гайд в Telegram.',
-    'Ссылка на гайд, если отдаём не файлом. Можно не заполнять.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
   ];
 
@@ -127,8 +121,6 @@ abstract final class CoursesSheet {
       seedDepositRub,
       seedDepositDueDate,
       seedCourseStartDate,
-      '',
-      '',
       '',
       '',
       statusFormula(row: defaultHeaderRow + 2),
@@ -372,6 +364,57 @@ abstract final class CoursesSheetParser {
       return null;
     }
     return _headerIndex(rows[headerAt])[canonical];
+  }
+
+  static bool headerMatchesSpec(List<Object?> headerRow) {
+    for (var i = 0; i < CoursesSheet.headers.length; i++) {
+      if (i >= headerRow.length) {
+        return false;
+      }
+      if (canonicalHeader(headerRow[i]) != CoursesSheet.headers[i]) {
+        return false;
+      }
+    }
+    for (var i = CoursesSheet.headers.length; i < headerRow.length; i++) {
+      if (canonicalHeader(headerRow[i]) != null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool needsLayoutRewrite(List<List<Object?>> rows, {required bool hasValidRows}) {
+    final headerAt = headerRowIndex(rows);
+    if (headerAt == null) {
+      return false;
+    }
+    if (!headerMatchesSpec(rows[headerAt])) {
+      return true;
+    }
+    return hasValidRows && headerAt != CoursesSheet.defaultHeaderRow;
+  }
+
+  /// Maps an older COURSES layout (extra columns, header at row 0) onto the
+  /// current spec. Dropped fields stay readable via [headerAliases] until rewrite.
+  static List<List<Object?>> projectToSpec(List<List<Object?>> rows) {
+    final headerAt = headerRowIndex(rows);
+    if (headerAt == null) {
+      return CoursesSheet.seedRows();
+    }
+    final headerIndex = _headerIndex(rows[headerAt]);
+    final dataRows = <List<Object?>>[];
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final raw = rows[i];
+      if (_isEmptyRow(raw)) {
+        continue;
+      }
+      final cells = <Object?>[
+        for (final name in CoursesSheet.headers)
+          name == CoursesSheet.status ? '' : (_cell(raw, headerIndex, name) ?? ''),
+      ];
+      dataRows.add(CoursesSheet.padded(cells));
+    }
+    return CoursesSheet.withChrome(dataRows: dataRows);
   }
 
   static CoursesSheetParseResult parse(

@@ -35,6 +35,10 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (text == MessageTemplates.buttonAdminLinks || text == '/links') {
       return _adminShowDeepLinks(context);
     }
+    // TODO(mvp-reset): remove this branch with the clear-funnel button.
+    if (text == MessageTemplates.buttonAdminClearFunnel) {
+      return _adminAskClearFunnel(context);
+    }
     if (_isBroadcastStep(flow?.step)) {
       return _captureBroadcastDraft(context);
     }
@@ -138,6 +142,43 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _send(
       context,
       _templates.adminDeepLinks(_funnel.links.entries),
+      replyMarkup: _templates.adminMenuKeyboard(),
+    );
+  }
+
+  // TODO(mvp-reset): remove with the admin «Очистить воронку» button.
+  Future<bool> _adminAskClearFunnel(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    return _send(
+      context,
+      _templates.adminAskClearFunnel(),
+      replyMarkup: _templates.adminConfirmKeyboard(
+        yesData: MessageTemplates.cbAdminClearFunnelConfirm,
+        noData: MessageTemplates.cbAdminClearFunnelAbort,
+      ),
+    );
+  }
+
+  // TODO(mvp-reset): remove with the admin «Очистить воронку» button.
+  Future<bool> _adminClearFunnel(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final people = _course.clearFunnelPeople();
+    _flowByUserId.clear();
+    final job = _sheetsExportJob;
+    if (job != null) {
+      try {
+        await job.export();
+      } on Object catch (error, stackTrace) {
+        l.w('Admin ВОРОНКА export after clear failed: $error', stackTrace);
+      }
+    }
+    return _send(
+      context,
+      _templates.adminFunnelCleared(people: people),
       replyMarkup: _templates.adminMenuKeyboard(),
     );
   }
