@@ -20,7 +20,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return replyKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminSearch},
-        <String, String>{'text': MessageTemplates.buttonAdminAddUser},
+        <String, String>{'text': MessageTemplates.buttonAdminCatalog},
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminLinks},
@@ -28,7 +28,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
-        <String, String>{'text': MessageTemplates.buttonAdminCatalog},
       ],
       // TODO(mvp-reset): remove this row after the first live launch.
       <Map<String, String>>[

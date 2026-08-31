@@ -82,13 +82,16 @@ void main() {
     expect(withKeyboard.text, contains('Админка'));
     expect(withKeyboard.text, isNot(contains('Гайд по колористике')));
     final texts = _replyButtonTexts(withKeyboard.replyMarkup);
-    expect(texts, contains(MessageTemplates.buttonAdminSearch));
-    expect(texts, contains(MessageTemplates.buttonAdminAddUser));
-    expect(texts, contains(MessageTemplates.buttonAdminCatalog));
-    expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
-    expect(texts, contains(MessageTemplates.buttonAdminLinks));
-    expect(texts, contains(MessageTemplates.buttonAdminSheets));
-    expect(texts, contains(MessageTemplates.buttonAdminClearFunnel));
+    expect(texts, <String>[
+      MessageTemplates.buttonAdminSearch,
+      MessageTemplates.buttonAdminCatalog,
+      MessageTemplates.buttonAdminLinks,
+      MessageTemplates.buttonAdminSheets,
+      MessageTemplates.buttonAdminBroadcast,
+      MessageTemplates.buttonAdminClearFunnel,
+    ]);
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
   });
@@ -519,7 +522,7 @@ void main() {
     expect(harness.channel.revoked, isNotEmpty);
   });
 
-  test('admin catalog button lists launches and keeps add-user label', () async {
+  test('admin catalog button lists launches and create-course stays off the admin menu', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
     addTearDown(sheets.dispose);
@@ -536,11 +539,6 @@ void main() {
       isNot(contains(MessageTemplates.buttonAdminCatalogNew)),
     );
     expect(_inlineCallbackData(list.replyMarkup).every((data) => data.length <= 64), isTrue);
-
-    await sheets.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
-    );
-    expect(sheets.sender.messages.last.text, contains('Добавить на курс'));
   });
 
   test('admin catalog without Sheets says the table is off', () async {
@@ -979,7 +977,11 @@ void main() {
     expect(sheets.sender.messages.last.text, contains('Админка'));
     expect(
       _replyButtonTexts(sheets.sender.messages.last.replyMarkup),
-      contains(MessageTemplates.buttonAdminAddUser),
+      contains(MessageTemplates.buttonAdminCatalog),
+    );
+    expect(
+      _replyButtonTexts(sheets.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCatalogNew)),
     );
   });
 }

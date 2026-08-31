@@ -196,16 +196,32 @@ void main() {
 
   test('admin reply keyboard is admin-only and includes sheets refresh', () {
     final templates = MessageTemplates();
-    final texts = _replyButtonTexts(templates.adminMenuKeyboard());
-    expect(texts, contains(MessageTemplates.buttonAdminSearch));
-    expect(texts, contains(MessageTemplates.buttonAdminAddUser));
-    expect(texts, contains(MessageTemplates.buttonAdminCatalog));
-    expect(texts, contains(MessageTemplates.buttonAdminBroadcast));
-    expect(texts, contains(MessageTemplates.buttonAdminLinks));
-    expect(texts, contains(MessageTemplates.buttonAdminSheets));
-    expect(texts, contains(MessageTemplates.buttonAdminClearFunnel));
-    expect(texts.last, MessageTemplates.buttonAdminClearFunnel);
+    final keyboard = templates.adminMenuKeyboard();
+    final texts = _replyButtonTexts(keyboard);
+    expect(texts, <String>[
+      MessageTemplates.buttonAdminSearch,
+      MessageTemplates.buttonAdminCatalog,
+      MessageTemplates.buttonAdminLinks,
+      MessageTemplates.buttonAdminSheets,
+      MessageTemplates.buttonAdminBroadcast,
+      MessageTemplates.buttonAdminClearFunnel,
+    ]);
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
+    final rows = keyboard['keyboard'] as List<dynamic>;
+    expect(rows, hasLength(4));
+    expect(
+      <List<String>>[
+        for (final row in rows)
+          <String>[for (final cell in row as List<dynamic>) (cell as Map)['text'] as String],
+      ],
+      <List<String>>[
+        <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminCatalog],
+        <String>[MessageTemplates.buttonAdminLinks, MessageTemplates.buttonAdminSheets],
+        <String>[MessageTemplates.buttonAdminBroadcast],
+        <String>[MessageTemplates.buttonAdminClearFunnel],
+      ],
+    );
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
