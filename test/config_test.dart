@@ -2,17 +2,31 @@ import 'package:course_chatbot/src/config/app_config.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('live kassa without webhook secret fails validation', () {
+  test('default payment provider is yookassa', () {
+    const config = AppConfig(botToken: 't', adminUserIds: {1}, adminChatId: null);
+    expect(config.paymentProvider, PaymentProvider.yookassa);
+    expect(config.usesLiveKassa, isFalse);
+  });
+
+  test('live YooKassa without webhook secret fails validation', () {
     const config = AppConfig(
       botToken: 't',
       adminUserIds: {1},
       adminChatId: null,
-      leadpayToken: 'token',
+      yookassaShopId: 'shop',
+      yookassaSecretKey: 'secret',
     );
+    expect(config.usesLiveKassa, isTrue);
     expect(
       config.validationErrors().any((error) => error.contains('PAYMENT_WEBHOOK_SECRET')),
       isTrue,
     );
+  });
+
+  test('YooKassa without keys does not require a webhook secret', () {
+    const config = AppConfig(botToken: 't', adminUserIds: {1}, adminChatId: null);
+    expect(config.usesLiveKassa, isFalse);
+    expect(config.validationErrors(), isEmpty);
   });
 
   test('empty admin list fails validation', () {
@@ -27,6 +41,7 @@ void main() {
       adminChatId: null,
       paymentProvider: PaymentProvider.manual,
     );
+    expect(config.usesLiveKassa, isFalse);
     expect(config.validationErrors(), isEmpty);
   });
 

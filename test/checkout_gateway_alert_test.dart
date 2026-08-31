@@ -30,7 +30,7 @@ void main() {
         launch: launch,
         kind: PaymentKind.full,
       );
-      harness.gateway.createError = const PaymentUnavailableException('leadpay down');
+      harness.gateway.createError = const PaymentUnavailableException('yookassa down');
 
       // Same signal the handler shows the user (payManualFallback) still fires.
       await expectLater(
@@ -46,7 +46,7 @@ void main() {
       expect(alertPort.alerts.single.userId, 42);
       expect(alertPort.alerts.single.launchId, launch.id);
       expect(alertPort.alerts.single.provider, 'fake');
-      expect(alertPort.alerts.single.reason, contains('leadpay down'));
+      expect(alertPort.alerts.single.reason, contains('yookassa down'));
       expect(alertPort.alerts.single.username, 'masha');
       expect(alertPort.alerts.single.firstName, 'Маша');
     },
@@ -135,7 +135,7 @@ void main() {
     final alertPort = FakePaymentGatewayAlertPort();
     await harness.init(adminUserIds: <int>{1}, alertPort: alertPort);
     final launch = harness.course.activeLaunch()!;
-    harness.gateway.createError = const PaymentUnavailableException('leadpay down');
+    harness.gateway.createError = const PaymentUnavailableException('yookassa down');
 
     for (final userId in <int>[42, 43]) {
       harness.course.ensureUser(userId: userId, now: DateTime.utc(2026, 1, 1));
@@ -198,8 +198,8 @@ void main() {
       userId: 42,
       launchId: launch.id,
       kind: PaymentKind.full,
-      provider: 'leadpay',
-      reason: 'token missing',
+      provider: 'yookassa',
+      reason: 'keys missing',
       username: 'masha',
       firstName: 'Маша',
     );
@@ -209,7 +209,7 @@ void main() {
     expect(chatIds, <int>{1, 999});
     for (final message in harness.sender.messages) {
       expect(message.text, contains('Ошибка онлайн-оплаты'));
-      expect(message.text, contains('leadpay'));
+      expect(message.text, contains('yookassa'));
       expect(message.text, contains('42'));
       expect(message.text, contains('@masha'));
       expect(message.text, contains('Маша'));
@@ -227,7 +227,7 @@ void main() {
       notificationChatIds: <int>{1},
     );
     await harness.init(adminUserIds: <int>{1}, alertPort: notifier);
-    harness.gateway.createError = const PaymentUnavailableException('leadpay down');
+    harness.gateway.createError = const PaymentUnavailableException('yookassa down');
 
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start', username: 'masha'),

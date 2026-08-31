@@ -8,6 +8,8 @@
 - [`docs/LEKALA.md`](docs/LEKALA.md) — лекала сборки
 - [`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md) — что осталось сделать тебе и заказчику (VPS, таблица, касса, тексты)
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — заказ VPS в SmartApe, `.env`, Docker, HTTPS для кассы
+- [`docs/YOOKASSA.md`](docs/YOOKASSA.md) — кабинет ЮKassa, `.env`, деплой callback, тест и бой
+- [`docs/PAY_HTTPS.md`](docs/PAY_HTTPS.md) — домен, DNS (A-запись), Caddy для webhook кассы
 - [`docs/funnel-example.png`](docs/funnel-example.png) — пример среза воронки в Google Sheets
 
 ## Запуск локально
@@ -40,13 +42,16 @@ SQLite живёт в `./data`. Бэкап — периодический `VACUUM
 
 ## Касса
 
-`PAYMENT_PROVIDER=leadpay | yookassa | manual`.
+Живой путь: `PAYMENT_PROVIDER=yookassa` + ключи магазина + HTTPS callback. Пошагово: [`docs/YOOKASSA.md`](docs/YOOKASSA.md).
 
-- LeadPay — первый заход. Нужен токен «для внешних систем» и `PAYMENT_WEBHOOK_SECRET`. Пока токена нет, бот работает как `manual` (ссылку не отдаёт, админ отмечает оплату).
-- ЮKassa — запасной шлюз. Callback: `POST /payments/callback` (секрет в query `?secret=`, заголовке `X-Webhook-Secret` или в path). Бот дополнительно перечитывает платёж из API ЮKassa.
+`PAYMENT_PROVIDER=yookassa | manual`.
+
+- ЮKassa — единственная живая касса. Нужны `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` и `PAYMENT_WEBHOOK_SECRET`. Callback: `POST /payments/callback` (секрет в query `?secret=`, заголовке `X-Webhook-Secret` или в path). Бот дополнительно перечитывает платёж из API ЮKassa (`GET /v3/payments/{id}`).
+- Если ключи пустые при `PAYMENT_PROVIDER=yookassa`, фабрика падает в `manual`: ссылку не отдаёт, админ отмечает оплату в карточке.
+- `PAYMENT_PROVIDER=manual` — жить без кассы (перевод мимо кассы, отладка).
 - `GET /health` — liveness для Docker.
 - Sidecar HTTP не заменяет long polling Telegram.
-- Не публикуй 8080 в интернет. Compose слушает только `127.0.0.1` на хосте; снаружи нужен reverse proxy.
+- Не публикуй 8080 в интернет. Compose слушает только `127.0.0.1` на хосте; снаружи нужен reverse proxy (Caddy, см. [`docs/DEPLOY.md`](docs/DEPLOY.md) §9).
 
 Повторы `succeeded` идемпотентны: второй callback не создаёт второй invite и не затирает уже оплаченный заказ. Если invite не выдался, повтор webhook чинит ссылку. Предоплата канал не открывает. Новую ссылку в канал выдаёт только админ из карточки человека; ученик сам её не запрашивает.
 

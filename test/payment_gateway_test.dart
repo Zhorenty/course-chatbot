@@ -1,24 +1,12 @@
+import 'package:course_chatbot/src/config/app_config.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
-import 'package:course_chatbot/src/payments/leadpay_payment_gateway.dart';
+import 'package:course_chatbot/src/payments/payment_gateway_factory.dart';
 import 'package:course_chatbot/src/payments/yookassa_payment_gateway.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('LeadPay callback maps pay_status Y to succeeded charge', () {
-    final gateway = LeadPayPaymentGateway(token: 't');
-    final callback = gateway.parseCallback(<String, Object?>{
-      'client_id': '42_1_9',
-      'pay_status': 'Y',
-    });
-    expect(callback, isNotNull);
-    expect(callback!.succeeded, isTrue);
-    expect(callback.charged, isTrue);
-    expect(callback.userId, 42);
-    expect(callback.orderId, 1);
-  });
-
   test('YooKassa payment.succeeded is charged, canceled is not', () {
     final gateway = YooKassaPaymentGateway(shopId: 's', secretKey: 'k');
     final succeeded = gateway.parseCallback(<String, Object?>{
@@ -45,17 +33,25 @@ void main() {
       'object': <String, Object?>{'id': 'pay-2', 'status': 'canceled'},
     });
     expect(canceled!.succeeded, isFalse);
+    expect(canceled.charged, isFalse);
   });
 
-  test('LeadPay application-approved is not a charge', () {
-    final gateway = LeadPayPaymentGateway(token: 't');
-    final callback = gateway.parseCallback(<String, Object?>{
-      'client_id': '42_1_9',
-      'pay_status': 'approved',
-    });
-    expect(callback, isNotNull);
-    expect(callback!.succeeded, isFalse);
-    expect(callback.charged, isFalse);
+  test('YooKassa ignores events other than succeeded and canceled', () {
+    final gateway = YooKassaPaymentGateway(shopId: 's', secretKey: 'k');
+    expect(
+      gateway.parseCallback(<String, Object?>{
+        'event': 'payment.waiting_for_capture',
+        'object': <String, Object?>{'id': 'pay-w', 'status': 'waiting_for_capture'},
+      }),
+      isNull,
+    );
+    expect(
+      gateway.parseCallback(<String, Object?>{
+        'event': 'payment.pending',
+        'object': <String, Object?>{'id': 'pay-p', 'status': 'pending'},
+      }),
+      isNull,
+    );
   });
 
   test('YooKassa verifyCallback re-reads the payment from the API', () async {
@@ -91,5 +87,38 @@ void main() {
       },
     });
     expect(callback!.amountKopecks, 1999);
+  });
+
+  test('YooKassa isAvailable is config-only and does not call the API', () async {
+    var httpCalls = 0;
+    final client = MockClient((request) async {
+      httpCalls += 1;
+      return http.Response('{}', 200);
+    });
+    final withKeys = YooKassaPaymentGateway(shopId: 's', secretKey: 'k', httpClient: client);
+    final empty = YooKassaPaymentGateway(shopId: '', secretKey: '', httpClient: client);
+    expect(await withKeys.isAvailable(), isTrue);
+    expect(await empty.isAvailable(), isFalse);
+    expect(httpCalls, 0);
+    withKeys.close();
+    empty.close();
+  });
+
+  test('empty YooKassa keys fall back to manual', () {
+    const config = AppConfig(botToken: 't', adminUserIds: {1}, adminChatId: null);
+    expect(createPaymentGateway(config).providerId, 'manual');
+  });
+
+  test('YooKassa keys produce the live gateway', () {
+    const config = AppConfig(
+      botToken: 't',
+      adminUserIds: {1},
+      adminChatId: null,
+      yookassaShopId: 'shop',
+      yookassaSecretKey: 'secret',
+    );
+    final gateway = createPaymentGateway(config);
+    expect(gateway.providerId, 'yookassa');
+    gateway.close();
   });
 }

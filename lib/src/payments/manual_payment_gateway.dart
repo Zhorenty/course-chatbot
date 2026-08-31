@@ -2,7 +2,7 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 
-/// Fallback when the kassa is not wired or the spike has no auto-status yet.
+/// Fallback when YooKassa keys are empty or PAYMENT_PROVIDER is manual.
 final class ManualPaymentGateway implements PaymentGateway {
   const ManualPaymentGateway();
 

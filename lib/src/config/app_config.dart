@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 
-enum PaymentProvider { leadpay, yookassa, manual }
+enum PaymentProvider { yookassa, manual }
 
 final class AppConfig {
   /// Secrets and Telegram ids come from CLI / env / `.env`.
@@ -24,8 +24,7 @@ final class AppConfig {
     this.leadMagnetUrl,
     this.leadMagnetPath = 'assets/guide.pdf',
     this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
-    this.paymentProvider = PaymentProvider.leadpay,
-    this.leadpayToken,
+    this.paymentProvider = PaymentProvider.yookassa,
     this.yookassaShopId,
     this.yookassaSecretKey,
     this.paymentWebhookBind = '127.0.0.1:8080',
@@ -81,7 +80,6 @@ final class AppConfig {
   final int abandonSecondDelayHours;
   final String? yookassaReturnUrl;
   final PaymentProvider paymentProvider;
-  final String? leadpayToken;
   final String? yookassaShopId;
   final String? yookassaSecretKey;
   final String paymentWebhookBind;
@@ -105,8 +103,6 @@ final class AppConfig {
 
   bool get usesLiveKassa {
     switch (paymentProvider) {
-      case PaymentProvider.leadpay:
-        return leadpayToken != null && leadpayToken!.trim().isNotEmpty;
       case PaymentProvider.yookassa:
         return (yookassaShopId?.trim().isNotEmpty ?? false) &&
             (yookassaSecretKey?.trim().isNotEmpty ?? false);
@@ -139,8 +135,7 @@ final class AppConfig {
       ..addOption('lead-magnet-file-id', help: 'Telegram file_id of the guide PDF')
       ..addOption('offer-url', help: 'Offer / terms URL shown before checkout')
       ..addOption('yookassa-return-url', help: 'Redirect after YooKassa checkout')
-      ..addOption('payment-provider', help: 'leadpay | yookassa | manual')
-      ..addOption('leadpay-token', help: 'LeadPay token for external systems')
+      ..addOption('payment-provider', help: 'yookassa | manual')
       ..addOption('yookassa-shop-id', help: 'YooKassa shop id')
       ..addOption('yookassa-secret-key', help: 'YooKassa secret key')
       ..addOption('payment-webhook-bind', help: 'Local bind for payment callbacks')
@@ -185,7 +180,7 @@ final class AppConfig {
     final providerRaw = resolve('PAYMENT_PROVIDER', 'payment-provider');
     final paymentProvider = _parsePaymentProvider(providerRaw);
     if (paymentProvider == null) {
-      stderr.writeln('Unknown PAYMENT_PROVIDER="$providerRaw". Use leadpay, yookassa, or manual.');
+      stderr.writeln('Unknown PAYMENT_PROVIDER="$providerRaw". Use yookassa or manual.');
       exit(2);
     }
 
@@ -199,7 +194,6 @@ final class AppConfig {
       offerUrl: resolve('OFFER_URL', 'offer-url'),
       yookassaReturnUrl: resolve('YOOKASSA_RETURN_URL', 'yookassa-return-url'),
       paymentProvider: paymentProvider,
-      leadpayToken: resolve('LEADPAY_TOKEN', 'leadpay-token'),
       yookassaShopId: resolve('YOOKASSA_SHOP_ID', 'yookassa-shop-id'),
       yookassaSecretKey: resolve('YOOKASSA_SECRET_KEY', 'yookassa-secret-key'),
       paymentWebhookBind:
@@ -282,15 +276,13 @@ bool _toBool(String? value, {required bool defaultValue}) {
 
 PaymentProvider? _parsePaymentProvider(String? raw) {
   switch (raw?.trim().toLowerCase()) {
+    case null:
+    case '':
     case 'yookassa':
     case 'yoo_kassa':
       return PaymentProvider.yookassa;
     case 'manual':
       return PaymentProvider.manual;
-    case 'leadpay':
-    case null:
-    case '':
-      return PaymentProvider.leadpay;
     default:
       return null;
   }

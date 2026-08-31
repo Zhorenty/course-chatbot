@@ -1,3 +1,5 @@
+docs/
+
 .dart_tool/
 .idea/
 .DS_Store
