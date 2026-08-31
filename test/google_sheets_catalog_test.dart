@@ -386,7 +386,7 @@ void main() {
       );
     });
 
-    test('ССЫЛКИ stream column is a dropdown from COURSES launch titles', () async {
+    test('ССЫЛКИ stream column is a dropdown from catalog launch titles', () async {
       final sync = GoogleSheetsCatalogSync(
         gateway: gateway,
         catalog: course,
@@ -396,10 +396,32 @@ void main() {
       await sync.sync();
       final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
       final look = gateway.looksBySheetId[tab.sheetId]!;
-      final stream = look.validations.singleWhere((rule) => rule.conditionType == 'ONE_OF_RANGE');
-      expect(stream.startColumn, LinksSheet.headers.indexOf(LinksSheet.launchCode));
-      expect(stream.conditionValues.single, LinksSheet.launchDropdownFormula());
-      expect(stream.conditionValues.single, contains("'${CoursesSheet.tabTitle}'"));
+      final stream = look.validations.singleWhere(
+        (rule) => rule.startColumn == LinksSheet.headers.indexOf(LinksSheet.launchCode),
+      );
+      expect(stream.conditionType, 'ONE_OF_LIST');
+      expect(stream.conditionValues, contains(CoursesSheet.seedLaunchTitle));
+    });
+
+    test('ССЫЛКИ dropdown follows a renamed gid=0 catalog tab', () async {
+      gateway.sheets = <GoogleSheetsSheetInfo>[
+        const GoogleSheetsSheetInfo(title: 'КУРСЫ', sheetId: CoursesSheet.sheetId),
+      ];
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.syncLinks();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final look = gateway.looksBySheetId[tab.sheetId]!;
+      final stream = look.validations.singleWhere(
+        (rule) => rule.startColumn == LinksSheet.headers.indexOf(LinksSheet.launchCode),
+      );
+      expect(stream.conditionType, 'ONE_OF_LIST');
+      expect(stream.conditionValues, contains(CoursesSheet.seedLaunchTitle));
     });
 
     test('syncLinks seeds ССЫЛКИ without rewriting COURSES', () async {

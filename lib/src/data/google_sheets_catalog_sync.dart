@@ -287,12 +287,16 @@ final class GoogleSheetsCatalogSync {
     final dataRowCount = filled + 3 < LinksSheet.extraDataRows
         ? LinksSheet.extraDataRows
         : filled + 3;
+    final coursesSource = await _coursesDropdownSource();
     await _gateway
         .applyDashboardLook(
           sheetId: tab.sheetId,
           dashboard: GoogleSheetsLinksCatalog.build(
             headerRow: headerAt,
             dataRowCount: dataRowCount,
+            coursesSheetTitle: coursesSource.title,
+            coursesHeaderRow: coursesSource.headerRow,
+            launchTitles: coursesSource.launchTitles,
           ),
         )
         .timeout(requestTimeout);
@@ -373,6 +377,37 @@ final class GoogleSheetsCatalogSync {
       return false;
     }
     return parsed.skippedInvalidCount == 0;
+  }
+
+  Future<({String title, int headerRow, List<String> launchTitles})>
+  _coursesDropdownSource() async {
+    final sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    final catalog = _sheetById(sheets, CoursesSheet.sheetId);
+    if (catalog == null) {
+      return (
+        title: CoursesSheet.tabTitle,
+        headerRow: CoursesSheet.defaultHeaderRow,
+        launchTitles: const <String>[],
+      );
+    }
+    final rows = await _gateway
+        .getValues('${quoteA1SheetTitle(catalog.title)}!A1:Z')
+        .timeout(requestTimeout);
+    final parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
+    final seen = <String>{};
+    final titles = <String>[];
+    for (final row in parsed.rows) {
+      final title = row.launchTitle.trim();
+      if (title.isEmpty || !seen.add(title)) {
+        continue;
+      }
+      titles.add(title);
+    }
+    return (
+      title: catalog.title,
+      headerRow: CoursesSheetParser.headerRowIndex(rows) ?? CoursesSheet.defaultHeaderRow,
+      launchTitles: titles,
+    );
   }
 
   GoogleSheetsSheetInfo? _sheetById(List<GoogleSheetsSheetInfo> sheets, int sheetId) {

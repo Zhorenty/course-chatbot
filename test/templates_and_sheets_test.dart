@@ -104,7 +104,7 @@ void main() {
     expect(look.frozenRowCount, 4);
     expect(look.columnCount, 5);
     expect(look.notes, hasLength(5));
-    expect(look.notes[3].text, contains('COURSES'));
+    expect(look.notes[3].text, contains('каталога'));
     expect(look.notes.last.text, contains('t.me'));
     expect(look.validations, hasLength(2));
     expect(look.validations.first.conditionType, 'ONE_OF_LIST');
@@ -113,6 +113,13 @@ void main() {
     expect(look.validations.last.conditionValues.single, LinksSheet.launchDropdownFormula());
     expect(look.validations.last.conditionValues.single, contains(CoursesSheet.tabTitle));
     expect(look.validations.last.conditionValues.single, contains('\$D\$'));
+    final named = GoogleSheetsLinksCatalog.build(
+      coursesSheetTitle: 'КУРСЫ',
+      launchTitles: const <String>['Первый запуск'],
+    );
+    expect(named.validations.last.conditionType, 'ONE_OF_LIST');
+    expect(named.validations.last.conditionValues, <String>['Первый запуск']);
+    expect(LinksSheet.launchDropdownFormula(coursesSheetTitle: 'КУРСЫ'), contains("'КУРСЫ'"));
     expect(LinksSheet.extraDataRows, greaterThanOrEqualTo(24));
     expect(look.rowCount, greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + 24));
   });

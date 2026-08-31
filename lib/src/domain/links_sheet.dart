@@ -19,7 +19,7 @@ abstract final class LinksSheet {
   static const String titleAside = 'Правят руками';
   static const String hint =
       'Четыре стартовые метки уже есть. Новая (Stories, таргет) — строка с меткой латиницей. '
-      'Куда: гайд или курс. Поток — выбери из списка запусков на COURSES; '
+      'Куда: гайд или курс. Поток — выбери из списка запусков на листе каталога; '
       'гайд и запись в MVP всегда текущий «да». Пусто = текущий. '
       'После правок нажми в боте «Обновить Google Sheets» или «Диплинки».';
   static const String invalidPayloadStatus = 'невалидная метка';
@@ -32,21 +32,25 @@ abstract final class LinksSheet {
     'Откуда человек пришёл. Пример: Instagram Reels. Можно своё.',
     'Что открыть при первом Start: гайд или курс.',
     'Метка в ссылке t.me/бот?start=метка. Латиница, цифры и подчёркивание, до 64 символов.',
-    'Выбери поток с листа COURSES (название запуска). Пусто — текущий набор. '
+    'Выбери поток с листа каталога (название запуска). Пусто — текущий набор. '
         'Гайд и оплата в MVP всё равно текущий запуск.',
     'Не заполняй. Бот сам подставит готовую t.me-ссылку.',
   ];
 
   static const int launchDropdownRows = 40;
 
-  /// Data-validation formula: dropdown of COURSES launch titles.
-  static String launchDropdownFormula({int coursesHeaderRow = CoursesSheet.defaultHeaderRow}) {
+  /// Data-validation formula: dropdown of launch titles on the catalog tab (`gid=0`).
+  static String launchDropdownFormula({
+    String coursesSheetTitle = CoursesSheet.tabTitle,
+    int coursesHeaderRow = CoursesSheet.defaultHeaderRow,
+  }) {
     final column = CoursesSheet.columnLetter(
       CoursesSheet.headers.indexOf(CoursesSheet.launchTitle),
     );
     final start = coursesHeaderRow + 2;
     final end = start + launchDropdownRows - 1;
-    return "='${CoursesSheet.tabTitle}'!\$$column\$$start:\$$column\$$end";
+    final escaped = coursesSheetTitle.replaceAll("'", "''");
+    return "='$escaped'!\$$column\$$start:\$$column\$$end";
   }
 
   static List<List<Object?>> seedRows({String? botUsername}) {
@@ -143,6 +147,7 @@ abstract final class LinksSheetParser {
     'start': LinksSheet.payload,
     LinksSheet.launchCode: LinksSheet.launchCode,
     'код запуска': LinksSheet.launchCode,
+    'код потока': LinksSheet.launchCode,
     'запуск': LinksSheet.launchCode,
     'поток': LinksSheet.launchCode,
     'название запуска': LinksSheet.launchCode,

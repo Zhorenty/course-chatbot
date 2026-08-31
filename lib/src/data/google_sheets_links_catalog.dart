@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
+import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 
 /// Visual language matches [GoogleSheetsCoursesCatalog]: forest, sage, ivory.
@@ -7,6 +8,9 @@ abstract final class GoogleSheetsLinksCatalog {
   static GoogleSheetsDashboard build({
     int headerRow = LinksSheet.defaultHeaderRow,
     int dataRowCount = LinksSheet.extraDataRows,
+    String coursesSheetTitle = CoursesSheet.tabTitle,
+    int coursesHeaderRow = CoursesSheet.defaultHeaderRow,
+    List<String> launchTitles = const <String>[],
   }) {
     const columnCount = LinksSheet.columnCount;
     final dataStart = headerRow + 1;
@@ -174,9 +178,16 @@ abstract final class GoogleSheetsLinksCatalog {
           endRowExclusive: dataEnd,
           startColumn: LinksSheet.headers.indexOf(LinksSheet.launchCode),
           endColumnExclusive: LinksSheet.headers.indexOf(LinksSheet.launchCode) + 1,
-          conditionType: 'ONE_OF_RANGE',
-          conditionValues: <String>[LinksSheet.launchDropdownFormula()],
-          inputMessage: 'Выбери поток с листа COURSES. Пусто — текущий набор.',
+          conditionType: launchTitles.isEmpty ? 'ONE_OF_RANGE' : 'ONE_OF_LIST',
+          conditionValues: launchTitles.isEmpty
+              ? <String>[
+                  LinksSheet.launchDropdownFormula(
+                    coursesSheetTitle: coursesSheetTitle,
+                    coursesHeaderRow: coursesHeaderRow,
+                  ),
+                ]
+              : launchTitles,
+          inputMessage: 'Выбери поток с листа каталога. Пусто — текущий набор.',
         ),
       ],
     );

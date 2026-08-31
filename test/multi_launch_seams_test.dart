@@ -300,6 +300,12 @@ void main() {
     ]);
     expect(withTitle.rows.single.launchCode, 'Ноябрь');
 
+    final liveHeader = LinksSheetParser.parse(<List<Object?>>[
+      const <Object?>['Откуда', 'Куда', 'Метка', 'Код потока', 'Ссылка'],
+      <Object?>['Таргет', 'курс', 'ads_nov', 'Первый запуск', ''],
+    ]);
+    expect(liveHeader.rows.single.launchCode, 'Первый запуск');
+
     final legacy = LinksSheetParser.parse(<List<Object?>>[
       <Object?>['Откуда', 'Куда', 'Метка', 'Ссылка'],
       <Object?>['Reels', 'гайд', 'ig_reels_guide', 'https://t.me/bot?start=ig_reels_guide'],
