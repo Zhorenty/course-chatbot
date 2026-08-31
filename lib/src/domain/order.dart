@@ -1,5 +1,7 @@
 import 'package:course_chatbot/src/domain/storage_enum.dart';
 
+const Object _unset = Object();
+
 enum OrderStatus { checkoutStarted, awaitingPayment, depositPaid, paid, cancelled }
 
 extension OrderStatusX on OrderStatus {
@@ -93,9 +95,9 @@ final class CourseOrder {
     PaymentKind? kind,
     int? amountPaidKopecks,
     int? amountDueKopecks,
-    DateTime? dueAt,
-    DateTime? paidAt,
-    DateTime? cancelledAt,
+    Object? dueAt = _unset,
+    Object? paidAt = _unset,
+    Object? cancelledAt = _unset,
     bool? accessGranted,
   }) {
     return CourseOrder(
@@ -108,9 +110,9 @@ final class CourseOrder {
       amountPaidKopecks: amountPaidKopecks ?? this.amountPaidKopecks,
       amountDueKopecks: amountDueKopecks ?? this.amountDueKopecks,
       checkoutStartedAt: checkoutStartedAt,
-      dueAt: dueAt ?? this.dueAt,
-      paidAt: paidAt ?? this.paidAt,
-      cancelledAt: cancelledAt ?? this.cancelledAt,
+      dueAt: identical(dueAt, _unset) ? this.dueAt : dueAt as DateTime?,
+      paidAt: identical(paidAt, _unset) ? this.paidAt : paidAt as DateTime?,
+      cancelledAt: identical(cancelledAt, _unset) ? this.cancelledAt : cancelledAt as DateTime?,
       accessGranted: accessGranted ?? this.accessGranted,
     );
   }

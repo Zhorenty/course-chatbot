@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
@@ -43,16 +44,25 @@ void main() {
         callbackId: 'p',
         chatId: 1,
         userId: 1,
-        data: '${MessageTemplates.cbAdminPaid}99',
+        data: '${MessageTemplates.cbAdminStatusMenu}99',
       ),
     );
-    expect(harness.sender.messages.last.text, contains('Отметить'));
+    final picker = harness.sender.messages.last;
+    expect(picker.text, contains('не оплачено'));
+    expect(
+      _inlineButtonTexts(picker.replyMarkup),
+      contains(MessageTemplates.buttonAdminStatusPaid),
+    );
+    expect(
+      _inlineButtonTexts(picker.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminStatusUnpaid)),
+    );
     await harness.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'py',
         chatId: 1,
         userId: 1,
-        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
       ),
     );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
@@ -275,15 +285,7 @@ void main() {
         callbackId: 'p',
         chatId: 1,
         userId: 1,
-        data: '${MessageTemplates.cbAdminPaid}99',
-      ),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'py',
-        chatId: 1,
-        userId: 1,
-        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
       ),
     );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
@@ -320,15 +322,7 @@ void main() {
         callbackId: 'p',
         chatId: 1,
         userId: 1,
-        data: '${MessageTemplates.cbAdminPaid}99',
-      ),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'py',
-        chatId: 1,
-        userId: 1,
-        data: '${MessageTemplates.cbAdminPaidConfirm}99',
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
       ),
     );
     expect(harness.channel.created, hasLength(1));
@@ -363,6 +357,91 @@ void main() {
       toUser.any((m) => _inlineCallbackData(m.replyMarkup).contains(MessageTemplates.cbNewInvite)),
       isFalse,
     );
+  });
+
+  test('paid card offers change status and can switch to deposit', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'p',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
+    expect(harness.channel.created, isNotEmpty);
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '99'));
+    final card = harness.sender.messages.last;
+    expect(
+      _inlineButtonTexts(card.replyMarkup),
+      contains(MessageTemplates.buttonAdminChangeStatus),
+    );
+    expect(
+      _inlineButtonTexts(card.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminStatusPaid)),
+    );
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'st',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminStatusMenu}99',
+      ),
+    );
+    final picker = harness.sender.messages.last;
+    expect(picker.text, contains('оплачено полностью'));
+    final options = _inlineButtonTexts(picker.replyMarkup);
+    expect(options, contains(MessageTemplates.buttonAdminStatusUnpaid));
+    expect(options, contains(MessageTemplates.buttonAdminStatusDeposit));
+    expect(options, contains(MessageTemplates.buttonAdminCancel));
+    expect(options, isNot(contains(MessageTemplates.buttonAdminStatusPaid)));
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'dep',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.deposit, 99),
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, FunnelPhase.depositPaid);
+    expect(harness.course.latestOrder(99)?.status, OrderStatus.depositPaid);
+    expect(harness.channel.revoked, isNotEmpty);
+    expect(harness.course.latestOrder(99)?.accessGranted, isFalse);
+  });
+
+  test('admin can reset a paid person to unpaid', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'p',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'un',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.unpaid, 99),
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, FunnelPhase.checkout);
+    expect(harness.course.latestOrder(99)?.status, OrderStatus.awaitingPayment);
+    expect(harness.course.latestOrder(99)?.amountPaidKopecks, 0);
+    expect(harness.channel.revoked, isNotEmpty);
   });
 }
 

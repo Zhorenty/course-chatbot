@@ -274,14 +274,6 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return false;
     }
     final (text, yesPrefix) = switch (kind) {
-      _AdminConfirmKind.paid => (
-        _templates.adminConfirmMarkPaid(targetUserId),
-        MessageTemplates.cbAdminPaidConfirm,
-      ),
-      _AdminConfirmKind.deposit => (
-        _templates.adminConfirmMarkDeposit(targetUserId),
-        MessageTemplates.cbAdminDepositConfirm,
-      ),
       _AdminConfirmKind.cancel => (
         _templates.adminConfirmCancel(targetUserId),
         MessageTemplates.cbAdminCancelConfirm,
@@ -336,29 +328,59 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _presentAdminCard(context, user);
   }
 
-  Future<bool> _adminMarkPaid(
-    PrivateMessageContext context,
-    int? targetUserId,
-    PaymentKind kind,
-  ) async {
+  Future<bool> _adminShowStatusPicker(PrivateMessageContext context, int? targetUserId) async {
     if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
       return false;
     }
     final launch = _launch;
+    final current = launch == null
+        ? AdminPaymentStatus.unpaid
+        : _checkout.currentAdminStatus(userId: targetUserId, launch: launch);
+    return _send(
+      context,
+      _templates.adminAskStatus(current),
+      replyMarkup: _templates.adminStatusKeyboard(targetUserId, current),
+    );
+  }
+
+  Future<bool> _adminSetPaymentStatus(
+    PrivateMessageContext context,
+    int? targetUserId,
+    AdminPaymentStatus? target,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null || target == null) {
+      return false;
+    }
+    if (target == AdminPaymentStatus.cancelled) {
+      return _adminAskConfirm(context, targetUserId, kind: _AdminConfirmKind.cancel);
+    }
+    final launch = _launch;
     if (launch == null) {
-      return _send(context, _templates.payManualFallback());
+      return _send(context, _templates.adminStatusFailed());
     }
     _course.ensureUser(userId: targetUserId, now: _nowProvider());
-    final order = _checkout.startOrReuseOrder(userId: targetUserId, launch: launch, kind: kind);
-    final amount = _checkout.amountFor(launch, order, kind);
-    final result = await _checkout.applyManualPaid(
-      order: order,
-      launch: launch,
-      kind: kind,
-      amountKopecks: amount <= 0 ? launch.priceFullKopecks : amount,
-    );
-    await _notifyPaymentResult(result);
-    await _send(context, _templates.adminMarkedPaid());
+    final already = _checkout.currentAdminStatus(userId: targetUserId, launch: launch) == target;
+    try {
+      final result = await _checkout.applyAdminPaymentStatus(
+        userId: targetUserId,
+        launch: launch,
+        target: target,
+      );
+      if (result != null) {
+        await _notifyPaymentResult(result);
+      }
+    } on Object catch (error, stackTrace) {
+      l.w('Admin status $target for $targetUserId failed: $error', stackTrace);
+      await _send(context, _templates.adminStatusFailed());
+      final failed = _course.getUser(targetUserId);
+      if (failed == null) {
+        return true;
+      }
+      return _presentAdminCard(context, failed);
+    }
+    if (!already) {
+      await _send(context, _templates.adminStatusChanged(target));
+    }
     final user = _course.getUser(targetUserId);
     if (user == null) {
       return true;

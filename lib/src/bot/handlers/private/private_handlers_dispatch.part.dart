@@ -130,33 +130,33 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         orderId: MessageTemplates.idFromCallback(data, MessageTemplates.cbPayRemainder),
       );
     }
+    if (data.startsWith(MessageTemplates.cbAdminStatusSet)) {
+      final parsed = MessageTemplates.adminStatusFromCallback(data);
+      return _adminSetPaymentStatus(context, parsed?.userId, parsed?.status);
+    }
     if (data.startsWith(MessageTemplates.cbAdminPaidConfirm)) {
-      return _adminMarkPaid(
+      return _adminSetPaymentStatus(
         context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaidConfirm),
-        PaymentKind.full,
-      );
-    }
-    if (data.startsWith(MessageTemplates.cbAdminPaid)) {
-      return _adminAskConfirm(
-        context,
-        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminPaid),
-        kind: _AdminConfirmKind.paid,
+        AdminPaymentStatus.paid,
       );
     }
     if (data.startsWith(MessageTemplates.cbAdminDepositConfirm)) {
-      return _adminMarkPaid(
+      return _adminSetPaymentStatus(
         context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDepositConfirm),
-        PaymentKind.deposit,
+        AdminPaymentStatus.deposit,
       );
     }
-    if (data.startsWith(MessageTemplates.cbAdminDeposit)) {
-      return _adminAskConfirm(
-        context,
-        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminDeposit),
-        kind: _AdminConfirmKind.deposit,
-      );
+    if (data.startsWith(MessageTemplates.cbAdminStatusMenu) ||
+        data.startsWith(MessageTemplates.cbAdminPaid) ||
+        data.startsWith(MessageTemplates.cbAdminDeposit)) {
+      final prefix = data.startsWith(MessageTemplates.cbAdminStatusMenu)
+          ? MessageTemplates.cbAdminStatusMenu
+          : data.startsWith(MessageTemplates.cbAdminPaid)
+          ? MessageTemplates.cbAdminPaid
+          : MessageTemplates.cbAdminDeposit;
+      return _adminShowStatusPicker(context, MessageTemplates.idFromCallback(data, prefix));
     }
     if (data.startsWith(MessageTemplates.cbAdminCancelConfirm)) {
       return _adminCancel(

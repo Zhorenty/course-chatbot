@@ -41,12 +41,13 @@ mixin _SqliteEnrollmentStore on _SqliteCatalogStore
     required int launchId,
     required FunnelPhase phase,
     DateTime? magnetIssuedAt,
+    bool force = false,
   }) {
     ensureEnrollment(userId: userId, launchId: launchId, now: _nowProvider());
     final existing = getEnrollment(userId: userId, launchId: launchId);
-    final nextPhase = existing == null || existing.funnelPhase.canTransitionTo(phase)
-        ? phase
-        : existing.funnelPhase;
+    final current = existing?.funnelPhase;
+    final allowed = force || current == null || current.canTransitionTo(phase);
+    final nextPhase = allowed ? phase : current;
     if (magnetIssuedAt != null) {
       _db.execute(
         '''
@@ -64,7 +65,7 @@ mixin _SqliteEnrollmentStore on _SqliteCatalogStore
       );
       return;
     }
-    if (existing != null && !existing.funnelPhase.canTransitionTo(phase)) {
+    if (!allowed) {
       return;
     }
     _db.execute(

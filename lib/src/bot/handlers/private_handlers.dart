@@ -12,6 +12,7 @@ import 'package:course_chatbot/src/bot/handlers/private/private_context.dart';
 import 'package:course_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/google_sheets_catalog_sync.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
@@ -128,4 +129,4 @@ final class PrivateHandlers implements PaymentResultNotifier {
   }
 }
 
-enum _AdminConfirmKind { paid, deposit, cancel }
+enum _AdminConfirmKind { cancel }

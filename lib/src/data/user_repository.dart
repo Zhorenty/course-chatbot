@@ -20,6 +20,7 @@ abstract interface class UserRepository {
     required FunnelPhase phase,
     DateTime? magnetIssuedAt,
     int? launchId,
+    bool force = false,
   });
 
   void setWarmupOptOut({required int userId, required bool optOut, int? launchId});

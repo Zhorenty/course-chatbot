@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
@@ -45,9 +46,12 @@ final class MessageTemplates {
   static const String buttonAdminLinks = '🔗 Диплинки';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminMenu = '🛠 Админка';
-  static const String buttonAdminMarkPaid = '✅ Отметить оплаченным';
-  static const String buttonAdminMarkDeposit = '💵 Предоплата';
+  static const String buttonAdminChangeStatus = '✏️ Изменить статус';
+  static const String buttonAdminStatusUnpaid = 'Не оплачено';
+  static const String buttonAdminStatusDeposit = 'Предоплата';
+  static const String buttonAdminStatusPaid = 'Оплачено полностью';
   static const String buttonAdminCancel = '🚫 Убрать с курса';
+  static const String buttonAdminStatusBack = '↩️ К карточке';
   static const String buttonAdminReinvite = '🔗 Выдать ссылку в канал';
   static const String buttonAdminDm = '✉️ Написать';
   static const String buttonAdminConfirmYes = 'Да';
@@ -85,6 +89,8 @@ final class MessageTemplates {
   static const String cbAdminCreate = 'an:';
   static const String cbAdminDm = 'am:';
   static const String cbAdminActionAbort = 'az:';
+  static const String cbAdminStatusMenu = 'aq:';
+  static const String cbAdminStatusSet = 'as:';
   static const String cbBroadcastSegment = 'bs:';
   static const String cbBroadcastSend = 'bp';
   static const String cbBroadcastOtherSegment = 'br';
@@ -703,16 +709,40 @@ final class MessageTemplates {
 
   String adminMarkedPaid() => '✅ Оплата проставлена вручную.';
 
+  String adminMarkedDeposit() => '💵 Предоплата проставлена вручную.';
+
+  String adminMarkedUnpaid() => 'Статус: не оплачено. Invite отозван, если был.';
+
+  String adminStatusFailed() => 'Не получилось сменить статус. Попробуй ещё раз.';
+
+  String adminStatusChanged(AdminPaymentStatus status) => switch (status) {
+    AdminPaymentStatus.unpaid => adminMarkedUnpaid(),
+    AdminPaymentStatus.deposit => adminMarkedDeposit(),
+    AdminPaymentStatus.paid => adminMarkedPaid(),
+    AdminPaymentStatus.cancelled => adminCancelled(),
+  };
+
   String adminCancelled() =>
       '🚫 Убрал с курса. Статус снят, invite отозван, из канала выкинул, если был.';
 
-  String adminConfirmMarkPaid(int userId) {
-    return 'Отметить id <code>$userId</code> оплаченным полностью?';
+  String adminAskStatus(AdminPaymentStatus current) {
+    return 'Сейчас: <b>${escapeHtml(adminPaymentStatusLabel(current))}</b>. '
+        'Выбери новый статус.';
   }
 
-  String adminConfirmMarkDeposit(int userId) {
-    return 'Отметить id <code>$userId</code> предоплату?';
-  }
+  String adminPaymentStatusLabel(AdminPaymentStatus status) => switch (status) {
+    AdminPaymentStatus.unpaid => 'не оплачено',
+    AdminPaymentStatus.deposit => 'предоплата',
+    AdminPaymentStatus.paid => 'оплачено полностью',
+    AdminPaymentStatus.cancelled => 'убран с курса',
+  };
+
+  String adminStatusButton(AdminPaymentStatus status) => switch (status) {
+    AdminPaymentStatus.unpaid => buttonAdminStatusUnpaid,
+    AdminPaymentStatus.deposit => buttonAdminStatusDeposit,
+    AdminPaymentStatus.paid => buttonAdminStatusPaid,
+    AdminPaymentStatus.cancelled => buttonAdminCancel,
+  };
 
   String adminConfirmCancel(int userId) {
     return 'Убрать id <code>$userId</code> с курса? Invite отзову, из канала выкину.';
@@ -863,6 +893,27 @@ final class MessageTemplates {
       return null;
     }
     return int.tryParse(data.substring(prefix.length));
+  }
+
+  static String adminStatusSetData(AdminPaymentStatus status, int userId) {
+    return '$cbAdminStatusSet${status.code}:$userId';
+  }
+
+  static ({AdminPaymentStatus status, int userId})? adminStatusFromCallback(String data) {
+    if (!data.startsWith(cbAdminStatusSet)) {
+      return null;
+    }
+    final rest = data.substring(cbAdminStatusSet.length);
+    final sep = rest.indexOf(':');
+    if (sep <= 0) {
+      return null;
+    }
+    final status = AdminPaymentStatusX.parseCode(rest.substring(0, sep));
+    final userId = int.tryParse(rest.substring(sep + 1));
+    if (status == null || userId == null) {
+      return null;
+    }
+    return (status: status, userId: userId);
   }
 
   static BroadcastSegment? segmentFromCallback(String data) {

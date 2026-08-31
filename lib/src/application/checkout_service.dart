@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:course_chatbot/src/application/access_service.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -462,5 +463,112 @@ final class CheckoutService {
     }
     _course.setFunnelPhase(userId: userId, phase: FunnelPhase.cancelled, launchId: launch.id);
     await _access.revoke(userId: userId, launch: launch);
+  }
+
+  AdminPaymentStatus currentAdminStatus({required int userId, required Launch launch}) {
+    final order = _course.latestOrder(userId, launchId: launch.id);
+    final enrollment = _course.getEnrollment(userId: userId, launchId: launch.id);
+    return AdminPaymentStatusX.resolve(order: order, phase: enrollment?.funnelPhase);
+  }
+
+  /// Admin override: set unpaid / deposit / paid / cancelled even if already charged.
+  Future<PaymentApplyResult?> applyAdminPaymentStatus({
+    required int userId,
+    required Launch launch,
+    required AdminPaymentStatus target,
+  }) async {
+    _course.ensureUser(userId: userId, now: _nowProvider());
+    if (currentAdminStatus(userId: userId, launch: launch) == target) {
+      return null;
+    }
+    switch (target) {
+      case AdminPaymentStatus.cancelled:
+        await cancelEnrollment(userId: userId, launch: launch);
+        return null;
+      case AdminPaymentStatus.unpaid:
+        await _resetToUnpaid(userId: userId, launch: launch);
+        return null;
+      case AdminPaymentStatus.deposit:
+        return _forceManualPaid(userId: userId, launch: launch, kind: PaymentKind.deposit);
+      case AdminPaymentStatus.paid:
+        return _forceManualPaid(userId: userId, launch: launch, kind: PaymentKind.full);
+    }
+  }
+
+  Future<void> _resetToUnpaid({required int userId, required Launch launch}) async {
+    final order = _course.latestOrder(userId, launchId: launch.id);
+    if (order != null) {
+      _course.updateOrder(
+        order.copyWith(
+          status: OrderStatus.awaitingPayment,
+          kind: PaymentKind.full,
+          amountPaidKopecks: 0,
+          amountDueKopecks: launch.priceFullKopecks,
+          accessGranted: false,
+          paidAt: null,
+          cancelledAt: null,
+        ),
+      );
+    }
+    _course.setFunnelPhase(
+      userId: userId,
+      phase: FunnelPhase.checkout,
+      launchId: launch.id,
+      force: true,
+    );
+    await _access.revoke(userId: userId, launch: launch);
+  }
+
+  Future<PaymentApplyResult> _forceManualPaid({
+    required int userId,
+    required Launch launch,
+    required PaymentKind kind,
+  }) async {
+    await _access.revoke(userId: userId, launch: launch);
+    final order = _reopenOrderForAdmin(userId: userId, launch: launch, kind: kind);
+    _course.setFunnelPhase(
+      userId: userId,
+      phase: FunnelPhase.checkout,
+      launchId: launch.id,
+      force: true,
+    );
+    return applyManualPaid(
+      order: order,
+      launch: launch,
+      kind: kind,
+      amountKopecks: amountFor(launch, order, kind),
+    );
+  }
+
+  CourseOrder _reopenOrderForAdmin({
+    required int userId,
+    required Launch launch,
+    required PaymentKind kind,
+  }) {
+    final existing = _course.latestOrder(userId, launchId: launch.id);
+    if (existing == null) {
+      final now = _nowProvider();
+      return _course.createOrder(
+        userId: userId,
+        launchId: launch.id,
+        kind: kind,
+        priceFullKopecks: launch.priceFullKopecks,
+        amountDueKopecks: launch.priceFullKopecks,
+        now: now,
+        dueAt: kind == PaymentKind.deposit ? launch.resolveDepositDueAt(now) : null,
+      );
+    }
+    _course.updateOrder(
+      existing.copyWith(
+        status: OrderStatus.awaitingPayment,
+        kind: kind,
+        amountPaidKopecks: 0,
+        amountDueKopecks: launch.priceFullKopecks,
+        accessGranted: false,
+        paidAt: null,
+        cancelledAt: null,
+      ),
+    );
+    return _course.getOrder(existing.id)!;
   }
 }

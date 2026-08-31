@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
@@ -510,7 +511,25 @@ void main() {
     expect(templates.help(), isNot(contains('Новая ссылка')));
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      contains(MessageTemplates.buttonAdminChangeStatus),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1)),
       contains(MessageTemplates.buttonAdminReinvite),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      isNot(contains(MessageTemplates.buttonAdminStatusPaid)),
+    );
+    final paidPicker = _inlineButtonTexts(
+      templates.adminStatusKeyboard(1, AdminPaymentStatus.paid),
+    );
+    expect(paidPicker, contains(MessageTemplates.buttonAdminStatusUnpaid));
+    expect(paidPicker, contains(MessageTemplates.buttonAdminStatusDeposit));
+    expect(paidPicker, isNot(contains(MessageTemplates.buttonAdminStatusPaid)));
+    expect(
+      _inlineCallbackData(templates.adminStatusKeyboard(1, AdminPaymentStatus.paid)),
+      contains(MessageTemplates.adminStatusSetData(AdminPaymentStatus.deposit, 1)),
     );
   });
 }

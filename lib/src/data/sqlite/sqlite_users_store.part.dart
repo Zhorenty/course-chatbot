@@ -76,6 +76,7 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
     required FunnelPhase phase,
     DateTime? magnetIssuedAt,
     int? launchId,
+    bool force = false,
   }) {
     final resolved = resolveEnrollmentLaunchId(launchId);
     if (resolved != null) {
@@ -84,23 +85,30 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
         launchId: resolved,
         phase: phase,
         magnetIssuedAt: magnetIssuedAt,
+        force: force,
       );
     }
     if (resolved != null && !isActiveLaunchId(resolved)) {
       return;
     }
-    _writeUserFunnelPhase(userId: userId, phase: phase, magnetIssuedAt: magnetIssuedAt);
+    _writeUserFunnelPhase(
+      userId: userId,
+      phase: phase,
+      magnetIssuedAt: magnetIssuedAt,
+      force: force,
+    );
   }
 
   void _writeUserFunnelPhase({
     required int userId,
     required FunnelPhase phase,
     DateTime? magnetIssuedAt,
+    bool force = false,
   }) {
     final existing = getUser(userId);
-    final nextPhase = existing == null || existing.funnelPhase.canTransitionTo(phase)
-        ? phase
-        : existing.funnelPhase;
+    final current = existing?.funnelPhase;
+    final allowed = force || current == null || current.canTransitionTo(phase);
+    final nextPhase = allowed ? phase : current;
     if (magnetIssuedAt != null) {
       _db.execute(
         '''
@@ -117,7 +125,7 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
       );
       return;
     }
-    if (existing != null && !existing.funnelPhase.canTransitionTo(phase)) {
+    if (!allowed) {
       return;
     }
     _db.execute(

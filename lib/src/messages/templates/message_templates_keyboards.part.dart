@@ -160,14 +160,8 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
       <Map<String, String>>[
         <String, String>{
-          'text': MessageTemplates.buttonAdminMarkPaid,
-          'callback_data': '${MessageTemplates.cbAdminPaid}$userId',
-        },
-      ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonAdminMarkDeposit,
-          'callback_data': '${MessageTemplates.cbAdminDeposit}$userId',
+          'text': MessageTemplates.buttonAdminChangeStatus,
+          'callback_data': '${MessageTemplates.cbAdminStatusMenu}$userId',
         },
       ],
       <Map<String, String>>[
@@ -183,6 +177,26 @@ extension MessageTemplateKeyboards on MessageTemplates {
         },
       ],
     ]);
+  }
+
+  Map<String, Object?> adminStatusKeyboard(int userId, AdminPaymentStatus current) {
+    final rows = <List<Map<String, String>>>[
+      for (final status in AdminPaymentStatus.values)
+        if (status != current)
+          <Map<String, String>>[
+            <String, String>{
+              'text': adminStatusButton(status),
+              'callback_data': MessageTemplates.adminStatusSetData(status, userId),
+            },
+          ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminStatusBack,
+          'callback_data': '${MessageTemplates.cbAdminCard}$userId',
+        },
+      ],
+    ];
+    return inlineKeyboard(rows);
   }
 
   Map<String, Object?> adminConfirmKeyboard({required String yesData, required String noData}) {

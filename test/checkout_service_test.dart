@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/application/checkout_service.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
@@ -49,6 +50,46 @@ void main() {
     expect(result.inviteLink, isNotNull);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.accessGranted);
     expect(harness.channel.created, isNotEmpty);
+  });
+
+  test('admin can switch a fully paid order to deposit', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: true,
+        charged: true,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+        amountKopecks: launch.priceFullKopecks,
+      ),
+      launch: launch,
+    );
+
+    final switched = await harness.checkout.applyAdminPaymentStatus(
+      userId: 42,
+      launch: launch,
+      target: AdminPaymentStatus.deposit,
+    );
+    expect(switched?.depositOnly, isTrue);
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.depositPaid);
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.depositPaid);
+    expect(harness.course.getOrder(order.id)?.accessGranted, isFalse);
+    expect(harness.channel.revoked, isNotEmpty);
   });
 
   test('repeated succeeded callback does not create a second invite', () async {

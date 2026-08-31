@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/money.dart';
@@ -56,6 +57,18 @@ void main() {
     expect(MessageTemplates.idFromCallback('ap:99', MessageTemplates.cbAdminPaid), 99);
     expect(MessageTemplates.idFromCallback('cp:12', MessageTemplates.cbContinuePay), 12);
     expect(MessageTemplates.idFromCallback('g', MessageTemplates.cbAdminPaid), isNull);
+    expect(MessageTemplates.adminStatusFromCallback('as:p:99'), (
+      status: AdminPaymentStatus.paid,
+      userId: 99,
+    ));
+    expect(MessageTemplates.adminStatusFromCallback('as:x:99'), isNull);
+  });
+
+  test('admin payment status resolves order before funnel leftovers', () {
+    expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.warming), AdminPaymentStatus.unpaid);
+    expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.accessGranted), AdminPaymentStatus.paid);
+    expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.depositPaid), AdminPaymentStatus.deposit);
+    expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.cancelled), AdminPaymentStatus.cancelled);
   });
 
   test('broadcast segment codes are short and parse back', () {
