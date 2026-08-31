@@ -37,6 +37,7 @@ final class HandlerHarness {
   late final FakeChannelApi channel;
   late final PrivateHandlers handlers;
   late final CheckoutService checkout;
+  late final FunnelService funnel;
   FakeGoogleSheetsWriter? sheetsWriter;
   FakeGoogleSheetsGateway? sheetsGateway;
   GoogleSheetsCatalogSync? catalogSync;
@@ -74,7 +75,7 @@ final class HandlerHarness {
       leadMagnetFileId: leadMagnetFileId,
     );
     final links = AcquisitionLinkCatalog();
-    final funnel = FunnelService(course: course, links: links);
+    funnel = FunnelService(course: course, links: links);
     final access = AccessService(course: course, telegram: channel);
     checkout = CheckoutService(
       course: course,

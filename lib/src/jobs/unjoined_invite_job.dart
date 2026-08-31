@@ -50,8 +50,6 @@ final class UnjoinedInviteJob {
       return;
     }
     final now = _nowProvider();
-    final launch = _course.activeLaunch();
-    final start = launch?.courseStartAt?.toUtc();
     final h24 = 'h${firstDelay.inHours}';
     final items = <_UnjoinedTouch>[];
     final seen = <String>{};
@@ -62,6 +60,7 @@ final class UnjoinedInviteJob {
       }
       final created = access.inviteCreatedAt?.toUtc();
       final due24 = created != null && now.toUtc().difference(created) >= firstDelay;
+      final start = _course.getLaunch(access.launchId)?.courseStartAt?.toUtc();
       final duePre =
           start != null &&
           !now.toUtc().isBefore(start.subtract(prestartWindow)) &&

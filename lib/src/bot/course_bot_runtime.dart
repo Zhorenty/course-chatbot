@@ -182,7 +182,6 @@ final class CourseBotRuntime {
       bind: config.paymentWebhookBind,
       gateway: paymentGateway,
       checkout: checkout,
-      course: course,
       notifier: handlers,
       secret: config.paymentWebhookSecret,
       callbackPath: config.paymentWebhookPath,

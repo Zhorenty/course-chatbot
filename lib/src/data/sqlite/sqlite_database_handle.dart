@@ -121,6 +121,37 @@ final class SqliteDatabaseHandle {
       ON telegram_users (funnel_phase);
     ''');
     db.execute('''
+      CREATE TABLE IF NOT EXISTS user_enrollments (
+        user_id INTEGER NOT NULL REFERENCES telegram_users(user_id),
+        launch_id INTEGER NOT NULL REFERENCES launches(id),
+        funnel_phase TEXT NOT NULL DEFAULT 'lead',
+        warmup_opt_out INTEGER NOT NULL DEFAULT 0,
+        magnet_issued_at TEXT,
+        started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, launch_id)
+      );
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_user_enrollments_launch
+      ON user_enrollments (launch_id, funnel_phase);
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS acquisition_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES telegram_users(user_id),
+        payload TEXT NOT NULL,
+        destination TEXT,
+        product_id INTEGER REFERENCES products(id),
+        launch_id INTEGER REFERENCES launches(id),
+        occurred_at TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_acquisition_events_user
+      ON acquisition_events (user_id, occurred_at DESC);
+    ''');
+    db.execute('''
       CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES telegram_users(user_id),
@@ -139,6 +170,9 @@ final class SqliteDatabaseHandle {
     ''');
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders (user_id, id DESC);
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_orders_user_launch ON orders (user_id, launch_id, id DESC);
     ''');
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
@@ -185,14 +219,7 @@ final class SqliteDatabaseHandle {
       );
     ''');
     _ensureColumn(db, 'warmup_steps', 'anchor', "TEXT NOT NULL DEFAULT 'magnet'");
-    db.execute('''
-      CREATE TABLE IF NOT EXISTS warmup_sent (
-        user_id INTEGER NOT NULL,
-        step_key TEXT NOT NULL,
-        sent_at TEXT NOT NULL,
-        PRIMARY KEY (user_id, step_key)
-      );
-    ''');
+    _ensureWarmupSentSchema(db);
     db.execute('''
       CREATE TABLE IF NOT EXISTS conversation_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -218,6 +245,79 @@ final class SqliteDatabaseHandle {
       CREATE TABLE IF NOT EXISTS bot_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      );
+    ''');
+    _backfillEnrollments(db);
+  }
+
+  void _ensureWarmupSentSchema(Database db) {
+    final tables = db.select(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'warmup_sent';",
+    );
+    if (tables.isEmpty) {
+      db.execute('''
+        CREATE TABLE warmup_sent (
+          user_id INTEGER NOT NULL,
+          launch_id INTEGER NOT NULL,
+          step_key TEXT NOT NULL,
+          sent_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, launch_id, step_key)
+        );
+      ''');
+      return;
+    }
+    final info = db.select('PRAGMA table_info(warmup_sent);');
+    final hasLaunchId = info.any((row) => row['name'] == 'launch_id');
+    if (hasLaunchId) {
+      return;
+    }
+    db.execute('''
+      CREATE TABLE warmup_sent_new (
+        user_id INTEGER NOT NULL,
+        launch_id INTEGER NOT NULL,
+        step_key TEXT NOT NULL,
+        sent_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, launch_id, step_key)
+      );
+    ''');
+    db.execute('''
+      INSERT INTO warmup_sent_new (user_id, launch_id, step_key, sent_at)
+      SELECT w.user_id,
+             COALESCE(
+               (SELECT id FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1),
+               (SELECT id FROM launches ORDER BY id DESC LIMIT 1),
+               0
+             ),
+             w.step_key,
+             w.sent_at
+      FROM warmup_sent w;
+    ''');
+    db.execute('DROP TABLE warmup_sent;');
+    db.execute('ALTER TABLE warmup_sent_new RENAME TO warmup_sent;');
+  }
+
+  void _backfillEnrollments(Database db) {
+    db.execute('''
+      INSERT OR IGNORE INTO user_enrollments (
+        user_id, launch_id, funnel_phase, warmup_opt_out, magnet_issued_at, started_at, updated_at
+      )
+      SELECT u.user_id, l.id, u.funnel_phase, u.warmup_opt_out, u.magnet_issued_at,
+             u.first_started_at, u.updated_at
+      FROM telegram_users u
+      JOIN launches l ON l.id = (
+        SELECT id FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1
+      );
+    ''');
+    db.execute('''
+      INSERT OR IGNORE INTO user_enrollments (
+        user_id, launch_id, funnel_phase, warmup_opt_out, magnet_issued_at, started_at, updated_at
+      )
+      SELECT u.user_id, l.id, u.funnel_phase, u.warmup_opt_out, u.magnet_issued_at,
+             u.first_started_at, u.updated_at
+      FROM telegram_users u
+      JOIN launches l ON l.id = (SELECT id FROM launches ORDER BY id DESC LIMIT 1)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM user_enrollments e WHERE e.user_id = u.user_id
       );
     ''');
   }

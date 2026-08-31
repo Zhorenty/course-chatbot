@@ -40,25 +40,26 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
     return mapOrder(rows.first);
   }
 
-  CourseOrder? latestOpenOrder(int userId) {
-    final rows = _db.select(
-      '''
+  CourseOrder? latestOpenOrder(int userId, {int? launchId}) {
+    final launchClause = launchId == null ? '' : ' AND launch_id = ?';
+    final params = <Object?>[userId, if (launchId != null) launchId];
+    final rows = _db.select('''
       SELECT * FROM orders
-      WHERE user_id = ? AND status IN ('checkout_started', 'awaiting_payment', 'deposit_paid')
+      WHERE user_id = ? AND status IN ('checkout_started', 'awaiting_payment', 'deposit_paid')$launchClause
       ORDER BY id DESC LIMIT 1;
-      ''',
-      <Object?>[userId],
-    );
+      ''', params);
     if (rows.isEmpty) {
       return null;
     }
     return mapOrder(rows.first);
   }
 
-  CourseOrder? latestOrder(int userId) {
+  CourseOrder? latestOrder(int userId, {int? launchId}) {
+    final launchClause = launchId == null ? '' : ' AND launch_id = ?';
+    final params = <Object?>[userId, if (launchId != null) launchId];
     final rows = _db.select(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 1;',
-      <Object?>[userId],
+      'SELECT * FROM orders WHERE user_id = ?$launchClause ORDER BY id DESC LIMIT 1;',
+      params,
     );
     if (rows.isEmpty) {
       return null;

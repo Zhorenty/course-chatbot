@@ -313,6 +313,7 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
 
 final class FakeChannelApi implements ChannelApi {
   final List<String> created = <String>[];
+  final List<int> createdChatIds = <int>[];
   final List<String> revoked = <String>[];
   int _n = 0;
   Object? createError;
@@ -331,6 +332,7 @@ final class FakeChannelApi implements ChannelApi {
     _n += 1;
     final link = 'https://t.me/+invite$_n';
     created.add(link);
+    createdChatIds.add(chatId);
     return link;
   }
 

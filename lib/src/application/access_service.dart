@@ -53,7 +53,7 @@ final class AccessService {
       inviteLink: link,
       inviteCreatedAt: _nowProvider(),
     );
-    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.accessGranted);
+    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.accessGranted, launchId: launch.id);
     final order = _course.getOrder(orderId);
     if (order != null) {
       _course.updateOrder(order.copyWith(accessGranted: true));

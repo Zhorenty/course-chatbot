@@ -148,7 +148,7 @@ abstract final class GoogleSheetsLinksCatalog {
       rows: const <List<Object?>>[],
       charts: const <GoogleSheetsChart>[],
       styles: styles,
-      columnWidthsPx: const <int>[220, 90, 160, 420],
+      columnWidthsPx: const <int>[220, 90, 160, 120, 360],
       frozenRowCount: headerRow + 1,
       hideGridlines: true,
       tabColor: GoogleSheetsCoursesCatalog.header,

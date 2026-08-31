@@ -36,15 +36,15 @@ final class WarmupNudgeJob {
     }
     final now = _nowProvider();
     final steps = _course.listWarmupSteps();
-    final launch = _course.activeLaunch();
     final candidates = _course.listWarmupCandidates(now: now);
     var sent = 0;
     for (final candidate in candidates) {
       try {
         final user = _course.getUser(candidate.userId);
-        if (user == null || user.funnelPhase.excludeSellingDrip || user.warmupOptOut) {
+        if (user == null || candidate.funnelPhase.excludeSellingDrip) {
           continue;
         }
+        final launch = _course.getLaunch(candidate.launchId);
         final decision = _warmup.nextFor(candidate, now, steps: steps, launch: launch);
         if (decision == null) {
           continue;

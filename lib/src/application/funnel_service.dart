@@ -1,5 +1,7 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 
@@ -18,36 +20,83 @@ final class FunnelService {
 
   bool opensCourseCard(String? payload) => links.opensCourseCard(payload);
 
+  /// Resolves a start payload to a launch. Missing `launch_code` on the link → active launch.
+  Launch? resolveLaunch(String? payload) {
+    final link = links.byPayload(payload);
+    final code = link?.launchCode?.trim();
+    if (code != null && code.isNotEmpty) {
+      return _course.launchByCode(code) ?? _course.activeLaunch();
+    }
+    return _course.activeLaunch();
+  }
+
+  UserEnrollment? enrollmentFor(int userId, {Launch? launch}) {
+    final resolved = launch ?? _course.activeLaunch();
+    if (resolved == null) {
+      return null;
+    }
+    return _course.getEnrollment(userId: userId, launchId: resolved.id);
+  }
+
+  FunnelPhase phaseOf(UserProfile user, {Launch? launch}) {
+    return enrollmentFor(user.userId, launch: launch)?.funnelPhase ?? user.funnelPhase;
+  }
+
   UserProfile start({required int userId, String? username, String? firstName, String? payload}) {
     final source = AcquisitionSource.normalize(payload);
-    return _course.ensureUser(
+    final now = _nowProvider();
+    final user = _course.ensureUser(
       userId: userId,
       username: username,
       firstName: firstName,
       source: source,
-      now: _nowProvider(),
+      now: now,
     );
+    if (source != null) {
+      final launch = resolveLaunch(source);
+      _course.recordAcquisitionEvent(
+        userId: userId,
+        payload: source,
+        occurredAt: now,
+        destination: opensCourseCard(source)
+            ? AcquisitionDestination.course
+            : AcquisitionDestination.guide,
+        productId: launch?.productId,
+        launchId: launch?.id,
+      );
+      if (launch != null) {
+        _course.ensureEnrollment(userId: userId, launchId: launch.id, now: now);
+      }
+    }
+    return _course.getUser(userId) ?? user;
   }
 
-  void markMagnetIssued(int userId) {
+  void markMagnetIssued(int userId, {int? launchId}) {
     _course.setFunnelPhase(
       userId: userId,
       phase: FunnelPhase.magnetIssued,
       magnetIssuedAt: _nowProvider(),
+      launchId: launchId,
     );
   }
 
-  void markCheckout(int userId) {
+  void markCheckout(int userId, {int? launchId}) {
     final user = _course.getUser(userId);
-    if (user == null || user.funnelPhase.excludeSellingDrip) {
+    if (user == null) {
       return;
     }
-    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.checkout);
+    final launch = launchId == null ? null : _course.getLaunch(launchId);
+    if (phaseOf(user, launch: launch).excludeSellingDrip) {
+      return;
+    }
+    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.checkout, launchId: launchId);
   }
 
-  void optOutWarmup(int userId) {
-    _course.setWarmupOptOut(userId: userId, optOut: true);
+  void optOutWarmup(int userId, {int? launchId}) {
+    _course.setWarmupOptOut(userId: userId, optOut: true, launchId: launchId);
   }
 
-  bool shouldOfferEnroll(UserProfile user) => !user.funnelPhase.showsCourseStatus;
+  bool shouldOfferEnroll(UserProfile user, {Launch? launch}) {
+    return !phaseOf(user, launch: launch).showsCourseStatus;
+  }
 }

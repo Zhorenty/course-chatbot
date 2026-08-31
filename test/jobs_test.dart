@@ -289,6 +289,7 @@ void main() {
     };
     final candidate = WarmupCandidate(
       userId: 1,
+      launchId: launch.id,
       firstStartedAt: DateTime.utc(2026, 10, 1),
       magnetIssuedAt: DateTime.utc(2026, 10, 1),
       funnelPhase: FunnelPhase.warming,

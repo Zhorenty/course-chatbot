@@ -5,30 +5,39 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 /// Human-editable deep-link catalog. Bot seeds and fills the URL column; ВОРОНКА must not wipe it.
 abstract final class LinksSheet {
   static const String tabTitle = 'ССЫЛКИ';
-  static const int columnCount = 4;
+  static const int columnCount = 5;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 24;
 
   static const String origin = 'origin';
   static const String destination = 'destination';
   static const String payload = 'payload';
+  static const String launchCode = 'launch_code';
   static const String url = 'url';
 
   static const String title = 'Курс · Диплинки';
   static const String titleAside = 'Правят руками';
   static const String hint =
       'Четыре стартовые метки уже есть. Новая (Stories, таргет) — строка с меткой латиницей. '
-      'Куда: гайд или курс. После правок нажми в боте «Обновить Google Sheets» или «Диплинки».';
+      'Куда: гайд или курс. Код запуска — если ссылка ведёт на конкретный поток; пусто = текущий. '
+      'После правок нажми в боте «Обновить Google Sheets» или «Диплинки».';
   static const String invalidPayloadStatus = 'невалидная метка';
 
-  static const List<String> headers = <String>[origin, destination, payload, url];
+  static const List<String> headers = <String>[origin, destination, payload, launchCode, url];
 
-  static const List<String> displayHeaders = <String>['Откуда', 'Куда', 'Метка', 'Ссылка'];
+  static const List<String> displayHeaders = <String>[
+    'Откуда',
+    'Куда',
+    'Метка',
+    'Код запуска',
+    'Ссылка',
+  ];
 
   static const List<String> headerNotes = <String>[
     'Откуда человек пришёл. Пример: Instagram Reels. Можно своё.',
     'Что открыть при первом Start: гайд или курс.',
     'Метка в ссылке t.me/бот?start=метка. Латиница, цифры и подчёркивание, до 64 символов.',
+    'Код потока из COURSES, если ссылка не на текущий запуск. Можно не заполнять.',
     'Не заполняй. Бот сам подставит готовую t.me-ссылку.',
   ];
 
@@ -70,6 +79,7 @@ abstract final class LinksSheet {
       link.origin,
       link.destinationLabel,
       link.payload,
+      link.launchCode ?? '',
       AcquisitionLink.telegramStartUrl(link.payload, botUsername) ?? '',
     ]);
   }
@@ -123,6 +133,9 @@ abstract final class LinksSheetParser {
     LinksSheet.payload: LinksSheet.payload,
     'метка': LinksSheet.payload,
     'start': LinksSheet.payload,
+    LinksSheet.launchCode: LinksSheet.launchCode,
+    'код запуска': LinksSheet.launchCode,
+    'запуск': LinksSheet.launchCode,
     LinksSheet.url: LinksSheet.url,
     'ссылка': LinksSheet.url,
     'диплинк': LinksSheet.url,
@@ -193,6 +206,7 @@ abstract final class LinksSheetParser {
           origin: _cell(raw, headerIndex, LinksSheet.origin) ?? normalized,
           destination: parseDestination(_cell(raw, headerIndex, LinksSheet.destination)),
           payload: normalized,
+          launchCode: _cell(raw, headerIndex, LinksSheet.launchCode),
           url: _cell(raw, headerIndex, LinksSheet.url),
         ),
       );

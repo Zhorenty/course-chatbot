@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
@@ -593,16 +594,19 @@ final class MessageTemplates {
 
   String adminCard({
     required UserProfile user,
+    UserEnrollment? enrollment,
     CourseOrder? order,
     ChannelAccess? access,
     List<ConversationLogEntry> dialog = const <ConversationLogEntry>[],
   }) {
+    final phase = enrollment?.funnelPhase ?? user.funnelPhase;
+    final optOut = enrollment?.warmupOptOut ?? user.warmupOptOut;
     final buf = StringBuffer()
       ..writeln(_adminCardTitle(user))
       ..writeln('id <code>${user.userId}</code>')
       ..writeln(_adminSourceLine(user.source))
       ..writeln()
-      ..writeln('<b>${escapeHtml(_headline(_adminPhaseLabel(user.funnelPhase)))}</b>');
+      ..writeln('<b>${escapeHtml(_headline(_adminPhaseLabel(phase)))}</b>');
     for (final line in _adminOrderLines(order)) {
       buf.writeln(line);
     }
@@ -612,7 +616,7 @@ final class MessageTemplates {
       ..writeln(_adminChannelLine(access))
       ..writeln()
       ..writeln('<b>Связь</b>')
-      ..writeln(_adminWarmupLine(user.warmupOptOut))
+      ..writeln(_adminWarmupLine(optOut))
       ..writeln(_adminBotLine(user.botBlocked));
     if (dialog.isNotEmpty) {
       buf
@@ -828,7 +832,9 @@ final class MessageTemplates {
       buf.writeln();
     }
     for (final link in links) {
-      buf.writeln('${escapeHtml(link.origin)} → ${escapeHtml(link.destinationLabel)}');
+      final launch = link.launchCode?.trim();
+      final launchSuffix = launch == null || launch.isEmpty ? '' : ' · ${escapeHtml(launch)}';
+      buf.writeln('${escapeHtml(link.origin)} → ${escapeHtml(link.destinationLabel)}$launchSuffix');
       if (bot.isEmpty) {
         buf.writeln('<code>${escapeHtml(link.payload)}</code>');
       } else {

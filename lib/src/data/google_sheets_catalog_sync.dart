@@ -156,27 +156,49 @@ final class GoogleSheetsCatalogSync {
       l.w('COURSES has no is_active flag; using first row (${draft.launchCode}).');
     }
 
-    final applied = draft.withFallbacks(
+    final appliedActive = draft.withFallbacks(
       channelId: fallbackChannelId,
       offerUrl: _blankToNull(fallbackOfferUrl),
       leadMagnetFileId: _blankToNull(fallbackLeadMagnetFileId),
       leadMagnetUrl: _blankToNull(fallbackLeadMagnetUrl),
     );
-    final launch = _catalog.upsertActiveLaunch(
-      productCode: applied.productCode,
-      productTitle: applied.productTitle,
-      launchCode: applied.launchCode,
-      launchTitle: applied.launchTitle,
-      priceFullKopecks: applied.priceFullKopecks,
-      depositKopecks: applied.depositKopecks,
-      depositDueDays: applied.depositDueDays,
-      depositDueAt: applied.depositDueAt,
-      courseStartAt: applied.courseStartAt,
-      channelId: applied.channelId,
-      offerUrl: applied.offerUrl,
-      leadMagnetFileId: applied.leadMagnetFileId,
-      leadMagnetUrl: applied.leadMagnetUrl,
-    );
+    Launch? launch;
+    for (final row in parsed.rows) {
+      final applied = row.launchCode == appliedActive.launchCode
+          ? appliedActive
+          : row.withFallbacks(
+              channelId: fallbackChannelId,
+              offerUrl: _blankToNull(fallbackOfferUrl),
+              leadMagnetFileId: _blankToNull(fallbackLeadMagnetFileId),
+              leadMagnetUrl: _blankToNull(fallbackLeadMagnetUrl),
+            );
+      launch = _catalog.upsertLaunch(
+        productCode: applied.productCode,
+        productTitle: applied.productTitle,
+        launchCode: applied.launchCode,
+        launchTitle: applied.launchTitle,
+        priceFullKopecks: applied.priceFullKopecks,
+        depositKopecks: applied.depositKopecks,
+        depositDueDays: applied.depositDueDays,
+        depositDueAt: applied.depositDueAt,
+        courseStartAt: applied.courseStartAt,
+        channelId: applied.channelId,
+        offerUrl: applied.offerUrl,
+        leadMagnetFileId: applied.leadMagnetFileId,
+        leadMagnetUrl: applied.leadMagnetUrl,
+      );
+    }
+    _catalog.setActiveLaunch(appliedActive.launchCode);
+    launch = _catalog.activeLaunch() ?? launch;
+    if (launch == null) {
+      final existing = _catalog.activeLaunch();
+      return CatalogSyncResult(
+        ok: false,
+        launch: existing,
+        seeded: seeded,
+        error: 'active launch missing after sync',
+      );
+    }
     l.i(
       'COURSES catalog synced. launch=${launch.code} '
       'price=${launch.priceFullKopecks} seeded=$seeded',
@@ -321,7 +343,11 @@ final class GoogleSheetsCatalogSync {
       return;
     }
     final quoted = quoteA1SheetTitle(title);
-    final letter = LinksSheet.columnLetter(LinksSheet.headers.indexOf(LinksSheet.url));
+    final urlIndex = LinksSheetParser.columnIndex(rows, LinksSheet.url);
+    if (urlIndex == null) {
+      return;
+    }
+    final letter = LinksSheet.columnLetter(urlIndex);
     await _gateway
         .updateValues(
           a1Range: '$quoted!$letter${headerAt + 2}',

@@ -45,6 +45,10 @@ void main() {
     );
 
     expect(harness.course.getUser(42)?.source, 'ig_reels_guide');
+    expect(harness.course.listAcquisitionEvents(42).map((event) => event.payload), <String>[
+      'direct_course',
+      'ig_reels_guide',
+    ]);
   });
 
   test('guide payload vs course payload open different first screens', () async {

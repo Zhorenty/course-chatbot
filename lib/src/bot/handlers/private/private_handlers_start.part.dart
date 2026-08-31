@@ -12,20 +12,24 @@ extension _PrivateHandlersStart on PrivateHandlers {
     if (_adminGate.isConfiguredAdmin(user.userId)) {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
-    if (user.funnelPhase.showsCourseStatus) {
+    final phase = _funnel.phaseOf(user);
+    if (phase.showsCourseStatus) {
       await _showCourseStatus(context);
       return _pinUserMenu(context);
     }
-    if (user.funnelPhase == FunnelPhase.checkout) {
+    if (phase == FunnelPhase.checkout) {
       await _showEnroll(context);
       return _pinUserMenu(context);
     }
-    if (user.funnelPhase == FunnelPhase.magnetIssued || user.funnelPhase == FunnelPhase.warming) {
+    if (phase == FunnelPhase.magnetIssued || phase == FunnelPhase.warming) {
       return _send(context, _templates.alreadyInFunnel(), replyMarkup: _homeKeyboard(user.userId));
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
-      await _send(context, _templates.startCourseCard(launch: _launch));
+      await _send(
+        context,
+        _templates.startCourseCard(launch: _funnel.resolveLaunch(destination) ?? _launch),
+      );
       return _pinUserMenu(context);
     }
     await _send(context, _templates.startGuideOffer());

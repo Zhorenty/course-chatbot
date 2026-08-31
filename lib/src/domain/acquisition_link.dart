@@ -9,12 +9,16 @@ final class AcquisitionLink {
     required this.destination,
     required this.payload,
     this.url,
+    this.launchCode,
   });
 
   final String origin;
   final AcquisitionDestination destination;
   final String payload;
   final String? url;
+
+  /// Optional COURSES / SQLite launch code. Empty means resolve to the active launch at click time.
+  final String? launchCode;
 
   bool get opensCourse => destination == AcquisitionDestination.course;
 
@@ -82,6 +86,19 @@ final class AcquisitionLinkCatalog {
     _entries = next.isEmpty ? List<AcquisitionLink>.from(AcquisitionLink.starters) : next;
   }
 
+  AcquisitionLink? byPayload(String? payload) {
+    final normalized = AcquisitionSource.normalize(payload);
+    if (normalized == null) {
+      return null;
+    }
+    for (final link in _entries) {
+      if (link.payload == normalized) {
+        return link;
+      }
+    }
+    return null;
+  }
+
   bool opensCourseCard(String? payload) {
     final normalized = AcquisitionSource.normalize(payload);
     if (normalized == null) {
@@ -93,12 +110,8 @@ final class AcquisitionLinkCatalog {
     if (AcquisitionSource.guidePayloads.contains(normalized)) {
       return false;
     }
-    for (final link in _entries) {
-      if (link.payload == normalized) {
-        return link.opensCourse;
-      }
-    }
-    return false;
+    final link = byPayload(normalized);
+    return link?.opensCourse ?? false;
   }
 
   static List<AcquisitionLink> dedupe(Iterable<AcquisitionLink> links) {
