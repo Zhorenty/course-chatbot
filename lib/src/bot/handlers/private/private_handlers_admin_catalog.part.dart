@@ -15,11 +15,13 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogEditValue;
   }
 
-  Future<bool> _openCatalogFromMenu(PrivateMessageContext context) {
+  Future<bool> _openCatalogFromMenu(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
     return _showCatalogList(context, pinKeyboard: true);
   }
 
   Future<bool> _cancelCatalog(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
     await _dismissCatalogUi(context);
     _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
     return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
@@ -105,6 +107,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
   }
 
   Future<bool> _captureCatalog(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
     final flow = _flowByUserId[context.userId!];
     final step = flow?.step;
     if (step == PrivateFlowStep.adminCatalogEditValue) {
@@ -583,6 +586,19 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final current =
         _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
     _flowByUserId[userId] = current.copyWith(catalogPinMessageId: pinId);
+  }
+
+  Future<void> _deleteInboundMessage(PrivateMessageContext context) async {
+    final chatId = context.chatId;
+    final messageId = asTelegramInt(context.message?['message_id']);
+    if (chatId == null || messageId == null) {
+      return;
+    }
+    try {
+      await _sender.deleteMessage(chatId, messageId: messageId);
+    } on Object catch (error, stackTrace) {
+      l.w('Admin catalog inbound delete failed: $error', stackTrace);
+    }
   }
 
   Future<void> _dismissCatalogUi(PrivateMessageContext context) async {

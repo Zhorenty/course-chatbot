@@ -841,9 +841,46 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final before = sheets.sender.messages.length;
-    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'случайно'));
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'случайно', messageId: 77),
+    );
     expect(sheets.sender.messages, hasLength(before));
     expect(sheets.sender.messages.last.text, contains('Курсы'));
+    expect(
+      sheets.sender.deletedMessages.any((item) => item.chatId == 1 && item.messageId == 77),
+      isTrue,
+    );
+  });
+
+  test('admin catalog wizard deletes the admin replies', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(
+        chatId: 1,
+        userId: 1,
+        text: MessageTemplates.buttonAdminCatalog,
+        messageId: 40,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cn',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogNew,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь', messageId: 41),
+    );
+    expect(
+      sheets.sender.deletedMessages.any((item) => item.chatId == 1 && item.messageId == 41),
+      isTrue,
+    );
+    expect(sheets.sender.messages.last.text, contains('Код запуска'));
   });
 
   test('admin catalog create refuses a code that already exists on COURSES', () async {

@@ -6,6 +6,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     final text = context.text;
     final flow = _flowByUserId[userId];
     if (text == MessageTemplates.buttonAdminMenu || text == '/admin') {
+      if (_isCatalogStep(flow?.step)) {
+        await _deleteInboundMessage(context);
+      }
       await _dismissCatalogUi(context);
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.idle);
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
