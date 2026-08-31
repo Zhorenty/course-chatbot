@@ -80,6 +80,25 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
+  Future<void> editMessageText(
+    int chatId, {
+    required int messageId,
+    required String text,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+    String? parseMode,
+  }) {
+    return _inner.editMessageText(
+      chatId,
+      messageId: messageId,
+      text: text,
+      disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
+      parseMode: parseMode,
+    );
+  }
+
+  @override
   Future<void> deleteMessage(int chatId, {required int messageId}) {
     return _inner.deleteMessage(chatId, messageId: messageId);
   }

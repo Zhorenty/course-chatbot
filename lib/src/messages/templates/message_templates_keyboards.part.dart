@@ -393,11 +393,11 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
-          'text': MessageTemplates.buttonAdminConfirmYes,
+          'text': MessageTemplates.buttonAdminCatalogYes,
           'callback_data': MessageTemplates.cbCatalogActiveYes,
         },
         <String, String>{
-          'text': MessageTemplates.buttonAdminConfirmNo,
+          'text': MessageTemplates.buttonAdminCatalogNo,
           'callback_data': MessageTemplates.cbCatalogActiveNo,
         },
       ],
@@ -412,9 +412,21 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'callback_data': MessageTemplates.cbCatalogCreateYes,
         },
         <String, String>{
-          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'text': MessageTemplates.buttonAdminCatalogNo,
           'callback_data': MessageTemplates.cbCatalogCreateNo,
         },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogConfirmKeyboard({
+    required String yesData,
+    required String noData,
+  }) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminCatalogYes, 'callback_data': yesData},
+        <String, String>{'text': MessageTemplates.buttonAdminCatalogNo, 'callback_data': noData},
       ],
     ]);
   }

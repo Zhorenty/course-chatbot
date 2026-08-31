@@ -20,6 +20,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
   }
 
   Future<bool> _cancelCatalog(PrivateMessageContext context) async {
+    await _dismissCatalogUi(context);
     _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
     return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
   }
@@ -30,6 +31,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     final admin = _catalogAdmin;
     if (admin == null) {
+      await _dismissCatalogUi(context);
       _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
       return _send(
         context,
@@ -37,17 +39,23 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
-    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
     if (pinKeyboard) {
-      await _send(
+      await _dismissCatalogUi(context);
+      await _pinCatalogKeyboard(context);
+      _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+      await _presentCatalog(context, _templates.adminCatalogRefreshing());
+      final notice = await _refreshCatalogFromSheets();
+      _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+      final launches = admin.listVisibleLaunches();
+      return _presentCatalog(
         context,
-        _templates.adminCatalogOpened(),
-        replyMarkup: _templates.adminCatalogFlowKeyboard(),
+        _templates.adminCatalogList(launches, notice: notice),
+        replyMarkup: _templates.adminCatalogListKeyboard(launches),
       );
-      await _refreshCatalogFromSheets(context);
     }
-    final launches = _course.listLaunches();
-    return _send(
+    _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+    final launches = admin.listVisibleLaunches();
+    return _presentCatalog(
       context,
       _templates.adminCatalogList(launches),
       replyMarkup: _templates.adminCatalogListKeyboard(launches),
@@ -69,8 +77,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (launch == null) {
       return _showCatalogList(context);
     }
-    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
-    return _send(
+    _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+    return _presentCatalog(
       context,
       _templates.adminCatalogCard(launch),
       replyMarkup: _templates.adminCatalogCardKeyboard(launch),
@@ -88,15 +96,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
-    _flowByUserId[context.userId!] = const PrivateFlowState(
-      step: PrivateFlowStep.adminCatalogCreateTitle,
-      catalogDraft: CatalogWizardDraft(),
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreateTitle,
+      catalogDraft: const CatalogWizardDraft(),
     );
-    return _send(
-      context,
-      _templates.adminCatalogAskTitle(),
-      replyMarkup: _templates.adminCatalogFlowKeyboard(),
-    );
+    return _presentCatalog(context, _templates.adminCatalogAskTitle());
   }
 
   Future<bool> _captureCatalog(PrivateMessageContext context) async {
@@ -116,17 +121,21 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       case PrivateFlowStep.adminCatalogCreateTitle:
         final error = LaunchCatalogAdminService.validateTitle(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskTitle()),
+          );
         }
         final suggested = CoursesSheetParser.suggestLaunchCode(
           text,
           existing: _catalogAdmin?.takenLaunchCodes() ?? const <String>{},
         );
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateCode,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateCode,
           catalogDraft: draft.copyWith(title: text, code: suggested),
         );
-        return _send(context, _templates.adminCatalogAskCode(suggested));
+        return _presentCatalog(context, _templates.adminCatalogAskCode(suggested));
       case PrivateFlowStep.adminCatalogCreateCode:
         final raw = text.isEmpty ? (draft.code ?? '') : text;
         final error = LaunchCatalogAdminService.validateCode(
@@ -134,50 +143,67 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           taken: _catalogAdmin?.takenLaunchCodes() ?? const <String>{},
         );
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskCode(raw)),
+          );
         }
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreatePrice,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreatePrice,
           catalogDraft: draft.copyWith(code: raw.trim()),
         );
-        return _send(context, _templates.adminCatalogAskPrice());
+        return _presentCatalog(context, _templates.adminCatalogAskPrice());
       case PrivateFlowStep.adminCatalogCreatePrice:
         final error = LaunchCatalogAdminService.validatePrice(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskPrice()),
+          );
         }
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateDeposit,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateDeposit,
           catalogDraft: draft.copyWith(priceKopecks: CoursesSheetParser.parsePriceKopecks(text)),
         );
-        return _send(context, _templates.adminCatalogAskDeposit());
+        return _presentCatalog(context, _templates.adminCatalogAskDeposit());
       case PrivateFlowStep.adminCatalogCreateDeposit:
         final price = draft.priceKopecks ?? 0;
         final error = LaunchCatalogAdminService.validateDeposit(text, priceKopecks: price);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskDeposit()),
+          );
         }
         final deposit = text.isEmpty ? 0 : (CoursesSheetParser.parsePriceKopecks(text) ?? 0);
         final next = draft.copyWith(depositKopecks: deposit, depositDueAt: null);
         if (deposit > 0) {
-          _flowByUserId[context.userId!] = PrivateFlowState(
-            step: PrivateFlowStep.adminCatalogCreateDepositDue,
+          _setCatalogFlow(
+            context.userId!,
+            PrivateFlowStep.adminCatalogCreateDepositDue,
             catalogDraft: next,
           );
-          return _send(context, _templates.adminCatalogAskDepositDue());
+          return _presentCatalog(context, _templates.adminCatalogAskDepositDue());
         }
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateStart,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateStart,
           catalogDraft: next,
         );
-        return _send(context, _templates.adminCatalogAskStart());
+        return _presentCatalog(context, _templates.adminCatalogAskStart());
       case PrivateFlowStep.adminCatalogCreateDepositDue:
         final error = LaunchCatalogAdminService.validateDueDate(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskDepositDue()),
+          );
         }
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateStart,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateStart,
           catalogDraft: draft.copyWith(
             depositDueAt: CoursesSheetParser.parseDateEndOfDay(
               text,
@@ -185,31 +211,39 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             ),
           ),
         );
-        return _send(context, _templates.adminCatalogAskStart());
+        return _presentCatalog(context, _templates.adminCatalogAskStart());
       case PrivateFlowStep.adminCatalogCreateStart:
         final error = LaunchCatalogAdminService.validateStartDate(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskStart()),
+          );
         }
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateChannel,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateChannel,
           catalogDraft: draft.copyWith(courseStartAt: CoursesSheetParser.parseDate(text)),
         );
-        return _send(context, _templates.adminCatalogAskChannel());
+        return _presentCatalog(context, _templates.adminCatalogAskChannel());
       case PrivateFlowStep.adminCatalogCreateChannel:
         final error = LaunchCatalogAdminService.validateChannel(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskChannel()),
+          );
         }
         final skipped = text.isEmpty || text == '-' || text == '—';
-        _flowByUserId[context.userId!] = PrivateFlowState(
-          step: PrivateFlowStep.adminCatalogCreateActive,
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateActive,
           catalogDraft: draft.copyWith(
             channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
             channelSkipped: skipped,
           ),
         );
-        return _send(
+        return _presentCatalog(
           context,
           _templates.adminCatalogAskActive(),
           replyMarkup: _templates.adminCatalogActiveKeyboard(),
@@ -227,15 +261,16 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (draft == null) {
       return _startCatalogCreate(context);
     }
-    _flowByUserId[context.userId!] = PrivateFlowState(
-      step: PrivateFlowStep.adminCatalogCreateConfirm,
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreateConfirm,
       catalogDraft: draft.copyWith(isActive: isActive),
     );
     final built = _wizardToDraft(draft.copyWith(isActive: isActive));
     if (built == null) {
       return _startCatalogCreate(context);
     }
-    return _send(
+    return _presentCatalog(
       context,
       _templates.adminCatalogPreview(built),
       replyMarkup: _templates.adminCatalogConfirmCreateKeyboard(),
@@ -269,8 +304,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (launch == null) {
       return _showCatalogList(context);
     }
-    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
-    return _send(
+    _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+    return _presentCatalog(
       context,
       _templates.adminCatalogPickField(),
       replyMarkup: _templates.adminCatalogFieldsKeyboard(launchId),
@@ -288,15 +323,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (_course.getLaunch(launchId) == null) {
       return _showCatalogList(context);
     }
-    _flowByUserId[context.userId!] = PrivateFlowState(
-      step: PrivateFlowStep.adminCatalogEditValue,
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogEditValue,
       catalogDraft: CatalogWizardDraft(editLaunchId: launchId, editField: field),
     );
-    return _send(
-      context,
-      _templates.adminCatalogAskField(field),
-      replyMarkup: _templates.adminCatalogFlowKeyboard(),
-    );
+    return _presentCatalog(context, _templates.adminCatalogAskField(field));
   }
 
   Future<bool> _captureCatalogEdit(PrivateMessageContext context) async {
@@ -314,7 +346,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       case CatalogLaunchField.title:
         final error = LaunchCatalogAdminService.validateTitle(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         overlay = overlay.copyWith(launchTitle: text);
       case CatalogLaunchField.code:
@@ -324,13 +359,19 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           taken: admin.takenLaunchCodes(except: launch.code),
         );
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         overlay = overlay.copyWith(launchCode: text.trim());
       case CatalogLaunchField.price:
         final error = LaunchCatalogAdminService.validatePrice(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         overlay = overlay.copyWith(priceFullKopecks: CoursesSheetParser.parsePriceKopecks(text));
       case CatalogLaunchField.deposit:
@@ -339,7 +380,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           priceKopecks: overlay.priceFullKopecks,
         );
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         final deposit = text.isEmpty ? 0 : (CoursesSheetParser.parsePriceKopecks(text) ?? 0);
         overlay = overlay.copyWith(
@@ -347,31 +391,44 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           depositDueAt: deposit > 0 ? overlay.depositDueAt : null,
         );
         if (deposit > 0 && overlay.depositDueAt == null) {
-          _flowByUserId[context.userId!] = PrivateFlowState(
-            step: PrivateFlowStep.adminCatalogEditValue,
+          _setCatalogFlow(
+            context.userId!,
+            PrivateFlowStep.adminCatalogEditValue,
             catalogDraft: CatalogWizardDraft(
               editLaunchId: launchId,
               editField: CatalogLaunchField.depositDue,
             ),
           );
-          return _send(context, _templates.adminCatalogAskField(CatalogLaunchField.depositDue));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskField(CatalogLaunchField.depositDue),
+          );
         }
       case CatalogLaunchField.depositDue:
         final error = LaunchCatalogAdminService.validateDueDate(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         overlay = overlay.copyWith(depositDueAt: CoursesSheetParser.parseDateEndOfDay(text));
       case CatalogLaunchField.start:
         final error = LaunchCatalogAdminService.validateStartDate(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         overlay = overlay.copyWith(courseStartAt: CoursesSheetParser.parseDate(text));
       case CatalogLaunchField.channel:
         final error = LaunchCatalogAdminService.validateChannel(text);
         if (error != null) {
-          return _send(context, _templates.adminCatalogFieldError(error));
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+          );
         }
         final skipped = text.isEmpty || text == '-' || text == '—';
         overlay = overlay.copyWith(
@@ -405,10 +462,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (launch == null) {
       return _showCatalogList(context);
     }
-    return _send(
+    return _presentCatalog(
       context,
       _templates.adminCatalogConfirmDelete(launch),
-      replyMarkup: _templates.adminConfirmKeyboard(
+      replyMarkup: _templates.adminCatalogConfirmKeyboard(
         yesData: '${MessageTemplates.cbCatalogDeleteYes}$launchId',
         noData: '${MessageTemplates.cbCatalogOpen}$launchId',
       ),
@@ -424,13 +481,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (admin == null || launch == null) {
       return _showCatalogList(context);
     }
-    final title = launch.title;
-    final code = launch.code;
-    final result = await _runCatalogOp(context, () => admin.delete(code));
+    final result = await _runCatalogOp(context, () => admin.delete(launch.code));
     if (!result) {
       return true;
     }
-    await _send(context, _templates.adminCatalogDeleted(title, code));
     return _showCatalogList(context);
   }
 
@@ -448,7 +502,6 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         ? _course.getLaunch(thenCardId)
         : (thenCode == null ? null : _course.launchByCode(thenCode));
     if (launch != null) {
-      await _send(context, _templates.adminCatalogSaved(launch));
       return _showCatalogCard(context, launch.id);
     }
     return _showCatalogList(context);
@@ -458,24 +511,22 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     PrivateMessageContext context,
     Future<CatalogAdminResult> Function() action,
   ) async {
-    final progressId = await _sendProgress(context, _templates.adminCatalogWriting());
+    await _presentCatalog(context, _templates.adminCatalogWriting());
     CatalogAdminResult result;
     try {
       result = await action();
     } on Object catch (error, stackTrace) {
       l.w('Admin COURSES catalog write failed: $error', stackTrace);
       result = CatalogAdminResult.fail(CatalogAdminFailure.writeFailed, detail: '$error');
-    } finally {
-      await _deleteProgress(context, progressId);
     }
     if (result.ok) {
       return true;
     }
     if (result.fieldError != null) {
-      await _send(context, _templates.adminCatalogFieldError(result.fieldError!));
+      await _presentCatalog(context, _templates.adminCatalogFieldError(result.fieldError!));
       return false;
     }
-    await _send(
+    await _presentCatalog(
       context,
       _templates.adminCatalogFailure(
         result.failure ?? CatalogAdminFailure.writeFailed,
@@ -485,23 +536,128 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return false;
   }
 
-  Future<void> _refreshCatalogFromSheets(PrivateMessageContext context) async {
+  Future<String?> _refreshCatalogFromSheets() async {
     final sync = _catalogSync;
     if (sync == null) {
-      return;
+      return null;
     }
-    final progressId = await _sendProgress(context, _templates.adminCatalogRefreshing());
     try {
       final result = await sync.sync();
       if (!result.ok) {
-        await _send(context, _templates.adminCatalogRefreshFailed(result.error));
+        return _templates.adminCatalogRefreshFailed(result.error);
       }
     } on Object catch (error, stackTrace) {
       l.w('Admin COURSES catalog refresh failed: $error', stackTrace);
-      await _send(context, _templates.adminCatalogRefreshFailed('$error'));
-    } finally {
-      await _deleteProgress(context, progressId);
+      return _templates.adminCatalogRefreshFailed('$error');
     }
+    return null;
+  }
+
+  void _setCatalogFlow(
+    int userId,
+    PrivateFlowStep step, {
+    CatalogWizardDraft? catalogDraft,
+    bool clearDraft = false,
+  }) {
+    final current = _flowByUserId[userId];
+    _flowByUserId[userId] = PrivateFlowState(
+      step: step,
+      catalogDraft: clearDraft ? null : (catalogDraft ?? current?.catalogDraft),
+      catalogMessageId: current?.catalogMessageId,
+      catalogPinMessageId: current?.catalogPinMessageId,
+    );
+  }
+
+  Future<void> _pinCatalogKeyboard(PrivateMessageContext context) async {
+    final chatId = context.chatId;
+    final userId = context.userId;
+    if (chatId == null || userId == null) {
+      return;
+    }
+    final pinId = await _sender.sendMessage(
+      chatId,
+      _templates.adminCatalogOpened(),
+      parseMode: 'HTML',
+      replyMarkup: _templates.adminCatalogFlowKeyboard(),
+    );
+    final current =
+        _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
+    _flowByUserId[userId] = current.copyWith(catalogPinMessageId: pinId);
+  }
+
+  Future<void> _dismissCatalogUi(PrivateMessageContext context) async {
+    final chatId = context.chatId;
+    final userId = context.userId;
+    if (chatId == null || userId == null) {
+      return;
+    }
+    final flow = _flowByUserId[userId];
+    final ids = <int>{
+      if (flow?.catalogMessageId != null) flow!.catalogMessageId!,
+      if (flow?.catalogPinMessageId != null) flow!.catalogPinMessageId!,
+    };
+    for (final messageId in ids) {
+      try {
+        await _sender.deleteMessage(chatId, messageId: messageId);
+      } on Object catch (error, stackTrace) {
+        l.w('Admin catalog message delete failed: $error', stackTrace);
+      }
+    }
+    if (flow != null) {
+      _flowByUserId[userId] = flow.copyWith(catalogMessageId: null, catalogPinMessageId: null);
+    }
+  }
+
+  Future<bool> _presentCatalog(
+    PrivateMessageContext context,
+    String text, {
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final chatId = context.chatId;
+    final userId = context.userId;
+    if (chatId == null || userId == null) {
+      return false;
+    }
+    final flow = _flowByUserId[userId];
+    final messageId =
+        flow?.catalogMessageId ?? asTelegramInt(context.callbackMessage?['message_id']);
+    if (messageId != null) {
+      try {
+        await _sender.editMessageText(
+          chatId,
+          messageId: messageId,
+          text: text,
+          parseMode: 'HTML',
+          replyMarkup: replyMarkup,
+        );
+        _flowByUserId[userId] =
+            (flow ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu)).copyWith(
+              catalogMessageId: messageId,
+            );
+        return true;
+      } on TelegramApiException catch (error, stackTrace) {
+        if (error.message.toLowerCase().contains('not modified')) {
+          _flowByUserId[userId] =
+              (flow ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu)).copyWith(
+                catalogMessageId: messageId,
+              );
+          return true;
+        }
+        l.w('Admin catalog editMessageText failed: $error', stackTrace);
+      } on Object catch (error, stackTrace) {
+        l.w('Admin catalog editMessageText failed: $error', stackTrace);
+      }
+    }
+    final sentId = await _sender.sendMessage(
+      chatId,
+      text,
+      parseMode: 'HTML',
+      replyMarkup: replyMarkup,
+    );
+    final latest =
+        _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
+    _flowByUserId[userId] = latest.copyWith(catalogMessageId: sentId);
+    return true;
   }
 
   CatalogLaunchDraft? _wizardToDraft(CatalogWizardDraft? draft) {

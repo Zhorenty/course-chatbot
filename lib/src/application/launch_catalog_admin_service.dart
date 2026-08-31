@@ -132,6 +132,17 @@ final class LaunchCatalogAdminService {
     };
   }
 
+  List<Launch> listVisibleLaunches() {
+    final codes = _sync.sheetLaunchCodes;
+    if (codes.isEmpty) {
+      return const <Launch>[];
+    }
+    return <Launch>[
+      for (final launch in _catalog.listLaunches())
+        if (codes.contains(launch.code)) launch,
+    ];
+  }
+
   Future<CatalogAdminResult> create(CatalogLaunchDraft draft) async {
     final error = _validateComplete(draft, currentCode: null);
     if (error != null) {
@@ -190,7 +201,7 @@ final class LaunchCatalogAdminService {
     if (launch == null) {
       return const CatalogAdminResult.fail(CatalogAdminFailure.notFound);
     }
-    final others = _catalog.listLaunches().where((row) => row.code != launchCode).toList();
+    final others = listVisibleLaunches().where((row) => row.code != launchCode).toList();
     if (others.isEmpty) {
       return const CatalogAdminResult.fail(CatalogAdminFailure.lastLaunch);
     }

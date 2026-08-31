@@ -70,12 +70,14 @@ final class MessageTemplates {
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
   static const String buttonAdminOpenCard = '👤 Карточка';
-  static const String buttonAdminCatalogNew = '➕ Новый курс';
-  static const String buttonAdminCatalogEdit = 'Изменить поле';
-  static const String buttonAdminCatalogActivate = 'Сделать активным';
-  static const String buttonAdminCatalogDelete = 'Удалить';
+  static const String buttonAdminCatalogNew = '🆕 Создать курс';
+  static const String buttonAdminCatalogEdit = '✏️ Изменить поле';
+  static const String buttonAdminCatalogActivate = '⭐ Сделать активным';
+  static const String buttonAdminCatalogDelete = '🗑 Удалить';
   static const String buttonAdminCatalogBack = '↩️ К списку';
-  static const String buttonAdminCatalogSave = 'Записать';
+  static const String buttonAdminCatalogSave = '💾 Записать';
+  static const String buttonAdminCatalogYes = '✅ Да';
+  static const String buttonAdminCatalogNo = '❌ Нет';
 
   static const String cbGuide = 'g';
   static const String cbEnroll = 'e';

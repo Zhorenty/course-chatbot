@@ -32,6 +32,15 @@ abstract interface class MessageSender {
     Map<String, Object?>? replyMarkup,
   });
 
+  Future<void> editMessageText(
+    int chatId, {
+    required int messageId,
+    required String text,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+    String? parseMode,
+  });
+
   Future<void> deleteMessage(int chatId, {required int messageId});
 
   Future<int> forwardMessage({

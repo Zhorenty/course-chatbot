@@ -101,6 +101,8 @@ final class PrivateFlowState {
     this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
     this.catalogDraft,
+    this.catalogMessageId,
+    this.catalogPinMessageId,
   });
 
   final PrivateFlowStep step;
@@ -116,6 +118,8 @@ final class PrivateFlowState {
   final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
   final CatalogWizardDraft? catalogDraft;
+  final int? catalogMessageId;
+  final int? catalogPinMessageId;
 
   bool get offerReady => acceptedConsent;
 
@@ -135,6 +139,8 @@ final class PrivateFlowState {
     bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
     Object? catalogDraft = _unset,
+    Object? catalogMessageId = _unset,
+    Object? catalogPinMessageId = _unset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -170,6 +176,12 @@ final class PrivateFlowState {
       catalogDraft: identical(catalogDraft, _unset)
           ? this.catalogDraft
           : catalogDraft as CatalogWizardDraft?,
+      catalogMessageId: identical(catalogMessageId, _unset)
+          ? this.catalogMessageId
+          : catalogMessageId as int?,
+      catalogPinMessageId: identical(catalogPinMessageId, _unset)
+          ? this.catalogPinMessageId
+          : catalogPinMessageId as int?,
     );
   }
 }

@@ -205,6 +205,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminSheets));
     expect(texts, contains(MessageTemplates.buttonAdminClearFunnel));
     expect(texts.last, MessageTemplates.buttonAdminClearFunnel);
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
     expect(texts, isNot(contains(MessageTemplates.buttonHelp)));

@@ -7,12 +7,17 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         '«${MessageTemplates.buttonAdminMenu}» — выход в админку.';
   }
 
-  String adminCatalogList(List<Launch> launches) {
-    final buf = StringBuffer()
+  String adminCatalogList(List<Launch> launches, {String? notice}) {
+    final buf = StringBuffer();
+    if (notice != null && notice.isNotEmpty) {
+      buf.writeln(notice);
+      buf.writeln();
+    }
+    buf
       ..writeln('<b>Курсы</b>')
       ..writeln();
     if (launches.isEmpty) {
-      buf.writeln('В боте пока нет потоков. Добавь новый.');
+      buf.writeln('В таблице пока нет потоков. Добавь новый.');
     } else {
       for (final launch in launches) {
         buf.writeln(_catalogListLine(launch));
@@ -20,7 +25,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     }
     buf
       ..writeln()
-      ..write('Открой карточку или добавь поток.');
+      ..write('Открой карточку или создай курс.');
     return buf.toString();
   }
 
@@ -201,18 +206,22 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         '${detail == null || detail.isEmpty ? '.' : ': ${escapeHtml(detail)}'}';
   }
 
+  String adminCatalogAskWithError(CatalogFieldError error, String ask) {
+    return '${adminCatalogFieldError(error)}\n\n$ask';
+  }
+
   String adminCatalogFieldLabel(CatalogLaunchField field) => switch (field) {
-    CatalogLaunchField.title => 'Название',
-    CatalogLaunchField.code => 'Код',
-    CatalogLaunchField.price => 'Цена',
-    CatalogLaunchField.deposit => 'Предоплата',
-    CatalogLaunchField.depositDue => 'Доплата до',
-    CatalogLaunchField.start => 'Старт',
-    CatalogLaunchField.channel => 'Канал',
+    CatalogLaunchField.title => '📝 Название',
+    CatalogLaunchField.code => '🔖 Код',
+    CatalogLaunchField.price => '💰 Цена',
+    CatalogLaunchField.deposit => '💵 Предоплата',
+    CatalogLaunchField.depositDue => '📅 Доплата до',
+    CatalogLaunchField.start => '🚀 Старт',
+    CatalogLaunchField.channel => '📣 Канал',
   };
 
   String adminCatalogListButton(Launch launch) {
-    final mark = launch.isActive ? '● ' : '';
+    final mark = launch.isActive ? '🟢 ' : '⚪️ ';
     final label = '$mark${launch.title} (${launch.code})';
     if (label.length <= 64) {
       return label;

@@ -531,6 +531,10 @@ void main() {
     expect(sheets.sender.messages.any((m) => m.text.contains('launch-1')), isTrue);
     final list = sheets.sender.messages.lastWhere((m) => m.replyMarkup != null);
     expect(_inlineButtonTexts(list.replyMarkup), contains(MessageTemplates.buttonAdminCatalogNew));
+    expect(
+      _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCatalogNew)),
+    );
     expect(_inlineCallbackData(list.replyMarkup).every((data) => data.length <= 64), isTrue);
 
     await sheets.handlers.handle(
@@ -545,6 +549,50 @@ void main() {
     );
     expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
     expect(harness.course.listLaunches(), hasLength(1));
+  });
+
+  test('admin catalog list hides launches missing from COURSES', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    sheets.course.upsertLaunch(
+      productCode: 'course',
+      productTitle: 'Курс',
+      launchCode: 'old-stream',
+      launchTitle: 'Старый поток',
+      priceFullKopecks: 1800000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+    );
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    expect(sheets.course.launchByCode('old-stream'), isNull);
+    expect(sheets.sender.messages.any((m) => m.text.contains('old-stream')), isFalse);
+    expect(sheets.sender.messages.any((m) => m.text.contains('Старый поток')), isFalse);
+    expect(sheets.sender.messages.any((m) => m.text.contains('launch-1')), isTrue);
+  });
+
+  test('admin catalog screens edit the same panel message', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final count = sheets.sender.messages.length;
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${launch.id}',
+      ),
+    );
+    expect(sheets.sender.messages, hasLength(count));
+    expect(sheets.sender.messages.last.text, contains('launch-1'));
   });
 
   test('admin catalog wizard create writes COURSES row and sqlite', () async {

@@ -58,6 +58,9 @@ final class GoogleSheetsCatalogSync {
   final String? fallbackLeadMagnetFileId;
   final String? fallbackLeadMagnetUrl;
   final Duration requestTimeout;
+  Set<String> _sheetLaunchCodes = <String>{};
+
+  Set<String> get sheetLaunchCodes => Set<String>.unmodifiable(_sheetLaunchCodes);
 
   Future<CatalogSyncResult> sync() {
     return retry(_syncOnce, shouldRetry: _shouldRetry);
@@ -391,6 +394,13 @@ final class GoogleSheetsCatalogSync {
         leadMagnetFileId: applied.leadMagnetFileId,
         leadMagnetUrl: applied.leadMagnetUrl,
       );
+    }
+    final sheetCodes = <String>{for (final row in parsed.rows) row.launchCode};
+    _sheetLaunchCodes = sheetCodes;
+    for (final existing in _catalog.listLaunches()) {
+      if (!sheetCodes.contains(existing.code)) {
+        _catalog.tryDeleteLaunch(existing.id);
+      }
     }
     _catalog.setActiveLaunch(appliedActive.launchCode);
     launch = _catalog.activeLaunch() ?? launch;

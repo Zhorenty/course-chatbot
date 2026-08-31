@@ -421,6 +421,26 @@ void main() {
       expect(course.launchByCode('launch-1')?.priceFullKopecks, 1800000);
     });
 
+    test('sync drops unused sqlite launches missing from COURSES', () async {
+      course.upsertLaunch(
+        productCode: 'course',
+        productTitle: 'Курс',
+        launchCode: 'old-stream',
+        launchTitle: 'Старый поток',
+        priceFullKopecks: 1800000,
+        depositKopecks: 0,
+        depositDueDays: 7,
+      );
+      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+      gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      expect(course.launchByCode('old-stream'), isNull);
+      expect(sync.sheetLaunchCodes, contains('launch-1'));
+      expect(sync.sheetLaunchCodes.contains('old-stream'), isFalse);
+    });
+
     test('env channel fallback applies only to the active COURSES row', () async {
       final second = List<Object?>.from(CoursesSheet.seedDataRow())
         ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-2'

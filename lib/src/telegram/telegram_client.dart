@@ -487,6 +487,28 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
+  Future<void> editMessageText(
+    int chatId, {
+    required int messageId,
+    required String text,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+    String? parseMode,
+  }) async {
+    await _post(
+      'editMessageText',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+        'text': text,
+        'disable_web_page_preview': disableWebPagePreview,
+        if (replyMarkup != null) 'reply_markup': replyMarkup,
+        if (parseMode != null) 'parse_mode': parseMode,
+      },
+    );
+  }
+
+  @override
   Future<void> deleteMessage(int chatId, {required int messageId}) async {
     await _post(
       'deleteMessage',

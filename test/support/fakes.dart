@@ -81,6 +81,30 @@ final class FakeMessageSender implements MessageSender {
   }
 
   @override
+  Future<void> editMessageText(
+    int chatId, {
+    required int messageId,
+    required String text,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+    String? parseMode,
+  }) async {
+    final index = messages.indexWhere((m) => m.chatId == chatId && m.messageId == messageId);
+    if (index < 0) {
+      throw StateError('FakeMessageSender has no message $messageId in chat $chatId');
+    }
+    final previous = messages[index];
+    messages[index] = SentMessage(
+      chatId: previous.chatId,
+      messageId: previous.messageId,
+      text: text,
+      parseMode: parseMode ?? previous.parseMode,
+      replyMarkup: replyMarkup,
+      disableNotification: previous.disableNotification,
+    );
+  }
+
+  @override
   Future<void> deleteMessage(int chatId, {required int messageId}) async {
     deletedMessages.add(DeletedMessage(chatId: chatId, messageId: messageId));
     messages.removeWhere((m) => m.chatId == chatId && m.messageId == messageId);
