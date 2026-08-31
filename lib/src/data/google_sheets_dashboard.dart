@@ -96,6 +96,7 @@ final class GoogleSheetsValidation {
     required this.startColumn,
     required this.endColumnExclusive,
     required this.conditionType,
+    this.conditionValues = const <String>[],
     this.inputMessage,
     this.strict = false,
     this.showCustomUi = true,
@@ -106,6 +107,9 @@ final class GoogleSheetsValidation {
   final int startColumn;
   final int endColumnExclusive;
   final String conditionType;
+
+  /// `ONE_OF_LIST` items, or a single A1 formula for `ONE_OF_RANGE`.
+  final List<String> conditionValues;
   final String? inputMessage;
   final bool strict;
   final bool showCustomUi;

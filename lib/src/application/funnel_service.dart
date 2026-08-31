@@ -21,12 +21,13 @@ final class FunnelService {
   bool opensCourseCard(String? payload) => links.opensCourseCard(payload);
 
   /// Launch for attribution (`acquisition_events`, optional enrollment row).
-  /// Missing or unknown `launch_code` → active launch. MVP card/checkout still use active.
+  /// Missing or unknown stream (code or COURSES title) → active launch.
+  /// MVP card/checkout still use active.
   Launch? resolveLaunch(String? payload) {
     final link = links.byPayload(payload);
-    final code = link?.launchCode?.trim();
-    if (code != null && code.isNotEmpty) {
-      return _course.launchByCode(code) ?? _course.activeLaunch();
+    final raw = link?.launchCode?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      return _course.launchByCode(raw) ?? _course.launchByTitle(raw) ?? _course.activeLaunch();
     }
     return _course.activeLaunch();
   }

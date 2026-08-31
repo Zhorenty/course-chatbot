@@ -42,6 +42,8 @@ abstract interface class CatalogRepository {
 
   Launch? launchByCode(String code);
 
+  Launch? launchByTitle(String title);
+
   Launch? launchByChannelId(int channelId);
 
   void setLeadMagnetFileId(String fileId, {int? launchId});

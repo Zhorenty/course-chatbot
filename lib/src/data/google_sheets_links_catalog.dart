@@ -159,6 +159,26 @@ abstract final class GoogleSheetsLinksCatalog {
       ],
       columnCount: columnCount,
       rowCount: canvasEnd,
+      validations: <GoogleSheetsValidation>[
+        GoogleSheetsValidation(
+          startRow: dataStart,
+          endRowExclusive: dataEnd,
+          startColumn: LinksSheet.headers.indexOf(LinksSheet.destination),
+          endColumnExclusive: LinksSheet.headers.indexOf(LinksSheet.destination) + 1,
+          conditionType: 'ONE_OF_LIST',
+          conditionValues: const <String>['гайд', 'курс'],
+          inputMessage: 'Гайд или карточка курса.',
+        ),
+        GoogleSheetsValidation(
+          startRow: dataStart,
+          endRowExclusive: dataEnd,
+          startColumn: LinksSheet.headers.indexOf(LinksSheet.launchCode),
+          endColumnExclusive: LinksSheet.headers.indexOf(LinksSheet.launchCode) + 1,
+          conditionType: 'ONE_OF_RANGE',
+          conditionValues: <String>[LinksSheet.launchDropdownFormula()],
+          inputMessage: 'Выбери поток с листа COURSES. Пусто — текущий набор.',
+        ),
+      ],
     );
   }
 }

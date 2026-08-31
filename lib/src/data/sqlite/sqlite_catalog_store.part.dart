@@ -146,6 +146,27 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   @override
+  Launch? launchByTitle(String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final rows = _db.select(
+      '''
+      SELECT * FROM launches
+      WHERE title = ?
+      ORDER BY is_active DESC, id DESC
+      LIMIT 1;
+      ''',
+      <Object?>[trimmed],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return mapLaunch(rows.first);
+  }
+
+  @override
   Launch? launchByChannelId(int channelId) {
     final rows = _db.select(
       '''

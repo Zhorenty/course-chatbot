@@ -508,7 +508,15 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                 endColumnIndex: rule.endColumnExclusive,
               ),
               rule: DataValidationRule(
-                condition: BooleanCondition(type: rule.conditionType),
+                condition: BooleanCondition(
+                  type: rule.conditionType,
+                  values: rule.conditionValues.isEmpty
+                      ? null
+                      : <ConditionValue>[
+                          for (final value in rule.conditionValues)
+                            ConditionValue(userEnteredValue: value),
+                        ],
+                ),
                 inputMessage: rule.inputMessage,
                 showCustomUi: rule.showCustomUi,
                 strict: rule.strict,

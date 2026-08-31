@@ -294,6 +294,12 @@ void main() {
     expect(withCode.rows.single.launchCode, 'launch-2');
     expect(withCode.rows.single.opensCourse, isTrue);
 
+    final withTitle = LinksSheetParser.parse(<List<Object?>>[
+      const <Object?>['Откуда', 'Куда', 'Метка', 'Поток', 'Ссылка'],
+      <Object?>['Таргет', 'курс', 'ads_nov', 'Ноябрь', ''],
+    ]);
+    expect(withTitle.rows.single.launchCode, 'Ноябрь');
+
     final legacy = LinksSheetParser.parse(<List<Object?>>[
       <Object?>['Откуда', 'Куда', 'Метка', 'Ссылка'],
       <Object?>['Reels', 'гайд', 'ig_reels_guide', 'https://t.me/bot?start=ig_reels_guide'],
@@ -316,6 +322,21 @@ void main() {
     ]);
     expect(harness.funnel.resolveLaunch('ads_nov')?.id, launch2.id);
     expect(harness.funnel.resolveLaunch('ig_reels_guide')?.code, 'launch-1');
+  });
+
+  test('deep link with COURSES launch title resolves that launch', () {
+    final launch2 = _launch2(harness, activate: false);
+    harness.funnel.links.replaceAll(<AcquisitionLink>[
+      ...AcquisitionLink.starters,
+      AcquisitionLink(
+        origin: 'Таргет',
+        destination: AcquisitionDestination.course,
+        payload: 'ads_nov',
+        launchCode: launch2.title,
+      ),
+    ]);
+    expect(harness.funnel.resolveLaunch('ads_nov')?.id, launch2.id);
+    expect(harness.course.launchByTitle('Ноябрь')?.id, launch2.id);
   });
 
   test('chat_member join on an old launch channel is recorded after active switched', () async {

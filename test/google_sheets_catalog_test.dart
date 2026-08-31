@@ -386,6 +386,22 @@ void main() {
       );
     });
 
+    test('ССЫЛКИ stream column is a dropdown from COURSES launch titles', () async {
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.sync();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final look = gateway.looksBySheetId[tab.sheetId]!;
+      final stream = look.validations.singleWhere((rule) => rule.conditionType == 'ONE_OF_RANGE');
+      expect(stream.startColumn, LinksSheet.headers.indexOf(LinksSheet.launchCode));
+      expect(stream.conditionValues.single, LinksSheet.launchDropdownFormula());
+      expect(stream.conditionValues.single, contains("'${CoursesSheet.tabTitle}'"));
+    });
+
     test('syncLinks seeds ССЫЛКИ without rewriting COURSES', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
       final sync = GoogleSheetsCatalogSync(
