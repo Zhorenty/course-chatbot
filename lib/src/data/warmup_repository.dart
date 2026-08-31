@@ -5,9 +5,14 @@ abstract interface class WarmupRepository {
 
   void seedDefaultWarmupSteps();
 
-  bool hasWarmupBeenSent({required int userId, required String stepKey});
+  bool hasWarmupBeenSent({required int userId, required String stepKey, int? launchId});
 
-  void recordWarmupSent({required int userId, required String stepKey, required DateTime sentAt});
+  void recordWarmupSent({
+    required int userId,
+    required String stepKey,
+    required DateTime sentAt,
+    int? launchId,
+  });
 
   List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200});
 }

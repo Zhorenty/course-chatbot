@@ -2,7 +2,7 @@ part of 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 
 mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   @override
-  Launch upsertActiveLaunch({
+  Launch upsertLaunch({
     required String productCode,
     required String productTitle,
     required String launchCode,
@@ -16,6 +16,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     String? offerUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
+    bool activate = false,
   }) {
     _db.execute(
       '''
@@ -61,9 +62,50 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         leadMagnetUrl,
       ],
     );
+    if (activate) {
+      setActiveLaunch(launchCode);
+    }
+    return launchByCode(launchCode)!;
+  }
+
+  @override
+  Launch upsertActiveLaunch({
+    required String productCode,
+    required String productTitle,
+    required String launchCode,
+    required String launchTitle,
+    required int priceFullKopecks,
+    required int depositKopecks,
+    required int depositDueDays,
+    DateTime? depositDueAt,
+    DateTime? courseStartAt,
+    int? channelId,
+    String? offerUrl,
+    String? leadMagnetFileId,
+    String? leadMagnetUrl,
+  }) {
+    return upsertLaunch(
+      productCode: productCode,
+      productTitle: productTitle,
+      launchCode: launchCode,
+      launchTitle: launchTitle,
+      priceFullKopecks: priceFullKopecks,
+      depositKopecks: depositKopecks,
+      depositDueDays: depositDueDays,
+      depositDueAt: depositDueAt,
+      courseStartAt: courseStartAt,
+      channelId: channelId,
+      offerUrl: offerUrl,
+      leadMagnetFileId: leadMagnetFileId,
+      leadMagnetUrl: leadMagnetUrl,
+      activate: true,
+    );
+  }
+
+  @override
+  void setActiveLaunch(String launchCode) {
     _db.execute('UPDATE launches SET is_active = 0;');
     _db.execute('UPDATE launches SET is_active = 1 WHERE code = ?;', <Object?>[launchCode]);
-    return activeLaunch()!;
   }
 
   @override
@@ -82,14 +124,50 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   @override
-  void setLeadMagnetFileId(String fileId) {
-    final launch = activeLaunch();
-    if (launch == null) {
+  Launch? getLaunch(int id) {
+    final rows = _db.select('SELECT * FROM launches WHERE id = ?;', <Object?>[id]);
+    if (rows.isEmpty) {
+      return null;
+    }
+    return mapLaunch(rows.first);
+  }
+
+  @override
+  Launch? launchByCode(String code) {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final rows = _db.select('SELECT * FROM launches WHERE code = ?;', <Object?>[trimmed]);
+    if (rows.isEmpty) {
+      return null;
+    }
+    return mapLaunch(rows.first);
+  }
+
+  @override
+  Launch? launchByChannelId(int channelId) {
+    final rows = _db.select(
+      '''
+      SELECT * FROM launches
+      WHERE channel_id = ?
+      ORDER BY is_active DESC, id DESC
+      LIMIT 1;
+      ''',
+      <Object?>[channelId],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return mapLaunch(rows.first);
+  }
+
+  @override
+  void setLeadMagnetFileId(String fileId, {int? launchId}) {
+    final id = launchId ?? activeLaunch()?.id;
+    if (id == null) {
       return;
     }
-    _db.execute('UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;', <Object?>[
-      fileId,
-      launch.id,
-    ]);
+    _db.execute('UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;', <Object?>[fileId, id]);
   }
 }

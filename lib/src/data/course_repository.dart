@@ -1,5 +1,7 @@
 import 'package:course_chatbot/src/data/access_repository.dart';
+import 'package:course_chatbot/src/data/attribution_repository.dart';
 import 'package:course_chatbot/src/data/catalog_repository.dart';
+import 'package:course_chatbot/src/data/enrollment_repository.dart';
 import 'package:course_chatbot/src/data/funnel_analytics_repository.dart';
 import 'package:course_chatbot/src/data/order_repository.dart';
 import 'package:course_chatbot/src/data/user_repository.dart';
@@ -15,7 +17,9 @@ abstract interface class CourseRepository
         OrderRepository,
         ChannelAccessRepository,
         WarmupRepository,
-        FunnelAnalyticsRepository {
+        FunnelAnalyticsRepository,
+        EnrollmentRepository,
+        AttributionRepository {
   void init();
 
   T transaction<T>(T Function() action);

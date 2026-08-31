@@ -231,7 +231,10 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
 
   Future<bool> _presentAdminCard(PrivateMessageContext context, UserProfile user) async {
     final launch = _launch;
-    final order = _course.latestOrder(user.userId);
+    final enrollment = _funnel.enrollmentFor(user.userId, launch: launch);
+    final order = launch == null
+        ? _course.latestOrder(user.userId)
+        : _course.latestOrder(user.userId, launchId: launch.id);
     final access = launch == null
         ? null
         : _course.accessFor(userId: user.userId, launchId: launch.id);
@@ -242,7 +245,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     );
     return _send(
       context,
-      _templates.adminCard(user: user, order: order, access: access, dialog: dialog),
+      _templates.adminCard(
+        user: user,
+        enrollment: enrollment,
+        order: order,
+        access: access,
+        dialog: dialog,
+      ),
       replyMarkup: _templates.adminCardKeyboard(user.userId),
     );
   }
@@ -370,7 +379,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return false;
     }
     final launch = _launch;
-    final order = _course.latestOrder(targetUserId);
+    final order = launch == null ? null : _course.latestOrder(targetUserId, launchId: launch.id);
     if (launch == null || order == null) {
       return false;
     }

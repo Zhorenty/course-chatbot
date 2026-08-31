@@ -91,8 +91,8 @@ final class CheckoutService {
     required Launch launch,
     required PaymentKind kind,
   }) {
-    _assertCanStartCharge(userId: userId, kind: kind);
-    final existing = _course.latestOpenOrder(userId);
+    _assertCanStartCharge(userId: userId, launchId: launch.id, kind: kind);
+    final existing = _course.latestOpenOrder(userId, launchId: launch.id);
     if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
       return existing;
     }
@@ -114,13 +114,20 @@ final class CheckoutService {
     );
   }
 
-  void _assertCanStartCharge({required int userId, required PaymentKind kind}) {
-    final user = _course.getUser(userId);
-    if (user != null && user.funnelPhase.isPaidOrAccess && kind != PaymentKind.remainder) {
+  void _assertCanStartCharge({
+    required int userId,
+    required int launchId,
+    required PaymentKind kind,
+  }) {
+    if (kind == PaymentKind.remainder) {
+      return;
+    }
+    final enrollment = _course.getEnrollment(userId: userId, launchId: launchId);
+    if (enrollment != null && enrollment.funnelPhase.isPaidOrAccess) {
       throw const CheckoutBlockedException(CheckoutBlockReason.alreadyPaid);
     }
-    final latest = _course.latestOrder(userId);
-    if (latest != null && latest.status.isFullyPaid && kind != PaymentKind.remainder) {
+    final latest = _course.latestOrder(userId, launchId: launchId);
+    if (latest != null && latest.status.isFullyPaid) {
       throw const CheckoutBlockedException(CheckoutBlockReason.alreadyPaid);
     }
   }
@@ -144,7 +151,7 @@ final class CheckoutService {
     if (amountKopecks <= 0) {
       throw const CheckoutBlockedException(CheckoutBlockReason.priceNotSet);
     }
-    _assertCanStartCharge(userId: order.userId, kind: kind);
+    _assertCanStartCharge(userId: order.userId, launchId: order.launchId, kind: kind);
     final reusable = _course.latestPendingPayment(order.id, kind: kind);
     if (reusable != null &&
         reusable.confirmationUrl != null &&
@@ -216,9 +223,13 @@ final class CheckoutService {
     if (!currentOrder.status.isFullyPaid && currentOrder.status != OrderStatus.depositPaid) {
       _course.updateOrder(currentOrder.copyWith(status: OrderStatus.awaitingPayment, kind: kind));
     }
-    final user = _course.getUser(order.userId);
-    if (user == null || !user.funnelPhase.excludeSellingDrip) {
-      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.checkout);
+    final enrollment = _course.getEnrollment(userId: order.userId, launchId: order.launchId);
+    if (enrollment == null || !enrollment.funnelPhase.excludeSellingDrip) {
+      _course.setFunnelPhase(
+        userId: order.userId,
+        phase: FunnelPhase.checkout,
+        launchId: order.launchId,
+      );
     }
     return payment;
   }
@@ -266,10 +277,7 @@ final class CheckoutService {
     }
   }
 
-  Future<PaymentApplyResult> applyCallback(
-    PaymentCallback callback, {
-    required Launch launch,
-  }) async {
+  Future<PaymentApplyResult> applyCallback(PaymentCallback callback, {Launch? launch}) async {
     final result = _course.transaction(() => _applyLocked(callback, launch: launch));
     if (result.depositOnly) {
       return result;
@@ -278,12 +286,17 @@ final class CheckoutService {
     if (!paid) {
       return result;
     }
+    final inviteLaunch = _course.getLaunch(result.order.launchId) ?? launch;
+    if (inviteLaunch == null) {
+      l.w('Paid order ${result.order.id} has no launch ${result.order.launchId}; skip invite.');
+      return result;
+    }
     final hadAccess = result.order.accessGranted;
     try {
       final link = await _access.issueInvite(
         userId: result.order.userId,
         orderId: result.order.id,
-        launch: launch,
+        launch: inviteLaunch,
       );
       final repaired = result.alreadyApplied && !hadAccess && link != null;
       return PaymentApplyResult(
@@ -320,7 +333,7 @@ final class CheckoutService {
     );
   }
 
-  PaymentApplyResult _applyLocked(PaymentCallback callback, {required Launch launch}) {
+  PaymentApplyResult _applyLocked(PaymentCallback callback, {Launch? launch}) {
     if (callback.providerPaymentId.isNotEmpty) {
       final existing = _course.findPaymentByProviderId(
         provider: callback.provider,
@@ -365,6 +378,7 @@ final class CheckoutService {
     final kind = callback.kind ?? payment?.kind ?? order.kind;
     final amount = callback.amountKopecks ?? payment?.amountKopecks ?? order.amountDueKopecks;
     final now = _nowProvider();
+    final orderLaunch = _course.getLaunch(order.launchId) ?? launch;
     payment ??= _course.insertPayment(
       orderId: order.id,
       provider: callback.provider,
@@ -401,15 +415,23 @@ final class CheckoutService {
       amountPaidKopecks: paidTotal,
       amountDueKopecks: due,
       dueAt: kind == PaymentKind.deposit
-          ? (order.dueAt ?? launch.resolveDepositDueAt(now))
+          ? (order.dueAt ?? orderLaunch?.resolveDepositDueAt(now))
           : order.dueAt,
       paidAt: grantsAccess ? now : order.paidAt,
     );
     _course.updateOrder(updated);
     if (grantsAccess) {
-      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.paid);
+      _course.setFunnelPhase(
+        userId: order.userId,
+        phase: FunnelPhase.paid,
+        launchId: order.launchId,
+      );
     } else if (nextStatus == OrderStatus.depositPaid) {
-      _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.depositPaid);
+      _course.setFunnelPhase(
+        userId: order.userId,
+        phase: FunnelPhase.depositPaid,
+        launchId: order.launchId,
+      );
     }
     return PaymentApplyResult(
       order: updated,
@@ -424,18 +446,22 @@ final class CheckoutService {
     _course.updateOrder(
       order.copyWith(status: OrderStatus.cancelled, cancelledAt: now, accessGranted: false),
     );
-    _course.setFunnelPhase(userId: order.userId, phase: FunnelPhase.cancelled);
+    _course.setFunnelPhase(
+      userId: order.userId,
+      phase: FunnelPhase.cancelled,
+      launchId: order.launchId,
+    );
     await _access.revoke(userId: order.userId, launch: launch);
   }
 
   /// Drops the person off this launch: cancel the order if any, revoke invite, kick.
   Future<void> cancelEnrollment({required int userId, required Launch launch}) async {
-    final order = _course.latestOrder(userId);
+    final order = _course.latestOrder(userId, launchId: launch.id);
     if (order != null) {
       await cancel(order: order, launch: launch);
       return;
     }
-    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.cancelled);
+    _course.setFunnelPhase(userId: userId, phase: FunnelPhase.cancelled, launchId: launch.id);
     await _access.revoke(userId: userId, launch: launch);
   }
 }

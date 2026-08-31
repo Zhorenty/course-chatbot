@@ -45,10 +45,12 @@ extension _PrivateHandlersChatMember on PrivateHandlers {
     if (chatRaw is! Map || newChatMember is! Map) {
       return false;
     }
-    final launch = _launch;
-    final channelId = launch?.channelId;
     final chatId = asTelegramInt(chatRaw['id']);
-    if (launch == null || channelId == null || chatId != channelId) {
+    if (chatId == null) {
+      return false;
+    }
+    final launch = _course.launchByChannelId(chatId);
+    if (launch == null) {
       return false;
     }
     final userRaw = newChatMember['user'];

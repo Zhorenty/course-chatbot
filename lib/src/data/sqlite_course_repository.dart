@@ -1,13 +1,18 @@
 import 'package:course_chatbot/src/data/access_repository.dart';
+import 'package:course_chatbot/src/data/attribution_repository.dart';
 import 'package:course_chatbot/src/data/catalog_repository.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/data/enrollment_repository.dart';
 import 'package:course_chatbot/src/data/funnel_analytics_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/user_repository.dart';
 import 'package:course_chatbot/src/data/warmup_repository.dart';
+import 'package:course_chatbot/src/domain/acquisition_event.dart';
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
@@ -19,6 +24,7 @@ import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 part 'sqlite/sqlite_catalog_store.part.dart';
+part 'sqlite/sqlite_enrollment_store.part.dart';
 part 'sqlite/sqlite_users_store.part.dart';
 part 'sqlite/sqlite_orders_store.part.dart';
 part 'sqlite/sqlite_payments_store.part.dart';
@@ -30,6 +36,7 @@ part 'sqlite/sqlite_conversation_store.part.dart';
 final class SqliteCourseRepository extends _SqliteCourseStore
     with
         _SqliteCatalogStore,
+        _SqliteEnrollmentStore,
         _SqliteUsersStore,
         _SqliteOrdersStore,
         _SqlitePaymentsStore,
@@ -121,6 +128,36 @@ class _SqliteCourseStore {
       inviteCreatedAt: parseTime(row['invite_created_at'] as String?),
       joinedAt: parseTime(row['joined_at'] as String?),
       revokedAt: parseTime(row['revoked_at'] as String?),
+    );
+  }
+
+  UserEnrollment mapEnrollment(Row row) {
+    return UserEnrollment(
+      userId: row['user_id'] as int,
+      launchId: row['launch_id'] as int,
+      funnelPhase: FunnelPhaseX.parse(row['funnel_phase'] as String?),
+      warmupOptOut: (row['warmup_opt_out'] as int) == 1,
+      magnetIssuedAt: parseTime(row['magnet_issued_at'] as String?),
+      startedAt: DateTime.parse(row['started_at'] as String),
+    );
+  }
+
+  AcquisitionEvent mapAcquisitionEvent(Row row) {
+    final destinationRaw = row['destination'] as String?;
+    AcquisitionDestination? destination;
+    if (destinationRaw == 'course') {
+      destination = AcquisitionDestination.course;
+    } else if (destinationRaw == 'guide') {
+      destination = AcquisitionDestination.guide;
+    }
+    return AcquisitionEvent(
+      id: row['id'] as int,
+      userId: row['user_id'] as int,
+      payload: row['payload'] as String,
+      destination: destination,
+      productId: row['product_id'] as int?,
+      launchId: row['launch_id'] as int?,
+      occurredAt: DateTime.parse(row['occurred_at'] as String),
     );
   }
 

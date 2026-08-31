@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:course_chatbot/src/application/checkout_service.dart';
-import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:l/l.dart';
@@ -15,7 +14,6 @@ final class PaymentWebhookServer {
     required String bind,
     required PaymentGateway gateway,
     required CheckoutService checkout,
-    required CourseRepository course,
     required PaymentResultNotifier notifier,
     String? secret,
     String callbackPath = '/payments/callback',
@@ -23,7 +21,6 @@ final class PaymentWebhookServer {
   }) : _bind = bind,
        _gateway = gateway,
        _checkout = checkout,
-       _course = course,
        _notifier = notifier,
        _secret = secret?.trim(),
        _callbackPath = _normalizePath(callbackPath),
@@ -34,7 +31,6 @@ final class PaymentWebhookServer {
   final String _bind;
   final PaymentGateway _gateway;
   final CheckoutService _checkout;
-  final CourseRepository _course;
   final PaymentResultNotifier _notifier;
   final String? _secret;
   final String _callbackPath;
@@ -119,13 +115,7 @@ final class PaymentWebhookServer {
         await request.response.close();
         return;
       }
-      final launch = _course.activeLaunch();
-      if (launch == null) {
-        request.response.statusCode = HttpStatus.serviceUnavailable;
-        await request.response.close();
-        return;
-      }
-      final result = await _checkout.applyCallback(callback, launch: launch);
+      final result = await _checkout.applyCallback(callback);
       await _notifier.notifyPaymentResult(result);
       request.response.statusCode = HttpStatus.ok;
       await request.response.close();

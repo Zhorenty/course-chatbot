@@ -52,7 +52,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       );
       return true;
     }
-    _funnel.markMagnetIssued(userId);
+    _funnel.markMagnetIssued(userId, launchId: launch?.id);
     if (sendWarmup) {
       await _sendWarmupZero(userId);
     }
@@ -78,17 +78,27 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   }
 
   Future<void> _sendWarmupZero(int userId) async {
-    final user = _course.getUser(userId);
-    if (user == null || user.warmupOptOut || user.funnelPhase.excludeSellingDrip) {
+    final launch = _launch;
+    if (launch == null) {
+      return;
+    }
+    final enrollment = _funnel.enrollmentFor(userId, launch: launch);
+    if (enrollment == null ||
+        enrollment.warmupOptOut ||
+        enrollment.funnelPhase.excludeSellingDrip) {
       return;
     }
     try {
       await _warmup.deliver(
-        decision: WarmupDecision(stepKey: WarmupService.firstStepKey, userId: userId),
+        decision: WarmupDecision(
+          stepKey: WarmupService.firstStepKey,
+          userId: userId,
+          launchId: launch.id,
+        ),
         now: _nowProvider(),
         send: () => _sender.sendMessage(
           userId,
-          _templates.warmupStep(WarmupService.firstStepKey, launch: _launch),
+          _templates.warmupStep(WarmupService.firstStepKey, launch: launch),
           parseMode: 'HTML',
           replyMarkup: _templates.warmupKeyboard(),
         ),
@@ -99,7 +109,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   }
 
   Future<bool> _optOut(PrivateMessageContext context) async {
-    _funnel.optOutWarmup(context.userId!);
+    _funnel.optOutWarmup(context.userId!, launchId: _launch?.id);
     return _send(
       context,
       _templates.optOutConfirmed(),
@@ -109,7 +119,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
 
   Future<bool> _showEnroll(PrivateMessageContext context) async {
     final user = _course.getUser(context.userId!);
-    if (user != null && user.funnelPhase.showsCourseStatus) {
+    if (user != null && _funnel.phaseOf(user).showsCourseStatus) {
       return _showCourseStatus(context);
     }
     final launch = _launch;
@@ -126,11 +136,13 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   Future<bool> _showCourseStatus(PrivateMessageContext context) async {
     final userId = context.userId!;
     final user = _course.getUser(userId);
-    if (user == null || !user.funnelPhase.showsCourseStatus) {
+    if (user == null || !_funnel.phaseOf(user).showsCourseStatus) {
       return _showEnroll(context);
     }
     final launch = _launch;
-    final order = _course.latestOrder(userId);
+    final order = launch == null
+        ? _course.latestOrder(userId)
+        : _course.latestOrder(userId, launchId: launch.id);
     final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
     return _send(
       context,

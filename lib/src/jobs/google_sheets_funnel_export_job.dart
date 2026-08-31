@@ -19,7 +19,10 @@ final class GoogleSheetsFunnelExportJob {
   final DateTime Function() _nowProvider;
 
   Future<void> export() async {
-    final analytics = _course.funnelAnalytics(now: _nowProvider());
+    final analytics = _course.funnelAnalytics(
+      now: _nowProvider(),
+      launchId: _course.activeLaunch()?.id,
+    );
     final dashboard = GoogleSheetsFunnelDashboard.build(analytics, sheetTitle: sheetTitle);
     await _writer.replaceDashboard(dashboard);
     l.i(

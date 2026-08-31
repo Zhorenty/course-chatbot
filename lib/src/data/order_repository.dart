@@ -14,9 +14,9 @@ abstract interface class OrderRepository {
 
   CourseOrder? getOrder(int orderId);
 
-  CourseOrder? latestOpenOrder(int userId);
+  CourseOrder? latestOpenOrder(int userId, {int? launchId});
 
-  CourseOrder? latestOrder(int userId);
+  CourseOrder? latestOrder(int userId, {int? launchId});
 
   List<CourseOrder> listOrdersForUser(int userId, {int limit = 10});
 

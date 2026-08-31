@@ -1,6 +1,6 @@
 part of 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 
-mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
+mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
   @override
   List<WarmupStep> listWarmupSteps() {
     final rows = _db.select(
@@ -32,23 +32,38 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
     }
   }
 
+  int? _warmupLaunchId(int? launchId) => resolveEnrollmentLaunchId(launchId);
+
   @override
-  bool hasWarmupBeenSent({required int userId, required String stepKey}) {
+  bool hasWarmupBeenSent({required int userId, required String stepKey, int? launchId}) {
+    final resolved = _warmupLaunchId(launchId);
+    if (resolved == null) {
+      return false;
+    }
     final rows = _db.select(
-      'SELECT 1 FROM warmup_sent WHERE user_id = ? AND step_key = ? LIMIT 1;',
-      <Object?>[userId, stepKey],
+      'SELECT 1 FROM warmup_sent WHERE user_id = ? AND launch_id = ? AND step_key = ? LIMIT 1;',
+      <Object?>[userId, resolved, stepKey],
     );
     return rows.isNotEmpty;
   }
 
   @override
-  void recordWarmupSent({required int userId, required String stepKey, required DateTime sentAt}) {
+  void recordWarmupSent({
+    required int userId,
+    required String stepKey,
+    required DateTime sentAt,
+    int? launchId,
+  }) {
+    final resolved = _warmupLaunchId(launchId);
+    if (resolved == null) {
+      return;
+    }
     _db.execute(
       '''
-      INSERT OR IGNORE INTO warmup_sent (user_id, step_key, sent_at)
-      VALUES (?, ?, ?);
+      INSERT OR IGNORE INTO warmup_sent (user_id, launch_id, step_key, sent_at)
+      VALUES (?, ?, ?, ?);
       ''',
-      <Object?>[userId, stepKey, sentAt.toUtc().toIso8601String()],
+      <Object?>[userId, resolved, stepKey, sentAt.toUtc().toIso8601String()],
     );
   }
 
@@ -56,15 +71,17 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
   List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200}) {
     final rows = _db.select(
       '''
-      SELECT u.user_id, u.magnet_issued_at, u.first_started_at, u.source, u.funnel_phase,
+      SELECT e.user_id, e.launch_id, e.magnet_issued_at, e.started_at, e.funnel_phase,
+             u.first_started_at, u.source,
              GROUP_CONCAT(w.step_key) AS sent_keys
-      FROM telegram_users u
-      LEFT JOIN warmup_sent w ON w.user_id = u.user_id
+      FROM user_enrollments e
+      JOIN telegram_users u ON u.user_id = e.user_id
+      LEFT JOIN warmup_sent w ON w.user_id = e.user_id AND w.launch_id = e.launch_id
       WHERE u.bot_blocked = 0
-        AND u.warmup_opt_out = 0
-        AND u.funnel_phase NOT IN ('checkout', 'deposit_paid', 'paid', 'access_granted', 'cancelled')
-      GROUP BY u.user_id
-      ORDER BY u.first_started_at
+        AND e.warmup_opt_out = 0
+        AND e.funnel_phase NOT IN ('checkout', 'deposit_paid', 'paid', 'access_granted', 'cancelled')
+      GROUP BY e.user_id, e.launch_id
+      ORDER BY e.started_at
       LIMIT ?;
       ''',
       <Object?>[limit],
@@ -73,7 +90,8 @@ mixin _SqliteWarmupStore on _SqliteCourseStore implements WarmupRepository {
       for (final row in rows)
         WarmupCandidate(
           userId: row['user_id'] as int,
-          firstStartedAt: DateTime.parse(row['first_started_at'] as String),
+          launchId: row['launch_id'] as int,
+          firstStartedAt: DateTime.parse(row['started_at'] as String),
           magnetIssuedAt: parseTime(row['magnet_issued_at'] as String?),
           source: row['source'] as String?,
           funnelPhase: FunnelPhaseX.parse(row['funnel_phase'] as String?),

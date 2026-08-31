@@ -94,7 +94,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
       return _templates.adminMenuKeyboard();
     }
     return _templates.userMenuKeyboard(
-      showCourseStatus: _course.getUser(userId)?.funnelPhase.showsCourseStatus ?? false,
+      showCourseStatus: _funnel.enrollmentFor(userId)?.funnelPhase.showsCourseStatus ?? false,
     );
   }
 

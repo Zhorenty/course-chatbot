@@ -241,6 +241,24 @@ void main() {
       expect(gateway.renamedSheetIds, contains(0));
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
     });
+
+    test('sync keeps inactive COURSES rows in sqlite', () async {
+      final second = List<Object?>.from(CoursesSheet.seedDataRow())
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-2'
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)] = 'Ноябрь'
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.isActive)] = ''
+        ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 21000;
+      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+      gateway.valuesBySheetId[0] = CoursesSheet.withChrome(
+        dataRows: <List<Object?>>[CoursesSheet.seedDataRow(), second],
+      );
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final result = await sync.sync();
+      expect(result.ok, isTrue);
+      expect(course.activeLaunch()?.code, 'launch-1');
+      expect(course.launchByCode('launch-2')?.priceFullKopecks, 2100000);
+      expect(course.launchByCode('launch-1')?.priceFullKopecks, 1800000);
+    });
   });
 
   group('ССЫЛКИ catalog', () {

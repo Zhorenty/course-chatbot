@@ -15,9 +15,14 @@ abstract interface class UserRepository {
 
   void touchUser({required int userId, String? username, String? firstName, required DateTime now});
 
-  void setFunnelPhase({required int userId, required FunnelPhase phase, DateTime? magnetIssuedAt});
+  void setFunnelPhase({
+    required int userId,
+    required FunnelPhase phase,
+    DateTime? magnetIssuedAt,
+    int? launchId,
+  });
 
-  void setWarmupOptOut({required int userId, required bool optOut});
+  void setWarmupOptOut({required int userId, required bool optOut, int? launchId});
 
   void setBotBlocked({required int userId, required bool blocked});
 
@@ -29,11 +34,13 @@ abstract interface class UserRepository {
     required BroadcastSegment segment,
     bool excludeOptOut = false,
     Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
+    int? launchId,
   });
 
   int countBroadcastUsers({
     required BroadcastSegment segment,
     bool excludeOptOut = false,
     Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
+    int? launchId,
   });
 }

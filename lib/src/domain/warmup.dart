@@ -78,6 +78,7 @@ final class WarmupStep {
 final class WarmupCandidate {
   const WarmupCandidate({
     required this.userId,
+    required this.launchId,
     required this.firstStartedAt,
     required this.funnelPhase,
     required this.sentKeys,
@@ -86,6 +87,7 @@ final class WarmupCandidate {
   });
 
   final int userId;
+  final int launchId;
   final DateTime firstStartedAt;
   final DateTime? magnetIssuedAt;
   final String? source;
@@ -96,8 +98,9 @@ final class WarmupCandidate {
 }
 
 final class WarmupDecision {
-  const WarmupDecision({required this.stepKey, required this.userId});
+  const WarmupDecision({required this.stepKey, required this.userId, required this.launchId});
 
   final String stepKey;
   final int userId;
+  final int launchId;
 }
