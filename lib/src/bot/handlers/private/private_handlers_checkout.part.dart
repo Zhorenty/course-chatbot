@@ -99,12 +99,18 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     try {
       final order = _checkout.startOrReuseOrder(userId: userId, launch: resolved, kind: kind);
       final amount = _checkout.amountFor(resolved, order, kind);
-      final payment = await _checkout.createCheckout(
+      final created = await _checkout.createCheckout(
         order: order,
         kind: kind,
         amountKopecks: amount,
       );
-      final url = payment.confirmationUrl;
+      if (created.applied != null || created.alreadySettled) {
+        if (created.applied != null) {
+          await _notifyPaymentResult(created.applied!);
+        }
+        return true;
+      }
+      final url = created.payment.confirmationUrl;
       if (url == null || url.isEmpty) {
         return _send(context, _templates.payManualFallback());
       }
@@ -128,6 +134,9 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (order == null || order.userId != context.userId) {
       return false;
     }
+    if (await _syncPaidCheckout(context, orderId: order.id)) {
+      return true;
+    }
     final pending = _course.latestPendingPayment(order.id);
     final url = pending?.confirmationUrl;
     if (url != null && url.isNotEmpty) {
@@ -139,6 +148,30 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       launch: _course.getLaunch(order.launchId),
       orderId: order.id,
     );
+  }
+
+  Future<bool> _syncPaidCheckout(PrivateMessageContext context, {int? orderId}) async {
+    final userId = context.userId;
+    if (userId == null) {
+      return false;
+    }
+    try {
+      final result = await _checkout.syncOpenCheckout(userId: userId, orderId: orderId);
+      if (result == null) {
+        return false;
+      }
+      if (result.alreadyApplied && !result.repairedInvite) {
+        if (result.grantedAccess || result.depositOnly || result.order.status.isFullyPaid) {
+          return _showCourseStatus(context);
+        }
+        return false;
+      }
+      await _notifyPaymentResult(result);
+      return true;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to sync checkout with kassa for $userId: $error', stackTrace);
+      return false;
+    }
   }
 
   Future<void> _notifyPaymentResult(PaymentApplyResult result) async {

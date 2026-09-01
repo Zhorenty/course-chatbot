@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/config/app_config.dart';
+import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/payment_gateway_factory.dart';
 import 'package:course_chatbot/src/payments/yookassa_payment_gateway.dart';
@@ -72,6 +73,41 @@ void main() {
     expect(verified, isNotNull);
     expect(verified!.succeeded, isTrue);
     expect(verified.orderId, 3);
+    gateway.close();
+  });
+
+  test('YooKassa createPayment keeps a succeeded idempotent replay', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'POST');
+      return http.Response(
+        '{"id":"pay-replay","status":"succeeded","paid":true,'
+        '"confirmation":{"confirmation_url":"https://yookassa.example/pay"},'
+        '"metadata":{"order_id":"3","payment_db_id":"8","user_id":"42","kind":"full"},'
+        '"amount":{"value":"100.00","currency":"RUB"}}',
+        200,
+      );
+    });
+    final gateway = YooKassaPaymentGateway(shopId: 's', secretKey: 'k', httpClient: client);
+    final session = await gateway.createPayment(
+      order: CourseOrder(
+        id: 3,
+        userId: 42,
+        launchId: 1,
+        status: OrderStatus.checkoutStarted,
+        kind: PaymentKind.full,
+        priceFullKopecks: 10000,
+        amountPaidKopecks: 0,
+        amountDueKopecks: 10000,
+        checkoutStartedAt: DateTime.utc(2026, 1, 1),
+      ),
+      kind: PaymentKind.full,
+      amountKopecks: 10000,
+      paymentDbId: 8,
+    );
+    expect(session.providerPaymentId, 'pay-replay');
+    expect(session.settled?.succeeded, isTrue);
+    expect(session.settled?.charged, isTrue);
+    expect(session.settled?.orderId, 3);
     gateway.close();
   });
 

@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
+import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
 import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
@@ -25,6 +26,7 @@ final class BotRunner {
     AbandonedPaymentJob? abandonedPaymentJob,
     RemainderReminderJob? remainderReminderJob,
     UnjoinedInviteJob? unjoinedInviteJob,
+    PendingPaymentSyncJob? pendingPaymentSyncJob,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     SqliteMaintenanceJob? maintenanceJob,
     GoogleSheetsWriter? googleSheetsWriter,
@@ -36,6 +38,7 @@ final class BotRunner {
        _abandonedPaymentJob = abandonedPaymentJob,
        _remainderReminderJob = remainderReminderJob,
        _unjoinedInviteJob = unjoinedInviteJob,
+       _pendingPaymentSyncJob = pendingPaymentSyncJob,
        _sheetsExportJob = sheetsExportJob,
        _maintenanceJob = maintenanceJob,
        _googleSheetsWriter = googleSheetsWriter,
@@ -49,6 +52,7 @@ final class BotRunner {
   final AbandonedPaymentJob? _abandonedPaymentJob;
   final RemainderReminderJob? _remainderReminderJob;
   final UnjoinedInviteJob? _unjoinedInviteJob;
+  final PendingPaymentSyncJob? _pendingPaymentSyncJob;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final SqliteMaintenanceJob? _maintenanceJob;
   final GoogleSheetsWriter? _googleSheetsWriter;
@@ -166,6 +170,10 @@ final class BotRunner {
     final abandon = _abandonedPaymentJob;
     if (abandon != null) {
       _schedulePeriodic(const Duration(minutes: 10), 'abandon', abandon.run);
+    }
+    final pendingSync = _pendingPaymentSyncJob;
+    if (pendingSync != null) {
+      _schedulePeriodic(const Duration(minutes: 1), 'pay-sync', pendingSync.run);
     }
     final remainder = _remainderReminderJob;
     if (remainder != null) {

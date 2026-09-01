@@ -30,6 +30,15 @@ final class PaymentApplyResult {
 
 enum CheckoutBlockReason { alreadyPaid, priceNotSet }
 
+final class CreatedCheckout {
+  const CreatedCheckout({required this.payment, this.applied});
+
+  final PaymentRecord payment;
+  final PaymentApplyResult? applied;
+
+  bool get alreadySettled => applied != null || payment.status == PaymentRecordStatus.succeeded;
+}
+
 final class CheckoutBlockedException implements Exception {
   const CheckoutBlockedException(this.reason);
 
@@ -144,7 +153,7 @@ final class CheckoutService {
     return remainderOnDeposit || newChargeOnOpenCheckout;
   }
 
-  Future<PaymentRecord> createCheckout({
+  Future<CreatedCheckout> createCheckout({
     required CourseOrder order,
     required PaymentKind kind,
     required int amountKopecks,
@@ -154,13 +163,24 @@ final class CheckoutService {
     }
     _assertCanStartCharge(userId: order.userId, launchId: order.launchId, kind: kind);
     final reusable = _course.latestPendingPayment(order.id, kind: kind);
-    if (reusable != null &&
-        reusable.confirmationUrl != null &&
-        reusable.confirmationUrl!.isNotEmpty) {
-      return reusable;
-    }
     if (reusable != null) {
-      _course.updatePayment(reusable.copyWith(status: PaymentRecordStatus.canceled));
+      final settled = await _settlePending(reusable);
+      if (settled != null) {
+        return CreatedCheckout(
+          payment: _course.getPayment(reusable.id) ?? reusable,
+          applied: settled,
+        );
+      }
+      final stillPending = _course.getPayment(reusable.id);
+      if (stillPending != null &&
+          stillPending.status == PaymentRecordStatus.pending &&
+          stillPending.confirmationUrl != null &&
+          stillPending.confirmationUrl!.isNotEmpty) {
+        return CreatedCheckout(payment: stillPending);
+      }
+      if (stillPending != null && stillPending.status == PaymentRecordStatus.pending) {
+        _course.updatePayment(stillPending.copyWith(status: PaymentRecordStatus.canceled));
+      }
     }
 
     final now = _nowProvider();
@@ -188,7 +208,9 @@ final class CheckoutService {
           )
           .timeout(PaymentGateway.requestTimeout);
       final url = session.confirmationUrl?.trim();
-      if (url == null || url.isEmpty) {
+      final alreadyPaid =
+          session.settled != null && session.settled!.succeeded && session.settled!.charged;
+      if ((url == null || url.isEmpty) && !alreadyPaid) {
         throw const PaymentUnavailableException('Checkout returned empty confirmation URL.');
       }
     } on PaymentUnavailableException catch (error) {
@@ -204,23 +226,29 @@ final class CheckoutService {
 
     final currentPayment = _course.getPayment(payment.id) ?? payment;
     if (currentPayment.status == PaymentRecordStatus.succeeded) {
-      return currentPayment;
-    }
-    final currentOrder = _course.getOrder(order.id) ?? order;
-    if (currentOrder.status.isFullyPaid || currentOrder.accessGranted) {
-      return currentPayment.copyWith(
-        provider: session.provider,
-        providerPaymentId: session.providerPaymentId,
-        confirmationUrl: session.confirmationUrl,
+      return CreatedCheckout(
+        payment: currentPayment,
+        applied: await applyCallback(_callbackFromRecord(currentPayment)),
       );
     }
-
+    final currentOrder = _course.getOrder(order.id) ?? order;
     payment = currentPayment.copyWith(
       provider: session.provider,
       providerPaymentId: session.providerPaymentId,
       confirmationUrl: session.confirmationUrl,
     );
     _course.updatePayment(payment);
+    if (currentOrder.status.isFullyPaid || currentOrder.accessGranted) {
+      return CreatedCheckout(payment: payment);
+    }
+
+    final settled = session.settled;
+    if (settled != null && settled.succeeded && settled.charged) {
+      return CreatedCheckout(
+        payment: _course.getPayment(payment.id) ?? payment,
+        applied: await applyCallback(settled),
+      );
+    }
     if (!currentOrder.status.isFullyPaid && currentOrder.status != OrderStatus.depositPaid) {
       _course.updateOrder(currentOrder.copyWith(status: OrderStatus.awaitingPayment, kind: kind));
     }
@@ -232,7 +260,75 @@ final class CheckoutService {
         launchId: order.launchId,
       );
     }
-    return payment;
+    return CreatedCheckout(payment: payment);
+  }
+
+  PaymentCallback _callbackFromRecord(PaymentRecord payment) {
+    return PaymentCallback(
+      provider: payment.provider,
+      providerPaymentId: payment.providerPaymentId ?? '',
+      succeeded: payment.status == PaymentRecordStatus.succeeded,
+      charged: payment.status == PaymentRecordStatus.succeeded,
+      kind: payment.kind,
+      orderId: payment.orderId,
+      paymentDbId: payment.id,
+      amountKopecks: payment.amountKopecks,
+    );
+  }
+
+  /// Pulls terminal kassa state for an open checkout. Null if still pending.
+  Future<PaymentApplyResult?> syncOpenCheckout({required int userId, int? orderId}) async {
+    final order = orderId != null ? _course.getOrder(orderId) : _course.latestOpenOrder(userId);
+    if (order == null || order.userId != userId) {
+      return null;
+    }
+    final pending = _course.latestPendingPayment(order.id);
+    if (pending == null) {
+      return null;
+    }
+    return _settlePending(pending);
+  }
+
+  Future<List<PaymentApplyResult>> syncPendingPayments({int limit = 50}) async {
+    final pending = _course.listPendingPayments(limit: limit);
+    final results = <PaymentApplyResult>[];
+    for (final payment in pending) {
+      final settled = await _settlePending(payment);
+      if (settled != null) {
+        results.add(settled);
+      }
+    }
+    return results;
+  }
+
+  Future<PaymentApplyResult?> _settlePending(PaymentRecord payment) async {
+    final providerPaymentId = payment.providerPaymentId?.trim();
+    if (providerPaymentId == null || providerPaymentId.isEmpty) {
+      return null;
+    }
+    late final PaymentCallback? inspected;
+    try {
+      inspected = await _gateway
+          .inspectPayment(providerPaymentId)
+          .timeout(PaymentGateway.requestTimeout);
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to inspect payment ${payment.id} at ${_gateway.providerId}: $error', stackTrace);
+      return null;
+    }
+    if (inspected == null) {
+      return null;
+    }
+    if (!inspected.succeeded) {
+      if (payment.status == PaymentRecordStatus.pending) {
+        _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
+      }
+      return null;
+    }
+    if (!inspected.charged) {
+      return null;
+    }
+    l.i('Settling payment ${payment.id} from ${_gateway.providerId} inspect.');
+    return applyCallback(inspected);
   }
 
   Future<void> _alertGatewayDown({
@@ -349,16 +445,6 @@ final class CheckoutService {
         );
       }
     }
-    if (!callback.succeeded || !callback.charged) {
-      final orderId = callback.orderId;
-      if (orderId != null) {
-        final order = _course.getOrder(orderId);
-        if (order != null) {
-          return PaymentApplyResult(order: order, alreadyApplied: false);
-        }
-      }
-      throw StateError('Payment callback has no matching order.');
-    }
 
     var payment = callback.paymentDbId != null
         ? _course.getPayment(callback.paymentDbId!)
@@ -375,6 +461,14 @@ final class CheckoutService {
     if (callback.userId != null && callback.userId != order.userId) {
       throw StateError('Payment callback user does not match the order.');
     }
+
+    if (!callback.succeeded || !callback.charged) {
+      if (!callback.succeeded && payment != null && payment.status == PaymentRecordStatus.pending) {
+        _course.updatePayment(payment.copyWith(status: PaymentRecordStatus.canceled));
+      }
+      return PaymentApplyResult(order: order, alreadyApplied: false);
+    }
+
     final kind = callback.kind ?? payment?.kind ?? order.kind;
     final amount = callback.amountKopecks ?? payment?.amountKopecks ?? order.amountDueKopecks;
     final now = _nowProvider();
@@ -498,6 +592,7 @@ final class CheckoutService {
   Future<void> _resetToUnpaid({required int userId, required Launch launch}) async {
     final order = _course.latestOrder(userId, launchId: launch.id);
     if (order != null) {
+      _course.cancelPendingPayments(order.id);
       _course.updateOrder(
         order.copyWith(
           status: OrderStatus.awaitingPayment,
@@ -558,6 +653,7 @@ final class CheckoutService {
         dueAt: kind == PaymentKind.deposit ? launch.resolveDepositDueAt(now) : null,
       );
     }
+    _course.cancelPendingPayments(existing.id);
     _course.updateOrder(
       existing.copyWith(
         status: OrderStatus.awaitingPayment,

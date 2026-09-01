@@ -32,5 +32,8 @@ final class ManualPaymentGateway implements PaymentGateway {
   Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async => callback;
 
   @override
+  Future<PaymentCallback?> inspectPayment(String providerPaymentId) async => null;
+
+  @override
   void close() {}
 }

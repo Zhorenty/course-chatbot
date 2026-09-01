@@ -13,6 +13,11 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     final phase = _funnel.phaseOf(user);
+    if (phase == FunnelPhase.checkout || phase == FunnelPhase.depositPaid) {
+      if (await _syncPaidCheckout(context)) {
+        return true;
+      }
+    }
     if (phase.showsCourseStatus) {
       await _showCourseStatus(context);
       return _pinUserMenu(context);

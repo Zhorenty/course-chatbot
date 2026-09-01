@@ -29,6 +29,11 @@ abstract interface class PaymentGateway {
   /// Returns null if the event should be ignored.
   Future<PaymentCallback?> verifyCallback(PaymentCallback callback);
 
+  /// Re-reads a payment at the kassa. Returns a terminal callback (succeeded or
+  /// canceled) or null when the charge is still pending / unknown.
+  /// Used to recover missed webhooks; must not invent a success.
+  Future<PaymentCallback?> inspectPayment(String providerPaymentId);
+
   void close();
 }
 

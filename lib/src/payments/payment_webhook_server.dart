@@ -116,6 +116,12 @@ final class PaymentWebhookServer {
         return;
       }
       final result = await _checkout.applyCallback(callback);
+      l.i(
+        'Payment webhook applied provider=${callback.provider} '
+        'id=${callback.providerPaymentId} succeeded=${callback.succeeded} '
+        'already=${result.alreadyApplied} granted=${result.grantedAccess} '
+        'deposit=${result.depositOnly}',
+      );
       await _notifier.notifyPaymentResult(result);
       request.response.statusCode = HttpStatus.ok;
       await request.response.close();

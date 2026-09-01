@@ -26,11 +26,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     final result = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -60,11 +60,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -100,11 +100,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     final callback = PaymentCallback(
       provider: 'fake',
       providerPaymentId: payment.providerPaymentId!,
@@ -131,11 +131,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.deposit,
     );
-    final deposit = await harness.checkout.createCheckout(
+    final deposit = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.deposit,
       amountKopecks: launch.depositKopecks,
-    );
+    )).payment;
     final afterDeposit = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -156,11 +156,11 @@ void main() {
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.depositPaid);
     expect(harness.channel.created, isEmpty);
 
-    final remainder = await harness.checkout.createCheckout(
+    final remainder = (await harness.checkout.createCheckout(
       order: afterDeposit.order,
       kind: PaymentKind.remainder,
       amountKopecks: afterDeposit.order.amountDueKopecks,
-    );
+    )).payment;
     final afterFull = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -188,11 +188,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.installment,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.installment,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     final approved = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -219,11 +219,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     final paid = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -301,11 +301,11 @@ void main() {
       );
     };
 
-    final created = await harness.checkout.createCheckout(
+    final created = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
 
     expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
     expect(harness.course.getPayment(created.id)?.status, PaymentRecordStatus.succeeded);
@@ -323,11 +323,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -363,16 +363,16 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final first = await harness.checkout.createCheckout(
+    final first = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
-    final second = await harness.checkout.createCheckout(
+    )).payment;
+    final second = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
 
     expect(second.id, first.id);
     expect(harness.gateway.creates, 1);
@@ -386,11 +386,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     harness.channel.createError = StateError('telegram down');
     final first = await harness.checkout.applyCallback(
       PaymentCallback(
@@ -460,5 +460,137 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('inspecting a missed kassa success applies the pending payment', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+    harness.gateway.inspectById[payment.providerPaymentId!] = PaymentCallback(
+      provider: 'fake',
+      providerPaymentId: payment.providerPaymentId!,
+      succeeded: true,
+      charged: true,
+      kind: PaymentKind.full,
+      orderId: order.id,
+      paymentDbId: payment.id,
+      userId: 42,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    final second = await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    expect(harness.gateway.creates, 1);
+    expect(second.applied?.grantedAccess, isTrue);
+    expect(second.payment.status, PaymentRecordStatus.succeeded);
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
+  });
+
+  test('canceled kassa payment is not reused on the next checkout', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final first = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+    harness.gateway.inspectById[first.providerPaymentId!] = PaymentCallback(
+      provider: 'fake',
+      providerPaymentId: first.providerPaymentId!,
+      succeeded: false,
+    );
+
+    final second = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+
+    expect(harness.gateway.creates, 2);
+    expect(second.id, isNot(first.id));
+    expect(harness.course.getPayment(first.id)?.status, PaymentRecordStatus.canceled);
+    expect(second.status, PaymentRecordStatus.pending);
+  });
+
+  test('canceled webhook marks the pending payment canceled', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+
+    await harness.checkout.applyCallback(
+      PaymentCallback(
+        provider: 'fake',
+        providerPaymentId: payment.providerPaymentId!,
+        succeeded: false,
+        charged: false,
+        kind: PaymentKind.full,
+        orderId: order.id,
+        paymentDbId: payment.id,
+        userId: 42,
+      ),
+      launch: launch,
+    );
+
+    expect(harness.course.getPayment(payment.id)?.status, PaymentRecordStatus.canceled);
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.awaitingPayment);
+  });
+
+  test('syncOpenCheckout applies a missed kassa success without a new checkout', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+    harness.gateway.inspectById[payment.providerPaymentId!] = PaymentCallback(
+      provider: 'fake',
+      providerPaymentId: payment.providerPaymentId!,
+      succeeded: true,
+      charged: true,
+      kind: PaymentKind.full,
+      orderId: order.id,
+      paymentDbId: payment.id,
+      userId: 42,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    final synced = await harness.checkout.syncOpenCheckout(userId: 42);
+
+    expect(synced?.grantedAccess, isTrue);
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
+    expect(harness.gateway.creates, 1);
   });
 }

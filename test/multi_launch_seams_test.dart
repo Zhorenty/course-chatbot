@@ -44,11 +44,11 @@ Future<PaymentApplyResult> _payFull(HandlerHarness harness, {required Launch lau
     launch: launch,
     kind: PaymentKind.full,
   );
-  final payment = await harness.checkout.createCheckout(
+  final payment = (await harness.checkout.createCheckout(
     order: order,
     kind: PaymentKind.full,
     amountKopecks: launch.priceFullKopecks,
-  );
+  )).payment;
   return harness.checkout.applyCallback(
     PaymentCallback(
       provider: 'fake',
@@ -82,11 +82,11 @@ void main() {
       launch: launch1,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch1.priceFullKopecks,
-    );
+    )).payment;
     final launch2 = _launch2(harness);
     expect(harness.course.activeLaunch()?.id, launch2.id);
 
@@ -507,11 +507,11 @@ void main() {
       launch: launch1,
       kind: PaymentKind.deposit,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.deposit,
       amountKopecks: launch1.depositKopecks,
-    );
+    )).payment;
     await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',

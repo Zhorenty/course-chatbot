@@ -238,6 +238,7 @@ final class FakePaymentGateway implements PaymentGateway {
   int creates = 0;
   bool available = true;
   Future<void> Function(CheckoutSession session, int paymentDbId)? onCreated;
+  final Map<String, PaymentCallback> inspectById = <String, PaymentCallback>{};
 
   @override
   String get providerId => 'fake';
@@ -296,6 +297,11 @@ final class FakePaymentGateway implements PaymentGateway {
 
   @override
   Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async => callback;
+
+  @override
+  Future<PaymentCallback?> inspectPayment(String providerPaymentId) async {
+    return inspectById[providerPaymentId];
+  }
 
   @override
   void close() {}

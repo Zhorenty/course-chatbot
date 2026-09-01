@@ -75,11 +75,16 @@ final class CheckoutSession {
     required this.provider,
     required this.providerPaymentId,
     this.confirmationUrl,
+    this.settled,
   });
 
   final String provider;
   final String providerPaymentId;
   final String? confirmationUrl;
+
+  /// Set when create already returned a terminal status (e.g. Idempotence-Key
+  /// replay of a payment that already succeeded).
+  final PaymentCallback? settled;
 }
 
 final class PaymentCallback {

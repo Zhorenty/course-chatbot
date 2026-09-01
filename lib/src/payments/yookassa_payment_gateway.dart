@@ -85,7 +85,12 @@ final class YooKassaPaymentGateway implements PaymentGateway {
     if (id == null || id.isEmpty) {
       throw const PaymentUnavailableException('YooKassa payment id is missing.');
     }
-    return CheckoutSession(provider: providerId, providerPaymentId: id, confirmationUrl: url);
+    return CheckoutSession(
+      provider: providerId,
+      providerPaymentId: id,
+      confirmationUrl: url,
+      settled: _callbackFromPaymentObject(map),
+    );
   }
 
   @override
@@ -104,13 +109,18 @@ final class YooKassaPaymentGateway implements PaymentGateway {
   }
 
   @override
-  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) async {
-    if (callback.providerPaymentId.isEmpty) {
+  Future<PaymentCallback?> verifyCallback(PaymentCallback callback) {
+    return inspectPayment(callback.providerPaymentId);
+  }
+
+  @override
+  Future<PaymentCallback?> inspectPayment(String providerPaymentId) async {
+    if (providerPaymentId.isEmpty) {
       return null;
     }
     final response = await _httpClient
         .get(
-          Uri.parse('https://api.yookassa.ru/v3/payments/${callback.providerPaymentId}'),
+          Uri.parse('https://api.yookassa.ru/v3/payments/$providerPaymentId'),
           headers: <String, String>{'Authorization': _basicAuth},
         )
         .timeout(PaymentGateway.requestTimeout);

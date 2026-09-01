@@ -73,6 +73,30 @@ mixin _SqlitePaymentsStore on _SqliteCourseStore {
     return mapPayment(rows.first);
   }
 
+  List<PaymentRecord> listPendingPayments({int? userId, int limit = 50}) {
+    final userFilter = userId == null ? '' : ' AND o.user_id = ?';
+    final params = <Object?>[if (userId != null) userId, limit];
+    final rows = _db.select('''
+      SELECT p.*
+      FROM payments p
+      JOIN orders o ON o.id = p.order_id
+      WHERE p.status = 'pending'
+        AND p.provider_payment_id IS NOT NULL
+        AND p.provider_payment_id != ''
+        $userFilter
+      ORDER BY p.id ASC
+      LIMIT ?;
+      ''', params);
+    return rows.map(mapPayment).toList(growable: false);
+  }
+
+  void cancelPendingPayments(int orderId) {
+    _db.execute(
+      "UPDATE payments SET status = 'canceled' WHERE order_id = ? AND status = 'pending';",
+      <Object?>[orderId],
+    );
+  }
+
   void updatePayment(PaymentRecord payment) {
     _db.execute(
       '''

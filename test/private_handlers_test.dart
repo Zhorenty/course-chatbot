@@ -352,11 +352,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.full,
     );
-    final payment = await harness.checkout.createCheckout(
+    final payment = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
-    );
+    )).payment;
     final result = await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -675,6 +675,38 @@ void main() {
     expect(harness.channel.revoked, isEmpty);
     expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
+  });
+
+  test('/start after a missed kassa success updates the chat', () async {
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+    harness.gateway.inspectById[payment.providerPaymentId!] = PaymentCallback(
+      provider: 'fake',
+      providerPaymentId: payment.providerPaymentId!,
+      succeeded: true,
+      charged: true,
+      kind: PaymentKind.full,
+      orderId: order.id,
+      paymentDbId: payment.id,
+      userId: 42,
+      amountKopecks: launch.priceFullKopecks,
+    );
+    harness.sender.messages.clear();
+
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
+    expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
   });
 }
 

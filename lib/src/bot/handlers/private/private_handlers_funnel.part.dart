@@ -117,6 +117,9 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   }
 
   Future<bool> _showEnroll(PrivateMessageContext context) async {
+    if (await _syncPaidCheckout(context)) {
+      return true;
+    }
     final user = _course.getUser(context.userId!);
     if (user != null && _funnel.phaseOf(user).showsCourseStatus) {
       return _showCourseStatus(context);

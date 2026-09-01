@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
+import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
 import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
@@ -90,11 +91,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.deposit,
     );
-    final deposit = await harness.checkout.createCheckout(
+    final deposit = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.deposit,
       amountKopecks: launch.depositKopecks,
-    );
+    )).payment;
     await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -240,11 +241,11 @@ void main() {
       launch: launch,
       kind: PaymentKind.deposit,
     );
-    final deposit = await harness.checkout.createCheckout(
+    final deposit = (await harness.checkout.createCheckout(
       order: order,
       kind: PaymentKind.deposit,
       amountKopecks: launch.depositKopecks,
-    );
+    )).payment;
     await harness.checkout.applyCallback(
       PaymentCallback(
         provider: 'fake',
@@ -335,5 +336,40 @@ void main() {
     expect('${toUser.single.replyMarkup}', isNot(contains(MessageTemplates.buttonHelp)));
     await job.run();
     expect(harness.sender.messages.where((m) => m.chatId == 42), hasLength(1));
+  });
+
+  test('pending payment sync job applies a missed kassa success', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    final payment = (await harness.checkout.createCheckout(
+      order: order,
+      kind: PaymentKind.full,
+      amountKopecks: launch.priceFullKopecks,
+    )).payment;
+    harness.gateway.inspectById[payment.providerPaymentId!] = PaymentCallback(
+      provider: 'fake',
+      providerPaymentId: payment.providerPaymentId!,
+      succeeded: true,
+      charged: true,
+      kind: PaymentKind.full,
+      orderId: order.id,
+      paymentDbId: payment.id,
+      userId: 42,
+      amountKopecks: launch.priceFullKopecks,
+    );
+
+    final job = PendingPaymentSyncJob(checkout: harness.checkout, notifier: harness.handlers);
+    harness.sender.messages.clear();
+    await job.run();
+
+    expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
+    expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
+    await job.run();
+    expect(harness.sender.messages.where((m) => m.text.contains('Оплата прошла')), hasLength(1));
   });
 }

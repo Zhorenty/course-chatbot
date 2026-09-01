@@ -42,7 +42,11 @@ abstract interface class OrderRepository {
 
   PaymentRecord? latestPendingPayment(int orderId, {PaymentKind? kind});
 
+  List<PaymentRecord> listPendingPayments({int? userId, int limit = 50});
+
   void updatePayment(PaymentRecord payment);
+
+  void cancelPendingPayments(int orderId);
 
   List<CourseOrder> listAbandonedCheckout({
     required DateTime now,

@@ -24,6 +24,7 @@ import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
+import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/sqlite_maintenance_job.dart';
 import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
@@ -218,6 +219,7 @@ final class CourseBotRuntime {
         firstDelay: Duration(hours: config.abandonFirstDelayHours),
         secondDelay: Duration(hours: config.abandonSecondDelayHours),
       ),
+      pendingPaymentSyncJob: PendingPaymentSyncJob(checkout: checkout, notifier: handlers),
       remainderReminderJob: RemainderReminderJob(
         course: course,
         dedupe: jobDedupe,
