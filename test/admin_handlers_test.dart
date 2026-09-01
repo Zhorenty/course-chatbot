@@ -43,6 +43,10 @@ void main() {
       _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminReinvite)),
     );
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
+    );
 
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -75,6 +79,10 @@ void main() {
     expect(
       _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
       contains(MessageTemplates.buttonAdminReinvite),
+    );
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCancel),
     );
   });
 
@@ -341,12 +349,16 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminAddUser),
     );
     await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '50'));
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
+    );
     await harness.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'rm',
         chatId: 1,
         userId: 1,
-        data: '${MessageTemplates.cbAdminCancel}50',
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.cancelled, 50),
       ),
     );
     await harness.handlers.handle(
@@ -464,6 +476,26 @@ void main() {
     );
   });
 
+  test('admin cancel on an unpaid card does not remove the person', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rm',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancel}99',
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, isNot(FunnelPhase.cancelled));
+    expect(harness.channel.banned, isEmpty);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
+    );
+  });
+
   test('paid card offers change status and can switch to deposit', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
@@ -489,6 +521,7 @@ void main() {
       contains(MessageTemplates.buttonAdminChangeStatus),
     );
     expect(_inlineButtonTexts(card.replyMarkup), contains(MessageTemplates.buttonAdminReinvite));
+    expect(_inlineButtonTexts(card.replyMarkup), contains(MessageTemplates.buttonAdminCancel));
     expect(
       _inlineButtonTexts(card.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminStatusPaid)),
@@ -525,6 +558,10 @@ void main() {
     expect(
       _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
     );
   });
 

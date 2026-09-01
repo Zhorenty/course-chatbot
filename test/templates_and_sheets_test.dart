@@ -645,16 +645,38 @@ void main() {
       contains(MessageTemplates.buttonAdminReinvite),
     );
     expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.paid)),
+      contains(MessageTemplates.buttonAdminCancel),
+    );
+    expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
       isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
     );
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.deposit)),
       isNot(contains(MessageTemplates.buttonAdminReinvite)),
     );
     expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.deposit)),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
+    );
+    expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.cancelled)),
       isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.cancelled)),
+      isNot(contains(MessageTemplates.buttonAdminCancel)),
+    );
+    expect(
+      _inlineButtonTexts(
+        templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid, inChannel: true),
+      ),
+      contains(MessageTemplates.buttonAdminCancel),
     );
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),

@@ -191,10 +191,9 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       );
     }
     if (data.startsWith(MessageTemplates.cbAdminCancel)) {
-      return _adminAskConfirm(
+      return _adminAskCardCancel(
         context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel),
-        kind: _AdminConfirmKind.cancel,
       );
     }
     if (data.startsWith(MessageTemplates.cbAdminInvite)) {

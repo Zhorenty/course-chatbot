@@ -73,6 +73,12 @@ void main() {
     expect(AdminPaymentStatus.unpaid.canIssueChannelInvite, isFalse);
     expect(AdminPaymentStatus.deposit.canIssueChannelInvite, isFalse);
     expect(AdminPaymentStatus.cancelled.canIssueChannelInvite, isFalse);
+    expect(AdminPaymentStatus.paid.canRemoveFromCourse(), isTrue);
+    expect(AdminPaymentStatus.unpaid.canRemoveFromCourse(), isFalse);
+    expect(AdminPaymentStatus.deposit.canRemoveFromCourse(), isFalse);
+    expect(AdminPaymentStatus.cancelled.canRemoveFromCourse(), isFalse);
+    expect(AdminPaymentStatus.unpaid.canRemoveFromCourse(inChannel: true), isTrue);
+    expect(AdminPaymentStatus.cancelled.canRemoveFromCourse(inChannel: true), isTrue);
   });
 
   test('broadcast segment codes are short and parse back', () {

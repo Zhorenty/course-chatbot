@@ -351,8 +351,35 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         access: access,
         dialog: dialog,
       ),
-      replyMarkup: _templates.adminCardKeyboard(user.userId, status: status),
+      replyMarkup: _templates.adminCardKeyboard(
+        user.userId,
+        status: status,
+        inChannel: access?.hasJoined ?? false,
+      ),
     );
+  }
+
+  bool _canRemoveFromCourse({required int userId, required Launch launch}) {
+    final status = _checkout.currentAdminStatus(userId: userId, launch: launch);
+    final access = _course.accessFor(userId: userId, launchId: launch.id);
+    return status.canRemoveFromCourse(inChannel: access?.hasJoined ?? false);
+  }
+
+  Future<bool> _adminAskCardCancel(PrivateMessageContext context, int? targetUserId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    final launch = _launch;
+    final user = _course.getUser(targetUserId);
+    if (launch == null || user == null) {
+      return user == null
+          ? _send(context, _templates.adminNotFound('$targetUserId'))
+          : _send(context, _templates.payManualFallback());
+    }
+    if (!_canRemoveFromCourse(userId: targetUserId, launch: launch)) {
+      return _presentAdminCard(context, user);
+    }
+    return _adminAskConfirm(context, targetUserId, kind: _AdminConfirmKind.cancel);
   }
 
   Future<bool> _adminAskConfirm(

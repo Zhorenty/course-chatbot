@@ -15,6 +15,11 @@ extension AdminPaymentStatusX on AdminPaymentStatus {
   /// Full payment only. Deposit does not get a channel invite.
   bool get canIssueChannelInvite => this == AdminPaymentStatus.paid;
 
+  /// Kick/revoke shortcut: paid, or already inside the channel.
+  bool canRemoveFromCourse({bool inChannel = false}) {
+    return this == AdminPaymentStatus.paid || inChannel;
+  }
+
   static AdminPaymentStatus? parseCode(String? raw) => switch (raw) {
     'u' => AdminPaymentStatus.unpaid,
     'd' => AdminPaymentStatus.deposit,

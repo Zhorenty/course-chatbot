@@ -154,7 +154,11 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> adminCardKeyboard(int userId, {required AdminPaymentStatus status}) {
+  Map<String, Object?> adminCardKeyboard(
+    int userId, {
+    required AdminPaymentStatus status,
+    bool inChannel = false,
+  }) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
@@ -175,12 +179,13 @@ extension MessageTemplateKeyboards on MessageTemplates {
             'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
           },
         ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonAdminCancel,
-          'callback_data': '${MessageTemplates.cbAdminCancel}$userId',
-        },
-      ],
+      if (status.canRemoveFromCourse(inChannel: inChannel))
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminCancel,
+            'callback_data': '${MessageTemplates.cbAdminCancel}$userId',
+          },
+        ],
     ]);
   }
 
