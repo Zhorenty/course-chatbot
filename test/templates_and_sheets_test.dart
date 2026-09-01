@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
@@ -293,6 +294,35 @@ void main() {
     expect(texts.join(), isNot(contains('получили гайд и не купили')));
   });
 
+  test('broadcast segment keyboard can mark several selected sections', () {
+    final templates = MessageTemplates();
+    final counts = <BroadcastSegment, int>{
+      for (final segment in BroadcastSegment.values) segment: 0,
+    };
+    final empty = templates.broadcastSegmentKeyboard(counts);
+    final emptyTexts = <String>[
+      for (final row in empty['inline_keyboard'] as List<dynamic>)
+        for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+    ];
+    expect(emptyTexts, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
+    expect(emptyTexts.join(), isNot(contains('✓')));
+
+    final selected = templates.broadcastSegmentKeyboard(
+      counts,
+      selected: <BroadcastSegment>{BroadcastSegment.guideNotPaid, BroadcastSegment.depositPaid},
+    );
+    final selectedTexts = <String>[
+      for (final row in selected['inline_keyboard'] as List<dynamic>)
+        for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+    ];
+    expect(
+      selectedTexts,
+      contains('✓ ${templates.broadcastSegmentButton(BroadcastSegment.guideNotPaid, 0)}'),
+    );
+    expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastContinue));
+    expect(templates.adminBroadcastPickSegment(counts), contains('Можно несколько.'));
+  });
+
   test('admin card is a declarative snapshot, not a pupil address', () {
     final templates = MessageTemplates();
     final startedAt = DateTime.utc(2026, 8, 1);
@@ -473,6 +503,12 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSearch)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminMenu)));
+    expect(
+      templates.userMenuKeyboard(showCourseStatus: false)['input_field_placeholder'],
+      'Если застрял — напиши сюда',
+    );
+    expect(templates.adminMenuKeyboard().containsKey('input_field_placeholder'), isFalse);
+    expect(templates.help(), contains('перешлю админу'));
 
     final paid = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: true));
     expect(paid, contains(MessageTemplates.buttonCourseStatus));
@@ -589,7 +625,8 @@ void main() {
     expect(enroll, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(enroll, isNot(contains(MessageTemplates.buttonHelp)));
     expect(enroll, contains(MessageTemplates.buttonPayFull));
-    expect(_inlineButtonTexts(templates.warmupKeyboard()), <String>[MessageTemplates.buttonOptOut]);
+    expect(_inlineButtonTexts(templates.helpKeyboard()), <String>[MessageTemplates.buttonOptOut]);
+    expect(templates.help(), contains(MessageTemplates.buttonOptOut));
     expect(_inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')), <String>[
       MessageTemplates.buttonOpenInvite,
     ]);
@@ -600,15 +637,27 @@ void main() {
     expect(templates.unjoinedInviteReminder('https://t.me/+x'), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));
     expect(
-      _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
       contains(MessageTemplates.buttonAdminChangeStatus),
     );
     expect(
-      _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.paid)),
       contains(MessageTemplates.buttonAdminReinvite),
     );
     expect(
-      _inlineButtonTexts(templates.adminCardKeyboard(1)),
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.deposit)),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.cancelled)),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
       isNot(contains(MessageTemplates.buttonAdminStatusPaid)),
     );
     final paidPicker = _inlineButtonTexts(

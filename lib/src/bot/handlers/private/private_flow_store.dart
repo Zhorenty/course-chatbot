@@ -89,11 +89,12 @@ final class CatalogWizardDraft {
 final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
-    this.broadcastSegment,
+    this.broadcastSegments = const <BroadcastSegment>{},
     this.broadcastFromChatId,
     this.broadcastMessageId,
     this.broadcastContentKind,
     this.broadcastPreviewText,
+    this.broadcastPickerMessageId,
     this.adminTargetUserId,
     this.pendingGuideFileId,
     this.pendingPayKind,
@@ -106,11 +107,12 @@ final class PrivateFlowState {
   });
 
   final PrivateFlowStep step;
-  final BroadcastSegment? broadcastSegment;
+  final Set<BroadcastSegment> broadcastSegments;
   final int? broadcastFromChatId;
   final int? broadcastMessageId;
   final BroadcastContentKind? broadcastContentKind;
   final String? broadcastPreviewText;
+  final int? broadcastPickerMessageId;
   final int? adminTargetUserId;
   final String? pendingGuideFileId;
   final PaymentKind? pendingPayKind;
@@ -125,13 +127,16 @@ final class PrivateFlowState {
 
   bool get hasBroadcastDraft => broadcastFromChatId != null && broadcastMessageId != null;
 
+  bool get hasBroadcastSegments => broadcastSegments.isNotEmpty;
+
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
-    Object? broadcastSegment = _unset,
+    Object? broadcastSegments = _unset,
     Object? broadcastFromChatId = _unset,
     Object? broadcastMessageId = _unset,
     Object? broadcastContentKind = _unset,
     Object? broadcastPreviewText = _unset,
+    Object? broadcastPickerMessageId = _unset,
     Object? adminTargetUserId = _unset,
     Object? pendingGuideFileId = _unset,
     Object? pendingPayKind = _unset,
@@ -144,9 +149,11 @@ final class PrivateFlowState {
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
-      broadcastSegment: identical(broadcastSegment, _unset)
-          ? this.broadcastSegment
-          : broadcastSegment as BroadcastSegment?,
+      broadcastSegments: identical(broadcastSegments, _unset)
+          ? this.broadcastSegments
+          : Set<BroadcastSegment>.unmodifiable(
+              broadcastSegments as Iterable<BroadcastSegment>? ?? const <BroadcastSegment>{},
+            ),
       broadcastFromChatId: identical(broadcastFromChatId, _unset)
           ? this.broadcastFromChatId
           : broadcastFromChatId as int?,
@@ -159,6 +166,9 @@ final class PrivateFlowState {
       broadcastPreviewText: identical(broadcastPreviewText, _unset)
           ? this.broadcastPreviewText
           : broadcastPreviewText as String?,
+      broadcastPickerMessageId: identical(broadcastPickerMessageId, _unset)
+          ? this.broadcastPickerMessageId
+          : broadcastPickerMessageId as int?,
       adminTargetUserId: identical(adminTargetUserId, _unset)
           ? this.adminTargetUserId
           : adminTargetUserId as int?,

@@ -22,17 +22,45 @@ final class BroadcastService {
   final MessageSender _sender;
   final CourseRepository _course;
 
+  List<int> listRecipients({
+    required Iterable<BroadcastSegment> segments,
+    bool excludeOptOut = false,
+    Set<String>? courseEntrySources,
+  }) {
+    final sources = courseEntrySources ?? AcquisitionSource.coursePayloads;
+    final ids = <int>{};
+    for (final segment in BroadcastSegment.ordered(segments)) {
+      ids.addAll(
+        _course.listBroadcastUserIds(
+          segment: segment,
+          excludeOptOut: excludeOptOut,
+          courseEntrySources: sources,
+        ),
+      );
+    }
+    return (ids.toList()..sort());
+  }
+
+  int countOptOut({required Iterable<BroadcastSegment> segments, Set<String>? courseEntrySources}) {
+    return listRecipients(segments: segments, courseEntrySources: courseEntrySources).length -
+        listRecipients(
+          segments: segments,
+          excludeOptOut: true,
+          courseEntrySources: courseEntrySources,
+        ).length;
+  }
+
   Future<BroadcastResult> send({
-    required BroadcastSegment segment,
+    required Iterable<BroadcastSegment> segments,
     required int fromChatId,
     required int messageId,
     bool excludeOptOut = false,
     Set<String>? courseEntrySources,
   }) async {
-    final userIds = _course.listBroadcastUserIds(
-      segment: segment,
+    final userIds = listRecipients(
+      segments: segments,
       excludeOptOut: excludeOptOut,
-      courseEntrySources: courseEntrySources ?? AcquisitionSource.coursePayloads,
+      courseEntrySources: courseEntrySources,
     );
     var sent = 0;
     var failed = 0;

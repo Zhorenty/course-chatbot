@@ -12,6 +12,9 @@ extension AdminPaymentStatusX on AdminPaymentStatus {
     AdminPaymentStatus.cancelled => 'c',
   };
 
+  /// Full payment only. Deposit does not get a channel invite.
+  bool get canIssueChannelInvite => this == AdminPaymentStatus.paid;
+
   static AdminPaymentStatus? parseCode(String? raw) => switch (raw) {
     'u' => AdminPaymentStatus.unpaid,
     'd' => AdminPaymentStatus.deposit,

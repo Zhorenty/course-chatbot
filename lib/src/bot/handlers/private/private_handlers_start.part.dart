@@ -45,7 +45,11 @@ extension _PrivateHandlersStart on PrivateHandlers {
     if (_adminGate.isConfiguredAdmin(user.userId)) {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
-    return _send(context, _templates.help(), replyMarkup: _homeKeyboard(user.userId));
+    return _sendHelp(context);
+  }
+
+  Future<bool> _sendHelp(PrivateMessageContext context) {
+    return _send(context, _templates.help(), replyMarkup: _templates.helpKeyboard());
   }
 
   String? _parseStartPayload(String text) {

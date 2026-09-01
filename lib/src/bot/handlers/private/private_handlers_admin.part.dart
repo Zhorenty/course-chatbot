@@ -37,7 +37,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     if (text == MessageTemplates.buttonAdminBroadcast) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
-      return _showBroadcastPicker(context);
+      return _presentBroadcastPicker(context, forceNewMessage: true);
     }
     if (text == MessageTemplates.buttonAdminSheets || text == '/sheets') {
       return _adminRefreshSheets(context);
@@ -337,6 +337,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         ? null
         : _course.accessFor(userId: user.userId, launchId: launch.id);
     final dialog = _course.dialogForUser(user.userId);
+    final status = AdminPaymentStatusX.resolve(order: order, phase: enrollment?.funnelPhase);
     _flowByUserId[context.userId!] = PrivateFlowState(
       step: PrivateFlowStep.idle,
       adminTargetUserId: user.userId,
@@ -350,7 +351,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         access: access,
         dialog: dialog,
       ),
-      replyMarkup: _templates.adminCardKeyboard(user.userId),
+      replyMarkup: _templates.adminCardKeyboard(user.userId, status: status),
     );
   }
 
@@ -499,9 +500,20 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return false;
     }
     final launch = _launch;
-    final order = launch == null ? null : _course.latestOrder(targetUserId, launchId: launch.id);
-    if (launch == null || order == null) {
-      return false;
+    if (launch == null) {
+      return _send(context, _templates.inviteUnavailable());
+    }
+    final status = _checkout.currentAdminStatus(userId: targetUserId, launch: launch);
+    if (!status.canIssueChannelInvite) {
+      final user = _course.getUser(targetUserId);
+      if (user == null) {
+        return _send(context, _templates.adminNotFound('$targetUserId'));
+      }
+      return _presentAdminCard(context, user);
+    }
+    final order = _course.latestOrder(targetUserId, launchId: launch.id);
+    if (order == null) {
+      return _send(context, _templates.inviteUnavailable());
     }
     final link = await _access.issueInvite(
       userId: targetUserId,
@@ -545,26 +557,62 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     };
   }
 
-  int _broadcastOptOutCount(BroadcastSegment segment) {
-    final sources = _funnel.links.courseEntryPayloads;
-    return _course.countBroadcastUsers(segment: segment, courseEntrySources: sources) -
-        _course.countBroadcastUsers(
-          segment: segment,
-          excludeOptOut: true,
-          courseEntrySources: sources,
-        );
-  }
+  Set<String> get _broadcastCourseEntrySources => _funnel.links.courseEntryPayloads;
 
-  Future<bool> _showBroadcastPicker(PrivateMessageContext context) {
+  Future<bool> _presentBroadcastPicker(
+    PrivateMessageContext context, {
+    bool forceNewMessage = false,
+    bool draftSaved = false,
+  }) async {
+    final chatId = context.chatId;
+    final userId = context.userId;
+    if (chatId == null || userId == null) {
+      return false;
+    }
+    final flow =
+        _flowByUserId[userId] ??
+        const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
     final counts = _broadcastCounts();
-    return _send(
-      context,
-      _templates.adminBroadcastPickSegment(counts),
-      replyMarkup: _templates.broadcastSegmentKeyboard(counts),
+    final selected = flow.broadcastSegments;
+    final recipientCount = _broadcast
+        .listRecipients(segments: selected, courseEntrySources: _broadcastCourseEntrySources)
+        .length;
+    final text = _templates.adminBroadcastPickSegment(
+      counts,
+      selected: selected,
+      recipientCount: recipientCount,
+      draftSaved: draftSaved,
     );
+    final markup = _templates.broadcastSegmentKeyboard(counts, selected: selected);
+    final messageId = forceNewMessage ? null : flow.broadcastPickerMessageId;
+    if (messageId != null) {
+      try {
+        await _sender.editMessageText(
+          chatId,
+          messageId: messageId,
+          text: text,
+          parseMode: 'HTML',
+          replyMarkup: markup,
+        );
+        return true;
+      } on TelegramApiException catch (error, stackTrace) {
+        if (error.message.toLowerCase().contains('not modified')) {
+          return true;
+        }
+        l.w('Broadcast picker editMessageText failed: $error', stackTrace);
+      } on Object catch (error, stackTrace) {
+        l.w('Broadcast picker editMessageText failed: $error', stackTrace);
+      }
+    }
+    final sentId = await _sender.sendMessage(chatId, text, parseMode: 'HTML', replyMarkup: markup);
+    final latest =
+        _flowByUserId[userId] ??
+        const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
+    _flowByUserId[userId] = latest.copyWith(broadcastPickerMessageId: sentId);
+    return true;
   }
 
-  Future<bool> _selectBroadcastSegment(
+  Future<bool> _toggleBroadcastSegment(
     PrivateMessageContext context,
     BroadcastSegment? segment,
   ) async {
@@ -573,11 +621,27 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     final previous =
         _flowByUserId[context.userId!] ??
-        const PrivateFlowState(step: PrivateFlowStep.adminBroadcastCompose);
+        const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
+    final next = Set<BroadcastSegment>.from(previous.broadcastSegments);
+    if (!next.add(segment)) {
+      next.remove(segment);
+    }
     _flowByUserId[context.userId!] = previous.copyWith(
-      step: PrivateFlowStep.adminBroadcastCompose,
-      broadcastSegment: segment,
+      step: PrivateFlowStep.adminBroadcastSegment,
+      broadcastSegments: next,
     );
+    return _presentBroadcastPicker(context);
+  }
+
+  Future<bool> _confirmBroadcastSegments(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final previous = _flowByUserId[context.userId!];
+    if (previous == null || !previous.hasBroadcastSegments) {
+      return _presentBroadcastPicker(context);
+    }
+    _flowByUserId[context.userId!] = previous.copyWith(step: PrivateFlowStep.adminBroadcastCompose);
     if (previous.hasBroadcastDraft) {
       return _showBroadcastPreview(context);
     }
@@ -609,39 +673,34 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     final previous =
         _flowByUserId[userId] ??
         const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
-    final hasSegment = previous.broadcastSegment != null;
+    final hasSegments = previous.hasBroadcastSegments;
     _flowByUserId[userId] = previous.copyWith(
-      step: hasSegment ? PrivateFlowStep.adminBroadcastCompose : previous.step,
+      step: hasSegments ? PrivateFlowStep.adminBroadcastCompose : previous.step,
       broadcastFromChatId: chatId,
       broadcastMessageId: messageId,
       broadcastContentKind: kind,
       broadcastPreviewText: context.text,
     );
-    if (!hasSegment) {
-      final counts = _broadcastCounts();
-      return _send(
-        context,
-        _templates.adminBroadcastDraftSavedPickSegment(),
-        replyMarkup: _templates.broadcastSegmentKeyboard(counts),
-      );
+    if (!hasSegments) {
+      return _presentBroadcastPicker(context, forceNewMessage: true, draftSaved: true);
     }
     return _showBroadcastPreview(context);
   }
 
   Future<bool> _showBroadcastPreview(PrivateMessageContext context) async {
     final flow = _flowByUserId[context.userId!];
-    final segment = flow?.broadcastSegment;
+    final segments = flow?.broadcastSegments ?? const <BroadcastSegment>{};
     final fromChatId = flow?.broadcastFromChatId;
     final messageId = flow?.broadcastMessageId;
     final kind = flow?.broadcastContentKind;
     final chatId = context.chatId;
     if (flow == null ||
-        segment == null ||
+        segments.isEmpty ||
         fromChatId == null ||
         messageId == null ||
         kind == null ||
         chatId == null) {
-      return _showBroadcastPicker(context);
+      return _presentBroadcastPicker(context, forceNewMessage: true);
     }
     try {
       await _sender.copyMessage(chatId: chatId, fromChatId: fromChatId, messageId: messageId);
@@ -652,15 +711,20 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _send(
       context,
       _templates.adminBroadcastPreview(
-        segment: segment,
-        recipientCount: _course.countBroadcastUsers(
-          segment: segment,
-          excludeOptOut: flow.broadcastExcludeOptOut,
-          courseEntrySources: _funnel.links.courseEntryPayloads,
-        ),
+        segments: segments,
+        recipientCount: _broadcast
+            .listRecipients(
+              segments: segments,
+              excludeOptOut: flow.broadcastExcludeOptOut,
+              courseEntrySources: _broadcastCourseEntrySources,
+            )
+            .length,
         kind: kind,
         previewText: flow.broadcastPreviewText,
-        optOutCount: _broadcastOptOutCount(segment),
+        optOutCount: _broadcast.countOptOut(
+          segments: segments,
+          courseEntrySources: _broadcastCourseEntrySources,
+        ),
         excludeOptOut: flow.broadcastExcludeOptOut,
       ),
       replyMarkup: _templates.broadcastConfirmKeyboard(excludeOptOut: flow.broadcastExcludeOptOut),
@@ -672,8 +736,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return false;
     }
     final previous = _flowByUserId[context.userId!];
-    if (previous == null || previous.broadcastSegment == null) {
-      return _showBroadcastPicker(context);
+    if (previous == null || !previous.hasBroadcastSegments) {
+      return _presentBroadcastPicker(context, forceNewMessage: true);
     }
     _flowByUserId[context.userId!] = previous.copyWith(
       broadcastExcludeOptOut: !previous.broadcastExcludeOptOut,
@@ -689,8 +753,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     _flowByUserId[context.userId!] =
         (previous ?? const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment)).copyWith(
           step: PrivateFlowStep.adminBroadcastSegment,
+          broadcastPickerMessageId: null,
         );
-    return _showBroadcastPicker(context);
+    return _presentBroadcastPicker(context, forceNewMessage: true);
   }
 
   Future<bool> _cancelBroadcast(PrivateMessageContext context) async {
@@ -706,22 +771,22 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return false;
     }
     final flow = _flowByUserId[context.userId!];
-    final segment = flow?.broadcastSegment;
+    final segments = flow?.broadcastSegments ?? const <BroadcastSegment>{};
     final fromChatId = flow?.broadcastFromChatId;
     final messageId = flow?.broadcastMessageId;
-    if (segment == null) {
-      return _showBroadcastPicker(context);
+    if (segments.isEmpty) {
+      return _presentBroadcastPicker(context, forceNewMessage: true);
     }
     if (fromChatId == null || messageId == null) {
       return _send(context, _templates.adminBroadcastNeedDraft());
     }
     _flowByUserId.remove(context.userId);
     final result = await _broadcast.send(
-      segment: segment,
+      segments: segments,
       fromChatId: fromChatId,
       messageId: messageId,
       excludeOptOut: flow?.broadcastExcludeOptOut ?? false,
-      courseEntrySources: _funnel.links.courseEntryPayloads,
+      courseEntrySources: _broadcastCourseEntrySources,
     );
     return _send(
       context,

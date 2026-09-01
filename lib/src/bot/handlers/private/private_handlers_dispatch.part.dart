@@ -114,6 +114,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _send(context, _templates.inviteAskAdmin());
       case MessageTemplates.cbBroadcastSend:
         return _confirmBroadcast(context);
+      case MessageTemplates.cbBroadcastSegmentsDone:
+        return _confirmBroadcastSegments(context);
       case MessageTemplates.cbBroadcastOtherSegment:
         return _reselectBroadcastSegment(context);
       case MessageTemplates.cbBroadcastCancel:
@@ -139,7 +141,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     if (data.startsWith(MessageTemplates.cbBroadcastSegment)) {
-      return _selectBroadcastSegment(context, MessageTemplates.segmentFromCallback(data));
+      return _toggleBroadcastSegment(context, MessageTemplates.segmentFromCallback(data));
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
       return _continuePay(
@@ -282,10 +284,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       return _showHome(context);
     }
     if (text == MessageTemplates.buttonHelp || text == '/help') {
-      if (_adminGate.isConfiguredAdmin(context.userId)) {
-        return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
-      }
-      return _send(context, _templates.help(), replyMarkup: _homeKeyboard(context.userId!));
+      return _showHome(context);
     }
     if (text != null && text.startsWith('/')) {
       return _showHome(context);

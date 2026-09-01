@@ -32,7 +32,7 @@ final class MessageTemplates {
   static const String buttonEnroll = '✨ Записаться на курс';
   static const String buttonCourseStatus = '📋 Мой курс';
   static const String buttonHelp = '❓ Помощь';
-  static const String buttonOptOut = '⏸ Не писать';
+  static const String buttonOptOut = '🔕 Отписаться от рассылки';
   static const String buttonPayFull = '💳 Оплатить полностью';
   static const String buttonPayDeposit = '💳 Предоплата';
   static const String buttonPayInstallment = '💳 Рассрочка';
@@ -63,7 +63,8 @@ final class MessageTemplates {
   static const String buttonAdminConfirmNo = 'Нет';
   static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
-  static const String buttonAdminBroadcastOtherSegment = 'Другой сегмент';
+  static const String buttonAdminBroadcastContinue = 'Далее';
+  static const String buttonAdminBroadcastOtherSegment = 'Изменить сегменты';
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
   static const String buttonAdminBroadcastSkipOptOut = 'Кроме «Не писать»';
   static const String buttonAdminBroadcastIncludeOptOut = 'Включая отписавшихся';
@@ -108,6 +109,7 @@ final class MessageTemplates {
   static const String cbAdminStatusSet = 'as:';
   static const String cbBroadcastSegment = 'bs:';
   static const String cbBroadcastSend = 'bp';
+  static const String cbBroadcastSegmentsDone = 'bn';
   static const String cbBroadcastOtherSegment = 'br';
   static const String cbBroadcastCancel = 'bx';
   static const String cbBroadcastToggleOptOut = 'bt';
@@ -170,12 +172,12 @@ final class MessageTemplates {
     return '<b>Ты уже здесь</b>\n\n'
         'Гайд можно запросить снова — «${MessageTemplates.buttonGuide}». '
         'Запись на поток — «${MessageTemplates.buttonEnroll}». '
-        'Написать админу — «${MessageTemplates.buttonHelp}» или просто сообщение в этот чат.';
+        'Если что-то не так — «${MessageTemplates.buttonHelp}».';
   }
 
   String menuPinned() {
     return 'Меню внизу всегда под рукой: гайд, запись или статус курса, помощь. '
-        'Если что-то не получается — напиши сюда в чат, перешлю админу.';
+        'Если что-то не получается — «${MessageTemplates.buttonHelp}».';
   }
 
   String courseMenuPinned() {
@@ -275,7 +277,7 @@ final class MessageTemplates {
       return null;
     }
     if (access.hasJoined) {
-      return 'Если что-то не так — напиши сюда, перешлю админу.';
+      return 'Если что-то не так — «${MessageTemplates.buttonHelp}».';
     }
     return null;
   }
@@ -294,6 +296,8 @@ final class MessageTemplates {
         'Гайд потерялся или не пришёл — нажми «${MessageTemplates.buttonGuide}», пришлю ещё раз.\n'
         'Ссылка на кассу не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
         'Ссылка в канал потерялась или не открылась — напиши сюда, админ выдаст другую.\n\n'
+        'Не хочешь сообщения про поток — «${MessageTemplates.buttonOptOut}». '
+        'Гайд и запись останутся.\n\n'
         'Если возникли проблемы — напиши сюда, перешлю админу.';
   }
 
@@ -674,40 +678,55 @@ final class MessageTemplates {
     return 'Пришли одним сообщением текст, фото, файл, видео или голосовое. Можно с подписью.';
   }
 
-  String adminBroadcastPickSegment(Map<BroadcastSegment, int> counts) {
-    final buf = StringBuffer()
+  String adminBroadcastPickSegment(
+    Map<BroadcastSegment, int> counts, {
+    Set<BroadcastSegment> selected = const <BroadcastSegment>{},
+    int recipientCount = 0,
+    bool draftSaved = false,
+  }) {
+    final buf = StringBuffer();
+    if (draftSaved) {
+      buf
+        ..writeln('Сохранил черновик.')
+        ..writeln();
+    }
+    buf
       ..writeln('<b>Рассылка</b>')
       ..writeln()
-      ..writeln('Кому отправить?')
+      ..writeln('Кому отправить? Можно несколько.')
       ..writeln();
     for (final segment in BroadcastSegment.values) {
-      buf.writeln('${broadcastSegmentLabel(segment)} — ${counts[segment] ?? 0}');
+      final mark = selected.contains(segment) ? '✓ ' : '';
+      buf.writeln('$mark${broadcastSegmentLabel(segment)} — ${counts[segment] ?? 0}');
+    }
+    if (selected.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln('Выбрано: ${escapeHtml(broadcastSegmentsLabel(selected))}')
+        ..writeln('Получателей: $recipientCount');
     }
     return buf.toString().trim();
   }
 
-  String adminBroadcastDraftSavedPickSegment() {
-    return 'Сохранил черновик. Выбери сегмент.';
-  }
-
   String adminBroadcastPreview({
-    required BroadcastSegment segment,
+    required Iterable<BroadcastSegment> segments,
     required int recipientCount,
     required BroadcastContentKind kind,
     String? previewText,
     int optOutCount = 0,
     bool excludeOptOut = false,
   }) {
+    final segmentWord = BroadcastSegment.ordered(segments).length == 1 ? 'Сегмент' : 'Сегменты';
     final buf = StringBuffer()
       ..writeln('<b>Превью</b>')
       ..writeln()
-      ..writeln('Сегмент: ${escapeHtml(broadcastSegmentLabel(segment))}')
+      ..writeln('$segmentWord: ${escapeHtml(broadcastSegmentsLabel(segments))}')
       ..writeln('Получателей: $recipientCount');
     if (optOutCount > 0) {
       buf.writeln(
         excludeOptOut
-            ? '«Не писать» в сегменте: $optOutCount — не включены'
-            : '«Не писать» в сегменте: $optOutCount — будут включены',
+            ? '«Не писать» в выборке: $optOutCount — не включены'
+            : '«Не писать» в выборке: $optOutCount — будут включены',
       );
     }
     buf.write('Содержимое: ${escapeHtml(broadcastContentKindLabel(kind))}');
@@ -738,7 +757,7 @@ final class MessageTemplates {
   }
 
   String adminBroadcastDone({required int sent, required int failed, required int total}) {
-    return '📣 Рассылка: отправлено $sent, ошибок $failed, в сегменте $total.';
+    return '📣 Рассылка: отправлено $sent, ошибок $failed, получателей $total.';
   }
 
   String adminMarkedPaid() => '✅ Оплата проставлена вручную.';
@@ -1009,8 +1028,17 @@ final class MessageTemplates {
     BroadcastSegment.cancelled => 'Отмена / возврат',
   };
 
-  String broadcastSegmentButton(BroadcastSegment segment, int count) {
-    return '${broadcastSegmentLabel(segment)} ($count)';
+  String broadcastSegmentButton(BroadcastSegment segment, int count, {bool selected = false}) {
+    final label = '${broadcastSegmentLabel(segment)} ($count)';
+    return selected ? '✓ $label' : label;
+  }
+
+  String broadcastSegmentsLabel(Iterable<BroadcastSegment> segments) {
+    final ordered = BroadcastSegment.ordered(segments);
+    if (ordered.isEmpty) {
+      return 'не выбраны';
+    }
+    return ordered.map(broadcastSegmentLabel).join(', ');
   }
 
   String broadcastContentKindLabel(BroadcastContentKind kind) => switch (kind) {

@@ -13,7 +13,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonHelp},
       ],
-    ]);
+    ], inputFieldPlaceholder: 'Если застрял — напиши сюда');
   }
 
   Map<String, Object?> adminMenuKeyboard() {
@@ -36,7 +36,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> warmupKeyboard() {
+  Map<String, Object?> helpKeyboard() {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
@@ -154,7 +154,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> adminCardKeyboard(int userId) {
+  Map<String, Object?> adminCardKeyboard(int userId, {required AdminPaymentStatus status}) {
     return inlineKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
@@ -168,12 +168,13 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'callback_data': '${MessageTemplates.cbAdminStatusMenu}$userId',
         },
       ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageTemplates.buttonAdminReinvite,
-          'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
-        },
-      ],
+      if (status.canIssueChannelInvite)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminReinvite,
+            'callback_data': '${MessageTemplates.cbAdminInvite}$userId',
+          },
+        ],
       <Map<String, String>>[
         <String, String>{
           'text': MessageTemplates.buttonAdminCancel,
@@ -247,13 +248,27 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> broadcastSegmentKeyboard(Map<BroadcastSegment, int> counts) {
+  Map<String, Object?> broadcastSegmentKeyboard(
+    Map<BroadcastSegment, int> counts, {
+    Set<BroadcastSegment> selected = const <BroadcastSegment>{},
+  }) {
     final rows = <List<Map<String, String>>>[
       for (final segment in BroadcastSegment.values)
         <Map<String, String>>[
           <String, String>{
-            'text': broadcastSegmentButton(segment, counts[segment] ?? 0),
+            'text': broadcastSegmentButton(
+              segment,
+              counts[segment] ?? 0,
+              selected: selected.contains(segment),
+            ),
             'callback_data': '${MessageTemplates.cbBroadcastSegment}${segment.code}',
+          },
+        ],
+      if (selected.isNotEmpty)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminBroadcastContinue,
+            'callback_data': MessageTemplates.cbBroadcastSegmentsDone,
           },
         ],
       <Map<String, String>>[

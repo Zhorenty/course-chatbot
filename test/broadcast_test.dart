@@ -78,6 +78,7 @@ void main() {
     await _openBroadcast(harness);
 
     final picker = harness.sender.messages.last;
+    expect(picker.text, contains('Кому отправить? Можно несколько.'));
     expect(picker.text, contains('Гайд, без записи — 1'));
     expect(picker.text, contains('Оплатили / доступ — 1'));
     expect(picker.text, contains('Все, кроме купивших и отмен — '));
@@ -85,6 +86,7 @@ void main() {
     expect(buttons, contains('Гайд, без записи (1)'));
     expect(buttons, contains('Оплатили / доступ (1)'));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastCancel));
+    expect(buttons, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
     final data = _inlineCallbackData(picker.replyMarkup);
     expect(data, contains('${MessageTemplates.cbBroadcastSegment}g'));
     expect(data, contains('${MessageTemplates.cbBroadcastSegment}a'));
@@ -134,7 +136,7 @@ void main() {
     );
     expect(harness.sender.copies.any((c) => c.chatId == 11), isFalse);
     expect(harness.sender.messages.last.text, contains('отправлено 1'));
-    expect(harness.sender.messages.last.text, contains('в сегменте 1'));
+    expect(harness.sender.messages.last.text, contains('получателей 1'));
   });
 
   test('cancel sends to nobody', () async {
@@ -173,9 +175,10 @@ void main() {
         data: MessageTemplates.cbBroadcastOtherSegment,
       ),
     );
+    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
     await _pickSegment(harness, BroadcastSegment.paidAccess);
     expect(harness.sender.copies.last.messageId, 44);
-    expect(harness.sender.messages.last.text, contains('Оплатили / доступ'));
+    expect(harness.sender.messages.last.text, contains('Сегмент: Оплатили / доступ'));
     expect(harness.sender.messages.last.text, contains('Получателей: 1'));
     await _confirmBroadcast(harness);
 
@@ -311,6 +314,56 @@ void main() {
     expect(cleared.broadcastPreviewText, isNull);
     expect(cleared.step, PrivateFlowStep.adminBroadcastCompose);
   });
+
+  test('inline buttons toggle several segments and send to the unique union', () async {
+    _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
+    _seed(harness, 11, phase: FunnelPhase.accessGranted);
+    await _openBroadcast(harness);
+    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
+
+    final afterFirst = harness.sender.messages.last;
+    expect(afterFirst.text, contains('✓ Гайд, без записи — 1'));
+    expect(afterFirst.text, contains('Выбрано: Гайд, без записи'));
+    expect(afterFirst.text, contains('Получателей: 1'));
+    expect(_inlineButtonTexts(afterFirst.replyMarkup), contains('✓ Гайд, без записи (1)'));
+    expect(
+      _inlineButtonTexts(afterFirst.replyMarkup),
+      contains(MessageTemplates.buttonAdminBroadcastContinue),
+    );
+    expect(harness.sender.copies, isEmpty);
+
+    await _toggleSegment(harness, BroadcastSegment.paidAccess);
+    final afterSecond = harness.sender.messages.last;
+    expect(afterSecond.text, contains('Выбрано: Гайд, без записи, Оплатили / доступ'));
+    expect(afterSecond.text, contains('Получателей: 2'));
+    expect(_inlineButtonTexts(afterSecond.replyMarkup), contains('✓ Оплатили / доступ (1)'));
+
+    await _confirmSegments(harness);
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Двум сегментам', messageId: 81),
+    );
+    await _confirmBroadcast(harness);
+
+    expect(
+      harness.sender.copies.where((c) => c.chatId == 10 || c.chatId == 11).map((c) => c.chatId),
+      unorderedEquals(<int>[10, 11]),
+    );
+    expect(harness.sender.copies.where((c) => c.chatId == 10), hasLength(1));
+  });
+
+  test('overlapping segments are copied once', () async {
+    _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
+    await _openBroadcast(harness);
+    await _toggleSegment(harness, BroadcastSegment.allStarted);
+    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
+    await _confirmSegments(harness);
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Без дубля', messageId: 82),
+    );
+    expect(harness.sender.messages.last.text, contains('Получателей: 2'));
+    await _confirmBroadcast(harness);
+    expect(harness.sender.copies.where((c) => c.chatId == 10), hasLength(1));
+  });
 }
 
 void _seed(
@@ -337,7 +390,7 @@ Future<void> _openBroadcast(HandlerHarness harness) {
   );
 }
 
-Future<void> _pickSegment(HandlerHarness harness, BroadcastSegment segment) {
+Future<void> _toggleSegment(HandlerHarness harness, BroadcastSegment segment) {
   return harness.handlers.handle(
     privateCallbackUpdate(
       callbackId: 'bs-${segment.code}',
@@ -346,6 +399,22 @@ Future<void> _pickSegment(HandlerHarness harness, BroadcastSegment segment) {
       data: '${MessageTemplates.cbBroadcastSegment}${segment.code}',
     ),
   );
+}
+
+Future<void> _confirmSegments(HandlerHarness harness) {
+  return harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bn',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastSegmentsDone,
+    ),
+  );
+}
+
+Future<void> _pickSegment(HandlerHarness harness, BroadcastSegment segment) async {
+  await _toggleSegment(harness, segment);
+  await _confirmSegments(harness);
 }
 
 Future<void> _draftBroadcast(

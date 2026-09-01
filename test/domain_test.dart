@@ -69,6 +69,10 @@ void main() {
     expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.accessGranted), AdminPaymentStatus.paid);
     expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.depositPaid), AdminPaymentStatus.deposit);
     expect(AdminPaymentStatusX.resolve(phase: FunnelPhase.cancelled), AdminPaymentStatus.cancelled);
+    expect(AdminPaymentStatus.paid.canIssueChannelInvite, isTrue);
+    expect(AdminPaymentStatus.unpaid.canIssueChannelInvite, isFalse);
+    expect(AdminPaymentStatus.deposit.canIssueChannelInvite, isFalse);
+    expect(AdminPaymentStatus.cancelled.canIssueChannelInvite, isFalse);
   });
 
   test('broadcast segment codes are short and parse back', () {
@@ -79,6 +83,10 @@ void main() {
     expect(BroadcastSegment.fromCode('k'), BroadcastSegment.courseLeadNoCheckout);
     expect(BroadcastSegment.fromCode('nope'), isNull);
     expect(MessageTemplates.segmentFromCallback('bs:p'), BroadcastSegment.paidAccess);
+    expect(
+      BroadcastSegment.ordered({BroadcastSegment.paidAccess, BroadcastSegment.guideNotPaid}),
+      <BroadcastSegment>[BroadcastSegment.guideNotPaid, BroadcastSegment.paidAccess],
+    );
   });
 
   test('funnel phases do not move backwards except cancel/admin override', () {

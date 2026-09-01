@@ -33,6 +33,14 @@ enum BroadcastSegment {
     }
     return null;
   }
+
+  static List<BroadcastSegment> ordered(Iterable<BroadcastSegment> selected) {
+    final set = selected.toSet();
+    return <BroadcastSegment>[
+      for (final segment in values)
+        if (set.contains(segment)) segment,
+    ];
+  }
 }
 
 enum BroadcastContentKind {

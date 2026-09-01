@@ -39,6 +39,10 @@ void main() {
     );
     await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '@lead'));
     expect(harness.sender.messages.any((m) => m.text.contains('Карточка')), isTrue);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
 
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -68,6 +72,10 @@ void main() {
     );
     expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
     expect(harness.channel.created, isNotEmpty);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminReinvite),
+    );
   });
 
   test('harness without Sheets still uses upsertActiveLaunch', () {
@@ -437,6 +445,25 @@ void main() {
     );
   });
 
+  test('admin reinvite on an unpaid card does not mint a channel link', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ai',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminInvite}99',
+      ),
+    );
+    expect(harness.channel.created, isEmpty);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
+  });
+
   test('paid card offers change status and can switch to deposit', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
@@ -461,6 +488,7 @@ void main() {
       _inlineButtonTexts(card.replyMarkup),
       contains(MessageTemplates.buttonAdminChangeStatus),
     );
+    expect(_inlineButtonTexts(card.replyMarkup), contains(MessageTemplates.buttonAdminReinvite));
     expect(
       _inlineButtonTexts(card.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminStatusPaid)),
@@ -494,6 +522,10 @@ void main() {
     expect(harness.course.latestOrder(99)?.status, OrderStatus.depositPaid);
     expect(harness.channel.revoked, isNotEmpty);
     expect(harness.course.latestOrder(99)?.accessGranted, isFalse);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminReinvite)),
+    );
   });
 
   test('admin can reset a paid person to unpaid', () async {

@@ -123,6 +123,12 @@ void main() {
 
     expect(harness.sender.documents, contains('file-guide'));
     expect(harness.sender.messages.any((m) => m.text.contains('алфавит')), isTrue);
+    expect(
+      harness.sender.messages
+          .where((m) => m.text.contains('алфавит'))
+          .every((m) => !_inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOptOut)),
+      isTrue,
+    );
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
@@ -161,20 +167,16 @@ void main() {
     );
     expect(harness.sender.messages.single.text, contains('напиши сюда'));
     expect(harness.sender.forwards, isEmpty);
-    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
-    expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(
+      _inlineButtonTexts(harness.sender.messages.single.replyMarkup),
+      contains(MessageTemplates.buttonOptOut),
+    );
   });
 
-  test('opt-out stops selling drip copy but enroll remains available', () async {
+  test('opt-out from help stops selling drip copy but enroll remains available', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '1',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbGuide,
-      ),
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonHelp),
     );
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -595,6 +597,10 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('напиши сюда')), isTrue);
     expect(harness.sender.forwards, isEmpty);
     expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonOptOut),
+    );
   });
 
   test('retired profile and menu entries do not escalate to admin', () async {
