@@ -79,7 +79,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (launch == null) {
       return _showCatalogList(context);
     }
-    _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogMenu,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
+    );
     return _presentCatalog(
       context,
       _templates.adminCatalogCard(launch),
@@ -113,8 +117,15 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (step == PrivateFlowStep.adminCatalogEditValue) {
       return _captureCatalogEdit(context);
     }
-    if (step == PrivateFlowStep.adminCatalogMenu ||
-        step == PrivateFlowStep.adminCatalogCreateActive ||
+    if (step == PrivateFlowStep.adminCatalogMenu) {
+      final fileId = extractDocumentFileId(context.message);
+      final launchId = flow?.catalogDraft?.editLaunchId;
+      if (fileId != null && launchId != null) {
+        return _saveCatalogGuide(context, launchId, fileId);
+      }
+      return true;
+    }
+    if (step == PrivateFlowStep.adminCatalogCreateActive ||
         step == PrivateFlowStep.adminCatalogCreateConfirm) {
       return true;
     }
@@ -396,6 +407,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       _templates.adminCatalogAskField(field),
       replyMarkup: field == CatalogLaunchField.channel
           ? _templates.adminCatalogSkipChannelKeyboard()
+          : field == CatalogLaunchField.guide
+          ? _templates.adminCatalogBackToCardKeyboard(launchId)
           : null,
     );
   }
@@ -504,10 +517,39 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         overlay = overlay.copyWith(
           channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
         );
+      case CatalogLaunchField.guide:
+        final fileId = extractDocumentFileId(context.message);
+        if (fileId == null || fileId.isEmpty) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.needGuideFile,
+              _templates.adminCatalogAskField(field),
+            ),
+            replyMarkup: _templates.adminCatalogBackToCardKeyboard(launch.id),
+          );
+        }
+        return _saveCatalogGuide(context, launch.id, fileId);
     }
     return _runCatalogWrite(
       context,
       () => admin.update(currentCode: launch.code, draft: overlay),
+      thenCardId: launchId,
+    );
+  }
+
+  Future<bool> _saveCatalogGuide(PrivateMessageContext context, int launchId, String fileId) async {
+    final admin = _catalogAdmin;
+    final launch = _course.getLaunch(launchId);
+    if (admin == null || launch == null) {
+      return _showCatalogList(context);
+    }
+    return _runCatalogWrite(
+      context,
+      () => admin.update(
+        currentCode: launch.code,
+        draft: admin.draftFromLaunch(launch).copyWith(leadMagnetFileId: fileId),
+      ),
       thenCardId: launchId,
     );
   }

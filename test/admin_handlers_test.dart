@@ -859,6 +859,71 @@ void main() {
     expect(sheets.sheetsGateway!.valuesBySheetId[0]!.first.first, CoursesSheet.title);
   });
 
+  test('admin catalog replaces the guide file for that launch', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await _runCatalogCreateWizard(sheets, title: 'Ноябрь', code: 'nov-26', active: false);
+    final first = sheets.course.launchByCode('launch-1')!;
+    final second = sheets.course.launchByCode('nov-26')!;
+    expect(first.leadMagnetFileId, 'file-guide');
+    expect(second.leadMagnetFileId, isNull);
+
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${second.id}',
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('гайд: нет'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cf',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogFieldData(second.id, CatalogLaunchField.guide),
+      ),
+    );
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'это не файл'));
+    expect(sheets.sender.messages.last.text, contains('Нужен файл'));
+    expect(sheets.course.launchByCode('nov-26')?.leadMagnetFileId, isNull);
+
+    await sheets.handlers.handle(privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'nov-guide'));
+    expect(sheets.course.launchByCode('nov-26')?.leadMagnetFileId, 'nov-guide');
+    expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'file-guide');
+    expect(sheets.sender.messages.last.text, contains('гайд: есть'));
+    final row = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'nov-26')!;
+    expect(row[CoursesSheet.headers.indexOf(CoursesSheet.leadMagnetFileId)], 'nov-guide');
+  });
+
+  test('admin catalog card accepts a document as the new guide', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.catalogSync!.sync();
+    final launch = sheets.course.launchByCode('launch-1')!;
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'replaced-guide'),
+    );
+    expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'replaced-guide');
+    final row = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'launch-1')!;
+    expect(row[CoursesSheet.headers.indexOf(CoursesSheet.leadMagnetFileId)], 'replaced-guide');
+  });
+
   test('admin catalog activate clears the previous is_active flag', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);

@@ -5,7 +5,8 @@ enum CatalogLaunchField {
   deposit,
   depositDue,
   start,
-  channel;
+  channel,
+  guide;
 
   String get token => switch (this) {
     CatalogLaunchField.title => 't',
@@ -15,6 +16,7 @@ enum CatalogLaunchField {
     CatalogLaunchField.depositDue => 'u',
     CatalogLaunchField.start => 's',
     CatalogLaunchField.channel => 'h',
+    CatalogLaunchField.guide => 'f',
   };
 
   static CatalogLaunchField? fromToken(String raw) {
@@ -26,6 +28,7 @@ enum CatalogLaunchField {
       'u' => CatalogLaunchField.depositDue,
       's' => CatalogLaunchField.start,
       'h' => CatalogLaunchField.channel,
+      'f' => CatalogLaunchField.guide,
       _ => null,
     };
   }
@@ -40,6 +43,7 @@ enum CatalogFieldError {
   needDueDate,
   badDate,
   badChannel,
+  needGuideFile,
 }
 
 enum CatalogAdminFailure {

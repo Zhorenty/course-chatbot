@@ -245,6 +245,7 @@ void main() {
       ..._inlineCallbackData(templates.adminCatalogCardKeyboard(launch)),
       ..._inlineCallbackData(templates.adminCatalogFieldsKeyboard(launch.id)),
       ..._inlineCallbackData(templates.adminCatalogKeepCodeKeyboard()),
+      ..._inlineCallbackData(templates.adminCatalogBackToCardKeyboard(12)),
       ..._inlineCallbackData(templates.adminCatalogSkipChannelKeyboard()),
     ];
     expect(data, isNotEmpty);
@@ -252,8 +253,31 @@ void main() {
     expect(data, contains(MessageTemplates.cbCatalogNew));
     expect(data, contains('${MessageTemplates.cbCatalogOpen}12'));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.price)));
+    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide)));
     expect(data, contains(MessageTemplates.cbCatalogKeepCode));
     expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
+    expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
+    expect(
+      templates.adminCatalogGuideButton(launch),
+      MessageTemplates.buttonAdminCatalogAttachGuide,
+    );
+    const withGuide = Launch(
+      id: 12,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      isActive: true,
+      leadMagnetFileId: 'file-1',
+    );
+    expect(templates.adminCatalogCard(withGuide), contains('гайд: есть'));
+    expect(
+      templates.adminCatalogGuideButton(withGuide),
+      MessageTemplates.buttonAdminCatalogReplaceGuide,
+    );
+    expect(templates.adminCatalogAskField(CatalogLaunchField.guide), contains('PDF'));
   });
 
   test('admin catalog channel prompt does not ask for an empty Telegram message', () {

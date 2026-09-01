@@ -366,6 +366,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'callback_data': '${MessageTemplates.cbCatalogEdit}${launch.id}',
         },
       ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': adminCatalogGuideButton(launch),
+          'callback_data': MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.guide),
+        },
+      ],
       if (!launch.isActive)
         <Map<String, String>>[
           <String, String>{
@@ -413,6 +419,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{
           'text': MessageTemplates.buttonAdminCatalogKeepCode,
           'callback_data': MessageTemplates.cbCatalogKeepCode,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogBackToCardKeyboard(int launchId) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
         },
       ],
     ]);

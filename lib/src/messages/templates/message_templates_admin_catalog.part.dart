@@ -55,6 +55,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln('старт: ${_formatDate(launch.courseStartAt) ?? 'не указан'}');
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
+    buf.writeln(_catalogGuideLine(launch));
     buf.write(launch.isActive ? 'активен: да' : 'активен: нет');
     return buf.toString();
   }
@@ -156,6 +157,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         'Новый ID канала (число вида −100…).\n\n'
             'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
             'или напиши «-».',
+      CatalogLaunchField.guide => 'Пришли PDF гайда в этот чат. Старый файл этого потока заменю.',
     };
   }
 
@@ -181,6 +183,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogFieldError.badChannel =>
         'ID канала — отрицательное число вида −100…. '
             'Или «-» / «${MessageTemplates.buttonAdminCatalogSkipChannel}», чтобы без своего канала.',
+      CatalogFieldError.needGuideFile => 'Нужен файл. Пришли PDF гайда, не текст.',
     };
   }
 
@@ -224,7 +227,23 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     CatalogLaunchField.depositDue => '📅 Доплата до',
     CatalogLaunchField.start => '🚀 Старт',
     CatalogLaunchField.channel => '📣 Канал',
+    CatalogLaunchField.guide => '📘 Гайд',
   };
+
+  String adminCatalogGuideButton(Launch launch) {
+    return _catalogHasGuide(launch)
+        ? MessageTemplates.buttonAdminCatalogReplaceGuide
+        : MessageTemplates.buttonAdminCatalogAttachGuide;
+  }
+
+  String _catalogGuideLine(Launch launch) {
+    return _catalogHasGuide(launch) ? 'гайд: есть' : 'гайд: нет';
+  }
+
+  bool _catalogHasGuide(Launch launch) {
+    final fileId = launch.leadMagnetFileId?.trim();
+    return fileId != null && fileId.isNotEmpty;
+  }
 
   String adminCatalogListButton(Launch launch) {
     final mark = launch.isActive ? '🟢 ' : '⚪️ ';
