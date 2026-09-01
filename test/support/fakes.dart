@@ -14,6 +14,7 @@ final class FakeMessageSender implements MessageSender {
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<String> documents = <String>[];
   Object? throwOnSend;
+  final Set<int> failSendChatIds = <int>{};
   int _nextMessageId = 0;
 
   @override
@@ -28,6 +29,9 @@ final class FakeMessageSender implements MessageSender {
     final error = throwOnSend;
     if (error != null) {
       throw error;
+    }
+    if (failSendChatIds.contains(chatId)) {
+      throw StateError('Forbidden: bot was blocked by the user');
     }
     _nextMessageId += 1;
     messages.add(

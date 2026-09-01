@@ -627,6 +627,21 @@ final class MessageTemplates {
     return 'Новую ссылку в канал выдаёт админ. Напиши сюда — передам.';
   }
 
+  String accessRevoked() {
+    return '<b>Доступ к потоку снят</b>\n\n'
+        'Запись на этот поток закрыта. Если была ссылка в канал — она больше не действует, '
+        'из канала тебя убрали.\n\n'
+        'Если это ошибка или вопрос по возврату — напиши сюда. '
+        'Записаться снова можно из меню внизу.';
+  }
+
+  String paymentResetToUnpaid() {
+    return '<b>Статус оплаты сброшен</b>\n\n'
+        'Доступ в канал снят, если был. Записаться снова — '
+        '«${MessageTemplates.buttonEnroll}» в меню внизу.\n\n'
+        'Если это ошибка — напиши сюда.';
+  }
+
   String adminMenu() {
     return '<b>Админка</b>\n\n'
         'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
@@ -645,7 +660,9 @@ final class MessageTemplates {
     return '<b>Добавить на курс</b>\n\n'
         'Пришли числовой Telegram id человека (как в @userinfobot). '
         'Можно переслать сюда его сообщение — подставлю id сам.\n\n'
-        'Карточку создам, если её ещё нет. Дальше из карточки: оплата, ссылка в канал или убрать с курса.';
+        'Карточку создам, если её ещё нет. Человеку сразу не пишу: сначала проставь оплату '
+        'или напиши из карточки. Если он ещё не нажимал /start, бот не сможет ему написать.\n\n'
+        'Дальше из карточки: оплата, ссылка в канал или убрать с курса.';
   }
 
   String adminNeedNumericId() {
@@ -785,23 +802,54 @@ final class MessageTemplates {
     return '📣 Рассылка: отправлено $sent, ошибок $failed, получателей $total.';
   }
 
-  String adminMarkedPaid() => '✅ Оплата проставлена вручную.';
+  String adminMarkedPaid({bool clientNotified = true, bool clientReached = true}) =>
+      '✅ Оплата проставлена вручную.${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
 
-  String adminMarkedDeposit() => '💵 Предоплата проставлена вручную.';
+  String adminMarkedDeposit({bool clientNotified = true, bool clientReached = true}) =>
+      '💵 Предоплата проставлена вручную.${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
 
-  String adminMarkedUnpaid() => 'Статус: не оплачено. Invite отозван, если был.';
+  String adminMarkedUnpaid({bool clientNotified = true, bool clientReached = true}) =>
+      'Статус: не оплачено. Invite отозван, если был.'
+      '${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
 
   String adminStatusFailed() => 'Не получилось сменить статус. Попробуй ещё раз.';
 
-  String adminStatusChanged(AdminPaymentStatus status) => switch (status) {
-    AdminPaymentStatus.unpaid => adminMarkedUnpaid(),
-    AdminPaymentStatus.deposit => adminMarkedDeposit(),
-    AdminPaymentStatus.paid => adminMarkedPaid(),
-    AdminPaymentStatus.cancelled => adminCancelled(),
+  String adminStatusChanged(
+    AdminPaymentStatus status, {
+    bool clientNotified = true,
+    bool clientReached = true,
+  }) => switch (status) {
+    AdminPaymentStatus.unpaid => adminMarkedUnpaid(
+      clientNotified: clientNotified,
+      clientReached: clientReached,
+    ),
+    AdminPaymentStatus.deposit => adminMarkedDeposit(
+      clientNotified: clientNotified,
+      clientReached: clientReached,
+    ),
+    AdminPaymentStatus.paid => adminMarkedPaid(
+      clientNotified: clientNotified,
+      clientReached: clientReached,
+    ),
+    AdminPaymentStatus.cancelled => adminCancelled(
+      clientNotified: clientNotified,
+      clientReached: clientReached,
+    ),
   };
 
-  String adminCancelled() =>
-      '🚫 Убрал с курса. Статус снят, invite отозван, из канала выкинул, если был.';
+  String adminCancelled({bool clientNotified = false, bool clientReached = true}) =>
+      '🚫 Убрал с курса. Статус снят, invite отозван, из канала выкинул, если был.'
+      '${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
+
+  String _adminClientFollowup({required bool attempted, required bool reached}) {
+    if (!attempted) {
+      return '';
+    }
+    if (reached) {
+      return ' Человеку написал.';
+    }
+    return '\n\nЧеловеку не дошло — возможно, бот заблокирован или ещё не нажимал /start.';
+  }
 
   String adminAskStatus(AdminPaymentStatus current) {
     return 'Сейчас: <b>${escapeHtml(adminPaymentStatusLabel(current))}</b>. '
@@ -868,8 +916,12 @@ final class MessageTemplates {
 
   String adminGuideDiscarded() => 'Файл не сохранён как гайд.';
 
-  String adminInviteReissued() {
-    return '🔗 Ссылку в канал отправил человеку. Предыдущая больше не действует.';
+  String adminInviteReissued({bool clientReached = true}) {
+    if (clientReached) {
+      return '🔗 Ссылку в канал отправил человеку. Предыдущая больше не действует.';
+    }
+    return '🔗 Новую ссылку выдал, предыдущая больше не действует.\n\n'
+        'Человеку не дошло — возможно, бот заблокирован или ещё не нажимал /start.';
   }
 
   String adminSheetsRefreshing() {

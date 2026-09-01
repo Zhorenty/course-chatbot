@@ -396,6 +396,18 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return status.canRemoveFromCourse(inChannel: access?.hasJoined ?? false);
   }
 
+  bool _clientHadCourseSeat({required int userId, required Launch launch}) {
+    final status = _checkout.currentAdminStatus(userId: userId, launch: launch);
+    if (status == AdminPaymentStatus.paid || status == AdminPaymentStatus.deposit) {
+      return true;
+    }
+    final access = _course.accessFor(userId: userId, launchId: launch.id);
+    if (access == null) {
+      return false;
+    }
+    return access.hasJoined || (access.isActive && (access.inviteLink?.trim().isNotEmpty ?? false));
+  }
+
   Future<bool> _adminAskCardCancel(PrivateMessageContext context, int? targetUserId) async {
     if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
       return false;
@@ -507,7 +519,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _send(context, _templates.adminStatusFailed());
     }
     _course.ensureUser(userId: targetUserId, now: _nowProvider());
-    final already = _checkout.currentAdminStatus(userId: targetUserId, launch: launch) == target;
+    final previous = _checkout.currentAdminStatus(userId: targetUserId, launch: launch);
+    final already = previous == target;
+    final seatBefore = _clientHadCourseSeat(userId: targetUserId, launch: launch);
+    var clientNotified = false;
+    var clientReached = true;
     try {
       final result = await _checkout.applyAdminPaymentStatus(
         userId: targetUserId,
@@ -515,7 +531,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         target: target,
       );
       if (result != null) {
-        await _notifyPaymentResult(result);
+        clientNotified = true;
+        clientReached = await _notifyPaymentResult(result);
+      } else if (!already && target == AdminPaymentStatus.unpaid && seatBefore) {
+        clientNotified = true;
+        clientReached = await _dmUser(targetUserId, _templates.paymentResetToUnpaid());
       }
     } on Object catch (error, stackTrace) {
       l.w('Admin status $target for $targetUserId failed: $error', stackTrace);
@@ -527,7 +547,14 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _presentAdminCard(context, failed);
     }
     if (!already) {
-      await _send(context, _templates.adminStatusChanged(target));
+      await _send(
+        context,
+        _templates.adminStatusChanged(
+          target,
+          clientNotified: clientNotified,
+          clientReached: clientReached,
+        ),
+      );
     }
     final user = _course.getUser(targetUserId);
     if (user == null) {
@@ -548,8 +575,16 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
+    final shouldTell = _clientHadCourseSeat(userId: targetUserId, launch: launch);
     await _checkout.cancelEnrollment(userId: targetUserId, launch: launch);
-    await _send(context, _templates.adminCancelled());
+    var reached = true;
+    if (shouldTell) {
+      reached = await _dmUser(targetUserId, _templates.accessRevoked());
+    }
+    await _send(
+      context,
+      _templates.adminCancelled(clientNotified: shouldTell, clientReached: reached),
+    );
     return _presentAdminCard(context, _course.getUser(targetUserId)!);
   }
 
@@ -579,17 +614,19 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       launch: launch,
       reissue: true,
     );
+    var reached = true;
     if (link != null) {
-      await _sender.sendMessage(
+      reached = await _dmUser(
         targetUserId,
         _templates.inviteMessage(link),
-        parseMode: 'HTML',
         replyMarkup: _templates.unjoinedInviteKeyboard(link),
       );
     }
     await _send(
       context,
-      link == null ? _templates.inviteUnavailable() : _templates.adminInviteReissued(),
+      link == null
+          ? _templates.inviteUnavailable()
+          : _templates.adminInviteReissued(clientReached: reached),
     );
     final user = _course.getUser(targetUserId);
     if (user == null) {

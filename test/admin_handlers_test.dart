@@ -395,6 +395,7 @@ void main() {
     expect(created.funnelPhase, FunnelPhase.lead);
     expect(harness.sender.messages.any((m) => m.text.contains('Карточка')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('id <code>50</code>')), isTrue);
+    expect(harness.sender.messages.any((m) => m.chatId == 50), isFalse);
 
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 50, userId: 50, text: '/start ig_reels_guide', username: 'anna'),
@@ -485,6 +486,11 @@ void main() {
     expect(harness.course.getUser(50)?.funnelPhase, FunnelPhase.cancelled);
     expect(harness.channel.banned, contains(50));
     expect(harness.sender.messages.any((m) => m.text.contains('Убрал с курса')), isTrue);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 50 && m.text.contains('Доступ к потоку снят')),
+      isFalse,
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('Человеку написал')), isFalse);
   });
 
   test('admin remove after paid revokes invite and kicks from the channel', () async {
@@ -522,6 +528,16 @@ void main() {
     expect(harness.course.latestOrder(99)?.status, OrderStatus.cancelled);
     expect(harness.channel.revoked, isNotEmpty);
     expect(harness.channel.banned, contains(99));
+    final toUser = harness.sender.messages.where((m) => m.chatId == 99);
+    expect(toUser.any((m) => m.text.contains('Доступ к потоку снят')), isTrue);
+    expect(
+      toUser.any((m) => _replyButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonEnroll)),
+      isTrue,
+    );
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('Человеку написал')),
+      isTrue,
+    );
   });
 
   test('admin reinvite from the card mints a new link and sends it to the person', () async {
@@ -702,6 +718,94 @@ void main() {
     expect(harness.course.latestOrder(99)?.status, OrderStatus.awaitingPayment);
     expect(harness.course.latestOrder(99)?.amountPaidKopecks, 0);
     expect(harness.channel.revoked, isNotEmpty);
+    expect(
+      harness.sender.messages.any(
+        (m) => m.chatId == 99 && m.text.contains('Статус оплаты сброшен'),
+      ),
+      isTrue,
+    );
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('Человеку написал')),
+      isTrue,
+    );
+  });
+
+  test('admin remove tells the person even if the DM later fails', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'p',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.paid, 99),
+      ),
+    );
+    harness.sender.failSendChatIds.add(99);
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rm',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancel}99',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rmy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancelConfirm}99',
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, FunnelPhase.cancelled);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('Человеку не дошло')),
+      isTrue,
+    );
+  });
+
+  test('stale remainder button after remove does not reopen checkout', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'd',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.deposit, 99),
+      ),
+    );
+    final order = harness.course.latestOrder(99)!;
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rm',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.cancelled, 99),
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rmy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCancelConfirm}99',
+      ),
+    );
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'pr',
+        chatId: 99,
+        userId: 99,
+        data: '${MessageTemplates.cbPayRemainder}${order.id}',
+      ),
+    );
+    expect(harness.sender.messages.single.text, contains('Доступ к потоку снят'));
+    expect(harness.course.latestOrder(99)?.status, OrderStatus.cancelled);
   });
 
   test('admin catalog button lists launches and create-course stays off the admin menu', () async {

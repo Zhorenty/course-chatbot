@@ -139,6 +139,7 @@ void main() {
     expect(text, contains('<b>Добавить на курс</b>'));
     expect(text, contains('id'));
     expect(text, contains('переслать'));
+    expect(text, contains('Человеку сразу не пишу'));
   });
 
   test('admin sheets refresh result is a structured card', () {
@@ -711,6 +712,14 @@ void main() {
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
     expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
     expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
+    expect(templates.accessRevoked(), contains('Доступ к потоку снят'));
+    expect(templates.accessRevoked(), contains('напиши сюда'));
+    expect(templates.paymentResetToUnpaid(), contains('Статус оплаты сброшен'));
+    expect(templates.adminCancelled(clientNotified: true), contains('Человеку написал'));
+    expect(
+      templates.adminCancelled(clientNotified: true, clientReached: false),
+      contains('не дошло'),
+    );
     expect(templates.unjoinedInviteReminder('https://t.me/+x'), contains('https://t.me/+x'));
     expect(templates.unjoinedInviteReminder('https://t.me/+x'), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));

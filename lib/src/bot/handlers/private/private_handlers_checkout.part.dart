@@ -7,6 +7,21 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     Launch? launch,
     int? orderId,
   }) async {
+    if (orderId != null) {
+      final existing = _course.getOrder(orderId);
+      if (existing != null && existing.userId == context.userId) {
+        if (existing.status == OrderStatus.cancelled) {
+          return _send(
+            context,
+            _templates.accessRevoked(),
+            replyMarkup: _homeKeyboard(existing.userId),
+          );
+        }
+        if (kind == PaymentKind.remainder && existing.status != OrderStatus.depositPaid) {
+          return _showEnroll(context);
+        }
+      }
+    }
     final resolved = _launchForPay(kind, userId: context.userId, launch: launch, orderId: orderId);
     if (resolved == null) {
       return _send(context, _templates.payManualFallback());
@@ -96,6 +111,15 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (resolved == null) {
       return _send(context, _templates.payManualFallback());
     }
+    if (kind == PaymentKind.remainder) {
+      final latest = _course.latestOrder(userId, launchId: resolved.id);
+      if (latest == null || latest.status != OrderStatus.depositPaid) {
+        if (latest?.status == OrderStatus.cancelled) {
+          return _send(context, _templates.accessRevoked(), replyMarkup: _homeKeyboard(userId));
+        }
+        return _showEnroll(context);
+      }
+    }
     try {
       final order = _checkout.startOrReuseOrder(userId: userId, launch: resolved, kind: kind);
       final amount = _checkout.amountFor(resolved, order, kind);
@@ -133,6 +157,9 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     final order = _course.getOrder(orderId);
     if (order == null || order.userId != context.userId) {
       return false;
+    }
+    if (order.status == OrderStatus.cancelled) {
+      return _send(context, _templates.accessRevoked(), replyMarkup: _homeKeyboard(order.userId));
     }
     if (await _syncPaidCheckout(context, orderId: order.id)) {
       return true;
@@ -174,54 +201,47 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     }
   }
 
-  Future<void> _notifyPaymentResult(PaymentApplyResult result) async {
+  Future<bool> _notifyPaymentResult(PaymentApplyResult result) async {
     if (result.alreadyApplied && !result.repairedInvite) {
-      return;
+      return true;
     }
+    final userId = result.order.userId;
     if (result.repairedInvite) {
       final link = result.inviteLink;
-      if (link != null) {
-        await _sender.sendMessage(
-          result.order.userId,
-          _templates.inviteMessage(link),
-          parseMode: 'HTML',
-          replyMarkup: _templates.unjoinedInviteKeyboard(link),
-        );
+      if (link == null) {
+        return true;
       }
-      return;
+      return _dmUser(
+        userId,
+        _templates.inviteMessage(link),
+        replyMarkup: _templates.unjoinedInviteKeyboard(link),
+      );
     }
     if (result.depositOnly) {
-      await _sender.sendMessage(
-        result.order.userId,
+      final reached = await _dmUser(
+        userId,
         _templates.depositSucceeded(result.order),
-        parseMode: 'HTML',
         replyMarkup: _templates.remainderKeyboard(result.order.id),
       );
-      await _pinCourseMenu(result.order.userId);
-      return;
+      final pinned = await _dmUser(userId, _templates.courseMenuPinned());
+      return reached && pinned;
     }
-    if (result.grantedAccess) {
-      await _sender.sendMessage(
-        result.order.userId,
-        _templates.paymentSucceeded(),
-        parseMode: 'HTML',
-        replyMarkup: _homeKeyboard(result.order.userId),
+    if (!result.grantedAccess) {
+      return true;
+    }
+    var reached = await _dmUser(userId, _templates.paymentSucceeded());
+    final link = result.inviteLink;
+    if (link != null) {
+      final inviteReached = await _dmUser(
+        userId,
+        _templates.inviteMessage(link),
+        replyMarkup: _templates.unjoinedInviteKeyboard(link),
       );
-      final link = result.inviteLink;
-      if (link != null) {
-        await _sender.sendMessage(
-          result.order.userId,
-          _templates.inviteMessage(link),
-          parseMode: 'HTML',
-          replyMarkup: _templates.unjoinedInviteKeyboard(link),
-        );
-      } else {
-        await _sender.sendMessage(
-          result.order.userId,
-          _templates.inviteUnavailable(),
-          parseMode: 'HTML',
-        );
-      }
+      reached = reached && inviteReached;
+    } else {
+      final missing = await _dmUser(userId, _templates.inviteUnavailable());
+      reached = reached && missing;
     }
+    return reached;
   }
 }

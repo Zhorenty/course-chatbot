@@ -113,13 +113,19 @@ final class PrivateHandlers implements PaymentResultNotifier {
     );
   }
 
-  Future<void> _pinCourseMenu(int userId) {
-    return _sender.sendMessage(
-      userId,
-      _templates.courseMenuPinned(),
-      parseMode: 'HTML',
-      replyMarkup: _homeKeyboard(userId),
-    );
+  Future<bool> _dmUser(int userId, String text, {Map<String, Object?>? replyMarkup}) async {
+    try {
+      await _sender.sendMessage(
+        userId,
+        text,
+        parseMode: 'HTML',
+        replyMarkup: replyMarkup ?? _homeKeyboard(userId),
+      );
+      return true;
+    } on Object catch (error, stackTrace) {
+      l.w('DM to $userId failed: $error', stackTrace);
+      return false;
+    }
   }
 
   Future<bool> handle(Map<String, dynamic> update) async {
@@ -137,8 +143,8 @@ final class PrivateHandlers implements PaymentResultNotifier {
   }
 
   @override
-  Future<void> notifyPaymentResult(PaymentApplyResult result) {
-    return _notifyPaymentResult(result);
+  Future<void> notifyPaymentResult(PaymentApplyResult result) async {
+    await _notifyPaymentResult(result);
   }
 }
 
