@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -24,6 +25,14 @@ enum PrivateFlowStep {
   adminCatalogCreateActive,
   adminCatalogCreateConfirm,
   adminCatalogEditValue,
+  adminSheetsHub,
+  adminLinksMenu,
+  adminLinksCreateOrigin,
+  adminLinksCreateDestination,
+  adminLinksCreatePayload,
+  adminLinksCreateLaunch,
+  adminLinksCreateConfirm,
+  adminLinksEditValue,
 }
 
 final class CatalogWizardDraft {
@@ -86,6 +95,52 @@ final class CatalogWizardDraft {
   }
 }
 
+final class LinksWizardDraft {
+  const LinksWizardDraft({
+    this.origin,
+    this.destination,
+    this.payload,
+    this.launchCode,
+    this.launchSkipped = false,
+    this.editPayload,
+    this.editIndex,
+    this.editField,
+  });
+
+  final String? origin;
+  final AcquisitionDestination? destination;
+  final String? payload;
+  final String? launchCode;
+  final bool launchSkipped;
+  final String? editPayload;
+  final int? editIndex;
+  final CatalogLinkField? editField;
+
+  LinksWizardDraft copyWith({
+    Object? origin = _unset,
+    Object? destination = _unset,
+    Object? payload = _unset,
+    Object? launchCode = _unset,
+    bool? launchSkipped,
+    Object? editPayload = _unset,
+    Object? editIndex = _unset,
+    Object? editField = _unset,
+  }) {
+    return LinksWizardDraft(
+      origin: identical(origin, _unset) ? this.origin : origin as String?,
+      destination: identical(destination, _unset)
+          ? this.destination
+          : destination as AcquisitionDestination?,
+      payload: identical(payload, _unset) ? this.payload : payload as String?,
+      launchCode: identical(launchCode, _unset) ? this.launchCode : launchCode as String?,
+      launchSkipped: launchSkipped ?? this.launchSkipped,
+      editPayload: identical(editPayload, _unset) ? this.editPayload : editPayload as String?,
+      editIndex: identical(editIndex, _unset) ? this.editIndex : editIndex as int?,
+      editField: identical(editField, _unset) ? this.editField : editField as CatalogLinkField?,
+    );
+  }
+}
+
 final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
@@ -102,6 +157,7 @@ final class PrivateFlowState {
     this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
     this.catalogDraft,
+    this.linksDraft,
     this.catalogMessageId,
     this.catalogPinMessageId,
   });
@@ -120,6 +176,7 @@ final class PrivateFlowState {
   final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
   final CatalogWizardDraft? catalogDraft;
+  final LinksWizardDraft? linksDraft;
   final int? catalogMessageId;
   final int? catalogPinMessageId;
 
@@ -144,6 +201,7 @@ final class PrivateFlowState {
     bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
     Object? catalogDraft = _unset,
+    Object? linksDraft = _unset,
     Object? catalogMessageId = _unset,
     Object? catalogPinMessageId = _unset,
   }) {
@@ -186,6 +244,7 @@ final class PrivateFlowState {
       catalogDraft: identical(catalogDraft, _unset)
           ? this.catalogDraft
           : catalogDraft as CatalogWizardDraft?,
+      linksDraft: identical(linksDraft, _unset) ? this.linksDraft : linksDraft as LinksWizardDraft?,
       catalogMessageId: identical(catalogMessageId, _unset)
           ? this.catalogMessageId
           : catalogMessageId as int?,

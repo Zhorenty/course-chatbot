@@ -30,8 +30,8 @@ abstract final class CoursesSheet {
   static const String titleAside = 'Админ в боте или руками';
   static const String hint =
       'Поставь «да» в одной строке — это текущий набор. Цены в рублях, даты как 19.08.2026. '
-      'Править можно в боте («Управление курсами») или здесь. '
-      'После правок в таблице нажми в боте «Обновить Google Sheets».';
+      'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
+      'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
   static const List<String> headers = <String>[
     productCode,

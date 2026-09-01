@@ -1,5 +1,7 @@
 import 'package:course_chatbot/src/domain/funnel.dart';
 
+const Object _unset = Object();
+
 enum AcquisitionDestination { guide, course }
 
 /// One start-payload row: where the person came from and which first screen to open.
@@ -26,6 +28,24 @@ final class AcquisitionLink {
     AcquisitionDestination.guide => 'гайд',
     AcquisitionDestination.course => 'курс',
   };
+
+  AcquisitionLink copyWith({
+    Object? origin = _unset,
+    Object? destination = _unset,
+    Object? payload = _unset,
+    Object? url = _unset,
+    Object? launchCode = _unset,
+  }) {
+    return AcquisitionLink(
+      origin: identical(origin, _unset) ? this.origin : origin as String,
+      destination: identical(destination, _unset)
+          ? this.destination
+          : destination as AcquisitionDestination,
+      payload: identical(payload, _unset) ? this.payload : payload as String,
+      url: identical(url, _unset) ? this.url : url as String?,
+      launchCode: identical(launchCode, _unset) ? this.launchCode : launchCode as String?,
+    );
+  }
 
   static const List<AcquisitionLink> starters = <AcquisitionLink>[
     AcquisitionLink(

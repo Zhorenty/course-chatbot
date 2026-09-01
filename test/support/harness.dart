@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/application/broadcast_service.dart';
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/funnel_service.dart';
 import 'package:course_chatbot/src/application/launch_catalog_admin_service.dart';
+import 'package:course_chatbot/src/application/links_catalog_admin_service.dart';
 import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
@@ -125,6 +126,9 @@ final class HandlerHarness {
       catalogAdmin: catalogSync == null
           ? null
           : LaunchCatalogAdminService(sync: catalogSync!, catalog: course),
+      linksAdmin: catalogSync == null
+          ? null
+          : LinksCatalogAdminService(sync: catalogSync!, links: links, catalog: course),
       sheetsExportJob: sheetsExportJob,
       leadMagnetPath: leadMagnetPath,
       nowProvider: nowProvider,

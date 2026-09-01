@@ -20,11 +20,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return replyKeyboard(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminSearch},
-        <String, String>{'text': MessageTemplates.buttonAdminCatalog},
-      ],
-      <Map<String, String>>[
-        <String, String>{'text': MessageTemplates.buttonAdminLinks},
-        <String, String>{'text': MessageTemplates.buttonAdminSheets},
+        <String, String>{'text': MessageTemplates.buttonAdminSheetsHub},
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
@@ -32,6 +28,21 @@ extension MessageTemplateKeyboards on MessageTemplates {
       // TODO(mvp-reset): remove this row after the first live launch.
       <Map<String, String>>[
         <String, String>{'text': MessageTemplates.buttonAdminClearFunnel},
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminSheetsHubKeyboard() {
+    return replyKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminCatalog},
+        <String, String>{'text': MessageTemplates.buttonAdminLinks},
+      ],
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminSheets},
+      ],
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminBack},
       ],
     ]);
   }
@@ -332,14 +343,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> adminCatalogFlowKeyboard() {
-    return replyKeyboard(<List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{'text': MessageTemplates.buttonAdminBroadcastCancel},
-      ],
-    ]);
-  }
-
   Map<String, Object?> adminCatalogListKeyboard(List<Launch> launches) {
     return inlineKeyboard(<List<Map<String, String>>>[
       for (final launch in launches.take(12))
@@ -481,6 +484,132 @@ extension MessageTemplateKeyboards on MessageTemplates {
   }
 
   Map<String, Object?> adminCatalogConfirmKeyboard({
+    required String yesData,
+    required String noData,
+  }) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminCatalogYes, 'callback_data': yesData},
+        <String, String>{'text': MessageTemplates.buttonAdminCatalogNo, 'callback_data': noData},
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksListKeyboard(
+    List<AcquisitionLink> links, {
+    required bool canWrite,
+  }) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (var i = 0; i < links.length && i < 12; i++)
+        <Map<String, String>>[
+          <String, String>{
+            'text': adminLinksListButton(links[i]),
+            'callback_data': '${MessageTemplates.cbLinksOpen}$i',
+          },
+        ],
+      if (canWrite)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminLinksNew,
+            'callback_data': MessageTemplates.cbLinksNew,
+          },
+        ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksCardKeyboard(int index, {required bool canWrite}) {
+    final rows = <List<Map<String, String>>>[
+      if (canWrite)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminLinksEdit,
+            'callback_data': '${MessageTemplates.cbLinksEdit}$index',
+          },
+        ],
+      if (canWrite)
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageTemplates.buttonAdminLinksDelete,
+            'callback_data': '${MessageTemplates.cbLinksDelete}$index',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksBack,
+          'callback_data': MessageTemplates.cbLinksMenu,
+        },
+      ],
+    ];
+    return inlineKeyboard(rows);
+  }
+
+  Map<String, Object?> adminLinksFieldsKeyboard(int index) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (final field in CatalogLinkField.values)
+        <Map<String, String>>[
+          <String, String>{
+            'text': adminLinksFieldLabel(field),
+            'callback_data': MessageTemplates.linksFieldData(index, field),
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksBack,
+          'callback_data': '${MessageTemplates.cbLinksOpen}$index',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksDestinationKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksDestGuide,
+          'callback_data': MessageTemplates.cbLinksDestGuide,
+        },
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksDestCourse,
+          'callback_data': MessageTemplates.cbLinksDestCourse,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksLaunchKeyboard(List<Launch> launches) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      for (final launch in launches.take(12))
+        <Map<String, String>>[
+          <String, String>{
+            'text': adminLinksLaunchButton(launch),
+            'callback_data': '${MessageTemplates.cbLinksPickLaunch}${launch.id}',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksSkipLaunch,
+          'callback_data': MessageTemplates.cbLinksSkipLaunch,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksConfirmCreateKeyboard() {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonAdminLinksSave,
+          'callback_data': MessageTemplates.cbLinksCreateYes,
+        },
+        <String, String>{
+          'text': MessageTemplates.buttonAdminCatalogNo,
+          'callback_data': MessageTemplates.cbLinksCreateNo,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminLinksConfirmKeyboard({
     required String yesData,
     required String noData,
   }) {

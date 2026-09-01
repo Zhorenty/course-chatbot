@@ -201,24 +201,24 @@ void main() {
     final texts = _replyButtonTexts(keyboard);
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
-      MessageTemplates.buttonAdminCatalog,
-      MessageTemplates.buttonAdminLinks,
-      MessageTemplates.buttonAdminSheets,
+      MessageTemplates.buttonAdminSheetsHub,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
     expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalog)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
     final rows = keyboard['keyboard'] as List<dynamic>;
-    expect(rows, hasLength(4));
+    expect(rows, hasLength(3));
     expect(
       <List<String>>[
         for (final row in rows)
           <String>[for (final cell in row as List<dynamic>) (cell as Map)['text'] as String],
       ],
       <List<String>>[
-        <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminCatalog],
-        <String>[MessageTemplates.buttonAdminLinks, MessageTemplates.buttonAdminSheets],
+        <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminSheetsHub],
         <String>[MessageTemplates.buttonAdminBroadcast],
         <String>[MessageTemplates.buttonAdminClearFunnel],
       ],
@@ -292,6 +292,60 @@ void main() {
       templates.adminCatalogFieldError(CatalogFieldError.badChannel),
       contains(MessageTemplates.buttonAdminCatalogSkipChannel),
     );
+  });
+
+  test('admin sheets hub keyboard nests catalog, links and refresh', () {
+    final templates = MessageTemplates();
+    final rows = templates.adminSheetsHubKeyboard()['keyboard'] as List<dynamic>;
+    expect(
+      <List<String>>[
+        for (final row in rows)
+          <String>[for (final cell in row as List<dynamic>) (cell as Map)['text'] as String],
+      ],
+      <List<String>>[
+        <String>[MessageTemplates.buttonAdminCatalog, MessageTemplates.buttonAdminLinks],
+        <String>[MessageTemplates.buttonAdminSheets],
+        <String>[MessageTemplates.buttonAdminBack],
+      ],
+    );
+  });
+
+  test('admin links inline callbacks stay short and card escapes origin', () {
+    const link = AcquisitionLink(
+      origin: 'Reels <b>',
+      destination: AcquisitionDestination.guide,
+      payload: 'ig_reels_guide',
+    );
+    const launch = Launch(
+      id: 12,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      isActive: true,
+    );
+    final templates = MessageTemplates(botUsername: 'bot&x');
+    final data = <String>[
+      ..._inlineCallbackData(
+        templates.adminLinksListKeyboard(const <AcquisitionLink>[link], canWrite: true),
+      ),
+      ..._inlineCallbackData(templates.adminLinksCardKeyboard(0, canWrite: true)),
+      ..._inlineCallbackData(templates.adminLinksFieldsKeyboard(0)),
+      ..._inlineCallbackData(templates.adminLinksDestinationKeyboard()),
+      ..._inlineCallbackData(templates.adminLinksLaunchKeyboard(const <Launch>[launch])),
+    ];
+    expect(data, isNotEmpty);
+    expect(data.every((item) => item.length <= 64), isTrue);
+    expect(data, contains(MessageTemplates.cbLinksNew));
+    expect(data, contains('${MessageTemplates.cbLinksOpen}0'));
+    expect(data, contains(MessageTemplates.linksFieldData(0, CatalogLinkField.origin)));
+    expect(data, contains(MessageTemplates.cbLinksSkipLaunch));
+    expect(data, contains('${MessageTemplates.cbLinksPickLaunch}12'));
+    expect(templates.adminLinksCard(link), contains('Reels &lt;b&gt;'));
+    expect(templates.adminLinksCard(link), contains('https://t.me/bot&amp;x?start=ig_reels_guide'));
+    expect(templates.adminLinksCard(link), isNot(contains('Reels <b>')));
   });
 
   test('admin clear-funnel copy asks to confirm', () {

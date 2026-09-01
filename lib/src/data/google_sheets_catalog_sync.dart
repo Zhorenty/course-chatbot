@@ -9,6 +9,7 @@ import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:googleapis/sheets/v4.dart';
@@ -89,6 +90,22 @@ final class GoogleSheetsCatalogSync {
     return retry(() => _deleteCourseRowOnce(launchCode), shouldRetry: _shouldRetry);
   }
 
+  Future<void> upsertLinkRow({
+    required AcquisitionLink link,
+    String? previousPayload,
+    bool insertOnly = false,
+  }) {
+    return retry(
+      () =>
+          _upsertLinkRowOnce(link: link, previousPayload: previousPayload, insertOnly: insertOnly),
+      shouldRetry: _shouldRetry,
+    );
+  }
+
+  Future<void> deleteLinkRow({required String payload}) {
+    return retry(() => _deleteLinkRowOnce(payload), shouldRetry: _shouldRetry);
+  }
+
   Future<void> _upsertCourseRowOnce({
     required CatalogLaunchDraft draft,
     String? previousLaunchCode,
@@ -146,6 +163,77 @@ final class GoogleSheetsCatalogSync {
         activeCode: preserved.launchCode,
       );
     }
+  }
+
+  Future<void> _upsertLinkRowOnce({
+    required AcquisitionLink link,
+    String? previousPayload,
+    bool insertOnly = false,
+  }) async {
+    final layout = await _linksLayout();
+    final lookup = (previousPayload ?? link.payload).trim();
+    final existingAt = _rowIndexForPayload(
+      layout.rows,
+      headerAt: layout.headerAt,
+      headerIndex: layout.headerIndex,
+      payload: lookup,
+    );
+    final newPayloadAt = _rowIndexForPayload(
+      layout.rows,
+      headerAt: layout.headerAt,
+      headerIndex: layout.headerIndex,
+      payload: link.payload,
+    );
+    if (insertOnly && (existingAt != null || newPayloadAt != null)) {
+      throw StateError('link payload "${link.payload}" already exists');
+    }
+    if (existingAt == null && newPayloadAt != null) {
+      throw StateError('link payload "${link.payload}" already exists');
+    }
+    if (existingAt != null && newPayloadAt != null && newPayloadAt != existingAt) {
+      throw StateError('link payload "${link.payload}" already exists');
+    }
+
+    final targetAt =
+        existingAt ??
+        _firstVacantLinkRow(
+          layout.rows,
+          headerAt: layout.headerAt,
+          headerIndex: layout.headerIndex,
+        );
+    final launchLabel = _launchSheetLabel(link.launchCode);
+    final cells = LinksSheet.rowFromLink(link, botUsername: botUsername, launchLabel: launchLabel);
+    await _gateway
+        .updateValues(
+          a1Range: '${layout.quoted}!A${targetAt + 1}',
+          rows: <List<Object?>>[cells],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+  }
+
+  Future<void> _deleteLinkRowOnce(String payload) async {
+    final layout = await _linksLayout();
+    final index = _rowIndexForPayload(
+      layout.rows,
+      headerAt: layout.headerAt,
+      headerIndex: layout.headerIndex,
+      payload: payload,
+    );
+    if (index == null) {
+      return;
+    }
+    if (index <= layout.headerAt) {
+      throw StateError('Refusing to delete ССЫЛКИ header or chrome.');
+    }
+    await _gateway
+        .deleteDimension(
+          sheetId: layout.sheetId,
+          dimension: 'ROWS',
+          startIndex: index,
+          endIndex: index + 1,
+        )
+        .timeout(requestTimeout);
   }
 
   Future<void> _deleteCourseRowOnce(String launchCode) async {
@@ -232,6 +320,84 @@ final class GoogleSheetsCatalogSync {
       }
     }
     return rows.length;
+  }
+
+  int? _rowIndexForPayload(
+    List<List<Object?>> rows, {
+    required int headerAt,
+    required Map<String, int> headerIndex,
+    required String payload,
+  }) {
+    final wanted = AcquisitionSource.normalize(payload);
+    if (wanted == null) {
+      return null;
+    }
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final cell = LinksSheetParser.cellOf(rows[i], headerIndex, LinksSheet.payload);
+      if (AcquisitionSource.normalize(cell) == wanted) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  int _firstVacantLinkRow(
+    List<List<Object?>> rows, {
+    required int headerAt,
+    required Map<String, int> headerIndex,
+  }) {
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      if (LinksSheetParser.isVacantDataRow(rows[i], headerIndex)) {
+        return i;
+      }
+    }
+    return rows.length;
+  }
+
+  String _launchSheetLabel(String? raw) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) {
+      return '';
+    }
+    final launch = _catalog.launchByCode(value) ?? _catalog.launchByTitle(value);
+    return launch?.title ?? value;
+  }
+
+  Future<
+    ({
+      int sheetId,
+      String title,
+      String quoted,
+      int headerAt,
+      Map<String, int> headerIndex,
+      List<List<Object?>> rows,
+    })
+  >
+  _linksLayout() async {
+    final sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    var tab = _sheetByTitle(sheets, LinksSheet.tabTitle);
+    if (tab == null) {
+      await _gateway.addSheet(LinksSheet.tabTitle).timeout(requestTimeout);
+      final refreshed = await _gateway.describeSheets().timeout(requestTimeout);
+      tab = _sheetByTitle(refreshed, LinksSheet.tabTitle);
+    }
+    if (tab == null) {
+      throw StateError('Failed to open ${LinksSheet.tabTitle} sheet.');
+    }
+    final quoted = quoteA1SheetTitle(tab.title);
+    final rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    final headerAt = LinksSheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      throw StateError('${LinksSheet.tabTitle} is missing the payload header.');
+    }
+    return (
+      sheetId: tab.sheetId,
+      title: tab.title,
+      quoted: quoted,
+      headerAt: headerAt,
+      headerIndex: LinksSheetParser.headerIndexMap(rows[headerAt]),
+      rows: rows,
+    );
   }
 
   CatalogLaunchDraft _overlayDraft(

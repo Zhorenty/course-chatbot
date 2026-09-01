@@ -6,15 +6,21 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     final text = context.text;
     final flow = _flowByUserId[userId];
     if (text == MessageTemplates.buttonAdminMenu || text == '/admin') {
-      if (_isCatalogStep(flow?.step)) {
+      if (_isSheetsSection(flow?.step)) {
         await _deleteInboundMessage(context);
       }
       await _dismissCatalogUi(context);
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.idle);
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
-    if (text == MessageTemplates.buttonAdminBroadcastCancel && _isCatalogStep(flow?.step)) {
-      return _cancelCatalog(context);
+    if (text == MessageTemplates.buttonAdminBack && _isSheetsSection(flow?.step)) {
+      return _leaveSheetsSection(context);
+    }
+    if (text == MessageTemplates.buttonAdminBroadcastCancel && _isSheetsSection(flow?.step)) {
+      return _leaveSheetsSection(context);
+    }
+    if (text == MessageTemplates.buttonAdminSheetsHub) {
+      return _openSheetsHub(context);
     }
     if (text == MessageTemplates.buttonAdminCatalog) {
       return _openCatalogFromMenu(context);
@@ -40,10 +46,10 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _presentBroadcastPicker(context, forceNewMessage: true);
     }
     if (text == MessageTemplates.buttonAdminSheets || text == '/sheets') {
-      return _adminRefreshSheets(context);
+      return _adminRefreshSheets(context, keepHub: _isSheetsSection(flow?.step));
     }
     if (text == MessageTemplates.buttonAdminLinks || text == '/links') {
-      return _adminShowDeepLinks(context);
+      return _openLinksFromMenu(context);
     }
     // TODO(mvp-reset): remove this branch with the clear-funnel button.
     if (text == MessageTemplates.buttonAdminClearFunnel) {
@@ -54,6 +60,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     }
     if (_isCatalogStep(flow?.step)) {
       return _captureCatalog(context);
+    }
+    if (_isLinksStep(flow?.step)) {
+      return _captureLinks(context);
+    }
+    if (flow?.step == PrivateFlowStep.adminSheetsHub) {
+      await _deleteInboundMessage(context);
+      return true;
     }
     if (flow?.step == PrivateFlowStep.adminComposeDm) {
       return _sendAdminDm(context);
@@ -80,10 +93,42 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return false;
   }
 
-  Future<bool> _adminRefreshSheets(PrivateMessageContext context) async {
+  Future<bool> _openSheetsHub(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
+    await _dismissCatalogUi(context);
+    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.adminSheetsHub);
+    await _pinSheetsHub(context);
+    return _presentCatalog(context, _templates.adminSheetsHub());
+  }
+
+  Future<bool> _leaveSheetsSection(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
+    final step = _flowByUserId[context.userId!]?.step;
+    if (step != PrivateFlowStep.adminSheetsHub && _isSheetsSection(step)) {
+      await _ensureSheetsHubPinned(context);
+      _flowByUserId[context.userId!] = PrivateFlowState(
+        step: PrivateFlowStep.adminSheetsHub,
+        catalogMessageId: _flowByUserId[context.userId!]?.catalogMessageId,
+        catalogPinMessageId: _flowByUserId[context.userId!]?.catalogPinMessageId,
+      );
+      return _presentCatalog(context, _templates.adminSheetsHub());
+    }
+    await _dismissCatalogUi(context);
+    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
+    return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
+  }
+
+  bool _isSheetsSection(PrivateFlowStep? step) {
+    return step == PrivateFlowStep.adminSheetsHub || _isCatalogStep(step) || _isLinksStep(step);
+  }
+
+  Future<bool> _adminRefreshSheets(PrivateMessageContext context, {bool keepHub = false}) async {
     final sync = _catalogSync;
     final job = _sheetsExportJob;
     if (sync == null && job == null) {
+      if (keepHub) {
+        return _presentCatalog(context, _templates.adminSheetsDisabled());
+      }
       return _send(
         context,
         _templates.adminSheetsDisabled(),
@@ -123,40 +168,26 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       await _deleteProgress(context, progressId);
     }
 
-    return _send(
-      context,
-      _templates.adminSheetsRefreshResult(
-        catalogAttempted: sync != null,
-        catalogOk: sync == null || catalogError == null,
-        catalogError: catalogError,
-        funnelAttempted: job != null,
-        funnelOk: funnelOk,
-        funnelError: funnelError,
-        launch: catalogResult?.launch ?? _launch,
-      ),
-      replyMarkup: _templates.adminMenuKeyboard(),
+    final result = _templates.adminSheetsRefreshResult(
+      catalogAttempted: sync != null,
+      catalogOk: sync == null || catalogError == null,
+      catalogError: catalogError,
+      funnelAttempted: job != null,
+      funnelOk: funnelOk,
+      funnelError: funnelError,
+      launch: catalogResult?.launch ?? _launch,
     );
-  }
-
-  Future<bool> _adminShowDeepLinks(PrivateMessageContext context) async {
-    final sync = _catalogSync;
-    final progressId = sync == null
-        ? null
-        : await _sendProgress(context, _templates.adminDeepLinksRefreshing());
-    if (sync != null) {
-      try {
-        await sync.syncLinks();
-      } on Object catch (error, stackTrace) {
-        l.w('Admin ССЫЛКИ sync failed: $error', stackTrace);
-      } finally {
-        await _deleteProgress(context, progressId);
-      }
+    if (keepHub) {
+      await _deleteInboundMessage(context);
+      await _ensureSheetsHubPinned(context);
+      _flowByUserId[context.userId!] = PrivateFlowState(
+        step: PrivateFlowStep.adminSheetsHub,
+        catalogMessageId: _flowByUserId[context.userId!]?.catalogMessageId,
+        catalogPinMessageId: _flowByUserId[context.userId!]?.catalogPinMessageId,
+      );
+      return _presentCatalog(context, result);
     }
-    return _send(
-      context,
-      _templates.adminDeepLinks(_funnel.links.entries),
-      replyMarkup: _templates.adminMenuKeyboard(),
-    );
+    return _send(context, result, replyMarkup: _templates.adminMenuKeyboard());
   }
 
   // TODO(mvp-reset): remove with the admin «Очистить воронку» button.

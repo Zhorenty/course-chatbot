@@ -17,33 +17,20 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
 
   Future<bool> _openCatalogFromMenu(PrivateMessageContext context) async {
     await _deleteInboundMessage(context);
-    return _showCatalogList(context, pinKeyboard: true);
+    await _ensureSheetsHubPinned(context);
+    return _showCatalogList(context, refresh: true);
   }
 
-  Future<bool> _cancelCatalog(PrivateMessageContext context) async {
-    await _deleteInboundMessage(context);
-    await _dismissCatalogUi(context);
-    _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
-    return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
-  }
-
-  Future<bool> _showCatalogList(PrivateMessageContext context, {bool pinKeyboard = false}) async {
+  Future<bool> _showCatalogList(PrivateMessageContext context, {bool refresh = false}) async {
     if (!_adminGate.isConfiguredAdmin(context.userId)) {
       return false;
     }
     final admin = _catalogAdmin;
     if (admin == null) {
-      await _dismissCatalogUi(context);
-      _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
-      return _send(
-        context,
-        _templates.adminSheetsDisabled(),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+      _setCatalogFlow(context.userId!, PrivateFlowStep.adminSheetsHub, clearDraft: true);
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
     }
-    if (pinKeyboard) {
-      await _dismissCatalogUi(context);
-      await _pinCatalogKeyboard(context);
+    if (refresh) {
       _setCatalogFlow(context.userId!, PrivateFlowStep.adminCatalogMenu, clearDraft: true);
       await _presentCatalog(context, _templates.adminCatalogRefreshing());
       final notice = await _refreshCatalogFromSheets();
@@ -69,11 +56,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return false;
     }
     if (_catalogAdmin == null) {
-      return _send(
-        context,
-        _templates.adminSheetsDisabled(),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
     }
     final launch = _course.getLaunch(launchId);
     if (launch == null) {
@@ -96,11 +79,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return false;
     }
     if (_catalogAdmin == null) {
-      return _send(
-        context,
-        _templates.adminSheetsDisabled(),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
     }
     _setCatalogFlow(
       context.userId!,
@@ -357,11 +336,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     final admin = _catalogAdmin;
     if (admin == null) {
-      return _send(
-        context,
-        _templates.adminSheetsDisabled(),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
     }
     final built = _wizardToDraft(_flowByUserId[context.userId!]?.catalogDraft);
     if (built == null) {
@@ -680,7 +655,18 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     );
   }
 
-  Future<void> _pinCatalogKeyboard(PrivateMessageContext context) async {
+  Future<void> _ensureSheetsHubPinned(PrivateMessageContext context) async {
+    final userId = context.userId;
+    if (userId == null) {
+      return;
+    }
+    if (_flowByUserId[userId]?.catalogPinMessageId != null) {
+      return;
+    }
+    await _pinSheetsHub(context);
+  }
+
+  Future<void> _pinSheetsHub(PrivateMessageContext context) async {
     final chatId = context.chatId;
     final userId = context.userId;
     if (chatId == null || userId == null) {
@@ -688,12 +674,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     final pinId = await _sender.sendMessage(
       chatId,
-      _templates.adminCatalogOpened(),
+      _templates.adminSheetsHubOpened(),
       parseMode: 'HTML',
-      replyMarkup: _templates.adminCatalogFlowKeyboard(),
+      replyMarkup: _templates.adminSheetsHubKeyboard(),
     );
     final current =
-        _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
+        _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminSheetsHub);
     _flowByUserId[userId] = current.copyWith(catalogPinMessageId: pinId);
   }
 

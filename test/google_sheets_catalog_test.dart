@@ -736,5 +736,58 @@ void main() {
       expect(gateway.deletedDimensions, isEmpty);
       expect(gateway.deletedSheetIds, isEmpty);
     });
+
+    test('upsertLinkRow appends a payload without wiping ССЫЛКИ chrome', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.syncLinks();
+      await sync.upsertLinkRow(
+        insertOnly: true,
+        link: const AcquisitionLink(
+          origin: 'Stories',
+          destination: AcquisitionDestination.guide,
+          payload: 'ig_stories_guide',
+        ),
+      );
+      await sync.syncLinks();
+      expect(links.byPayload('ig_stories_guide')?.origin, 'Stories');
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      expect(sheet.first.first, LinksSheet.title);
+      expect(sheet.any((row) => row.contains('ig_stories_guide')), isTrue);
+      expect(gateway.deletedSheetIds, isEmpty);
+    });
+
+    test('deleteLinkRow removes one data row and keeps the tab', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+      );
+      await sync.syncLinks();
+      await sync.upsertLinkRow(
+        link: const AcquisitionLink(
+          origin: 'Stories',
+          destination: AcquisitionDestination.guide,
+          payload: 'ig_stories_guide',
+        ),
+      );
+      await sync.deleteLinkRow(payload: 'ig_stories_guide');
+      await sync.syncLinks();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      expect(sheet.first.first, LinksSheet.title);
+      expect(sheet.any((row) => row.contains('ig_stories_guide')), isFalse);
+      expect(links.byPayload('ig_stories_guide'), isNull);
+      expect(gateway.deletedSheetIds, isEmpty);
+      expect(gateway.deletedDimensions, isNotEmpty);
+    });
   });
 }

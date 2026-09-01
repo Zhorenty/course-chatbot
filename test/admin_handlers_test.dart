@@ -100,14 +100,15 @@ void main() {
     final texts = _replyButtonTexts(withKeyboard.replyMarkup);
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
-      MessageTemplates.buttonAdminCatalog,
-      MessageTemplates.buttonAdminLinks,
-      MessageTemplates.buttonAdminSheets,
+      MessageTemplates.buttonAdminSheetsHub,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
     expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalog)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
+    expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(texts, isNot(contains(MessageTemplates.buttonGuide)));
   });
@@ -208,6 +209,20 @@ void main() {
     expect(harness.course.getUser(99), isNotNull);
   });
 
+  test('admin Google Sheets hub shows catalog, links and refresh', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheetsHub),
+    );
+    final withKeyboard = harness.sender.messages.lastWhere((m) => m.replyMarkup != null);
+    expect(withKeyboard.text, contains('Google Sheets'));
+    expect(_replyButtonTexts(withKeyboard.replyMarkup), <String>[
+      MessageTemplates.buttonAdminCatalog,
+      MessageTemplates.buttonAdminLinks,
+      MessageTemplates.buttonAdminSheets,
+      MessageTemplates.buttonAdminBack,
+    ]);
+  });
+
   test('admin Диплинки without Sheets still returns four starter links', () async {
     final named = HandlerHarness();
     await named.init(adminUserIds: const <int>{1}, botUsername: 'course_bot');
@@ -216,13 +231,25 @@ void main() {
     await named.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminLinks),
     );
-    expect(named.sender.deletedMessages, isEmpty);
-    final text = named.sender.messages.last.text;
-    expect(text, contains('https://t.me/course_bot?start=ig_reels_guide'));
-    expect(text, contains('https://t.me/course_bot?start=threads_guide'));
-    expect(text, contains('https://t.me/course_bot?start=tg_announce'));
-    expect(text, contains('https://t.me/course_bot?start=direct_course'));
-    expect(text, contains(LinksSheet.tabTitle));
+    expect(named.sender.deletedMessages, hasLength(1));
+    final list = named.sender.messages.last;
+    expect(list.text, contains('ig_reels_guide'));
+    expect(list.text, contains('threads_guide'));
+    expect(
+      _inlineButtonTexts(list.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminLinksNew)),
+    );
+    await named.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'lo',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbLinksOpen}0',
+      ),
+    );
+    final card = named.sender.messages.last.text;
+    expect(card, contains('https://t.me/course_bot?start=ig_reels_guide'));
+    expect(card, contains('ig_reels_guide'));
   });
 
   test('admin /links with Sheets seeds ССЫЛКИ then lists the same URLs', () async {
@@ -242,14 +269,100 @@ void main() {
     await sheetsHarness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '/links'));
     expect(sheetsHarness.sender.deletedMessages, hasLength(1));
     expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Собираю диплинки')), isFalse);
-    final text = sheetsHarness.sender.messages.last.text;
-    expect(text, contains('?start=ig_reels_guide'));
+    final list = sheetsHarness.sender.messages.lastWhere((m) => m.replyMarkup != null);
+    expect(list.text, contains('ig_reels_guide'));
+    expect(_inlineButtonTexts(list.replyMarkup), contains(MessageTemplates.buttonAdminLinksNew));
     expect(sheetsHarness.course.activeLaunch()?.priceFullKopecks, 1800000);
     final tab = sheetsHarness.sheetsGateway!.sheets.firstWhere(
       (sheet) => sheet.title == LinksSheet.tabTitle,
     );
     final sheet = sheetsHarness.sheetsGateway!.valuesBySheetId[tab.sheetId]!;
     expect(sheet.any((row) => row.contains('https://t.me/course_bot?start=direct_course')), isTrue);
+  });
+
+  test('admin links CRUD writes ССЫЛКИ and can delete a row', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true, botUsername: 'course_bot');
+    addTearDown(sheets.dispose);
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminLinks),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ln',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbLinksNew,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Stories, таргет'),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ldg',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbLinksDestGuide,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'ig_stories_guide'),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'lsk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbLinksSkipLaunch,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'lcy',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbLinksCreateYes,
+      ),
+    );
+    expect(sheets.funnel.links.byPayload('ig_stories_guide')?.origin, 'Stories, таргет');
+    final tab = sheets.sheetsGateway!.sheets.firstWhere(
+      (sheet) => sheet.title == LinksSheet.tabTitle,
+    );
+    expect(
+      sheets.sheetsGateway!.valuesBySheetId[tab.sheetId]!.any(
+        (row) => row.contains('ig_stories_guide'),
+      ),
+      isTrue,
+    );
+
+    final createdIndex = sheets.funnel.links.entries.indexWhere(
+      (link) => link.payload == 'ig_stories_guide',
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ld',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbLinksDelete}$createdIndex',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ldy',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbLinksDeleteYes}$createdIndex',
+      ),
+    );
+    expect(sheets.funnel.links.byPayload('ig_stories_guide'), isNull);
+    expect(
+      sheets.sheetsGateway!.valuesBySheetId[tab.sheetId]!.any(
+        (row) => row.contains('ig_stories_guide'),
+      ),
+      isFalse,
+    );
   });
 
   test('broadcast targets guide-not-paid segment', () async {
@@ -599,13 +712,17 @@ void main() {
     await sheets.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
-    expect(sheets.sender.messages.any((m) => m.text.contains('Управление курсами')), isTrue);
+    expect(sheets.sender.messages.any((m) => m.text.contains('Курсы')), isTrue);
     expect(sheets.sender.messages.any((m) => m.text.contains('launch-1')), isTrue);
     final list = sheets.sender.messages.lastWhere((m) => m.replyMarkup != null);
     expect(_inlineButtonTexts(list.replyMarkup), contains(MessageTemplates.buttonAdminCatalogNew));
     expect(
       _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
-      contains(MessageTemplates.buttonAdminBroadcastCancel),
+      contains(MessageTemplates.buttonAdminBack),
+    );
+    expect(
+      _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
+      contains(MessageTemplates.buttonAdminLinks),
     );
     expect(
       _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
@@ -1316,16 +1433,28 @@ void main() {
       ),
     );
     await sheets.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminBroadcastCancel),
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminBack),
+    );
+    expect(sheets.sender.messages.last.text, contains('Google Sheets'));
+    expect(
+      _replyButtonTexts(sheets.sender.messages.first.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalog),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminBack),
     );
     expect(sheets.sender.messages.last.text, contains('Админка'));
     expect(
       _replyButtonTexts(sheets.sender.messages.last.replyMarkup),
-      contains(MessageTemplates.buttonAdminCatalog),
+      contains(MessageTemplates.buttonAdminSheetsHub),
     );
     expect(
       _replyButtonTexts(sheets.sender.messages.last.replyMarkup),
       isNot(contains(MessageTemplates.buttonAdminCatalogNew)),
+    );
+    expect(
+      _replyButtonTexts(sheets.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminCatalog)),
     );
   });
 }

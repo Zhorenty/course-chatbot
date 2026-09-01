@@ -19,6 +19,7 @@ import 'package:intl/intl.dart';
 
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_admin_catalog.part.dart';
+part 'templates/message_templates_admin_links.part.dart';
 
 /// User-facing copy and keyboards. Marketing tone lives here, not in handlers.
 final class MessageTemplates {
@@ -44,10 +45,12 @@ final class MessageTemplates {
       'Принимаю оферту и соглашаюсь на обработку персональных данных';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminAddUser = '➕ Добавить на курс';
+  static const String buttonAdminSheetsHub = '📊 Google Sheets';
   static const String buttonAdminCatalog = '📚 Управление курсами';
   static const String buttonAdminBroadcast = '📣 Рассылка';
-  static const String buttonAdminLinks = '🔗 Диплинки';
+  static const String buttonAdminLinks = '🔗 Управление диплинками';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
+  static const String buttonAdminBack = '↩️ Назад';
   // TODO(mvp-reset): remove this debug button after the first live launch.
   static const String buttonAdminClearFunnel = '🧹 Очистить воронку';
   static const String buttonAdminMenu = '🛠 Админка';
@@ -83,6 +86,14 @@ final class MessageTemplates {
   static const String buttonAdminCatalogSkipChannel = 'Без своего канала';
   static const String buttonAdminCatalogYes = '✅ Да';
   static const String buttonAdminCatalogNo = '❌ Нет';
+  static const String buttonAdminLinksNew = '🆕 Создать диплинк';
+  static const String buttonAdminLinksEdit = '✏️ Изменить поле';
+  static const String buttonAdminLinksDelete = '🗑 Удалить';
+  static const String buttonAdminLinksBack = '↩️ К списку';
+  static const String buttonAdminLinksSave = '💾 Записать';
+  static const String buttonAdminLinksDestGuide = '📘 Гайд';
+  static const String buttonAdminLinksDestCourse = '✨ Курс';
+  static const String buttonAdminLinksSkipLaunch = 'Текущий набор';
 
   static const String cbGuide = 'g';
   static const String cbEnroll = 'e';
@@ -132,6 +143,19 @@ final class MessageTemplates {
   static const String cbCatalogActiveNo = 'can';
   static const String cbCatalogKeepCode = 'ckc';
   static const String cbCatalogSkipChannel = 'csk';
+  static const String cbLinksMenu = 'lm';
+  static const String cbLinksNew = 'ln';
+  static const String cbLinksOpen = 'lo:';
+  static const String cbLinksEdit = 'le:';
+  static const String cbLinksField = 'lf:';
+  static const String cbLinksDelete = 'ld:';
+  static const String cbLinksDeleteYes = 'ldy:';
+  static const String cbLinksCreateYes = 'lcy';
+  static const String cbLinksCreateNo = 'lcn';
+  static const String cbLinksDestGuide = 'ldg';
+  static const String cbLinksDestCourse = 'ldc';
+  static const String cbLinksSkipLaunch = 'lsk';
+  static const String cbLinksPickLaunch = 'lp:';
   // TODO(mvp-reset): remove with buttonAdminClearFunnel.
   static const String cbAdminClearFunnelConfirm = 'cfy';
   static const String cbAdminClearFunnelAbort = 'cfn';
@@ -605,9 +629,8 @@ final class MessageTemplates {
 
   String adminMenu() {
     return '<b>Админка</b>\n\n'
-        'Поиск и карточка человека, добавить на курс, управление курсами, ручной статус, рассылка сегменту. '
-        'Диплинки — «${MessageTemplates.buttonAdminLinks}». '
-        'Срез воронки и каталог COURSES — «${MessageTemplates.buttonAdminSheets}». '
+        'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
+        'Курсы, диплинки и срез воронки — «${MessageTemplates.buttonAdminSheetsHub}». '
         // TODO(mvp-reset): drop this sentence with the clear-funnel button.
         'Временно: «${MessageTemplates.buttonAdminClearFunnel}» сотрёт людей из бота.';
   }
@@ -938,8 +961,8 @@ final class MessageTemplates {
     }
     buf.write(
       'Те же ссылки на листе ${escapeHtml(LinksSheet.tabTitle)}. '
-      'Новая метка (Stories, таргет) — строка на листе, затем '
-      '«${MessageTemplates.buttonAdminSheets}» или снова «${MessageTemplates.buttonAdminLinks}».',
+      'Новая метка — в боте «${MessageTemplates.buttonAdminLinks}» '
+      'или строка на листе, затем «${MessageTemplates.buttonAdminSheets}».',
     );
     return buf.toString().trim();
   }
@@ -992,6 +1015,27 @@ final class MessageTemplates {
       return null;
     }
     return (id: id, field: field);
+  }
+
+  static String linksFieldData(int index, CatalogLinkField field) {
+    return '$cbLinksField$index:${field.token}';
+  }
+
+  static ({int index, CatalogLinkField field})? linksFieldFromCallback(String data) {
+    if (!data.startsWith(cbLinksField)) {
+      return null;
+    }
+    final rest = data.substring(cbLinksField.length);
+    final sep = rest.indexOf(':');
+    if (sep <= 0) {
+      return null;
+    }
+    final index = int.tryParse(rest.substring(0, sep));
+    final field = CatalogLinkField.fromToken(rest.substring(sep + 1));
+    if (index == null || field == null) {
+      return null;
+    }
+    return (index: index, field: field);
   }
 
   static ({AdminPaymentStatus status, int userId})? adminStatusFromCallback(String data) {

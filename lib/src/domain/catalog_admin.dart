@@ -46,9 +46,36 @@ enum CatalogFieldError {
   needGuideFile,
 }
 
+enum CatalogLinkField {
+  origin,
+  destination,
+  payload,
+  launch;
+
+  String get token => switch (this) {
+    CatalogLinkField.origin => 'o',
+    CatalogLinkField.destination => 'd',
+    CatalogLinkField.payload => 'p',
+    CatalogLinkField.launch => 'l',
+  };
+
+  static CatalogLinkField? fromToken(String raw) {
+    return switch (raw) {
+      'o' => CatalogLinkField.origin,
+      'd' => CatalogLinkField.destination,
+      'p' => CatalogLinkField.payload,
+      'l' => CatalogLinkField.launch,
+      _ => null,
+    };
+  }
+}
+
+enum CatalogLinkFieldError { emptyOrigin, badPayload, payloadTaken, badLaunch }
+
 enum CatalogAdminFailure {
   sheetsUnavailable,
   lastLaunch,
+  lastLink,
   activeLaunch,
   hasPeople,
   codeTaken,

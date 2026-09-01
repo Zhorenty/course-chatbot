@@ -91,6 +91,20 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _keepCatalogCreateCode(context);
       case MessageTemplates.cbCatalogSkipChannel:
         return _skipCatalogChannel(context);
+      case MessageTemplates.cbLinksMenu:
+        return _showLinksList(context);
+      case MessageTemplates.cbLinksNew:
+        return _startLinksCreate(context);
+      case MessageTemplates.cbLinksCreateYes:
+        return _confirmLinksCreate(context);
+      case MessageTemplates.cbLinksCreateNo:
+        return _showLinksList(context);
+      case MessageTemplates.cbLinksDestGuide:
+        return _setLinksCreateDestination(context, AcquisitionDestination.guide);
+      case MessageTemplates.cbLinksDestCourse:
+        return _setLinksCreateDestination(context, AcquisitionDestination.course);
+      case MessageTemplates.cbLinksSkipLaunch:
+        return _setLinksCreateLaunch(context, skip: true);
       case MessageTemplates.cbGuide:
         return _deliverGuide(context, sendWarmup: true);
       case MessageTemplates.cbEnroll:
@@ -263,6 +277,40 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       return _showCatalogCard(
         context,
         MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogOpen),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbLinksDeleteYes)) {
+      return _confirmLinksDelete(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbLinksDeleteYes),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbLinksDelete)) {
+      return _askLinksDelete(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbLinksDelete),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbLinksField)) {
+      final parsed = MessageTemplates.linksFieldFromCallback(data);
+      return _askLinksEditField(context, parsed?.index, parsed?.field);
+    }
+    if (data.startsWith(MessageTemplates.cbLinksEdit)) {
+      return _showLinksFields(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbLinksEdit),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbLinksOpen)) {
+      return _showLinksCard(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbLinksOpen),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbLinksPickLaunch)) {
+      return _setLinksCreateLaunch(
+        context,
+        launchId: MessageTemplates.idFromCallback(data, MessageTemplates.cbLinksPickLaunch),
       );
     }
     return false;

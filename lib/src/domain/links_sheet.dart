@@ -21,7 +21,8 @@ abstract final class LinksSheet {
       'Четыре стартовые метки уже есть. Новая (Stories, таргет) — строка с меткой латиницей. '
       'Куда: гайд или курс. Поток — выбери из списка запусков на листе каталога; '
       'гайд и запись в MVP всегда текущий «да». Пусто = текущий. '
-      'После правок нажми в боте «Обновить Google Sheets» или «Диплинки».';
+      'После правок нажми в боте «Google Sheets» → «Обновить Sheets» '
+      'или «Управление диплинками».';
   static const String invalidPayloadStatus = 'невалидная метка';
 
   static const List<String> headers = <String>[origin, destination, payload, launchCode, url];
@@ -87,12 +88,20 @@ abstract final class LinksSheet {
   static List<Object?> hintRow() => padded(<Object?>[hint]);
 
   static List<Object?> seedDataRow(AcquisitionLink link, {String? botUsername}) {
+    return rowFromLink(link, botUsername: botUsername);
+  }
+
+  static List<Object?> rowFromLink(
+    AcquisitionLink link, {
+    String? botUsername,
+    String? launchLabel,
+  }) {
     return padded(<Object?>[
       link.origin,
       link.destinationLabel,
       link.payload,
-      link.launchCode ?? '',
-      AcquisitionLink.telegramStartUrl(link.payload, botUsername) ?? '',
+      launchLabel ?? link.launchCode ?? '',
+      AcquisitionLink.telegramStartUrl(link.payload, botUsername) ?? link.url ?? '',
     ]);
   }
 
@@ -181,6 +190,16 @@ abstract final class LinksSheetParser {
       return null;
     }
     return _headerIndex(rows[headerAt])[canonical];
+  }
+
+  static Map<String, int> headerIndexMap(List<Object?> headerRow) => _headerIndex(headerRow);
+
+  static String? cellOf(List<Object?> raw, Map<String, int> headerIndex, String column) {
+    return _cell(raw, headerIndex, column);
+  }
+
+  static bool isVacantDataRow(List<Object?> raw, Map<String, int> headerIndex) {
+    return _cell(raw, headerIndex, LinksSheet.payload) == null;
   }
 
   static LinksSheetParseResult parse(List<List<Object?>> rows) {

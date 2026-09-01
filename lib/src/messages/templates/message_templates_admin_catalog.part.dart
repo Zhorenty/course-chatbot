@@ -1,11 +1,6 @@
 part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplatesAdminCatalog on MessageTemplates {
-  String adminCatalogOpened() {
-    return '<b>Управление курсами</b>\n\n'
-        'Список ниже. «${MessageTemplates.buttonAdminBroadcastCancel}» — выход в админку.';
-  }
-
   String adminCatalogList(List<Launch> launches, {String? notice}) {
     final buf = StringBuffer();
     if (notice != null && notice.isNotEmpty) {
@@ -191,6 +186,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return switch (failure) {
       CatalogAdminFailure.sheetsUnavailable => adminSheetsDisabled(),
       CatalogAdminFailure.lastLaunch => 'Это единственный поток в таблице. Сначала добавь другой.',
+      CatalogAdminFailure.lastLink => 'Это единственная метка на листе. Сначала добавь другую.',
       CatalogAdminFailure.activeLaunch =>
         'Сначала сделай активным другой поток — текущий без замены не удаляю.',
       CatalogAdminFailure.hasPeople =>
