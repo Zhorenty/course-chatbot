@@ -18,10 +18,6 @@ import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('in-development copy is a stub, not a funnel step', () {
-    expect(MessageTemplates().botInDevelopment(), contains('в разработке'));
-  });
-
   test('enroll CTA stays in templates until access is granted', () {
     final templates = MessageTemplates();
     expect(templates.warmupStep('warmup_0'), contains('записаться'));

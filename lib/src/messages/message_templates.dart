@@ -160,12 +160,6 @@ final class MessageTemplates {
   static const String cbAdminClearFunnelConfirm = 'cfy';
   static const String cbAdminClearFunnelAbort = 'cfn';
 
-  String botInDevelopment() {
-    return '<b>Бот в разработке</b>\n\n'
-        'Сейчас сценарий доступен только команде. '
-        'Как откроем — напиши /start ещё раз.';
-  }
-
   String startGuideOffer() {
     return '<b>Гайд «Язык цвета»</b>\n\n'
         'Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает». '

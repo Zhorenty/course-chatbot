@@ -9,7 +9,6 @@ import 'package:course_chatbot/src/application/links_catalog_admin_service.dart'
 import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/bot/handlers/private/admin_gate.dart';
-import 'package:course_chatbot/src/bot/handlers/private/interaction_whitelist.dart';
 import 'package:course_chatbot/src/bot/handlers/private/private_context.dart';
 import 'package:course_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
@@ -53,7 +52,6 @@ final class PrivateHandlers implements PaymentResultNotifier {
     required BroadcastService broadcast,
     required Set<int> adminUserIds,
     int? adminChatId,
-    InteractionWhitelist interactionWhitelist = InteractionWhitelist.production,
     GoogleSheetsCatalogSync? catalogSync,
     LaunchCatalogAdminService? catalogAdmin,
     LinksCatalogAdminService? linksAdmin,
@@ -72,7 +70,6 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _broadcast = broadcast,
        _adminGate = AdminGate(adminUserIds),
        _adminChatId = adminChatId,
-       _interactionWhitelist = interactionWhitelist,
        _catalogSync = catalogSync,
        _catalogAdmin = catalogAdmin,
        _linksAdmin = linksAdmin,
@@ -90,7 +87,6 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final BroadcastService _broadcast;
   final AdminGate _adminGate;
   final int? _adminChatId;
-  final InteractionWhitelist _interactionWhitelist;
   final GoogleSheetsCatalogSync? _catalogSync;
   final LaunchCatalogAdminService? _catalogAdmin;
   final LinksCatalogAdminService? _linksAdmin;
