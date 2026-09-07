@@ -23,6 +23,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, String>{'text': MessageTemplates.buttonAdminSheetsHub},
       ],
       <Map<String, String>>[
+        <String, String>{'text': MessageTemplates.buttonAdminFunnelLogic},
         <String, String>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
       // TODO(mvp-reset): remove this row after the first live launch.

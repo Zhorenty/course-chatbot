@@ -18,6 +18,22 @@ import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('enroll day-1 and day-3 warmup copy is not identical', () {
+    final templates = MessageTemplates();
+    final day1 = templates.warmupStep('enroll_d1');
+    final day3 = templates.warmupStep('enroll_d3');
+    expect(day1, contains('Гайд и запись ещё здесь'));
+    expect(day3, contains('Гайд всё ещё можно забрать'));
+    expect(day1, isNot(equals(day3)));
+  });
+
+  test('admin funnel logic stays under Telegram message limit', () {
+    final text = MessageTemplates().adminFunnelLogic();
+    expect(text.length, lessThan(4096));
+    expect(text, contains('Как устроена воронка'));
+    expect(text, contains('Аккаунты админов'));
+  });
+
   test('enroll CTA stays in templates until access is granted', () {
     final templates = MessageTemplates();
     expect(templates.warmupStep('warmup_0'), contains('записаться'));
@@ -199,6 +215,7 @@ void main() {
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
       MessageTemplates.buttonAdminSheetsHub,
+      MessageTemplates.buttonAdminFunnelLogic,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
@@ -216,7 +233,7 @@ void main() {
       ],
       <List<String>>[
         <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminSheetsHub],
-        <String>[MessageTemplates.buttonAdminBroadcast],
+        <String>[MessageTemplates.buttonAdminFunnelLogic, MessageTemplates.buttonAdminBroadcast],
         <String>[MessageTemplates.buttonAdminClearFunnel],
       ],
     );

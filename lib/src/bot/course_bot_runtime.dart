@@ -206,6 +206,7 @@ final class CourseBotRuntime {
               sender: sender,
               templates: templates,
               quietHours: quietHours,
+              skipUserIds: config.adminUserIds,
             )
           : null,
       abandonedPaymentJob: AbandonedPaymentJob(

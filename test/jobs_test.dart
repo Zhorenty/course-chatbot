@@ -233,6 +233,32 @@ void main() {
     );
   });
 
+  test('warmup job skips configured admins', () async {
+    harness.course.ensureUser(userId: 1, now: DateTime.utc(2026, 1, 1));
+    harness.course.ensureUser(userId: 8, now: DateTime.utc(2026, 1, 1));
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      ),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      skipUserIds: const <int>{1},
+      nowProvider: () => DateTime.utc(2026, 1, 2, 12),
+    );
+    harness.sender.messages.clear();
+    await job.run();
+    expect(harness.sender.messages.where((m) => m.chatId == 1), isEmpty);
+    expect(
+      harness.sender.messages.any(
+        (m) => m.chatId == 8 && m.text.contains('Гайд и запись ещё здесь'),
+      ),
+      isTrue,
+    );
+  });
+
   test('remainder job reminds before the due date', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;

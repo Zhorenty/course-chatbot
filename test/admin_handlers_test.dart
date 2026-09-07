@@ -101,6 +101,7 @@ void main() {
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
       MessageTemplates.buttonAdminSheetsHub,
+      MessageTemplates.buttonAdminFunnelLogic,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
@@ -147,6 +148,23 @@ void main() {
     );
     expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
     expect(harness.sender.deletedMessages, isEmpty);
+  });
+
+  test('admin funnel-logic button explains the drip in plain language', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminFunnelLogic),
+    );
+    final text = harness.sender.messages.last.text;
+    expect(text, contains('Как устроена воронка'));
+    expect(text, contains('Аккаунты админов'));
+    expect(text, contains('через 1 день'));
+    expect(text, contains('на 1-й и на 3-й день'));
+    expect(text, contains('10:00'));
+    expect(text, contains('12.10.2026'));
+    expect(
+      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminFunnelLogic),
+    );
   });
 
   test('admin can clear funnel people and keep the launch', () async {

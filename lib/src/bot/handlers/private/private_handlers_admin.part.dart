@@ -41,6 +41,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
+    if (text == MessageTemplates.buttonAdminFunnelLogic) {
+      return _send(
+        context,
+        _templates.adminFunnelLogic(launch: _launch),
+        replyMarkup: _templates.adminMenuKeyboard(),
+      );
+    }
     if (text == MessageTemplates.buttonAdminBroadcast) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
       return _presentBroadcastPicker(context, forceNewMessage: true);

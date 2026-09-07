@@ -15,12 +15,14 @@ final class WarmupNudgeJob {
     required MessageSender sender,
     required MessageTemplates templates,
     required QuietHours quietHours,
+    Set<int> skipUserIds = const <int>{},
     DateTime Function()? nowProvider,
   }) : _course = course,
        _warmup = warmup,
        _sender = sender,
        _templates = templates,
        _quietHours = quietHours,
+       _skipUserIds = skipUserIds,
        _nowProvider = nowProvider ?? DateTime.now;
 
   final CourseRepository _course;
@@ -28,6 +30,7 @@ final class WarmupNudgeJob {
   final MessageSender _sender;
   final MessageTemplates _templates;
   final QuietHours _quietHours;
+  final Set<int> _skipUserIds;
   final DateTime Function() _nowProvider;
 
   Future<void> run() async {
@@ -41,7 +44,9 @@ final class WarmupNudgeJob {
     for (final candidate in candidates) {
       try {
         final user = _course.getUser(candidate.userId);
-        if (user == null || candidate.funnelPhase.excludeSellingDrip) {
+        if (user == null ||
+            _skipUserIds.contains(candidate.userId) ||
+            candidate.funnelPhase.excludeSellingDrip) {
           continue;
         }
         final launch = _course.getLaunch(candidate.launchId);

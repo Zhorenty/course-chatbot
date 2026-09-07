@@ -47,6 +47,7 @@ final class MessageTemplates {
   static const String buttonAdminAddUser = '➕ Добавить на курс';
   static const String buttonAdminSheetsHub = '📊 Google Sheets';
   static const String buttonAdminCatalog = '📚 Управление курсами';
+  static const String buttonAdminFunnelLogic = 'ℹ️ Логика воронки';
   static const String buttonAdminBroadcast = '📣 Рассылка';
   static const String buttonAdminLinks = '🔗 Управление диплинками';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
@@ -361,8 +362,8 @@ final class MessageTemplates {
       'warmup_d1' => _warmupDay1(),
       'warmup_d3' => _warmupDay3(launch),
       'warmup_d7' => _warmupDay7(launch),
-      'enroll_d1' => _enrollNudge(launch),
-      'enroll_d3' => _enrollNudge(launch),
+      'enroll_d1' => _enrollDay1(launch),
+      'enroll_d3' => _enrollDay3(launch),
       'warmup_start_d7' => _startNudge(launch),
       'warmup_start_d3' => _startNudge(launch),
       'warmup_start_d1' => _startNudge(launch),
@@ -432,12 +433,20 @@ final class MessageTemplates {
         '«${MessageTemplates.buttonEnroll}» в меню внизу.';
   }
 
-  String _enrollNudge(Launch? launch) {
+  String _enrollDay1(Launch? launch) {
     final start = _formatDate(launch?.courseStartAt);
     final startLine = start == null ? '' : ' Старт потока $start.';
     return '<b>Гайд и запись ещё здесь</b>\n\n'
         'Можно забрать «Язык цвета» или записаться на поток.$startLine '
         'Кнопки в меню внизу.';
+  }
+
+  String _enrollDay3(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null ? 'Поток ещё можно успеть.' : 'Старт потока $start.';
+    return '<b>Гайд всё ещё можно забрать</b>\n\n'
+        '$startLine «Язык цвета» и запись по-прежнему в меню внизу — '
+        'можно открыть, когда будет минута.';
   }
 
   String _startNudge(Launch? launch) {
@@ -639,9 +648,58 @@ final class MessageTemplates {
   String adminMenu() {
     return '<b>Админка</b>\n\n'
         'Поиск и карточка человека, добавить на курс, ручной статус, рассылка сегменту. '
+        'Как бот пишет людям — «${MessageTemplates.buttonAdminFunnelLogic}». '
         'Курсы, диплинки и срез воронки — «${MessageTemplates.buttonAdminSheetsHub}». '
         // TODO(mvp-reset): drop this sentence with the clear-funnel button.
         'Временно: «${MessageTemplates.buttonAdminClearFunnel}» сотрёт людей из бота.';
+  }
+
+  String adminFunnelLogic({Launch? launch}) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start ?? 'дата старта из карточки курса';
+    return '<b>Как устроена воронка</b>\n\n'
+        'Человек заходит в бота → может забрать гайд и/или записаться на поток → '
+        'бот сам напоминает, пока нет оплаты или отписки.\n\n'
+        '<b>Кто не получает прогрев</b>\n'
+        'Аккаунты админов. Карточка может появиться (админ тоже пишет боту), '
+        'но продающие сообщения админу не шлём.\n\n'
+        '<b>Вход</b>\n'
+        'Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. '
+        'Повторный /start уже идущий сценарий не ломает.\n\n'
+        'Две двери:\n'
+        '• ссылка на гайд — экран про «Язык цвета»;\n'
+        '• ссылка на курс — карточка потока.\n'
+        'Дальше гайд и запись всегда в меню внизу.\n\n'
+        '<b>Гайд</b>\n'
+        'Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.\n\n'
+        '<b>Прогрев после гайда</b>\n'
+        '• сразу после выдачи;\n'
+        '• через 1 день;\n'
+        '• через 3 дня;\n'
+        '• через 7 дней.\n\n'
+        '<b>Если гайд не забрали</b>\n'
+        'Два разных напоминания: на 1-й и на 3-й день после первого /start. '
+        'Дальше тишина, пока не подойдёт старт потока.\n\n'
+        '<b>Перед стартом потока</b>\n'
+        'Тем, кто ещё не купил: за 7, 3 и 1 день до старта ($startLine). '
+        'Опоздавших «догонять» старым текстом не будем — только актуальное окно.\n\n'
+        '<b>Запись и оплата</b>\n'
+        '«${MessageTemplates.buttonEnroll}» — пока нет успешной оплаты. Потом в меню «Мой курс».\n'
+        '• полная оплата или списание по рассрочке — ссылка в канал этого потока;\n'
+        '• предоплата — канала нет, пока не доплатят;\n'
+        '• рассрочка считается только после реального списания, не после заявки.\n\n'
+        '<b>Открыли оплату и не закончили</b>\n'
+        'Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.\n\n'
+        '<b>Внесли предоплату</b>\n'
+        'Напоминание за 1–3 дня до срока, в день срока и один раз после просрочки. '
+        'Отписка от рассылки это не глушит.\n\n'
+        '<b>Отписка</b>\n'
+        '«${MessageTemplates.buttonOptOut}» в «${MessageTemplates.buttonHelp}». '
+        'Гайд и запись остаются. Напоминания про начатую оплату и доплату тоже.\n\n'
+        '<b>Ночью не пишем</b>\n'
+        'Автосообщения только с 10:00 до 21:00 по Москве.\n\n'
+        '<b>Канал</b>\n'
+        'Одноразовая ссылка после полной оплаты. Новую выдаёшь только ты из карточки человека.';
   }
 
   String adminAskSearch() {
