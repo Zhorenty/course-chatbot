@@ -100,6 +100,7 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'launches', 'price_promo_kopecks', 'INTEGER NOT NULL DEFAULT 1500000');
     _ensureColumn(db, 'launches', 'webinar_at', 'TEXT');
     _ensureColumn(db, 'launches', 'webinar_url', 'TEXT');
+    _ensureColumn(db, 'launches', 'sales_start_at', 'TEXT');
     _ensureColumn(db, 'launches', 'sales_end_at', 'TEXT');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (

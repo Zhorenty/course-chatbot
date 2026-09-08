@@ -211,6 +211,29 @@ void main() {
     );
   });
 
+  test('warmup job does not start pay drip after enroll before webinar', () async {
+    final extra = HandlerHarness();
+    await extra.init(webinarAt: null);
+    addTearDown(extra.dispose);
+    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    extra.funnel.markEnrollIntent(42, launchId: extra.course.activeLaunch()!.id);
+
+    final job = WarmupNudgeJob(
+      course: extra.course,
+      warmup: WarmupService(
+        course: extra.course,
+        dedupe: JobDedupeRepository(databaseHandle: extra.handle)..initSchema(),
+      ),
+      sender: extra.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 3, 12),
+    );
+    extra.sender.messages.clear();
+    await job.run();
+    expect(extra.sender.messages.where((m) => m.chatId == 42), isEmpty);
+  });
+
   test('warmup job nudges organic leads who never took the guide', () async {
     harness.course.ensureUser(userId: 8, now: DateTime.utc(2026, 1, 1));
     final job = WarmupNudgeJob(
@@ -342,6 +365,94 @@ void main() {
       launch: launch,
     );
     expect(decision?.stepKey, 'webinar_24h');
+  });
+
+  test('enroll intent and waiting leads do not get pay drip before sales start', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    const closed = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+    );
+    final afterEnroll = WarmupCandidate(
+      userId: 1,
+      launchId: closed.id,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      funnelPhase: FunnelPhase.lead,
+      sentKeys: const <String>{},
+      enrollIntentAt: DateTime.utc(2026, 1, 1, 12),
+    );
+    expect(
+      warmup.nextFor(
+        afterEnroll,
+        DateTime.utc(2026, 1, 3, 12),
+        steps: WarmupStep.defaults,
+        launch: closed,
+      ),
+      isNull,
+    );
+    final waitingLead = WarmupCandidate(
+      userId: 2,
+      launchId: closed.id,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      funnelPhase: FunnelPhase.lead,
+      sentKeys: const <String>{},
+    );
+    expect(
+      warmup.nextFor(
+        waitingLead,
+        DateTime.utc(2026, 1, 2, 12),
+        steps: WarmupStep.defaults,
+        launch: closed,
+      ),
+      isNull,
+    );
+    final open = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      salesStartAt: DateTime.utc(2026, 1, 2),
+    );
+    expect(
+      warmup
+          .nextFor(
+            waitingLead,
+            DateTime.utc(2026, 1, 3, 12),
+            steps: WarmupStep.defaults,
+            launch: open,
+          )
+          ?.stepKey,
+      'enroll_d1',
+    );
+    final afterGuide = WarmupCandidate(
+      userId: 3,
+      launchId: closed.id,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: const <String>{'warmup_0'},
+      enrollIntentAt: DateTime.utc(2026, 1, 1, 12),
+    );
+    expect(
+      warmup.nextFor(
+        afterGuide,
+        DateTime.utc(2026, 1, 10, 12),
+        steps: WarmupStep.defaults,
+        launch: closed,
+      ),
+      isNull,
+    );
   });
 
   test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {

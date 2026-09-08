@@ -1,11 +1,12 @@
 import 'package:course_chatbot/src/domain/money.dart';
+import 'package:course_chatbot/src/domain/moscow_time.dart';
 
 /// Human-editable catalog on spreadsheet `gid=0`. Admin writes rows from the bot
 /// or by hand; ВОРОНКА must not live here.
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 16;
+  static const int columnCount = 15;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -23,6 +24,7 @@ abstract final class CoursesSheet {
   static const String courseStartDate = 'course_start_date';
   static const String webinarAt = 'webinar_at';
   static const String webinarUrl = 'webinar_url';
+  static const String salesStartAt = 'sales_start_at';
   static const String salesEndDate = 'sales_end_date';
   static const String channelId = 'channel_id';
   static const String offerUrl = 'offer_url';
@@ -34,7 +36,9 @@ abstract final class CoursesSheet {
   static const String titleAside = 'Админ в боте или руками';
   static const String hint =
       'Поставь «да» в одной строке — это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
+      'Старт продаж — когда открывается касса и продающий прогрев. Пусто — как дата эфира. '
       'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
+      'Доплата после предоплаты — за неделю до старта курса. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
       'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
@@ -47,13 +51,12 @@ abstract final class CoursesSheet {
     priceFullRub,
     pricePromoRub,
     depositRub,
-    depositDueDate,
     courseStartDate,
     webinarAt,
     webinarUrl,
+    salesStartAt,
     salesEndDate,
     channelId,
-    leadMagnetFileId,
     status,
   ];
 
@@ -66,13 +69,12 @@ abstract final class CoursesSheet {
     'Цена, ₽',
     'Спеццена, ₽',
     'Предоплата, ₽',
-    'Доплата до',
     'Старт курса',
     'Эфир',
     'Ссылка на эфир',
+    'Старт продаж',
     'Конец продаж',
     'ID канала',
-    'Файл гайда',
     'статус',
   ];
 
@@ -85,16 +87,15 @@ abstract final class CoursesSheet {
     'Обычная цена в рублях. Пиши число: 19000 или 19 000. Для тех, кто не отмечался на эфир.',
     'Спеццена эфира в рублях. 15000. Для тех, кто нажал «Буду на эфире». Действует 3 дня с даты эфира. '
         'Пусто — подставим 15000.',
-    'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты.',
-    'Дата. Выбери в календаре. Формат 19.08.2026. Нужна, только если есть предоплата. '
-        'Если предоплаты нет — оставь пустым.',
+    'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты. '
+        'Срок доплаты бот ставит сам: за неделю до старта курса.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
-    'Дата и время эфира по Москве. Формат 05.10.2026 19:00. Без времени возьмём 19:00. '
-        'Пока пусто — продажи закрыты, в боте описание курса и «ждём старт продаж».',
+    'Дата и время эфира по Москве. Формат 05.10.2026 19:00. Без времени возьмём 19:00.',
     'Ссылка на эфир. Бот пришлёт её отметившимся в день эфира. Можно дописать позже.',
+    'Когда открывается касса и продающий прогрев. Дата и время по Москве, как 05.10.2026 19:00. '
+        'Пусто — как дата эфира. Без эфира и без этой даты продажи закрыты.',
     'Последний день продаж, как 11.10.2026. Пусто — продажи не закрываем по календарю.',
     'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
-    'Не заполняй. Бот сам запомнит файл гайда. Сюда пишет только тот, кто меняет гайд в Telegram.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
   ];
 
@@ -105,7 +106,6 @@ abstract final class CoursesSheet {
   static const int seedPriceFullRub = 19000;
   static const int seedPricePromoRub = 15000;
   static const int seedDepositRub = 5000;
-  static const String seedDepositDueDate = '05.10.2026';
   static const String seedCourseStartDate = '12.10.2026';
 
   static List<List<Object?>> seedRows() {
@@ -143,7 +143,6 @@ abstract final class CoursesSheet {
       seedPriceFullRub,
       seedPricePromoRub,
       seedDepositRub,
-      seedDepositDueDate,
       seedCourseStartDate,
       '',
       '',
@@ -177,17 +176,14 @@ abstract final class CoursesSheet {
 
     final statusIndex = headers.indexOf(status);
     final dataRange = '${columnLetter(0)}$row:${columnLetter(statusIndex - 1)}$row';
-    final dueOk = 'OR(${cell(depositRub)}=""$formulaSep ${cell(depositDueDate)}<>"")';
     final allRequired = <String>[
       '${cell(launchCode)}<>""',
       '${cell(priceFullRub)}<>""',
       '${cell(courseStartDate)}<>""',
-      dueOk,
     ].join('$formulaSep ');
     final missing = <String>[
       'IF(${cell(launchCode)}="";"нет кода запуска";"")',
       'IF(${cell(priceFullRub)}="";"нет цены";"")',
-      'IF(AND(${cell(depositRub)}<>""$formulaSep ${cell(depositDueDate)}="");"нет даты доплаты";"")',
       'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
     ].join('$formulaSep ');
     return '=IF(SUMPRODUCT(LEN($dataRange))=0;"";IF(AND($allRequired);"готово";'
@@ -242,13 +238,12 @@ abstract final class CoursesSheet {
       priceCell(draft.priceFullKopecks),
       draft.pricePromoKopecks > 0 ? priceCell(draft.pricePromoKopecks) : '',
       draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : '',
-      draft.depositDueAt == null ? '' : formatDottedDate(draft.depositDueAt!),
       draft.courseStartAt == null ? '' : formatDottedDate(draft.courseStartAt!),
       draft.webinarAt == null ? '' : formatDottedDateTime(draft.webinarAt!),
       draft.webinarUrl ?? '',
+      draft.salesStartAt == null ? '' : formatDottedDateTime(draft.salesStartAt!),
       draft.salesEndAt == null ? '' : formatDottedDate(draft.salesEndAt!),
       draft.channelId ?? '',
-      draft.leadMagnetFileId ?? '',
       statusFormula(row: rowNumber),
     ]);
   }
@@ -309,6 +304,7 @@ final class CatalogLaunchDraft {
     this.courseStartAt,
     this.webinarAt,
     this.webinarUrl,
+    this.salesStartAt,
     this.salesEndAt,
     this.channelId,
     this.offerUrl,
@@ -329,6 +325,7 @@ final class CatalogLaunchDraft {
   final DateTime? courseStartAt;
   final DateTime? webinarAt;
   final String? webinarUrl;
+  final DateTime? salesStartAt;
   final DateTime? salesEndAt;
   final int? channelId;
   final String? offerUrl;
@@ -355,6 +352,7 @@ final class CatalogLaunchDraft {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: webinarUrl,
+      salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: this.channelId ?? channelId,
       offerUrl: this.offerUrl ?? offerUrl,
@@ -377,6 +375,7 @@ final class CatalogLaunchDraft {
     Object? courseStartAt = _catalogDraftUnset,
     Object? webinarAt = _catalogDraftUnset,
     Object? webinarUrl = _catalogDraftUnset,
+    Object? salesStartAt = _catalogDraftUnset,
     Object? salesEndAt = _catalogDraftUnset,
     Object? channelId = _catalogDraftUnset,
     Object? offerUrl = _catalogDraftUnset,
@@ -403,6 +402,9 @@ final class CatalogLaunchDraft {
       webinarUrl: identical(webinarUrl, _catalogDraftUnset)
           ? this.webinarUrl
           : webinarUrl as String?,
+      salesStartAt: identical(salesStartAt, _catalogDraftUnset)
+          ? this.salesStartAt
+          : salesStartAt as DateTime?,
       salesEndAt: identical(salesEndAt, _catalogDraftUnset)
           ? this.salesEndAt
           : salesEndAt as DateTime?,
@@ -485,6 +487,9 @@ abstract final class CoursesSheetParser {
     CoursesSheet.webinarUrl: CoursesSheet.webinarUrl,
     'ссылка на эфир': CoursesSheet.webinarUrl,
     'ссылка эфира': CoursesSheet.webinarUrl,
+    CoursesSheet.salesStartAt: CoursesSheet.salesStartAt,
+    'старт продаж': CoursesSheet.salesStartAt,
+    'начало продаж': CoursesSheet.salesStartAt,
     CoursesSheet.salesEndDate: CoursesSheet.salesEndDate,
     'конец продаж': CoursesSheet.salesEndDate,
     'последний день продаж': CoursesSheet.salesEndDate,
@@ -790,16 +795,8 @@ abstract final class CoursesSheetParser {
     if (priceKopecks == null || priceKopecks <= 0) {
       return null;
     }
-    final depositDueRaw = _cell(raw, headerIndex, CoursesSheet.depositDueDate);
     final startRaw = _cell(raw, headerIndex, CoursesSheet.courseStartDate);
-    DateTime? depositDueAt;
     DateTime? courseStartAt;
-    if (depositDueRaw != null && depositDueRaw.isNotEmpty) {
-      depositDueAt = _parseIsoDateEndOfDay(depositDueRaw, timezoneOffsetHours: timezoneOffsetHours);
-      if (depositDueAt == null) {
-        return null;
-      }
-    }
     if (startRaw != null && startRaw.isNotEmpty) {
       courseStartAt = _parseIsoDate(startRaw);
       if (courseStartAt == null) {
@@ -811,6 +808,14 @@ abstract final class CoursesSheetParser {
     if (webinarRaw != null && webinarRaw.isNotEmpty) {
       webinarAt = _parseDateTime(webinarRaw, timezoneOffsetHours: timezoneOffsetHours);
       if (webinarAt == null) {
+        return null;
+      }
+    }
+    final salesStartRaw = _cell(raw, headerIndex, CoursesSheet.salesStartAt);
+    DateTime? salesStartAt;
+    if (salesStartRaw != null && salesStartRaw.isNotEmpty) {
+      salesStartAt = _parseDateTime(salesStartRaw, timezoneOffsetHours: timezoneOffsetHours);
+      if (salesStartAt == null) {
         return null;
       }
     }
@@ -827,9 +832,9 @@ abstract final class CoursesSheetParser {
     if (depositKopecks < 0) {
       return null;
     }
-    if (depositKopecks > 0 && depositDueAt == null) {
-      return null;
-    }
+    final depositDueAt = depositKopecks > 0
+        ? MoscowTime.daysBeforeCourseStart(courseStartAt, days: CoursesSheet.defaultDepositDueDays)
+        : null;
     final channelRaw = _cell(raw, headerIndex, CoursesSheet.channelId);
     int? channelId;
     if (channelRaw != null && channelRaw.isNotEmpty && !isOmittedChannelId(channelRaw)) {
@@ -854,6 +859,7 @@ abstract final class CoursesSheetParser {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: _cell(raw, headerIndex, CoursesSheet.webinarUrl),
+      salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
       offerUrl: _cell(raw, headerIndex, CoursesSheet.offerUrl),

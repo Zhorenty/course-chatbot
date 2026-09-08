@@ -33,7 +33,7 @@ final class WarmupService {
       if (quiet && !step.ignoreQuietHours) {
         continue;
       }
-      if (!_inAudience(step: step, candidate: candidate)) {
+      if (!_inAudience(step: step, candidate: candidate, launch: launch, now: now)) {
         continue;
       }
       final due = switch (step.anchor) {
@@ -77,7 +77,12 @@ final class WarmupService {
     return null;
   }
 
-  bool _inAudience({required WarmupStep step, required WarmupCandidate candidate}) {
+  bool _inAudience({
+    required WarmupStep step,
+    required WarmupCandidate candidate,
+    required Launch? launch,
+    required DateTime now,
+  }) {
     final waitingLead =
         candidate.funnelPhase == FunnelPhase.lead && candidate.magnetIssuedAt == null;
     final afterGuide =
@@ -85,6 +90,24 @@ final class WarmupService {
         candidate.funnelPhase == FunnelPhase.warming;
     if (step.rsvpOnly && !candidate.webinarRsvp) {
       return false;
+    }
+    // Selling drip only while this person can actually pay.
+    if (step.anchor == WarmupAnchor.firstStart && candidate.enrollIntentAt != null) {
+      return false;
+    }
+    final selling =
+        step.anchor == WarmupAnchor.firstStart ||
+        step.anchor == WarmupAnchor.webinarFollowup ||
+        step.anchor == WarmupAnchor.regularSales ||
+        step.anchor == WarmupAnchor.salesEnd;
+    if (selling) {
+      if (launch == null) {
+        return false;
+      }
+      final quote = LaunchSales.quote(launch, rsvp: candidate.webinarRsvp, now: now);
+      if (!quote.checkoutOpen) {
+        return false;
+      }
     }
     return switch (step.anchor) {
       WarmupAnchor.magnet || WarmupAnchor.webinar || WarmupAnchor.webinarFollowup => afterGuide,

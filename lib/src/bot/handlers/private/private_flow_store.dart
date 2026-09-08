@@ -20,10 +20,10 @@ enum PrivateFlowStep {
   adminCatalogCreatePrice,
   adminCatalogCreatePromo,
   adminCatalogCreateDeposit,
-  adminCatalogCreateDepositDue,
   adminCatalogCreateStart,
   adminCatalogCreateWebinar,
   adminCatalogCreateWebinarUrl,
+  adminCatalogCreateSalesStart,
   adminCatalogCreateSalesEnd,
   adminCatalogCreateChannel,
   adminCatalogCreateActive,
@@ -46,10 +46,10 @@ final class CatalogWizardDraft {
     this.priceKopecks,
     this.pricePromoKopecks,
     this.depositKopecks,
-    this.depositDueAt,
     this.courseStartAt,
     this.webinarAt,
     this.webinarUrl,
+    this.salesStartAt,
     this.salesEndAt,
     this.channelId,
     this.channelSkipped = false,
@@ -63,10 +63,10 @@ final class CatalogWizardDraft {
   final int? priceKopecks;
   final int? pricePromoKopecks;
   final int? depositKopecks;
-  final DateTime? depositDueAt;
   final DateTime? courseStartAt;
   final DateTime? webinarAt;
   final String? webinarUrl;
+  final DateTime? salesStartAt;
   final DateTime? salesEndAt;
   final int? channelId;
   final bool channelSkipped;
@@ -80,10 +80,10 @@ final class CatalogWizardDraft {
     Object? priceKopecks = _unset,
     Object? pricePromoKopecks = _unset,
     Object? depositKopecks = _unset,
-    Object? depositDueAt = _unset,
     Object? courseStartAt = _unset,
     Object? webinarAt = _unset,
     Object? webinarUrl = _unset,
+    Object? salesStartAt = _unset,
     Object? salesEndAt = _unset,
     Object? channelId = _unset,
     bool? channelSkipped,
@@ -101,12 +101,12 @@ final class CatalogWizardDraft {
       depositKopecks: identical(depositKopecks, _unset)
           ? this.depositKopecks
           : depositKopecks as int?,
-      depositDueAt: identical(depositDueAt, _unset) ? this.depositDueAt : depositDueAt as DateTime?,
       courseStartAt: identical(courseStartAt, _unset)
           ? this.courseStartAt
           : courseStartAt as DateTime?,
       webinarAt: identical(webinarAt, _unset) ? this.webinarAt : webinarAt as DateTime?,
       webinarUrl: identical(webinarUrl, _unset) ? this.webinarUrl : webinarUrl as String?,
+      salesStartAt: identical(salesStartAt, _unset) ? this.salesStartAt : salesStartAt as DateTime?,
       salesEndAt: identical(salesEndAt, _unset) ? this.salesEndAt : salesEndAt as DateTime?,
       channelId: identical(channelId, _unset) ? this.channelId : channelId as int?,
       channelSkipped: channelSkipped ?? this.channelSkipped,

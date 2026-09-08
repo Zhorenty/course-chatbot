@@ -159,7 +159,6 @@ abstract final class GoogleSheetsCoursesCatalog {
       );
     }
     final dateColumns = <int>[
-      CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate),
       CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
       CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
     ];
@@ -183,6 +182,16 @@ abstract final class GoogleSheetsCoursesCatalog {
         endRowExclusive: dataEnd,
         startColumn: webinarColumn,
         endColumnExclusive: webinarColumn + 1,
+        horizontalAlignment: 'CENTER',
+      ),
+    );
+    final salesStartColumn = CoursesSheet.headers.indexOf(CoursesSheet.salesStartAt);
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: dataStart,
+        endRowExclusive: dataEnd,
+        startColumn: salesStartColumn,
+        endColumnExclusive: salesStartColumn + 1,
         horizontalAlignment: 'CENTER',
       ),
     );
@@ -223,12 +232,11 @@ abstract final class GoogleSheetsCoursesCatalog {
         120,
         130,
         120,
-        120,
         150,
         160,
+        150,
         130,
         140,
-        170,
         280,
       ],
       frozenRowCount: headerRow + 1,

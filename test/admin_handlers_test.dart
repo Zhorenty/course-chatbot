@@ -1137,8 +1137,6 @@ void main() {
     expect(sheets.course.launchByCode('nov-26')?.leadMagnetFileId, 'nov-guide');
     expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'file-guide');
     expect(sheets.sender.messages.last.text, contains('гайд: есть'));
-    final row = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'nov-26')!;
-    expect(row[CoursesSheet.headers.indexOf(CoursesSheet.leadMagnetFileId)], 'nov-guide');
   });
 
   test('admin catalog card accepts a document as the new guide', () async {
@@ -1163,8 +1161,6 @@ void main() {
       privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'replaced-guide'),
     );
     expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'replaced-guide');
-    final row = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'launch-1')!;
-    expect(row[CoursesSheet.headers.indexOf(CoursesSheet.leadMagnetFileId)], 'replaced-guide');
   });
 
   test('admin catalog activate clears the previous is_active flag', () async {
@@ -1274,7 +1270,7 @@ void main() {
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
     addTearDown(sheets.dispose);
     sheets.sheetsGateway!.valuesBySheetId[0]!.add(
-      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: '', due: ''),
+      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: ''),
     );
     expect(sheets.course.launchByCode('hand-26'), isNull);
 
@@ -1391,7 +1387,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     sheets.sheetsGateway!.valuesBySheetId[0]!.add(
-      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: '', due: ''),
+      _coursesDataRow(code: 'hand-26', title: 'Руками', deposit: ''),
     );
     await _runCatalogCreateWizard(
       sheets,
@@ -1613,6 +1609,7 @@ Future<void> _runCatalogCreateWizardToChannel(
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
 }
 
 Future<void> _runCatalogCreateWizard(
@@ -1652,14 +1649,12 @@ List<Object?> _coursesDataRow({
   required String title,
   String isActive = '',
   Object? deposit = 0,
-  Object? due = '',
 }) {
   return List<Object?>.from(CoursesSheet.seedDataRow())
     ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = code
     ..[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)] = title
     ..[CoursesSheet.headers.indexOf(CoursesSheet.isActive)] = isActive
-    ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = deposit
-    ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = due;
+    ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = deposit;
 }
 
 List<Object?>? _coursesRowByCode(List<List<Object?>> sheet, String code) {

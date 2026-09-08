@@ -80,13 +80,6 @@ final class LaunchCatalogAdminService {
     return null;
   }
 
-  static CatalogFieldError? validateDueDate(String raw) {
-    if (CoursesSheetParser.parseDate(raw) == null) {
-      return CatalogFieldError.badDate;
-    }
-    return null;
-  }
-
   static CatalogFieldError? validateStartDate(String raw) {
     if (CoursesSheetParser.parseDate(raw) == null) {
       return CatalogFieldError.badDate;
@@ -120,6 +113,7 @@ final class LaunchCatalogAdminService {
       courseStartAt: launch.courseStartAt,
       webinarAt: launch.webinarAt,
       webinarUrl: launch.webinarUrl,
+      salesStartAt: launch.salesStartAt,
       salesEndAt: launch.salesEndAt,
       channelId: launch.channelId,
       offerUrl: launch.offerUrl,
@@ -249,9 +243,6 @@ final class LaunchCatalogAdminService {
     }
     if (draft.depositKopecks < 0 || draft.depositKopecks >= draft.priceFullKopecks) {
       return CatalogFieldError.badDeposit;
-    }
-    if (draft.depositKopecks > 0 && draft.depositDueAt == null) {
-      return CatalogFieldError.needDueDate;
     }
     if (draft.courseStartAt == null) {
       return CatalogFieldError.badDate;

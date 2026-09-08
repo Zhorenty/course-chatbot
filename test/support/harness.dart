@@ -20,6 +20,8 @@ import 'package:sqlite3/sqlite3.dart';
 
 import 'fakes.dart';
 
+const Object _unsetWebinar = Object();
+
 final class HandlerHarness {
   HandlerHarness() {
     db = sqlite3.openInMemory();
@@ -51,7 +53,7 @@ final class HandlerHarness {
     int depositKopecks = 500000,
     DateTime? depositDueAt,
     DateTime? courseStartAt,
-    DateTime? webinarAt,
+    Object? webinarAt = _unsetWebinar,
     String? leadMagnetFileId = 'file-guide',
     String? leadMagnetPath,
     bool enableSheets = false,
@@ -72,7 +74,9 @@ final class HandlerHarness {
       depositDueDays: 7,
       depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
       courseStartAt: courseStartAt ?? DateTime.utc(2026, 10, 12),
-      webinarAt: webinarAt ?? DateTime.utc(2020, 1, 1, 16),
+      webinarAt: identical(webinarAt, _unsetWebinar)
+          ? DateTime.utc(2020, 1, 1, 16)
+          : webinarAt as DateTime?,
       channelId: channelId,
       leadMagnetFileId: leadMagnetFileId,
     );

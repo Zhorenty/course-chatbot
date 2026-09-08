@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/domain/moscow_time.dart';
+
 abstract final class LaunchPrices {
   static const int promoKopecks = 1500000;
   static const int fullKopecks = 1900000;
@@ -25,6 +27,7 @@ final class Launch {
     this.courseStartAt,
     this.webinarAt,
     this.webinarUrl,
+    this.salesStartAt,
     this.salesEndAt,
     this.channelId,
     this.offerUrl,
@@ -46,6 +49,7 @@ final class Launch {
   final DateTime? courseStartAt;
   final DateTime? webinarAt;
   final String? webinarUrl;
+  final DateTime? salesStartAt;
   final DateTime? salesEndAt;
   final String? offerUrl;
   final String? leadMagnetFileId;
@@ -63,7 +67,10 @@ final class Launch {
   bool hasDepositOptionFor(int payableKopecks) =>
       depositKopecks > 0 && depositKopecks < payableKopecks;
 
+  DateTime? get impliedDepositDueAt =>
+      MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays);
+
   DateTime resolveDepositDueAt(DateTime now) {
-    return depositDueAt ?? now.add(Duration(days: depositDueDays));
+    return impliedDepositDueAt ?? depositDueAt ?? now.add(Duration(days: depositDueDays));
   }
 }

@@ -19,6 +19,7 @@ final class LaunchSales {
       priceFullKopecks: launch.resolvedPriceFullKopecks,
       pricePromoKopecks: launch.resolvedPricePromoKopecks,
       webinarAt: launch.webinarAt,
+      salesStartAt: launch.salesStartAt,
       promoEndsAt: promoEndsAt(launch),
       regularSalesAt: regularSalesAt(launch),
       salesEndAt: launch.salesEndAt,
@@ -26,22 +27,30 @@ final class LaunchSales {
     );
   }
 
+  /// First moment checkout can open: explicit sales start, else the webinar.
+  static DateTime? salesOpenAt(Launch launch) {
+    return launch.salesStartAt?.toUtc() ?? launch.webinarAt?.toUtc();
+  }
+
   static SalesPhase phaseOf(Launch launch, DateTime now) {
-    final webinar = launch.webinarAt?.toUtc();
-    if (webinar == null) {
+    final open = salesOpenAt(launch);
+    if (open == null) {
       return SalesPhase.preSales;
     }
     final nowUtc = now.toUtc();
-    if (nowUtc.isBefore(webinar)) {
+    if (nowUtc.isBefore(open)) {
       return SalesPhase.preSales;
     }
     final end = launch.salesEndAt?.toUtc();
     if (end != null && !nowUtc.isBefore(end)) {
       return SalesPhase.closed;
     }
-    final promoEnd = webinar.add(promoDuration);
-    if (nowUtc.isBefore(promoEnd)) {
-      return SalesPhase.promo;
+    final webinar = launch.webinarAt?.toUtc();
+    if (webinar != null) {
+      final promoEnd = webinar.add(promoDuration);
+      if (!nowUtc.isBefore(webinar) && nowUtc.isBefore(promoEnd)) {
+        return SalesPhase.promo;
+      }
     }
     return SalesPhase.regular;
   }
@@ -51,7 +60,17 @@ final class LaunchSales {
     return webinar?.add(promoDuration);
   }
 
-  static DateTime? regularSalesAt(Launch launch) => promoEndsAt(launch);
+  static DateTime? regularSalesAt(Launch launch) {
+    final open = salesOpenAt(launch);
+    final promoEnd = promoEndsAt(launch);
+    if (open == null) {
+      return null;
+    }
+    if (promoEnd == null || open.isAfter(promoEnd)) {
+      return open;
+    }
+    return promoEnd;
+  }
 
   static bool rsvpOpen(Launch launch, DateTime now) {
     final webinar = launch.webinarAt?.toUtc();
@@ -69,6 +88,7 @@ final class SalesQuote {
     required this.priceFullKopecks,
     required this.pricePromoKopecks,
     this.webinarAt,
+    this.salesStartAt,
     this.promoEndsAt,
     this.regularSalesAt,
     this.salesEndAt,
@@ -80,6 +100,7 @@ final class SalesQuote {
   final int priceFullKopecks;
   final int pricePromoKopecks;
   final DateTime? webinarAt;
+  final DateTime? salesStartAt;
   final DateTime? promoEndsAt;
   final DateTime? regularSalesAt;
   final DateTime? salesEndAt;

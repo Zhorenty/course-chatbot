@@ -110,14 +110,14 @@ void main() {
     expect(look.hideGridlines, isTrue);
     expect(look.frozenRowCount, 4);
     expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
-    expect(look.columnWidthsPx, hasLength(16));
-    expect(look.columnCount, 16);
-    expect(look.notes, hasLength(16));
+    expect(look.columnWidthsPx, hasLength(15));
+    expect(look.columnCount, 15);
+    expect(look.notes, hasLength(15));
     expect(look.notes[8].text, contains('Выбери в календаре'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
     expect(look.validations.first.clear, isTrue);
-    expect(look.validations.first.endColumnExclusive, 16);
+    expect(look.validations.first.endColumnExclusive, 15);
     final depositCol = CoursesSheet.headers.indexOf(CoursesSheet.depositRub);
     expect(
       look.validations.where((rule) => !rule.clear).every((rule) => rule.startColumn != depositCol),
@@ -126,7 +126,6 @@ void main() {
     expect(
       look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
       containsAll(<int>[
-        CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate),
         CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
         CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
       ]),
@@ -291,6 +290,7 @@ void main() {
     expect(data, contains(MessageTemplates.cbCatalogNew));
     expect(data, contains('${MessageTemplates.cbCatalogOpen}12'));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.price)));
+    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.salesStart)));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide)));
     expect(data, contains(MessageTemplates.cbCatalogKeepCode));
     expect(data, contains(MessageTemplates.cbCatalogSkipChannel));

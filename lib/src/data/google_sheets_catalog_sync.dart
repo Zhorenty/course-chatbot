@@ -410,7 +410,7 @@ final class GoogleSheetsCatalogSync {
       productCode: _blankToNull(cell(CoursesSheet.productCode)) ?? draft.productCode,
       productTitle: _blankToNull(cell(CoursesSheet.productTitle)) ?? draft.productTitle,
       offerUrl: draft.offerUrl ?? cell(CoursesSheet.offerUrl),
-      leadMagnetFileId: draft.leadMagnetFileId ?? cell(CoursesSheet.leadMagnetFileId),
+      leadMagnetFileId: draft.leadMagnetFileId,
       leadMagnetUrl: draft.leadMagnetUrl ?? cell(CoursesSheet.leadMagnetUrl),
     );
   }
@@ -483,6 +483,9 @@ final class GoogleSheetsCatalogSync {
     final quoted = quoteA1SheetTitle(title);
     var rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
     var parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
+    final legacyFileIds = <String, String?>{
+      for (final row in parsed.rows) row.launchCode: row.leadMagnetFileId,
+    };
     var seeded = false;
     if (_needsSeed(parsed)) {
       await _gateway
@@ -558,10 +561,11 @@ final class GoogleSheetsCatalogSync {
         courseStartAt: applied.courseStartAt,
         webinarAt: applied.webinarAt,
         webinarUrl: applied.webinarUrl,
+        salesStartAt: applied.salesStartAt,
         salesEndAt: applied.salesEndAt,
         channelId: applied.channelId,
         offerUrl: applied.offerUrl,
-        leadMagnetFileId: applied.leadMagnetFileId,
+        leadMagnetFileId: applied.leadMagnetFileId ?? legacyFileIds[applied.launchCode],
         leadMagnetUrl: applied.leadMagnetUrl,
       );
     }

@@ -16,4 +16,18 @@ abstract final class MoscowTime {
   static DateTime dayStartUtc(DateTime now) {
     return calendarDate(now).subtract(const Duration(hours: offsetHours));
   }
+
+  /// End of the Moscow calendar day [days] before [courseStartAt] (23:59:59 MSK).
+  static DateTime? daysBeforeCourseStart(DateTime? courseStartAt, {int days = 7}) {
+    if (courseStartAt == null) {
+      return null;
+    }
+    final moscow = toMoscow(courseStartAt);
+    final dueDay = DateTime.utc(
+      moscow.year,
+      moscow.month,
+      moscow.day,
+    ).subtract(Duration(days: days));
+    return DateTime.utc(dueDay.year, dueDay.month, dueDay.day, 20, 59, 59);
+  }
 }

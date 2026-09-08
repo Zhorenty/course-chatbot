@@ -199,6 +199,7 @@ class _SqliteCourseStore {
       courseStartAt: parseTime(row['course_start_at'] as String?),
       webinarAt: parseTime(row['webinar_at'] as String?),
       webinarUrl: row['webinar_url'] as String?,
+      salesStartAt: parseTime(row['sales_start_at'] as String?),
       salesEndAt: parseTime(row['sales_end_at'] as String?),
       offerUrl: row['offer_url'] as String?,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,

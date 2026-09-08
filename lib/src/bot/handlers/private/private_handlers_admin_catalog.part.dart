@@ -8,10 +8,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogCreatePrice ||
         step == PrivateFlowStep.adminCatalogCreatePromo ||
         step == PrivateFlowStep.adminCatalogCreateDeposit ||
-        step == PrivateFlowStep.adminCatalogCreateDepositDue ||
         step == PrivateFlowStep.adminCatalogCreateStart ||
         step == PrivateFlowStep.adminCatalogCreateWebinar ||
         step == PrivateFlowStep.adminCatalogCreateWebinarUrl ||
+        step == PrivateFlowStep.adminCatalogCreateSalesStart ||
         step == PrivateFlowStep.adminCatalogCreateSalesEnd ||
         step == PrivateFlowStep.adminCatalogCreateChannel ||
         step == PrivateFlowStep.adminCatalogCreateActive ||
@@ -181,38 +181,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           );
         }
         final deposit = text.isEmpty ? 0 : (CoursesSheetParser.parsePriceKopecks(text) ?? 0);
-        final next = draft.copyWith(depositKopecks: deposit, depositDueAt: null);
-        if (deposit > 0) {
-          _setCatalogFlow(
-            context.userId!,
-            PrivateFlowStep.adminCatalogCreateDepositDue,
-            catalogDraft: next,
-          );
-          return _presentCatalog(context, _templates.adminCatalogAskDepositDue());
-        }
         _setCatalogFlow(
           context.userId!,
           PrivateFlowStep.adminCatalogCreateStart,
-          catalogDraft: next,
-        );
-        return _presentCatalog(context, _templates.adminCatalogAskStart());
-      case PrivateFlowStep.adminCatalogCreateDepositDue:
-        final error = LaunchCatalogAdminService.validateDueDate(text);
-        if (error != null) {
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskDepositDue()),
-          );
-        }
-        _setCatalogFlow(
-          context.userId!,
-          PrivateFlowStep.adminCatalogCreateStart,
-          catalogDraft: draft.copyWith(
-            depositDueAt: CoursesSheetParser.parseDateEndOfDay(
-              text,
-              timezoneOffsetHours: CoursesSheet.defaultTimezoneOffsetHours,
-            ),
-          ),
+          catalogDraft: draft.copyWith(depositKopecks: deposit),
         );
         return _presentCatalog(context, _templates.adminCatalogAskStart());
       case PrivateFlowStep.adminCatalogCreateStart:
@@ -258,8 +230,33 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         final skippedUrl = text.isEmpty || CoursesSheetParser.isOmittedChannelId(text);
         _setCatalogFlow(
           context.userId!,
-          PrivateFlowStep.adminCatalogCreateSalesEnd,
+          PrivateFlowStep.adminCatalogCreateSalesStart,
           catalogDraft: draft.copyWith(webinarUrl: skippedUrl ? null : text),
+        );
+        return _presentCatalog(context, _templates.adminCatalogAskSalesStart());
+      case PrivateFlowStep.adminCatalogCreateSalesStart:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          _setCatalogFlow(
+            context.userId!,
+            PrivateFlowStep.adminCatalogCreateSalesEnd,
+            catalogDraft: draft.copyWith(salesStartAt: null),
+          );
+          return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
+        }
+        final salesStart = CoursesSheetParser.parseDateTime(text);
+        if (salesStart == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskSalesStart(),
+            ),
+          );
+        }
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateSalesEnd,
+          catalogDraft: draft.copyWith(salesStartAt: salesStart),
         );
         return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
       case PrivateFlowStep.adminCatalogCreateSalesEnd:
@@ -528,31 +525,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         final deposit = text.isEmpty ? 0 : (CoursesSheetParser.parsePriceKopecks(text) ?? 0);
         overlay = overlay.copyWith(
           depositKopecks: deposit,
-          depositDueAt: deposit > 0 ? overlay.depositDueAt : null,
+          depositDueAt: deposit > 0
+              ? MoscowTime.daysBeforeCourseStart(overlay.courseStartAt)
+              : null,
         );
-        if (deposit > 0 && overlay.depositDueAt == null) {
-          _setCatalogFlow(
-            context.userId!,
-            PrivateFlowStep.adminCatalogEditValue,
-            catalogDraft: CatalogWizardDraft(
-              editLaunchId: launchId,
-              editField: CatalogLaunchField.depositDue,
-            ),
-          );
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskField(CatalogLaunchField.depositDue),
-          );
-        }
-      case CatalogLaunchField.depositDue:
-        final error = LaunchCatalogAdminService.validateDueDate(text);
-        if (error != null) {
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
-          );
-        }
-        overlay = overlay.copyWith(depositDueAt: CoursesSheetParser.parseDateEndOfDay(text));
       case CatalogLaunchField.start:
         final error = LaunchCatalogAdminService.validateStartDate(text);
         if (error != null) {
@@ -561,7 +537,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
           );
         }
-        overlay = overlay.copyWith(courseStartAt: CoursesSheetParser.parseDate(text));
+        overlay = overlay.copyWith(
+          courseStartAt: CoursesSheetParser.parseDate(text),
+          depositDueAt: overlay.depositKopecks > 0
+              ? MoscowTime.daysBeforeCourseStart(CoursesSheetParser.parseDate(text))
+              : null,
+        );
       case CatalogLaunchField.promo:
         if (text.isEmpty) {
           overlay = overlay.copyWith(pricePromoKopecks: LaunchPrices.promoKopecks);
@@ -593,6 +574,22 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         }
       case CatalogLaunchField.webinarUrl:
         overlay = overlay.copyWith(webinarUrl: text.isEmpty ? null : text);
+      case CatalogLaunchField.salesStart:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          overlay = overlay.copyWith(salesStartAt: null);
+        } else {
+          final parsed = CoursesSheetParser.parseDateTime(text);
+          if (parsed == null) {
+            return _presentCatalog(
+              context,
+              _templates.adminCatalogAskWithError(
+                CatalogFieldError.badDate,
+                _templates.adminCatalogAskField(field),
+              ),
+            );
+          }
+          overlay = overlay.copyWith(salesStartAt: parsed);
+        }
       case CatalogLaunchField.salesEnd:
         if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
           overlay = overlay.copyWith(salesEndAt: null);
@@ -649,14 +646,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (admin == null || launch == null) {
       return _showCatalogList(context);
     }
-    return _runCatalogWrite(
-      context,
-      () => admin.update(
-        currentCode: launch.code,
-        draft: admin.draftFromLaunch(launch).copyWith(leadMagnetFileId: fileId),
-      ),
-      thenCardId: launchId,
-    );
+    _course.setLeadMagnetFileId(fileId, launchId: launchId);
+    return _showCatalogCard(context, launchId);
   }
 
   Future<bool> _activateCatalogLaunch(PrivateMessageContext context, int? launchId) async {
@@ -924,10 +915,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       priceFullKopecks: price,
       depositKopecks: deposit,
       depositDueDays: CoursesSheet.defaultDepositDueDays,
-      depositDueAt: deposit > 0 ? draft?.depositDueAt : null,
+      depositDueAt: deposit > 0 ? MoscowTime.daysBeforeCourseStart(start) : null,
       courseStartAt: start,
       webinarAt: draft?.webinarAt,
       webinarUrl: draft?.webinarUrl,
+      salesStartAt: draft?.salesStartAt,
       salesEndAt: draft?.salesEndAt,
       pricePromoKopecks: draft?.pricePromoKopecks ?? LaunchPrices.promoKopecks,
       channelId: draft?.channelSkipped == true ? null : draft?.channelId,

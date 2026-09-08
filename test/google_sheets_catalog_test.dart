@@ -23,6 +23,7 @@ void main() {
     expect(draft.depositKopecks, 500000);
     expect(draft.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(draft.courseStartAt, DateTime.utc(2026, 10, 12));
+    expect(draft.salesStartAt, isNull);
     expect(draft.isActive, isTrue);
   });
 
@@ -55,7 +56,7 @@ void main() {
       ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 0;
     final badDate = List<Object?>.from(CoursesSheet.seedDataRow())
       ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-bad'
-      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = 'нет';
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate)] = 'нет';
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.headers,
       badPrice,
@@ -85,37 +86,27 @@ void main() {
 
   test('parser keeps a full-price row without deposit due date', () {
     final row = List<Object?>.from(CoursesSheet.seedDataRow())
-      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = ''
-      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = '';
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = '';
     final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
     expect(parsed.rows, hasLength(1));
     expect(parsed.active!.depositKopecks, 0);
     expect(parsed.active!.depositDueAt, isNull);
   });
 
-  test('parser skips a deposit row without a due date', () {
-    final row = List<Object?>.from(CoursesSheet.seedDataRow())
-      ..[CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate)] = '';
-    final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
-    expect(parsed.rows, isEmpty);
-    expect(parsed.skippedInvalidCount, 1);
+  test('parser infers deposit due a week before course start', () {
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[
+      CoursesSheet.headers,
+      CoursesSheet.seedDataRow(),
+    ]);
+    expect(parsed.rows, hasLength(1));
+    expect(parsed.active!.depositKopecks, 500000);
+    expect(parsed.active!.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
   });
 
   test('Russian headers and dotted dates parse', () {
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.displayHeaders,
-      <Object?>[
-        'course',
-        'Курс',
-        'launch-1',
-        'Запуск',
-        'да',
-        18000,
-        15000,
-        5000,
-        '05.10.2026',
-        '12.10.2026',
-      ],
+      <Object?>['course', 'Курс', 'launch-1', 'Запуск', 'да', 18000, 15000, 5000, '12.10.2026'],
     ]);
     expect(parsed.rows, hasLength(1));
     expect(parsed.active!.isActive, isTrue);
@@ -190,15 +181,14 @@ void main() {
     expect(formula, contains('готово'));
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));
-    expect(formula, contains('нет даты доплаты'));
-    expect(formula, contains('OR(H5=""; I5<>"")'));
-    expect(formula, contains('AND(H5<>""; I5="")'));
+    expect(formula, contains('нет даты старта'));
+    expect(formula, isNot(contains('нет даты доплаты')));
     expect(formula, isNot(contains('.env')));
     expect(CoursesSheet.headerNotes[8], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
-    expect(CoursesSheet.displayHeaders, isNot(contains('file_id гайда')));
-    expect(CoursesSheet.displayHeaders, isNot(contains('Оферта')));
-    expect(CoursesSheet.displayHeaders, isNot(contains('Ссылка на гайд')));
+    expect(CoursesSheet.displayHeaders, isNot(contains('Файл гайда')));
+    expect(CoursesSheet.displayHeaders, isNot(contains('Доплата до')));
+    expect(CoursesSheet.displayHeaders, contains('Старт продаж'));
     expect(CoursesSheet.headers.last, CoursesSheet.status);
     expect(CoursesSheet.displayHeaders, hasLength(CoursesSheet.columnCount));
     expect(CoursesSheet.headerNotes, hasLength(CoursesSheet.columnCount));
@@ -270,8 +260,8 @@ void main() {
       expect(course.activeLaunch()?.priceFullKopecks, 1900000);
       expect(gateway.applyLookCount, 2);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(16));
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 16);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(15));
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 15);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -340,18 +330,7 @@ void main() {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = <List<Object?>>[
         List<Object?>.from(CoursesSheet.headers),
-        <Object?>[
-          'course',
-          'Курс',
-          'launch-1',
-          'Запуск',
-          '1',
-          18000,
-          15000,
-          5000,
-          '2026-10-05',
-          '2026-10-12',
-        ],
+        <Object?>['course', 'Курс', 'launch-1', 'Запуск', '1', 18000, 15000, 5000, '2026-10-12'],
       ];
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
       final result = await sync.sync();
@@ -362,60 +341,65 @@ void main() {
       expect(course.activeLaunch()?.code, 'launch-1');
     });
 
-    test('sync drops offer and guide URL columns from an older COURSES layout', () async {
-      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
-      gateway.valuesBySheetId[0] = <List<Object?>>[
-        <Object?>[CoursesSheet.title],
-        <Object?>[CoursesSheet.hint],
-        <Object?>[],
-        <Object?>[
-          'Код продукта',
-          'Продукт',
-          'Код запуска',
-          'Название запуска',
-          'Активен',
-          'Цена, ₽',
-          'Предоплата, ₽',
-          'Доплата до',
-          'Старт курса',
-          'ID канала',
-          'Оферта',
-          'Файл гайда',
-          'Ссылка на гайд',
-          'статус',
-        ],
-        <Object?>[
-          'course',
-          'Курс',
-          'launch-1',
-          'Запуск',
-          'да',
-          18000,
-          5000,
-          '05.10.2026',
-          '12.10.2026',
-          '',
-          'https://offer.example',
-          'cached-file',
-          'https://guide.example',
-          '',
-        ],
-      ];
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
-      final result = await sync.sync();
-      expect(result.ok, isTrue);
-      final sheet = gateway.valuesBySheetId[0]!;
-      final header = sheet[CoursesSheet.defaultHeaderRow];
-      expect(header, isNot(contains('Оферта')));
-      expect(header, isNot(contains('Ссылка на гайд')));
-      expect(header, contains('Файл гайда'));
-      expect(header.last, 'статус');
-      expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
-      expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
-      expect(course.activeLaunch()?.offerUrl, isNull);
-      expect(course.activeLaunch()?.leadMagnetUrl, isNull);
-      expect(course.activeLaunch()?.code, 'launch-1');
-    });
+    test(
+      'sync drops offer, guide file and deposit due columns from an older COURSES layout',
+      () async {
+        gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+        gateway.valuesBySheetId[0] = <List<Object?>>[
+          <Object?>[CoursesSheet.title],
+          <Object?>[CoursesSheet.hint],
+          <Object?>[],
+          <Object?>[
+            'Код продукта',
+            'Продукт',
+            'Код запуска',
+            'Название запуска',
+            'Активен',
+            'Цена, ₽',
+            'Предоплата, ₽',
+            'Доплата до',
+            'Старт курса',
+            'ID канала',
+            'Оферта',
+            'Файл гайда',
+            'Ссылка на гайд',
+            'статус',
+          ],
+          <Object?>[
+            'course',
+            'Курс',
+            'launch-1',
+            'Запуск',
+            'да',
+            18000,
+            5000,
+            '05.10.2026',
+            '12.10.2026',
+            '',
+            'https://offer.example',
+            'cached-file',
+            'https://guide.example',
+            '',
+          ],
+        ];
+        final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+        final result = await sync.sync();
+        expect(result.ok, isTrue);
+        final sheet = gateway.valuesBySheetId[0]!;
+        final header = sheet[CoursesSheet.defaultHeaderRow];
+        expect(header, isNot(contains('Оферта')));
+        expect(header, isNot(contains('Ссылка на гайд')));
+        expect(header, isNot(contains('Файл гайда')));
+        expect(header, isNot(contains('Доплата до')));
+        expect(header, contains('Старт продаж'));
+        expect(header.last, 'статус');
+        expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+        expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
+        expect(course.activeLaunch()?.offerUrl, isNull);
+        expect(course.activeLaunch()?.leadMagnetUrl, isNull);
+        expect(course.activeLaunch()?.code, 'launch-1');
+      },
+    );
 
     test('renames Sheet1 and FUNNEL on gid=0 to COURSES', () async {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'FUNNEL', sheetId: 0)];

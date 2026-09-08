@@ -131,7 +131,7 @@ void main() {
     expect(regular.checkoutOpen, isTrue);
   });
 
-  test('sales stay closed when webinar date is empty', () {
+  test('sales stay closed when webinar and sales start are empty', () {
     final launch = Launch(
       id: 1,
       productId: 1,
@@ -144,6 +144,46 @@ void main() {
     final quote = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 8));
     expect(quote.phase, SalesPhase.preSales);
     expect(quote.checkoutOpen, isFalse);
+  });
+
+  test('sales open at sales start even without a webinar', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      salesStartAt: DateTime.utc(2026, 9, 1, 16),
+    );
+    final before = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 8, 31));
+    expect(before.phase, SalesPhase.preSales);
+    expect(before.checkoutOpen, isFalse);
+    final after = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 2));
+    expect(after.phase, SalesPhase.regular);
+    expect(after.checkoutOpen, isTrue);
+  });
+
+  test('checkout stays closed until sales start even after the webinar', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 9, 1, 16),
+      salesStartAt: DateTime.utc(2026, 10, 1, 16),
+    );
+    final afterWebinar = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 2));
+    expect(afterWebinar.phase, SalesPhase.preSales);
+    expect(afterWebinar.checkoutOpen, isFalse);
+    final atSales = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 2));
+    expect(atSales.phase, SalesPhase.regular);
+    expect(atSales.checkoutOpen, isTrue);
   });
 
   test('parseRubStringToKopecks avoids binary float drift', () {

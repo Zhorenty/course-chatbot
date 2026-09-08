@@ -41,7 +41,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       ..writeln('спеццена: ${formatRubFromKopecks(launch.resolvedPricePromoKopecks)}');
     if (launch.depositKopecks > 0) {
       buf.writeln('предоплата: ${formatRubFromKopecks(launch.depositKopecks)}');
-      final due = _formatDate(launch.depositDueAt);
+      final due = _formatDate(launch.depositDueAt ?? launch.impliedDepositDueAt);
       if (due != null) {
         buf.writeln('доплата до: $due');
       }
@@ -54,6 +54,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln(
       webinarUrl == null || webinarUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
+    buf.writeln('старт продаж: ${_formatDateTime(launch.salesStartAt) ?? 'как дата эфира'}');
     buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt) ?? 'не указан'}');
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
@@ -85,11 +86,17 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskWebinar() {
     return 'Дата и время эфира по Москве, как 05.10.2026 19:00. '
-        'Пусто или «-» — заполнить позже. Без даты продажи закрыты.';
+        'Пусто или «-» — заполнить позже.';
   }
 
   String adminCatalogAskWebinarUrl() {
     return 'Ссылка на эфир. Пусто или «-» — без ссылки, можно дописать позже.';
+  }
+
+  String adminCatalogAskSalesStart() {
+    return 'Когда открывается касса и продающий прогрев. Дата и время по Москве, '
+        'как 05.10.2026 19:00. Пусто или «-» — как дата эфира. '
+        'Без эфира и без этой даты продажи закрыты.';
   }
 
   String adminCatalogAskSalesEnd() {
@@ -97,11 +104,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskDeposit() {
-    return 'Предоплата в рублях. Пусто или 0 — сразу полная оплата.';
-  }
-
-  String adminCatalogAskDepositDue() {
-    return 'Дата доплаты, как 19.08.2026.';
+    return 'Предоплата в рублях. Пусто или 0 — сразу полная оплата. '
+        'Срок доплаты бот поставит сам: за неделю до старта курса.';
   }
 
   String adminCatalogAskStart() {
@@ -130,7 +134,10 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       );
     if (draft.depositKopecks > 0) {
       buf.writeln('предоплата: ${formatRubFromKopecks(draft.depositKopecks)}');
-      final due = _formatDate(draft.depositDueAt);
+      final due = _formatDate(
+        draft.depositDueAt ??
+            MoscowTime.daysBeforeCourseStart(draft.courseStartAt, days: draft.depositDueDays),
+      );
       if (due != null) {
         buf.writeln('доплата до: $due');
       }
@@ -143,6 +150,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln(
       previewUrl == null || previewUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
+    buf.writeln('старт продаж: ${_formatDateTime(draft.salesStartAt) ?? 'как дата эфира'}');
     buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt) ?? 'не указан'}');
     final channel = draft.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
@@ -180,11 +188,13 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.price => 'Новая обычная цена в рублях. Число, как 19000.',
       CatalogLaunchField.promo => 'Спеццена эфира в рублях. Число, как 15000. Пусто — 15000.',
       CatalogLaunchField.deposit => 'Новая предоплата в рублях. Пусто или 0 — без предоплаты.',
-      CatalogLaunchField.depositDue => 'Новая дата доплаты, как 19.08.2026.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
       CatalogLaunchField.webinar =>
         'Дата и время эфира по Москве, как 05.10.2026 19:00. Пусто или «-» — сбросить.',
       CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
+      CatalogLaunchField.salesStart =>
+        'Когда открывается касса. Дата и время по Москве, как 05.10.2026 19:00. '
+            'Пусто или «-» — как дата эфира.',
       CatalogLaunchField.salesEnd =>
         'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.',
       CatalogLaunchField.channel =>
@@ -212,7 +222,6 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogFieldError.badPrice => 'Это не цена. Пришли число, как 18000 или 18 000.',
       CatalogFieldError.badDeposit =>
         'Предоплата — число меньше полной цены. Пусто или 0, если предоплаты нет.',
-      CatalogFieldError.needDueDate => 'Для предоплаты нужна дата доплаты, как 19.08.2026.',
       CatalogFieldError.badDate => 'Дата не разобралась. Формат 19.08.2026.',
       CatalogFieldError.badChannel =>
         'ID канала — отрицательное число вида −100…. '
@@ -260,10 +269,10 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     CatalogLaunchField.price => '💰 Цена',
     CatalogLaunchField.promo => '🎁 Спеццена',
     CatalogLaunchField.deposit => '💵 Предоплата',
-    CatalogLaunchField.depositDue => '📅 Доплата до',
     CatalogLaunchField.start => '🚀 Старт',
     CatalogLaunchField.webinar => '📺 Эфир',
     CatalogLaunchField.webinarUrl => '🔗 Ссылка эфира',
+    CatalogLaunchField.salesStart => '🛒 Старт продаж',
     CatalogLaunchField.salesEnd => '🚪 Конец продаж',
     CatalogLaunchField.channel => '📣 Канал',
     CatalogLaunchField.guide => '📘 Гайд',

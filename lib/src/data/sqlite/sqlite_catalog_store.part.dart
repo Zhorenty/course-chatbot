@@ -15,6 +15,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     DateTime? courseStartAt,
     DateTime? webinarAt,
     String? webinarUrl,
+    DateTime? salesStartAt,
     DateTime? salesEndAt,
     int? channelId,
     String? offerUrl,
@@ -32,14 +33,17 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     final productId =
         _db.select('SELECT id FROM products WHERE code = ?;', <Object?>[productCode]).first['id']
             as int;
+    final due = depositKopecks > 0
+        ? (depositDueAt ?? MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays))
+        : null;
     _db.execute(
       '''
       INSERT INTO launches (
         product_id, code, title, channel_id, price_full_kopecks, price_promo_kopecks,
         deposit_kopecks, deposit_due_days, deposit_due_at, course_start_at,
-        webinar_at, webinar_url, sales_end_at, offer_url,
+        webinar_at, webinar_url, sales_start_at, sales_end_at, offer_url,
         lead_magnet_file_id, lead_magnet_url, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title,
         channel_id = COALESCE(excluded.channel_id, launches.channel_id),
@@ -51,6 +55,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         course_start_at = excluded.course_start_at,
         webinar_at = excluded.webinar_at,
         webinar_url = excluded.webinar_url,
+        sales_start_at = excluded.sales_start_at,
         sales_end_at = excluded.sales_end_at,
         offer_url = COALESCE(excluded.offer_url, launches.offer_url),
         lead_magnet_file_id = COALESCE(excluded.lead_magnet_file_id, launches.lead_magnet_file_id),
@@ -65,10 +70,11 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         pricePromoKopecks > 0 ? pricePromoKopecks : LaunchPrices.promoKopecks,
         depositKopecks,
         depositDueDays,
-        depositDueAt?.toUtc().toIso8601String(),
+        due?.toUtc().toIso8601String(),
         courseStartAt?.toUtc().toIso8601String(),
         webinarAt?.toUtc().toIso8601String(),
         webinarUrl,
+        salesStartAt?.toUtc().toIso8601String(),
         salesEndAt?.toUtc().toIso8601String(),
         offerUrl,
         leadMagnetFileId,
@@ -95,6 +101,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     DateTime? courseStartAt,
     DateTime? webinarAt,
     String? webinarUrl,
+    DateTime? salesStartAt,
     DateTime? salesEndAt,
     int? channelId,
     String? offerUrl,
@@ -114,6 +121,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: webinarUrl,
+      salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
       offerUrl: offerUrl,
