@@ -990,6 +990,7 @@ void main() {
     expect(created, isNotNull);
     expect(created![CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Ноябрь');
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)], 20000);
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.pricePromoRub)], 15000);
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.isActive)], 'да');
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.status)].toString(), startsWith('='));
     final seed = _coursesRowByCode(sheet, 'launch-1');
@@ -1029,6 +1030,8 @@ void main() {
     expect(_coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'nov-26'), isNull);
 
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '20000'));
+    expect(sheets.sender.messages.last.text, contains('Спеццена'));
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
     expect(sheets.sender.messages.last.text, contains('Предоплата'));
   });
 
@@ -1051,6 +1054,7 @@ void main() {
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'nov-26'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '20000'));
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '0'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '31.02.2026'));
     expect(sheets.sender.messages.last.text, contains('Дата не разобралась'));
@@ -1603,8 +1607,12 @@ Future<void> _runCatalogCreateWizardToChannel(
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: title));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: code));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '20000'));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '0'));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '01.11.2026'));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
 }
 
 Future<void> _runCatalogCreateWizard(

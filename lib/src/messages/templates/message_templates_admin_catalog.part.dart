@@ -79,6 +79,23 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return 'Обычная цена в рублях. Число, как 19000 или 19 000.';
   }
 
+  String adminCatalogAskPromo() {
+    return 'Спеццена эфира в рублях. Число, как 15000. Пусто или «-» — 15000.';
+  }
+
+  String adminCatalogAskWebinar() {
+    return 'Дата и время эфира по Москве, как 05.10.2026 19:00. '
+        'Пусто или «-» — заполнить позже. Без даты продажи закрыты.';
+  }
+
+  String adminCatalogAskWebinarUrl() {
+    return 'Ссылка на эфир. Пусто или «-» — без ссылки, можно дописать позже.';
+  }
+
+  String adminCatalogAskSalesEnd() {
+    return 'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.';
+  }
+
   String adminCatalogAskDeposit() {
     return 'Предоплата в рублях. Пусто или 0 — сразу полная оплата.';
   }
@@ -107,7 +124,10 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       ..writeln()
       ..writeln('название: ${escapeHtml(draft.launchTitle)}')
       ..writeln('код: <code>${escapeHtml(draft.launchCode)}</code>')
-      ..writeln('цена: ${formatRubFromKopecks(draft.priceFullKopecks)}');
+      ..writeln('цена: ${formatRubFromKopecks(draft.priceFullKopecks)}')
+      ..writeln(
+        'спеццена: ${formatRubFromKopecks(draft.pricePromoKopecks > 0 ? draft.pricePromoKopecks : LaunchPrices.promoKopecks)}',
+      );
     if (draft.depositKopecks > 0) {
       buf.writeln('предоплата: ${formatRubFromKopecks(draft.depositKopecks)}');
       final due = _formatDate(draft.depositDueAt);
@@ -118,6 +138,12 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       buf.writeln('предоплата: нет');
     }
     buf.writeln('старт: ${_formatDate(draft.courseStartAt) ?? 'не указан'}');
+    buf.writeln('эфир: ${_formatDateTime(draft.webinarAt) ?? 'не указан'}');
+    final previewUrl = draft.webinarUrl?.trim();
+    buf.writeln(
+      previewUrl == null || previewUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
+    );
+    buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt) ?? 'не указан'}');
     final channel = draft.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
     buf

@@ -510,20 +510,22 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
                 startColumnIndex: rule.startColumn,
                 endColumnIndex: rule.endColumnExclusive,
               ),
-              rule: DataValidationRule(
-                condition: BooleanCondition(
-                  type: rule.conditionType,
-                  values: rule.conditionValues.isEmpty
-                      ? null
-                      : <ConditionValue>[
-                          for (final value in rule.conditionValues)
-                            ConditionValue(userEnteredValue: value),
-                        ],
-                ),
-                inputMessage: rule.inputMessage,
-                showCustomUi: rule.showCustomUi,
-                strict: rule.strict,
-              ),
+              rule: rule.clear
+                  ? null
+                  : DataValidationRule(
+                      condition: BooleanCondition(
+                        type: rule.conditionType,
+                        values: rule.conditionValues.isEmpty
+                            ? null
+                            : <ConditionValue>[
+                                for (final value in rule.conditionValues)
+                                  ConditionValue(userEnteredValue: value),
+                              ],
+                      ),
+                      inputMessage: rule.inputMessage,
+                      showCustomUi: rule.showCustomUi,
+                      strict: rule.strict,
+                    ),
             ),
           ),
     ];

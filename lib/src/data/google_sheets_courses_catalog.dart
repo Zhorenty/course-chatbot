@@ -140,7 +140,11 @@ abstract final class GoogleSheetsCoursesCatalog {
       ),
     );
 
-    const priceColumns = <int>[5, 6];
+    final priceColumns = <int>[
+      CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub),
+      CoursesSheet.headers.indexOf(CoursesSheet.pricePromoRub),
+      CoursesSheet.headers.indexOf(CoursesSheet.depositRub),
+    ];
     for (final column in priceColumns) {
       styles.add(
         GoogleSheetsRangeStyle(
@@ -154,7 +158,11 @@ abstract final class GoogleSheetsCoursesCatalog {
         ),
       );
     }
-    const dateColumns = <int>[8, 9, 12];
+    final dateColumns = <int>[
+      CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate),
+      CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
+      CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
+    ];
     for (final column in dateColumns) {
       styles.add(
         GoogleSheetsRangeStyle(
@@ -168,6 +176,16 @@ abstract final class GoogleSheetsCoursesCatalog {
         ),
       );
     }
+    final webinarColumn = CoursesSheet.headers.indexOf(CoursesSheet.webinarAt);
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: dataStart,
+        endRowExclusive: dataEnd,
+        startColumn: webinarColumn,
+        endColumnExclusive: webinarColumn + 1,
+        horizontalAlignment: 'CENTER',
+      ),
+    );
     styles.add(
       GoogleSheetsRangeStyle(
         startRow: dataStart,
@@ -224,14 +242,21 @@ abstract final class GoogleSheetsCoursesCatalog {
       columnCount: columnCount,
       rowCount: canvasEnd,
       validations: <GoogleSheetsValidation>[
-        GoogleSheetsValidation(
+        GoogleSheetsValidation.clear(
           startRow: dataStart,
           endRowExclusive: dataEnd,
-          startColumn: 8,
-          endColumnExclusive: 10,
-          conditionType: 'DATE_IS_VALID',
-          inputMessage: 'Выбери дату в календаре. Формат 19.08.2026.',
+          startColumn: 0,
+          endColumnExclusive: columnCount,
         ),
+        for (final column in dateColumns)
+          GoogleSheetsValidation(
+            startRow: dataStart,
+            endRowExclusive: dataEnd,
+            startColumn: column,
+            endColumnExclusive: column + 1,
+            conditionType: 'DATE_IS_VALID',
+            inputMessage: 'Выбери дату в календаре. Формат 19.08.2026.',
+          ),
       ],
     );
   }

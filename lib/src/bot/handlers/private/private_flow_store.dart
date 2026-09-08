@@ -18,9 +18,13 @@ enum PrivateFlowStep {
   adminCatalogCreateTitle,
   adminCatalogCreateCode,
   adminCatalogCreatePrice,
+  adminCatalogCreatePromo,
   adminCatalogCreateDeposit,
   adminCatalogCreateDepositDue,
   adminCatalogCreateStart,
+  adminCatalogCreateWebinar,
+  adminCatalogCreateWebinarUrl,
+  adminCatalogCreateSalesEnd,
   adminCatalogCreateChannel,
   adminCatalogCreateActive,
   adminCatalogCreateConfirm,
@@ -40,9 +44,13 @@ final class CatalogWizardDraft {
     this.title,
     this.code,
     this.priceKopecks,
+    this.pricePromoKopecks,
     this.depositKopecks,
     this.depositDueAt,
     this.courseStartAt,
+    this.webinarAt,
+    this.webinarUrl,
+    this.salesEndAt,
     this.channelId,
     this.channelSkipped = false,
     this.isActive,
@@ -53,9 +61,13 @@ final class CatalogWizardDraft {
   final String? title;
   final String? code;
   final int? priceKopecks;
+  final int? pricePromoKopecks;
   final int? depositKopecks;
   final DateTime? depositDueAt;
   final DateTime? courseStartAt;
+  final DateTime? webinarAt;
+  final String? webinarUrl;
+  final DateTime? salesEndAt;
   final int? channelId;
   final bool channelSkipped;
   final bool? isActive;
@@ -66,9 +78,13 @@ final class CatalogWizardDraft {
     Object? title = _unset,
     Object? code = _unset,
     Object? priceKopecks = _unset,
+    Object? pricePromoKopecks = _unset,
     Object? depositKopecks = _unset,
     Object? depositDueAt = _unset,
     Object? courseStartAt = _unset,
+    Object? webinarAt = _unset,
+    Object? webinarUrl = _unset,
+    Object? salesEndAt = _unset,
     Object? channelId = _unset,
     bool? channelSkipped,
     Object? isActive = _unset,
@@ -79,6 +95,9 @@ final class CatalogWizardDraft {
       title: identical(title, _unset) ? this.title : title as String?,
       code: identical(code, _unset) ? this.code : code as String?,
       priceKopecks: identical(priceKopecks, _unset) ? this.priceKopecks : priceKopecks as int?,
+      pricePromoKopecks: identical(pricePromoKopecks, _unset)
+          ? this.pricePromoKopecks
+          : pricePromoKopecks as int?,
       depositKopecks: identical(depositKopecks, _unset)
           ? this.depositKopecks
           : depositKopecks as int?,
@@ -86,6 +105,9 @@ final class CatalogWizardDraft {
       courseStartAt: identical(courseStartAt, _unset)
           ? this.courseStartAt
           : courseStartAt as DateTime?,
+      webinarAt: identical(webinarAt, _unset) ? this.webinarAt : webinarAt as DateTime?,
+      webinarUrl: identical(webinarUrl, _unset) ? this.webinarUrl : webinarUrl as String?,
+      salesEndAt: identical(salesEndAt, _unset) ? this.salesEndAt : salesEndAt as DateTime?,
       channelId: identical(channelId, _unset) ? this.channelId : channelId as int?,
       channelSkipped: channelSkipped ?? this.channelSkipped,
       isActive: identical(isActive, _unset) ? this.isActive : isActive as bool?,

@@ -6,9 +6,13 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogCreateTitle ||
         step == PrivateFlowStep.adminCatalogCreateCode ||
         step == PrivateFlowStep.adminCatalogCreatePrice ||
+        step == PrivateFlowStep.adminCatalogCreatePromo ||
         step == PrivateFlowStep.adminCatalogCreateDeposit ||
         step == PrivateFlowStep.adminCatalogCreateDepositDue ||
         step == PrivateFlowStep.adminCatalogCreateStart ||
+        step == PrivateFlowStep.adminCatalogCreateWebinar ||
+        step == PrivateFlowStep.adminCatalogCreateWebinarUrl ||
+        step == PrivateFlowStep.adminCatalogCreateSalesEnd ||
         step == PrivateFlowStep.adminCatalogCreateChannel ||
         step == PrivateFlowStep.adminCatalogCreateActive ||
         step == PrivateFlowStep.adminCatalogCreateConfirm ||
@@ -142,8 +146,29 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         }
         _setCatalogFlow(
           context.userId!,
-          PrivateFlowStep.adminCatalogCreateDeposit,
+          PrivateFlowStep.adminCatalogCreatePromo,
           catalogDraft: draft.copyWith(priceKopecks: CoursesSheetParser.parsePriceKopecks(text)),
+        );
+        return _presentCatalog(context, _templates.adminCatalogAskPromo());
+      case PrivateFlowStep.adminCatalogCreatePromo:
+        final skippedPromo = text.isEmpty || CoursesSheetParser.isOmittedChannelId(text);
+        if (!skippedPromo) {
+          final error = LaunchCatalogAdminService.validatePrice(text);
+          if (error != null) {
+            return _presentCatalog(
+              context,
+              _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskPromo()),
+            );
+          }
+        }
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateDeposit,
+          catalogDraft: draft.copyWith(
+            pricePromoKopecks: skippedPromo
+                ? LaunchPrices.promoKopecks
+                : CoursesSheetParser.parsePriceKopecks(text),
+          ),
         );
         return _presentCatalog(context, _templates.adminCatalogAskDeposit());
       case PrivateFlowStep.adminCatalogCreateDeposit:
@@ -200,8 +225,66 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         }
         _setCatalogFlow(
           context.userId!,
-          PrivateFlowStep.adminCatalogCreateChannel,
+          PrivateFlowStep.adminCatalogCreateWebinar,
           catalogDraft: draft.copyWith(courseStartAt: CoursesSheetParser.parseDate(text)),
+        );
+        return _presentCatalog(context, _templates.adminCatalogAskWebinar());
+      case PrivateFlowStep.adminCatalogCreateWebinar:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          _setCatalogFlow(
+            context.userId!,
+            PrivateFlowStep.adminCatalogCreateWebinarUrl,
+            catalogDraft: draft.copyWith(webinarAt: null),
+          );
+          return _presentCatalog(context, _templates.adminCatalogAskWebinarUrl());
+        }
+        final webinar = CoursesSheetParser.parseDateTime(text);
+        if (webinar == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskWebinar(),
+            ),
+          );
+        }
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateWebinarUrl,
+          catalogDraft: draft.copyWith(webinarAt: webinar),
+        );
+        return _presentCatalog(context, _templates.adminCatalogAskWebinarUrl());
+      case PrivateFlowStep.adminCatalogCreateWebinarUrl:
+        final skippedUrl = text.isEmpty || CoursesSheetParser.isOmittedChannelId(text);
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateSalesEnd,
+          catalogDraft: draft.copyWith(webinarUrl: skippedUrl ? null : text),
+        );
+        return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
+      case PrivateFlowStep.adminCatalogCreateSalesEnd:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          _setCatalogFlow(
+            context.userId!,
+            PrivateFlowStep.adminCatalogCreateChannel,
+            catalogDraft: draft.copyWith(salesEndAt: null),
+          );
+          return _presentCatalogAskChannel(context);
+        }
+        final salesEnd = CoursesSheetParser.parseDateEndOfDay(text);
+        if (salesEnd == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskSalesEnd(),
+            ),
+          );
+        }
+        _setCatalogFlow(
+          context.userId!,
+          PrivateFlowStep.adminCatalogCreateChannel,
+          catalogDraft: draft.copyWith(salesEndAt: salesEnd),
         );
         return _presentCatalogAskChannel(context);
       case PrivateFlowStep.adminCatalogCreateChannel:
@@ -843,7 +926,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       depositDueDays: CoursesSheet.defaultDepositDueDays,
       depositDueAt: deposit > 0 ? draft?.depositDueAt : null,
       courseStartAt: start,
-      pricePromoKopecks: CoursesSheet.seedPricePromoRub * 100,
+      webinarAt: draft?.webinarAt,
+      webinarUrl: draft?.webinarUrl,
+      salesEndAt: draft?.salesEndAt,
+      pricePromoKopecks: draft?.pricePromoKopecks ?? LaunchPrices.promoKopecks,
       channelId: draft?.channelSkipped == true ? null : draft?.channelId,
     );
   }

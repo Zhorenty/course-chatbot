@@ -116,6 +116,21 @@ void main() {
     expect(look.notes[8].text, contains('Выбери в календаре'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
+    expect(look.validations.first.clear, isTrue);
+    expect(look.validations.first.endColumnExclusive, 16);
+    final depositCol = CoursesSheet.headers.indexOf(CoursesSheet.depositRub);
+    expect(
+      look.validations.where((rule) => !rule.clear).every((rule) => rule.startColumn != depositCol),
+      isTrue,
+    );
+    expect(
+      look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
+      containsAll(<int>[
+        CoursesSheet.headers.indexOf(CoursesSheet.depositDueDate),
+        CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
+        CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
+      ]),
+    );
     expect(look.styles, isNotEmpty);
   });
 

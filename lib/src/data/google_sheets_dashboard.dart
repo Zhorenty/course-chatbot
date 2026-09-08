@@ -100,7 +100,20 @@ final class GoogleSheetsValidation {
     this.inputMessage,
     this.strict = false,
     this.showCustomUi = true,
-  });
+  }) : clear = false;
+
+  /// Removes leftover data-validation rules on [startColumn, endColumnExclusive).
+  const GoogleSheetsValidation.clear({
+    required this.startRow,
+    required this.endRowExclusive,
+    required this.startColumn,
+    required this.endColumnExclusive,
+  }) : conditionType = '',
+       conditionValues = const <String>[],
+       inputMessage = null,
+       strict = false,
+       showCustomUi = false,
+       clear = true;
 
   final int startRow;
   final int endRowExclusive;
@@ -113,6 +126,7 @@ final class GoogleSheetsValidation {
   final String? inputMessage;
   final bool strict;
   final bool showCustomUi;
+  final bool clear;
 }
 
 final class GoogleSheetsBandedTable {
