@@ -214,7 +214,7 @@ void main() {
       expect(message.text, contains('@masha'));
       expect(message.text, contains('Маша'));
       expect(message.text, contains('полная оплата'));
-      expect(message.parseMode, 'HTML');
+      expect(message.parseMode, 'rich');
       expect(message.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
     }
   });

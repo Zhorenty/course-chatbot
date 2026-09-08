@@ -175,4 +175,117 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richTable(<(String, String)>[(segmentWord, escapeHtml(broadcastSegmentsLabel(segments))), ('Получателей', '<b>$recipientCount</b>'), if (optOutLine != null) ('Отписка', optOutLine), ('Содержимое', escapeHtml(broadcastContentKindLabel(kind)))])}'
         '${preview == null || preview.isEmpty ? '' : richQuote(escapeHtml(_clipBroadcastPreview(preview)))}';
   }
+
+  String adminIncomingUserMessageRich({
+    required UserProfile user,
+    String? text,
+    FunnelPhase? phase,
+  }) {
+    final handle = user.username?.trim();
+    final body = (text == null || text.trim().isEmpty)
+        ? 'без текста — фото или файл'
+        : escapeHtml(text.trim());
+    return '${richH2('Написал ${user.displayName}')}'
+        '${richTable(<(String, String)>[('id', '<code>${user.userId}</code>'), if (handle != null && handle.isNotEmpty) ('username', '@${escapeHtml(handle)}'), ('воронка', escapeHtml(_adminPhaseLabel(phase ?? user.funnelPhase)))])}'
+        '${richQuote(body)}';
+  }
+
+  String adminSheetsHubRich() {
+    return '${richH2('Google Sheets')}'
+        '${richP('«${escapeHtml(MessageTemplates.buttonAdminCatalog)}» — потоки на листе ${escapeHtml(CoursesSheet.tabTitle)}. '
+        '«${escapeHtml(MessageTemplates.buttonAdminLinks)}» — метки на листе ${escapeHtml(LinksSheet.tabTitle)}. '
+        '«${escapeHtml(MessageTemplates.buttonAdminSheets)}» — перечитать таблицу и пересобрать воронку.')}';
+  }
+
+  String adminSheetsHubOpenedRich() {
+    return '${richH2('Google Sheets')}'
+        '${richP('Курсы, диплинки и срез воронки. «${escapeHtml(MessageTemplates.buttonAdminBack)}» — выход в админку.')}';
+  }
+
+  String adminCatalogListRich(List<Launch> launches, {String? notice}) {
+    final items = launches.isEmpty
+        ? <String>[]
+        : <String>[for (final launch in launches) _catalogListLine(launch)];
+    return '${notice == null || notice.isEmpty ? '' : richP(notice)}'
+        '${richH2('Курсы')}'
+        '${items.isEmpty ? richP('В таблице пока нет потоков. Добавь новый.') : richUl(items)}'
+        '${richP('Открой карточку или создай курс.')}';
+  }
+
+  String adminLinksListRich(List<AcquisitionLink> links, {String? notice}) {
+    final items = links.isEmpty
+        ? <String>[]
+        : <String>[for (final link in links) _linksListLine(link)];
+    return '${notice == null || notice.isEmpty ? '' : richP(notice)}'
+        '${richH2('Диплинки')}'
+        '${items.isEmpty ? richP('На листе пока нет меток. Добавь новую.') : richUl(items)}'
+        '${richP('Открой карточку или создай диплинк.')}';
+  }
+
+  String adminLinksCardRich(AcquisitionLink link) {
+    final launch = link.launchCode?.trim();
+    final bot = _botUsername?.trim() ?? '';
+    final url = bot.isEmpty
+        ? 'username бота неизвестен — t.me не собрался'
+        : '<code>${escapeHtml(deepLink(link.payload))}</code>';
+    return '${richH2(link.origin)}'
+        '${richTable(<(String, String)>[('куда', escapeHtml(link.destinationLabel)), ('метка', '<code>${escapeHtml(link.payload)}</code>'), ('поток', launch == null || launch.isEmpty ? 'текущий набор' : escapeHtml(launch)), ('ссылка', url)])}';
+  }
+
+  String adminSheetsRefreshResultRich({
+    required bool catalogAttempted,
+    required bool catalogOk,
+    String? catalogError,
+    required bool funnelAttempted,
+    required bool funnelOk,
+    String? funnelError,
+    Launch? launch,
+  }) {
+    final rows = <(String, String)>[];
+    if (catalogAttempted) {
+      if (catalogOk && launch != null) {
+        rows.add(('Набор в боте', 'обновлён'));
+        final title = launch.title.trim();
+        if (title.isNotEmpty) {
+          rows.add(('поток', escapeHtml(title)));
+        }
+        rows.add(('цена', formatRubFromKopecks(launch.priceFullKopecks)));
+        final start = _formatDate(launch.courseStartAt);
+        if (start != null) {
+          rows.add(('старт', start));
+        }
+      } else if (catalogOk) {
+        rows.add(('Набор в боте', 'без изменений'));
+      } else {
+        rows.add((
+          'Набор в боте',
+          'лист ${escapeHtml(CoursesSheet.tabTitle)}: не прочитался — ${escapeHtml(catalogError ?? 'ошибка')}',
+        ));
+      }
+    }
+    if (funnelAttempted) {
+      rows.add((
+        'Воронка',
+        funnelOk
+            ? 'лист ВОРОНКА: цифры перезаписаны'
+            : 'лист ВОРОНКА: не обновился — ${escapeHtml(funnelError ?? 'ошибка')}',
+      ));
+    }
+    return '${richH2('Таблица')}${rows.isEmpty ? '' : richTable(rows)}';
+  }
+
+  String adminPaymentGatewayDownRich({
+    required int userId,
+    required String provider,
+    required PaymentKind kind,
+    String? reason,
+    String? username,
+    String? firstName,
+  }) {
+    final reasonText = reason?.trim();
+    return '${richH2('Ошибка онлайн-оплаты')}'
+        '${richP('Не получилось открыть ссылку на кассу.')}'
+        '${richTable(<(String, String)>[('Кто', _adminWhoLine(userId: userId, username: username, firstName: firstName).replaceFirst('Кто: ', '')), ('Способ', _payKindLabel(kind)), ('Провайдер', '<code>${escapeHtml(provider)}</code>'), if (reasonText != null && reasonText.isNotEmpty) ('Причина', escapeHtml(reasonText))])}'
+        '${richP('Человеку показан запасной путь через администратора. Можно отметить оплату вручную из карточки.')}';
+  }
 }

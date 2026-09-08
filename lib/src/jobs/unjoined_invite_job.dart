@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/launch_windows.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 
 final class _UnjoinedTouch {
   const _UnjoinedTouch({
@@ -89,10 +90,10 @@ final class UnjoinedInviteJob {
       course: _course,
       send: (item) async {
         final link = item.access.inviteLink!;
-        await _sender.sendMessage(
+        await sendPreferRich(
+          _sender,
           item.access.userId,
           _templates.unjoinedInviteReminder(link),
-          parseMode: 'HTML',
           replyMarkup: _templates.unjoinedInviteKeyboard(link),
         );
         for (final extra in item.alsoClaim) {

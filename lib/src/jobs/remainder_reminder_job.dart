@@ -5,6 +5,7 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 
 final class RemainderReminderJob {
   RemainderReminderJob({
@@ -67,10 +68,10 @@ final class RemainderReminderJob {
       userId: (order) => order.userId,
       course: _course,
       send: (order) {
-        return _sender.sendMessage(
+        return sendPreferRich(
+          _sender,
           order.userId,
           textOf(order),
-          parseMode: 'HTML',
           replyMarkup: _templates.remainderKeyboard(order.id),
         );
       },

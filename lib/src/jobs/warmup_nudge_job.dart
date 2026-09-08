@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 import 'package:course_chatbot/src/telegram/telegram_errors.dart';
 import 'package:l/l.dart';
 
@@ -62,10 +63,10 @@ final class WarmupNudgeJob {
         final delivered = await _warmup.deliver(
           decision: decision,
           now: now,
-          send: () => _sender.sendMessage(
+          send: () => sendPreferRich(
+            _sender,
             candidate.userId,
             _templates.warmupStep(decision.stepKey, launch: launch),
-            parseMode: 'HTML',
             replyMarkup: launch == null
                 ? null
                 : _templates.warmupKeyboard(

@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 import 'package:l/l.dart';
 
 abstract interface class AdminAlertPort {
@@ -42,7 +43,18 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
       username: username,
       firstName: firstName,
     );
-    await _pushAdmins(text, userId: userId);
+    await _pushAdmins(
+      text,
+      userId: userId,
+      richHtml: _templates.adminPaymentGatewayDownRich(
+        userId: userId,
+        provider: provider,
+        kind: kind,
+        reason: reason,
+        username: username,
+        firstName: firstName,
+      ),
+    );
   }
 
   @override
@@ -50,14 +62,15 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
     return _pushAdmins(_templates.adminGuideMissing(userId: userId), userId: userId);
   }
 
-  Future<void> _pushAdmins(String text, {required int userId}) async {
+  Future<void> _pushAdmins(String text, {required int userId, String? richHtml}) async {
     final markup = _templates.adminIncomingKeyboard(userId);
     for (final chatId in _notificationChatIds) {
       try {
-        await _sender.sendMessage(
+        await sendPreferRich(
+          _sender,
           chatId,
           text,
-          parseMode: 'HTML',
+          richHtml: richHtml,
           disableNotification: false,
           replyMarkup: markup,
         );

@@ -16,9 +16,24 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
+import 'package:course_chatbot/src/messages/rich_html.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('classic HTML converts to rich headings paragraphs lists and tables', () {
+    expect(richHtmlFromClassic('<h2>Already</h2><p>rich</p>'), '<h2>Already</h2><p>rich</p>');
+    expect(
+      richHtmlFromClassic('<b>Эфир</b>\n\nГайд уже у тебя.'),
+      '<h2>Эфир</h2><p>Гайд уже у тебя.</p>',
+    );
+    expect(richHtmlFromClassic('• один\n• два'), '<ul><li>один</li><li>два</li></ul>');
+    expect(
+      richHtmlFromClassic('код: <code>a</code>\nцена: 1000 ₽'),
+      '<table><tr><td>код</td><td><code>a</code></td></tr><tr><td>цена</td><td>1000 ₽</td></tr></table>',
+    );
+    expect(richHtmlFromClassic('Ссылка на оплату готова.'), '<p>Ссылка на оплату готова.</p>');
+  });
+
   test('enroll day-1 and day-3 warmup copy is not identical', () {
     final templates = MessageTemplates();
     final day1 = templates.warmupStep('enroll_d1');

@@ -29,8 +29,8 @@ import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
-import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
 
@@ -114,10 +114,10 @@ final class PrivateHandlers implements PaymentResultNotifier {
 
   Future<bool> _dmUser(int userId, String text, {Map<String, Object?>? replyMarkup}) async {
     try {
-      await _sender.sendMessage(
+      await sendPreferRich(
+        _sender,
         userId,
         text,
-        parseMode: 'HTML',
         replyMarkup: replyMarkup ?? _homeKeyboard(userId),
       );
       return true;

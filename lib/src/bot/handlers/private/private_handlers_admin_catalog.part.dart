@@ -43,6 +43,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return _presentCatalog(
         context,
         _templates.adminCatalogList(launches, notice: notice),
+        richHtml: _templates.adminCatalogListRich(launches, notice: notice),
         replyMarkup: _templates.adminCatalogListKeyboard(launches),
       );
     }
@@ -51,6 +52,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return _presentCatalog(
       context,
       _templates.adminCatalogList(launches),
+      richHtml: _templates.adminCatalogListRich(launches),
       replyMarkup: _templates.adminCatalogListKeyboard(launches),
     );
   }
@@ -850,10 +852,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (chatId == null || userId == null) {
       return;
     }
-    final pinId = await _sender.sendMessage(
+    final pinId = await sendPreferRich(
+      _sender,
       chatId,
       _templates.adminSheetsHubOpened(),
-      parseMode: 'HTML',
+      richHtml: _templates.adminSheetsHubOpenedRich(),
       replyMarkup: _templates.adminSheetsHubKeyboard(),
     );
     final current =

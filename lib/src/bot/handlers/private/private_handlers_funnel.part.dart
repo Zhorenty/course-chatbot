@@ -11,12 +11,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     final menu = _homeKeyboard(userId);
     if (fileId != null && fileId.isNotEmpty) {
       await _sender.sendDocument(chatId, document: fileId);
-      await _sender.sendMessage(
-        chatId,
-        _templates.guideReady(),
-        parseMode: 'HTML',
-        replyMarkup: menu,
-      );
+      await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
     } else if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
       final sent = await _sender.sendDocument(
         chatId,
@@ -28,28 +23,13 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       if (cachedId != null && cachedId.isNotEmpty) {
         _course.setLeadMagnetFileId(cachedId);
       }
-      await _sender.sendMessage(
-        chatId,
-        _templates.guideReady(),
-        parseMode: 'HTML',
-        replyMarkup: menu,
-      );
+      await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
     } else if (url != null && url.isNotEmpty) {
-      await _sender.sendMessage(
-        chatId,
-        _templates.guideAsUrl(url),
-        parseMode: 'HTML',
-        replyMarkup: menu,
-      );
+      await _sendHtml(chatId, _templates.guideAsUrl(url), replyMarkup: menu);
     } else {
-      await _sender.sendMessage(chatId, _templates.guideMissing(), parseMode: 'HTML');
+      await _sendHtml(chatId, _templates.guideMissing());
       await _notifyGuideMissing(userId);
-      await _sender.sendMessage(
-        chatId,
-        _templates.menuPinned(),
-        parseMode: 'HTML',
-        replyMarkup: _homeKeyboard(userId),
-      );
+      await _sendHtml(chatId, _templates.menuPinned(), replyMarkup: _homeKeyboard(userId));
       return true;
     }
     _funnel.markMagnetIssued(userId, launchId: launch?.id);
@@ -96,10 +76,10 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
           launchId: launch.id,
         ),
         now: _nowProvider(),
-        send: () => _sender.sendMessage(
+        send: () => sendPreferRich(
+          _sender,
           userId,
           _templates.warmupStep(WarmupService.firstStepKey, launch: launch),
-          parseMode: 'HTML',
           replyMarkup: _templates.warmupKeyboard(
             WarmupService.firstStepKey,
             launch: launch,

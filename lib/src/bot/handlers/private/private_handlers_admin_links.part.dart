@@ -32,6 +32,7 @@ extension _PrivateHandlersAdminLinks on PrivateHandlers {
       return _presentCatalog(
         context,
         _templates.adminLinksList(links, notice: notice),
+        richHtml: _templates.adminLinksListRich(links, notice: notice),
         replyMarkup: _templates.adminLinksListKeyboard(links, canWrite: _canWriteLinks()),
       );
     }
@@ -40,6 +41,7 @@ extension _PrivateHandlersAdminLinks on PrivateHandlers {
     return _presentCatalog(
       context,
       _templates.adminLinksList(links),
+      richHtml: _templates.adminLinksListRich(links),
       replyMarkup: _templates.adminLinksListKeyboard(links, canWrite: _canWriteLinks()),
     );
   }
@@ -60,6 +62,7 @@ extension _PrivateHandlersAdminLinks on PrivateHandlers {
     return _presentCatalog(
       context,
       _templates.adminLinksCard(link),
+      richHtml: _templates.adminLinksCardRich(link),
       replyMarkup: _templates.adminLinksCardKeyboard(index, canWrite: _canWriteLinks()),
     );
   }

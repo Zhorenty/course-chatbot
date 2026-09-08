@@ -106,7 +106,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     await _dismissCatalogUi(context);
     _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.adminSheetsHub);
     await _pinSheetsHub(context);
-    return _presentCatalog(context, _templates.adminSheetsHub());
+    return _presentCatalog(
+      context,
+      _templates.adminSheetsHub(),
+      richHtml: _templates.adminSheetsHubRich(),
+    );
   }
 
   Future<bool> _leaveSheetsSection(PrivateMessageContext context) async {
@@ -119,7 +123,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         catalogMessageId: _flowByUserId[context.userId!]?.catalogMessageId,
         catalogPinMessageId: _flowByUserId[context.userId!]?.catalogPinMessageId,
       );
-      return _presentCatalog(context, _templates.adminSheetsHub());
+      return _presentCatalog(
+        context,
+        _templates.adminSheetsHub(),
+        richHtml: _templates.adminSheetsHubRich(),
+      );
     }
     await _dismissCatalogUi(context);
     _flowByUserId[context.userId!] = const PrivateFlowState(step: PrivateFlowStep.idle);
@@ -185,6 +193,15 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       funnelError: funnelError,
       launch: catalogResult?.launch ?? _launch,
     );
+    final resultRich = _templates.adminSheetsRefreshResultRich(
+      catalogAttempted: sync != null,
+      catalogOk: sync == null || catalogError == null,
+      catalogError: catalogError,
+      funnelAttempted: job != null,
+      funnelOk: funnelOk,
+      funnelError: funnelError,
+      launch: catalogResult?.launch ?? _launch,
+    );
     if (keepHub) {
       await _deleteInboundMessage(context);
       await _ensureSheetsHubPinned(context);
@@ -193,9 +210,14 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         catalogMessageId: _flowByUserId[context.userId!]?.catalogMessageId,
         catalogPinMessageId: _flowByUserId[context.userId!]?.catalogPinMessageId,
       );
-      return _presentCatalog(context, result);
+      return _presentCatalog(context, result, richHtml: resultRich);
     }
-    return _send(context, result, replyMarkup: _templates.adminMenuKeyboard());
+    return _send(
+      context,
+      result,
+      richHtml: resultRich,
+      replyMarkup: _templates.adminMenuKeyboard(),
+    );
   }
 
   // TODO(mvp-reset): remove with the admin «Очистить воронку» button.
@@ -243,7 +265,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return null;
     }
     try {
-      return await _sender.sendMessage(chatId, text, parseMode: 'HTML');
+      return await sendPreferRich(_sender, chatId, text);
     } on Object catch (error, stackTrace) {
       l.w('Admin progress message failed: $error', stackTrace);
       return null;

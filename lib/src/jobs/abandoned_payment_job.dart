@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
+import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 
 final class AbandonedPaymentJob {
   AbandonedPaymentJob({
@@ -98,10 +99,10 @@ final class AbandonedPaymentJob {
       return;
     }
     final pending = _course.latestPendingPayment(order.id);
-    await _sender.sendMessage(
+    await sendPreferRich(
+      _sender,
       order.userId,
       text,
-      parseMode: 'HTML',
       replyMarkup: pending?.confirmationUrl != null
           ? _templates.payUrlKeyboard(pending!.confirmationUrl!)
           : _templates.continuePayKeyboard(order.id),

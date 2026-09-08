@@ -47,6 +47,93 @@ String richDetails(String summary, String bodyHtml, {bool open = false}) {
   return '<details$openAttr><summary>${escapeHtml(summary)}</summary>$bodyHtml</details>';
 }
 
+final _richBlockTag = RegExp(
+  r'<(h[1-6]|p|table|details|ul|ol|footer|blockquote)\b',
+  caseSensitive: false,
+);
+final _boldOnly = RegExp(r'^<b>(.*?)</b>$', dotAll: true);
+final _kvLine = RegExp(r'^([^:\n]{1,40}):\s+(.+)$');
+final _bulletLine = RegExp(r'^[•·]\s+');
+
+bool looksLikeRichHtml(String html) => _richBlockTag.hasMatch(html);
+
+/// Turn classic `parse_mode=HTML` copy into Rich HTML (`h2`/`p`/`ul`/`table`).
+/// Already-rich markup is returned unchanged.
+String richHtmlFromClassic(String html) {
+  final trimmed = html.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  if (looksLikeRichHtml(trimmed)) {
+    return trimmed;
+  }
+  final buf = StringBuffer();
+  var usedH2 = false;
+  for (final raw in trimmed.split(RegExp(r'\n{2,}'))) {
+    final block = raw.trim();
+    if (block.isEmpty) {
+      continue;
+    }
+    buf.write(_classicBlockToRich(block, useH2: !usedH2, onHeading: () => usedH2 = true));
+  }
+  return buf.toString();
+}
+
+String _classicBlockToRich(
+  String block, {
+  required bool useH2,
+  required void Function() onHeading,
+}) {
+  final lines = block.split('\n');
+  final first = lines.first.trim();
+  final bold = _boldOnly.firstMatch(first);
+  if (bold != null) {
+    onHeading();
+    final tag = useH2 ? 'h2' : 'h3';
+    final heading = '<$tag>${bold.group(1)}</$tag>';
+    final rest = lines.skip(1).join('\n').trim();
+    if (rest.isEmpty) {
+      return heading;
+    }
+    return '$heading${_classicPlainBlock(rest)}';
+  }
+  return _classicPlainBlock(block);
+}
+
+String _classicPlainBlock(String block) {
+  final lines = block.split('\n');
+  if (lines.length >= 2 && lines.every(_isBulletLine)) {
+    return richUl(<String>[for (final line in lines) line.replaceFirst(_bulletLine, '')]);
+  }
+  if (lines.length >= 2 && lines.every(_isKvLine)) {
+    final rows = <(String, String)>[];
+    for (final line in lines) {
+      final match = _kvLine.firstMatch(line.trim())!;
+      rows.add((match.group(1)!.trim(), match.group(2)!.trim()));
+    }
+    return richTable(rows);
+  }
+  return '<p>${block.replaceAll('\n', '<br>')}</p>';
+}
+
+bool _isBulletLine(String line) => _bulletLine.hasMatch(line.trim());
+
+bool _isKvLine(String line) {
+  final trimmed = line.trim();
+  if (trimmed.toLowerCase().startsWith('http')) {
+    return false;
+  }
+  final match = _kvLine.firstMatch(trimmed);
+  if (match == null) {
+    return false;
+  }
+  final label = match.group(1)!;
+  if (label.contains('<') || label.toLowerCase().contains('http')) {
+    return false;
+  }
+  return true;
+}
+
 /// Strip rich-only tags into classic `parse_mode=HTML` for old clients.
 String classicHtmlFromRich(String richHtml) {
   var text = richHtml;

@@ -964,7 +964,8 @@ void main() {
         data: MessageTemplates.cbCatalogActiveNo,
       ),
     );
-    expect(sheets.sender.messages.last.text, contains('канал: не указан'));
+    expect(sheets.sender.messages.last.text, contains('канал'));
+    expect(sheets.sender.messages.last.text, contains('не указан'));
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'ccy',
