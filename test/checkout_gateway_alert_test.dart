@@ -271,7 +271,7 @@ void main() {
 
     expect(
       harness.sender.messages.any(
-        (message) => message.chatId == 42 && message.text.contains('неполадки'),
+        (message) => message.chatId == 42 && message.text.contains('онлайн-оплата недоступна'),
       ),
       isTrue,
     );

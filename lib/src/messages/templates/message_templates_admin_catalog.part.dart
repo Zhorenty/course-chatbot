@@ -64,62 +64,136 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskTitle() {
-    return '<b>Новый курс</b>\n\nНазвание запуска — как увидят в боте.';
+    return _catalogWizardStep(
+      1,
+      'Название',
+      'Как поток назовут в боте.',
+      example: 'Колористика · октябрь',
+    );
   }
 
   String adminCatalogAskCode(String suggested) {
-    return '<b>Код запуска</b>\n\n'
-        'Это служебный id потока в таблице и диплинках, не название для учеников. '
-        'Только латиница, цифры, _ и - — <b>не на русском</b>. '
-        'Без кода строка в бота не попадёт.\n\n'
-        'Предлагаю <code>${escapeHtml(suggested)}</code>. '
-        'Кнопка ниже оставит его, или пришли другой.';
+    return _catalogWizardStep(
+      2,
+      'Код запуска',
+      'Служебный id потока в таблице и диплинках, не название для учеников. '
+          'Только латиница, цифры, _ и - — не на русском. Без кода строка в бота не попадёт.\n\n'
+          'Предлагаю <code>${escapeHtml(suggested)}</code>. Кнопка ниже оставит его, или пришли другой.',
+    );
   }
 
   String adminCatalogAskPrice() {
-    return 'Обычная цена в рублях. Число, как 19000 или 19 000.';
+    return _catalogWizardStep(3, 'Цена', 'Обычная цена в рублях.', example: '19000');
   }
 
   String adminCatalogAskPromo() {
-    return 'Спеццена эфира в рублях. Число, как 15000. Пусто или «-» — 15000.';
+    return _catalogWizardStep(
+      4,
+      'Спеццена',
+      'Спеццена эфира в рублях.',
+      example: '15000',
+      skipHint: '«Пропустить» — спеццена по умолчанию.',
+    );
   }
 
   String adminCatalogAskWebinar() {
-    return 'Дата и время эфира по Москве, как 05.10.2026 19:00. '
-        'Пусто или «-» — заполнить позже.';
+    return _catalogWizardStep(
+      7,
+      'Эфир',
+      'Дата и время эфира по Москве.',
+      example: '05.10.2026 19:00',
+      skipHint: '«Пропустить» — заполнить позже.',
+    );
   }
 
   String adminCatalogAskWebinarUrl() {
-    return 'Ссылка на эфир. Пусто или «-» — без ссылки, можно дописать позже.';
+    return _catalogWizardStep(
+      8,
+      'Ссылка на эфир',
+      'URL эфира.',
+      example: 'https://',
+      skipHint: '«Пропустить» — без ссылки, можно дописать позже.',
+    );
   }
 
   String adminCatalogAskSalesStart() {
-    return 'Когда открывается касса и продающий прогрев. Дата и время по Москве, '
-        'как 05.10.2026 19:00. Пусто или «-» — как дата эфира. '
-        'Без эфира и без этой даты продажи закрыты.';
+    return _catalogWizardStep(
+      9,
+      'Старт продаж',
+      'Когда открывается касса и продающий прогрев. Дата и время по Москве. '
+          'Без эфира и без этой даты продажи закрыты.',
+      example: '05.10.2026 19:00',
+      skipHint: '«Пропустить» — как дата эфира.',
+    );
   }
 
   String adminCatalogAskSalesEnd() {
-    return 'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.';
+    return _catalogWizardStep(
+      10,
+      'Конец продаж',
+      'Последний день продаж.',
+      example: '11.10.2026',
+      skipHint: '«Пропустить» — не закрывать по календарю.',
+    );
   }
 
   String adminCatalogAskDeposit() {
-    return 'Предоплата в рублях. Пусто или 0 — сразу полная оплата. '
-        'Срок доплаты бот поставит сам: за неделю до старта курса.';
+    return _catalogWizardStep(
+      5,
+      'Предоплата',
+      'Предоплата в рублях. Срок доплаты бот поставит сам: за неделю до старта курса.',
+      example: '5000',
+      skipHint: '«Пропустить» или 0 — сразу полная оплата.',
+    );
   }
 
   String adminCatalogAskStart() {
-    return 'Дата старта курса, как 19.08.2026.';
+    return _catalogWizardStep(6, 'Старт курса', 'Дата старта курса.', example: '19.08.2026');
   }
 
   String adminCatalogAskChannel() {
-    return 'ID канала этого потока (число вида −100…).\n\n'
-        'Своего канала нет — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
-        'или напиши «-». При синке возьмётся запасной.';
+    return _catalogWizardStep(
+      11,
+      'Канал',
+      'ID канала этого потока (число вида −100…).',
+      skipHint:
+          '«${MessageTemplates.buttonAdminCatalogSkipChannel}» — возьмётся запасной при синке.',
+    );
   }
 
   String adminCatalogAskActive() {
-    return 'Сделать этот поток активным? «Да» снимет метку с остальных.';
+    return _catalogWizardStep(
+      12,
+      'Активный поток',
+      'Сделать этот поток активным? «Да» снимет метку с остальных.',
+    );
+  }
+
+  String _catalogWizardStep(
+    int step,
+    String title,
+    String body, {
+    String? example,
+    String? skipHint,
+  }) {
+    const total = 12;
+    final buf = StringBuffer()
+      ..writeln('<b>Шаг $step из $total · $title</b>')
+      ..writeln()
+      ..write(body);
+    if (example != null) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write('Пример: <code>${escapeHtml(example)}</code>');
+    }
+    if (skipHint != null) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(skipHint);
+    }
+    return buf.toString();
   }
 
   String adminCatalogPreview(CatalogLaunchDraft draft) {
@@ -199,8 +273,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.',
       CatalogLaunchField.channel =>
         'Новый ID канала (число вида −100…).\n\n'
-            'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
-            'или напиши «-».',
+            'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}».',
       CatalogLaunchField.guide => 'Пришли PDF гайда в этот чат. Старый файл этого потока заменю.',
     };
   }

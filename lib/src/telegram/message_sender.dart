@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/telegram/input_rich_message.dart';
+
 final class SentTelegramDocument {
   const SentTelegramDocument({required this.messageId, this.fileId});
 
@@ -13,6 +15,15 @@ abstract interface class MessageSender {
     bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
+  });
+
+  /// Structured screen (Bot API 10.1+). Callers must fall back to [sendMessage]
+  /// if this throws — old clients show an “update the app” stub.
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   });
 
   Future<SentTelegramDocument> sendDocument(
@@ -39,6 +50,14 @@ abstract interface class MessageSender {
     bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
+  });
+
+  /// Edit a message that was sent as rich. Uses `editMessageText.rich_message`.
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
   });
 
   Future<void> deleteMessage(int chatId, {required int messageId});

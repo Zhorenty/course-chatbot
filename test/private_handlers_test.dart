@@ -54,8 +54,8 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
-    final courseOffer = harness.sender.messages.firstWhere((m) => m.text.contains('Поток с'));
+    expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
+    final courseOffer = harness.sender.messages.firstWhere((m) => m.text.contains('Запуск'));
     expect(_inlineButtonTexts(courseOffer.replyMarkup), isEmpty);
     final courseMenu = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(courseMenu, contains(MessageTemplates.buttonEnroll));
@@ -74,7 +74,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 7, userId: 7, text: '/start'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
@@ -94,7 +94,7 @@ void main() {
     await sheetsHarness.handlers.handle(
       privateMessageUpdate(chatId: 21, userId: 21, text: '/start ads_course'),
     );
-    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Поток с')), isTrue);
+    expect(sheetsHarness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
 
     sheetsHarness.sender.messages.clear();
     sheetsHarness.sheetsGateway!.valuesBySheetId[tab.sheetId]!.add(
@@ -183,7 +183,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonHelp));
-    expect(harness.sender.messages.single.text, contains('можно запросить снова'));
+    expect(harness.sender.messages.single.text, contains('Продолжаем с того же места'));
   });
 
   test('help callback opens help and does not escalate', () async {
@@ -305,7 +305,12 @@ void main() {
     expect(enroll.text, contains('12.10.2026'));
     expect(enroll.text, contains('Запись на поток'));
     expect(enroll.text, isNot(contains('t.me/+')));
-    expect(_inlineButtonTexts(enroll.replyMarkup), contains(MessageTemplates.buttonPayFull));
+    expect(
+      _inlineButtonTexts(
+        enroll.replyMarkup,
+      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
+      isTrue,
+    );
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
     expect(
       harness.course
@@ -335,7 +340,10 @@ void main() {
     final reminder = harness.sender.messages.firstWhere(
       (m) => m.text.contains('https://t.me/+keep-me'),
     );
-    expect(_inlineButtonTexts(reminder.replyMarkup), <String>[MessageTemplates.buttonOpenInvite]);
+    expect(_inlineButtonTexts(reminder.replyMarkup), <String>[
+      MessageTemplates.buttonOpenInvite,
+      MessageTemplates.buttonCopyInvite,
+    ]);
     expect(_inlineCallbackData(reminder.replyMarkup), isEmpty);
     final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(pin, contains(MessageTemplates.buttonCourseStatus));
@@ -422,7 +430,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
     );
-    expect(harness.sender.messages.single.text, contains('Твой поток'));
+    expect(harness.sender.messages.single.text, contains('Мой курс'));
     expect(harness.sender.messages.single.text, contains('закрыта'));
     expect(harness.sender.messages.single.text, isNot(contains('Запись на поток')));
   });
@@ -447,7 +455,7 @@ void main() {
     );
 
     expect(harness.sender.messages.last.text, contains('Публичной оферты'));
-    expect(harness.sender.messages.last.text, contains('нажми галочку'));
+    expect(harness.sender.messages.last.text, contains('поставь галочку'));
     expect(harness.gateway.creates, 0);
 
     await harness.handlers.handle(
@@ -501,7 +509,10 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Ты уже здесь')), isTrue);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
+      isTrue,
+    );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
@@ -584,7 +595,7 @@ void main() {
     for (final command in <String>['👤 Профиль', '📋 Меню', '/profile', '/menu']) {
       harness.sender.messages.clear();
       await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: command));
-      expect(harness.sender.messages.single.text, contains('Как это устроено'));
+      expect(harness.sender.messages.single.text, contains('Помощь'));
       expect(harness.sender.forwards, isEmpty);
       expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
     }
@@ -597,7 +608,7 @@ void main() {
     expect(harness.sender.messages, hasLength(2));
     final offer = harness.sender.messages.first;
     expect(offer.text, contains('Гайд'));
-    expect(offer.text, contains(MessageTemplates.buttonGuide));
+    expect(offer.text, contains('меню внизу'));
     expect(offer.text, isNot(contains('<b>Профиль</b>')));
     expect(offer.text, isNot(contains('<b>Меню</b>')));
     expect(_inlineButtonTexts(offer.replyMarkup), isEmpty);

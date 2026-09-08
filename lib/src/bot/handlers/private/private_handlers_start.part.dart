@@ -27,14 +27,23 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _pinUserMenu(context);
     }
     if (phase == FunnelPhase.magnetIssued || phase == FunnelPhase.warming) {
-      return _send(context, _templates.alreadyInFunnel(), replyMarkup: _homeKeyboard(user.userId));
+      return _send(
+        context,
+        _templates.alreadyInFunnel(),
+        richHtml: _templates.alreadyInFunnelRich(),
+        replyMarkup: _homeKeyboard(user.userId),
+      );
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
-      await _send(context, _templates.startCourseCard(launch: _launch));
+      await _send(
+        context,
+        _templates.startCourseCard(launch: _launch),
+        richHtml: _templates.startCourseCardRich(launch: _launch),
+      );
       return _pinUserMenu(context);
     }
-    await _send(context, _templates.startGuideOffer());
+    await _send(context, _templates.startGuideOffer(), richHtml: _templates.startGuideOfferRich());
     return _pinUserMenu(context);
   }
 
@@ -54,7 +63,12 @@ extension _PrivateHandlersStart on PrivateHandlers {
   }
 
   Future<bool> _sendHelp(PrivateMessageContext context) {
-    return _send(context, _templates.help(), replyMarkup: _templates.helpKeyboard());
+    return _send(
+      context,
+      _templates.help(),
+      richHtml: _templates.helpRich(),
+      replyMarkup: _templates.helpKeyboard(),
+    );
   }
 
   String? _parseStartPayload(String text) {

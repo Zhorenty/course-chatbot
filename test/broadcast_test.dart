@@ -78,12 +78,12 @@ void main() {
     await _openBroadcast(harness);
 
     final picker = harness.sender.messages.last;
-    expect(picker.text, contains('Кому отправить? Можно несколько.'));
-    expect(picker.text, contains('Гайд, без записи — 1'));
+    expect(picker.text, contains('Кому отправить? Можно несколько сегментов'));
+    expect(picker.text, contains('Гайд есть, без записи — 1'));
     expect(picker.text, contains('Оплатили / доступ — 1'));
-    expect(picker.text, contains('Все, кроме купивших и отмен — '));
+    expect(picker.text, contains('Воронка без оплативших — '));
     final buttons = _inlineButtonTexts(picker.replyMarkup);
-    expect(buttons, contains('Гайд, без записи (1)'));
+    expect(buttons, contains('Гайд есть, без записи (1)'));
     expect(buttons, contains('Оплатили / доступ (1)'));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastCancel));
     expect(buttons, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
@@ -108,8 +108,9 @@ void main() {
     expect(harness.sender.copies.any((c) => c.chatId == 10), isFalse);
     final preview = harness.sender.messages.last;
     expect(preview.text, contains('Превью'));
-    expect(preview.text, contains('Гайд, без записи'));
-    expect(preview.text, contains('Получателей: 1'));
+    expect(preview.text, contains('Гайд есть, без записи'));
+    expect(preview.text, contains('Получателей'));
+    expect(preview.text, contains('1'));
     expect(preview.text, contains('текст'));
     expect(preview.text, contains('Привет поток'));
     final data = _inlineCallbackData(preview.replyMarkup);
@@ -178,8 +179,9 @@ void main() {
     await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
     await _pickSegment(harness, BroadcastSegment.paidAccess);
     expect(harness.sender.copies.last.messageId, 44);
-    expect(harness.sender.messages.last.text, contains('Сегмент: Оплатили / доступ'));
-    expect(harness.sender.messages.last.text, contains('Получателей: 1'));
+    expect(harness.sender.messages.last.text, contains('Оплатили / доступ'));
+    expect(harness.sender.messages.last.text, contains('Получателей'));
+    expect(harness.sender.messages.last.text, contains('1'));
     await _confirmBroadcast(harness);
 
     expect(
@@ -279,7 +281,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastOtherSegment));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastCancel));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastSkipOptOut));
-    expect(texts.join(), isNot(contains('Гайд, без записи')));
+    expect(texts.join(), isNot(contains('Гайд есть, без записи')));
     expect(data, contains(MessageTemplates.cbBroadcastSend));
     expect(data, contains(MessageTemplates.cbBroadcastOtherSegment));
     expect(data, contains(MessageTemplates.cbBroadcastToggleOptOut));
@@ -322,10 +324,10 @@ void main() {
     await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
 
     final afterFirst = harness.sender.messages.last;
-    expect(afterFirst.text, contains('✓ Гайд, без записи — 1'));
-    expect(afterFirst.text, contains('Выбрано: Гайд, без записи'));
+    expect(afterFirst.text, contains('✓ Гайд есть, без записи — 1'));
+    expect(afterFirst.text, contains('Выбрано: Гайд есть, без записи'));
     expect(afterFirst.text, contains('Получателей: 1'));
-    expect(_inlineButtonTexts(afterFirst.replyMarkup), contains('✓ Гайд, без записи (1)'));
+    expect(_inlineButtonTexts(afterFirst.replyMarkup), contains('✓ Гайд есть, без записи (1)'));
     expect(
       _inlineButtonTexts(afterFirst.replyMarkup),
       contains(MessageTemplates.buttonAdminBroadcastContinue),
@@ -334,7 +336,7 @@ void main() {
 
     await _toggleSegment(harness, BroadcastSegment.paidAccess);
     final afterSecond = harness.sender.messages.last;
-    expect(afterSecond.text, contains('Выбрано: Гайд, без записи, Оплатили / доступ'));
+    expect(afterSecond.text, contains('Выбрано: Гайд есть, без записи, Оплатили / доступ'));
     expect(afterSecond.text, contains('Получателей: 2'));
     expect(_inlineButtonTexts(afterSecond.replyMarkup), contains('✓ Оплатили / доступ (1)'));
 
@@ -360,7 +362,8 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Без дубля', messageId: 82),
     );
-    expect(harness.sender.messages.last.text, contains('Получателей: 2'));
+    expect(harness.sender.messages.last.text, contains('Получателей'));
+    expect(harness.sender.messages.last.text, contains('<b>2</b>'));
     await _confirmBroadcast(harness);
     expect(harness.sender.copies.where((c) => c.chatId == 10), hasLength(1));
   });

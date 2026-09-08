@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:course_chatbot/src/telegram/channel_api.dart';
+import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 
 final class FakeMessageSender implements MessageSender {
@@ -14,6 +15,7 @@ final class FakeMessageSender implements MessageSender {
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<String> documents = <String>[];
   Object? throwOnSend;
+  Object? throwOnRich;
   final Set<int> failSendChatIds = <int>{};
   int _nextMessageId = 0;
 
@@ -42,6 +44,35 @@ final class FakeMessageSender implements MessageSender {
         parseMode: parseMode,
         replyMarkup: replyMarkup,
         disableNotification: disableNotification,
+      ),
+    );
+    return _nextMessageId;
+  }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final error = throwOnRich ?? throwOnSend;
+    if (error != null) {
+      throw error;
+    }
+    if (failSendChatIds.contains(chatId)) {
+      throw StateError('Forbidden: bot was blocked by the user');
+    }
+    _nextMessageId += 1;
+    messages.add(
+      SentMessage(
+        chatId: chatId,
+        messageId: _nextMessageId,
+        text: richMessage.html,
+        parseMode: 'rich',
+        replyMarkup: replyMarkup,
+        disableNotification: disableNotification,
+        isRich: true,
       ),
     );
     return _nextMessageId;
@@ -105,6 +136,30 @@ final class FakeMessageSender implements MessageSender {
       parseMode: parseMode ?? previous.parseMode,
       replyMarkup: replyMarkup,
       disableNotification: previous.disableNotification,
+      isRich: false,
+    );
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final index = messages.indexWhere((m) => m.chatId == chatId && m.messageId == messageId);
+    if (index < 0) {
+      throw StateError('FakeMessageSender has no message $messageId in chat $chatId');
+    }
+    final previous = messages[index];
+    messages[index] = SentMessage(
+      chatId: previous.chatId,
+      messageId: previous.messageId,
+      text: richMessage.html,
+      parseMode: 'rich',
+      replyMarkup: replyMarkup,
+      disableNotification: previous.disableNotification,
+      isRich: true,
     );
   }
 
@@ -196,6 +251,7 @@ final class SentMessage {
     this.parseMode,
     this.replyMarkup,
     this.disableNotification = true,
+    this.isRich = false,
   });
 
   final int chatId;
@@ -204,6 +260,7 @@ final class SentMessage {
   final String? parseMode;
   final Map<String, Object?>? replyMarkup;
   final bool disableNotification;
+  final bool isRich;
 }
 
 final class ForwardedMessage {

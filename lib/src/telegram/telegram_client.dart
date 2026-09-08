@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:course_chatbot/src/telegram/channel_api.dart';
+import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
@@ -182,6 +183,29 @@ final class TelegramClient implements MessageSender, ChannelApi {
       );
     }
     return lastMessageId;
+  }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final body = <String, Object?>{
+      'chat_id': chatId,
+      'rich_message': richMessage.toJson(),
+      'disable_notification': disableNotification,
+    };
+    if (replyMarkup != null) {
+      body['reply_markup'] = replyMarkup;
+    }
+    final payload = await _post('sendRichMessage', body: body);
+    final result = payload['result'];
+    if (result is! Map || result['message_id'] is! int) {
+      throw const TelegramApiException('Telegram did not return message_id');
+    }
+    return result['message_id'] as int;
   }
 
   Future<int> _sendMessageChunk(
@@ -504,6 +528,24 @@ final class TelegramClient implements MessageSender, ChannelApi {
         'disable_web_page_preview': disableWebPagePreview,
         if (replyMarkup != null) 'reply_markup': replyMarkup,
         if (parseMode != null) 'parse_mode': parseMode,
+      },
+    );
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    await _post(
+      'editMessageText',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+        'rich_message': richMessage.toJson(),
+        if (replyMarkup != null) 'reply_markup': replyMarkup,
       },
     );
   }

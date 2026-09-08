@@ -412,7 +412,7 @@ void main() {
     expect(created!.source, AcquisitionSource.adminManual);
     expect(created.funnelPhase, FunnelPhase.lead);
     expect(harness.sender.messages.any((m) => m.text.contains('Карточка')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('id <code>50</code>')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('<code>50</code>')), isTrue);
     expect(harness.sender.messages.any((m) => m.chatId == 50), isFalse);
 
     await harness.handlers.handle(
@@ -1120,7 +1120,11 @@ void main() {
         data: '${MessageTemplates.cbCatalogOpen}${second.id}',
       ),
     );
-    expect(sheets.sender.messages.last.text, contains('гайд: нет'));
+    expect(
+      sheets.sender.messages.last.text.contains('гайд: нет') ||
+          sheets.sender.messages.last.text.contains('<td>гайд</td><td>нет</td>'),
+      isTrue,
+    );
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cf',
@@ -1136,7 +1140,11 @@ void main() {
     await sheets.handlers.handle(privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'nov-guide'));
     expect(sheets.course.launchByCode('nov-26')?.leadMagnetFileId, 'nov-guide');
     expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'file-guide');
-    expect(sheets.sender.messages.last.text, contains('гайд: есть'));
+    expect(
+      sheets.sender.messages.last.text.contains('гайд: есть') ||
+          sheets.sender.messages.last.text.contains('<td>гайд</td><td>есть</td>'),
+      isTrue,
+    );
   });
 
   test('admin catalog card accepts a document as the new guide', () async {
@@ -1351,7 +1359,7 @@ void main() {
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
     final prompt = sheets.sender.messages.last;
     expect(prompt.text, contains('Код запуска'));
-    expect(prompt.text, contains('служебный id'));
+    expect(prompt.text, contains('Служебный id'));
     expect(prompt.text, contains('не на русском'));
     expect(prompt.text, contains('noyabr'));
     expect(

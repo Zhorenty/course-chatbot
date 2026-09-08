@@ -145,7 +145,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     return _send(
       context,
       _templates.enrollOptions(launch, quote: quote),
-      replyMarkup: quote.checkoutOpen ? _templates.enrollKeyboard(launch, quote: quote) : null,
+      richHtml: _templates.enrollOptionsRich(launch, quote: quote),
+      replyMarkup: _templates.enrollKeyboard(
+        launch,
+        quote: quote,
+        rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
+      ),
     );
   }
 
@@ -161,7 +166,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       return true;
     }
     _funnel.markWebinarRsvp(userId, launchId: launch.id);
-    await _answerCallback(context, text: 'Отметила: ты в списке на эфир.');
+    await _answerCallback(context, text: 'Ты в списке на эфир.');
     final url = launch.webinarUrl?.trim();
     final started = launch.webinarAt != null && !now.toUtc().isBefore(launch.webinarAt!.toUtc());
     return _send(
@@ -187,6 +192,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     return _send(
       context,
       _templates.courseStatus(launch: launch, order: order, access: access, now: _nowProvider()),
+      richHtml: _templates.courseStatusRich(
+        launch: launch,
+        order: order,
+        access: access,
+        now: _nowProvider(),
+      ),
       replyMarkup: _templates.courseStatusKeyboard(order: order, access: access),
     );
   }

@@ -57,7 +57,7 @@ void main() {
     final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 8));
     expect(templates.offerConsent(launch), contains('Перейти к оплате'));
     expect(templates.offerConsent(launch), contains('Публичной оферты'));
-    expect(templates.offerConsent(launch), contains('нажми галочку'));
+    expect(templates.offerConsent(launch), contains('поставь галочку'));
     expect(
       templates.enrollOptions(launch, quote: quote),
       contains('Ссылку в канал пришлю после полной оплаты'),
@@ -164,7 +164,7 @@ void main() {
   test('admin search prompt lists id and username', () {
     final text = MessageTemplates().adminAskSearch();
     expect(text, contains('<b>Поиск человека</b>'));
-    expect(text, contains('Пришли сообщением'));
+    expect(text, contains('Пришли id'));
     expect(text, contains('id'));
     expect(text, contains('или @username'));
   });
@@ -284,6 +284,7 @@ void main() {
       ..._inlineCallbackData(templates.adminCatalogKeepCodeKeyboard()),
       ..._inlineCallbackData(templates.adminCatalogBackToCardKeyboard(12)),
       ..._inlineCallbackData(templates.adminCatalogSkipChannelKeyboard()),
+      ..._inlineCallbackData(templates.adminCatalogSkipOptionalKeyboard()),
     ];
     expect(data, isNotEmpty);
     expect(data.every((item) => item.length <= 64), isTrue);
@@ -294,6 +295,7 @@ void main() {
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide)));
     expect(data, contains(MessageTemplates.cbCatalogKeepCode));
     expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
+    expect(data, contains(MessageTemplates.cbCatalogSkipOptional));
     expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
     expect(
       templates.adminCatalogGuideButton(launch),
@@ -436,7 +438,7 @@ void main() {
       contains('✓ ${templates.broadcastSegmentButton(BroadcastSegment.guideNotPaid, 0)}'),
     );
     expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastContinue));
-    expect(templates.adminBroadcastPickSegment(counts), contains('Можно несколько.'));
+    expect(templates.adminBroadcastPickSegment(counts), contains('Можно несколько сегментов'));
   });
 
   test('admin card is a declarative snapshot, not a pupil address', () {
@@ -624,7 +626,7 @@ void main() {
       'Если застрял — напиши сюда',
     );
     expect(templates.adminMenuKeyboard().containsKey('input_field_placeholder'), isFalse);
-    expect(templates.help(), contains('перешлю админу'));
+    expect(templates.help(), contains('перешлю человеку на связи'));
 
     final paid = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: true));
     expect(paid, contains(MessageTemplates.buttonCourseStatus));
@@ -702,7 +704,7 @@ void main() {
     expect(waiting, contains('входа пока нет'));
     expect(
       _inlineButtonTexts(templates.courseStatusKeyboard(order: paid, access: unjoined)!),
-      <String>[MessageTemplates.buttonOpenInvite],
+      <String>[MessageTemplates.buttonOpenInvite, MessageTemplates.buttonCopyInvite],
     );
 
     final joined = ChannelAccess(
@@ -742,11 +744,12 @@ void main() {
     expect(enroll, isNot(contains(MessageTemplates.buttonGuide)));
     expect(enroll, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(enroll, isNot(contains(MessageTemplates.buttonHelp)));
-    expect(enroll, contains(MessageTemplates.buttonPayFull));
+    expect(enroll.any((text) => text.startsWith(MessageTemplates.buttonPayFull)), isTrue);
     expect(_inlineButtonTexts(templates.helpKeyboard()), <String>[MessageTemplates.buttonOptOut]);
     expect(templates.help(), contains(MessageTemplates.buttonOptOut));
     expect(_inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')), <String>[
       MessageTemplates.buttonOpenInvite,
+      MessageTemplates.buttonCopyInvite,
     ]);
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
     expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));

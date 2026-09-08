@@ -86,6 +86,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _keepCatalogCreateCode(context);
       case MessageTemplates.cbCatalogSkipChannel:
         return _skipCatalogChannel(context);
+      case MessageTemplates.cbCatalogSkipOptional:
+        return _skipCatalogOptional(context);
       case MessageTemplates.cbLinksMenu:
         return _showLinksList(context);
       case MessageTemplates.cbLinksNew:
@@ -412,12 +414,84 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     PrivateMessageContext context,
     String text, {
     Map<String, Object?>? replyMarkup,
+    String? richHtml,
+    bool disableNotification = true,
   }) async {
     final chatId = context.chatId;
     if (chatId == null) {
       return false;
     }
-    await _sender.sendMessage(chatId, text, parseMode: 'HTML', replyMarkup: replyMarkup);
+    await _sendHtml(
+      chatId,
+      text,
+      replyMarkup: replyMarkup,
+      richHtml: richHtml,
+      disableNotification: disableNotification,
+    );
     return true;
+  }
+
+  Future<int> _sendHtml(
+    int chatId,
+    String text, {
+    Map<String, Object?>? replyMarkup,
+    String? richHtml,
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+  }) async {
+    if (richHtml != null && richHtml.isNotEmpty) {
+      try {
+        return await _sender.sendRichMessage(
+          chatId,
+          InputRichMessage(html: richHtml),
+          disableNotification: disableNotification,
+          replyMarkup: replyMarkup,
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('sendRichMessage failed, falling back to sendMessage: $error', stackTrace);
+      }
+    }
+    return _sender.sendMessage(
+      chatId,
+      text,
+      parseMode: 'HTML',
+      replyMarkup: replyMarkup,
+      disableNotification: disableNotification,
+      disableWebPagePreview: disableWebPagePreview,
+    );
+  }
+
+  Future<void> _editHtml(
+    int chatId, {
+    required int messageId,
+    required String text,
+    Map<String, Object?>? replyMarkup,
+    String? richHtml,
+  }) async {
+    if (richHtml != null && richHtml.isNotEmpty) {
+      try {
+        await _sender.editRichMessage(
+          chatId,
+          messageId: messageId,
+          richMessage: InputRichMessage(html: richHtml),
+          replyMarkup: replyMarkup,
+        );
+        return;
+      } on TelegramApiException catch (error, stackTrace) {
+        if (error.message.toLowerCase().contains('not modified')) {
+          return;
+        }
+        l.w('editRichMessage failed, falling back to editMessageText: $error', stackTrace);
+      } on Object catch (error, stackTrace) {
+        l.w('editRichMessage failed, falling back to editMessageText: $error', stackTrace);
+      }
+    }
+    await _sender.editMessageText(
+      chatId,
+      messageId: messageId,
+      text: text,
+      parseMode: 'HTML',
+      replyMarkup: replyMarkup,
+    );
   }
 }

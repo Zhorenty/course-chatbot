@@ -74,6 +74,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return _presentCatalog(
       context,
       _templates.adminCatalogCard(launch),
+      richHtml: _templates.adminCatalogCardRich(launch),
       replyMarkup: _templates.adminCatalogCardKeyboard(launch),
     );
   }
@@ -93,12 +94,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return _presentCatalog(context, _templates.adminCatalogAskTitle());
   }
 
-  Future<bool> _captureCatalog(PrivateMessageContext context) async {
+  Future<bool> _captureCatalog(PrivateMessageContext context, {String? rawOverride}) async {
     await _deleteInboundMessage(context);
     final flow = _flowByUserId[context.userId!];
     final step = flow?.step;
     if (step == PrivateFlowStep.adminCatalogEditValue) {
-      return _captureCatalogEdit(context);
+      return _captureCatalogEdit(context, rawOverride: rawOverride);
     }
     if (step == PrivateFlowStep.adminCatalogMenu) {
       final fileId = extractDocumentFileId(context.message);
@@ -112,7 +113,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogCreateConfirm) {
       return true;
     }
-    final text = context.text?.trim() ?? '';
+    final text = (rawOverride ?? context.text)?.trim() ?? '';
     final draft = flow?.catalogDraft ?? const CatalogWizardDraft();
     switch (step) {
       case PrivateFlowStep.adminCatalogCreateTitle:
@@ -149,7 +150,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreatePromo,
           catalogDraft: draft.copyWith(priceKopecks: CoursesSheetParser.parsePriceKopecks(text)),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskPromo());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskPromo(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreatePromo:
         final skippedPromo = text.isEmpty || CoursesSheetParser.isOmittedChannelId(text);
         if (!skippedPromo) {
@@ -158,6 +163,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             return _presentCatalog(
               context,
               _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskPromo()),
+              replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
             );
           }
         }
@@ -170,7 +176,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
                 : CoursesSheetParser.parsePriceKopecks(text),
           ),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskDeposit());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskDeposit(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreateDeposit:
         final price = draft.priceKopecks ?? 0;
         final error = LaunchCatalogAdminService.validateDeposit(text, priceKopecks: price);
@@ -178,6 +188,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           return _presentCatalog(
             context,
             _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskDeposit()),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         final deposit = text.isEmpty ? 0 : (CoursesSheetParser.parsePriceKopecks(text) ?? 0);
@@ -200,7 +211,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateWebinar,
           catalogDraft: draft.copyWith(courseStartAt: CoursesSheetParser.parseDate(text)),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskWebinar());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskWebinar(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreateWebinar:
         if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
           _setCatalogFlow(
@@ -208,7 +223,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             PrivateFlowStep.adminCatalogCreateWebinarUrl,
             catalogDraft: draft.copyWith(webinarAt: null),
           );
-          return _presentCatalog(context, _templates.adminCatalogAskWebinarUrl());
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWebinarUrl(),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+          );
         }
         final webinar = CoursesSheetParser.parseDateTime(text);
         if (webinar == null) {
@@ -218,6 +237,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskWebinar(),
             ),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -225,7 +245,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateWebinarUrl,
           catalogDraft: draft.copyWith(webinarAt: webinar),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskWebinarUrl());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskWebinarUrl(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreateWebinarUrl:
         final skippedUrl = text.isEmpty || CoursesSheetParser.isOmittedChannelId(text);
         _setCatalogFlow(
@@ -233,7 +257,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateSalesStart,
           catalogDraft: draft.copyWith(webinarUrl: skippedUrl ? null : text),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskSalesStart());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskSalesStart(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreateSalesStart:
         if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
           _setCatalogFlow(
@@ -241,7 +269,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             PrivateFlowStep.adminCatalogCreateSalesEnd,
             catalogDraft: draft.copyWith(salesStartAt: null),
           );
-          return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskSalesEnd(),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+          );
         }
         final salesStart = CoursesSheetParser.parseDateTime(text);
         if (salesStart == null) {
@@ -251,6 +283,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskSalesStart(),
             ),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -258,7 +291,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateSalesEnd,
           catalogDraft: draft.copyWith(salesStartAt: salesStart),
         );
-        return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogAskSalesEnd(),
+          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
+        );
       case PrivateFlowStep.adminCatalogCreateSalesEnd:
         if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
           _setCatalogFlow(
@@ -276,6 +313,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskSalesEnd(),
             ),
+            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -323,6 +361,25 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       _templates.adminCatalogAskActive(),
       replyMarkup: _templates.adminCatalogActiveKeyboard(),
     );
+  }
+
+  Future<bool> _skipCatalogOptional(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final step = _flowByUserId[context.userId!]?.step;
+    const skippable = <PrivateFlowStep>{
+      PrivateFlowStep.adminCatalogCreatePromo,
+      PrivateFlowStep.adminCatalogCreateDeposit,
+      PrivateFlowStep.adminCatalogCreateWebinar,
+      PrivateFlowStep.adminCatalogCreateWebinarUrl,
+      PrivateFlowStep.adminCatalogCreateSalesStart,
+      PrivateFlowStep.adminCatalogCreateSalesEnd,
+    };
+    if (step == null || !skippable.contains(step)) {
+      return true;
+    }
+    return _captureCatalog(context, rawOverride: '');
   }
 
   Future<bool> _skipCatalogChannel(PrivateMessageContext context) async {
@@ -844,6 +901,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     PrivateMessageContext context,
     String text, {
     Map<String, Object?>? replyMarkup,
+    String? richHtml,
   }) async {
     final chatId = context.chatId;
     final userId = context.userId;
@@ -855,11 +913,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         flow?.catalogMessageId ?? asTelegramInt(context.callbackMessage?['message_id']);
     if (messageId != null) {
       try {
-        await _sender.editMessageText(
+        await _editHtml(
           chatId,
           messageId: messageId,
           text: text,
-          parseMode: 'HTML',
+          richHtml: richHtml,
           replyMarkup: replyMarkup,
         );
         _flowByUserId[userId] =
@@ -875,17 +933,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               );
           return true;
         }
-        l.w('Admin catalog editMessageText failed: $error', stackTrace);
+        l.w('Admin catalog edit failed: $error', stackTrace);
       } on Object catch (error, stackTrace) {
-        l.w('Admin catalog editMessageText failed: $error', stackTrace);
+        l.w('Admin catalog edit failed: $error', stackTrace);
       }
     }
-    final sentId = await _sender.sendMessage(
-      chatId,
-      text,
-      parseMode: 'HTML',
-      replyMarkup: replyMarkup,
-    );
+    final sentId = await _sendHtml(chatId, text, richHtml: richHtml, replyMarkup: replyMarkup);
     final latest =
         _flowByUserId[userId] ?? const PrivateFlowState(step: PrivateFlowStep.adminCatalogMenu);
     _flowByUserId[userId] = latest.copyWith(catalogMessageId: sentId);

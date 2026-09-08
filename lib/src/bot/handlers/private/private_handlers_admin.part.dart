@@ -45,6 +45,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       return _send(
         context,
         _templates.adminFunnelLogic(launch: _launch),
+        richHtml: _templates.adminFunnelLogicRich(launch: _launch),
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
@@ -208,6 +209,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       replyMarkup: _templates.adminConfirmKeyboard(
         yesData: MessageTemplates.cbAdminClearFunnelConfirm,
         noData: MessageTemplates.cbAdminClearFunnelAbort,
+        yesText: MessageTemplates.buttonAdminClearFunnelYes,
+        noText: MessageTemplates.buttonAdminClearFunnelNo,
       ),
     );
   }
@@ -389,6 +392,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         access: access,
         dialog: dialog,
       ),
+      richHtml: _templates.adminCardRich(
+        user: user,
+        enrollment: enrollment,
+        order: order,
+        access: access,
+        dialog: dialog,
+      ),
       replyMarkup: _templates.adminCardKeyboard(
         user.userId,
         status: status,
@@ -440,9 +450,13 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
       return false;
     }
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
+      return _send(context, _templates.adminNotFound('$targetUserId'));
+    }
     final (text, yesPrefix) = switch (kind) {
       _AdminConfirmKind.cancel => (
-        _templates.adminConfirmCancel(targetUserId),
+        _templates.adminConfirmCancel(user),
         MessageTemplates.cbAdminCancelConfirm,
       ),
     };
@@ -685,15 +699,21 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       recipientCount: recipientCount,
       draftSaved: draftSaved,
     );
+    final richHtml = _templates.adminBroadcastPickSegmentRich(
+      counts,
+      selected: selected,
+      recipientCount: recipientCount,
+      draftSaved: draftSaved,
+    );
     final markup = _templates.broadcastSegmentKeyboard(counts, selected: selected);
     final messageId = forceNewMessage ? null : flow.broadcastPickerMessageId;
     if (messageId != null) {
       try {
-        await _sender.editMessageText(
+        await _editHtml(
           chatId,
           messageId: messageId,
           text: text,
-          parseMode: 'HTML',
+          richHtml: richHtml,
           replyMarkup: markup,
         );
         return true;
@@ -701,12 +721,12 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         if (error.message.toLowerCase().contains('not modified')) {
           return true;
         }
-        l.w('Broadcast picker editMessageText failed: $error', stackTrace);
+        l.w('Broadcast picker edit failed: $error', stackTrace);
       } on Object catch (error, stackTrace) {
-        l.w('Broadcast picker editMessageText failed: $error', stackTrace);
+        l.w('Broadcast picker edit failed: $error', stackTrace);
       }
     }
-    final sentId = await _sender.sendMessage(chatId, text, parseMode: 'HTML', replyMarkup: markup);
+    final sentId = await _sendHtml(chatId, text, richHtml: richHtml, replyMarkup: markup);
     final latest =
         _flowByUserId[userId] ??
         const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
@@ -813,6 +833,23 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _send(
       context,
       _templates.adminBroadcastPreview(
+        segments: segments,
+        recipientCount: _broadcast
+            .listRecipients(
+              segments: segments,
+              excludeOptOut: flow.broadcastExcludeOptOut,
+              courseEntrySources: _broadcastCourseEntrySources,
+            )
+            .length,
+        kind: kind,
+        previewText: flow.broadcastPreviewText,
+        optOutCount: _broadcast.countOptOut(
+          segments: segments,
+          courseEntrySources: _broadcastCourseEntrySources,
+        ),
+        excludeOptOut: flow.broadcastExcludeOptOut,
+      ),
+      richHtml: _templates.adminBroadcastPreviewRich(
         segments: segments,
         recipientCount: _broadcast
             .listRecipients(
