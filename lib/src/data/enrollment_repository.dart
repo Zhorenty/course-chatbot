@@ -14,4 +14,8 @@ abstract interface class EnrollmentRepository {
     required int launchId,
     required bool optOut,
   });
+
+  void setWebinarRsvp({required int userId, required int launchId, required DateTime now});
+
+  void setEnrollIntent({required int userId, required int launchId, required DateTime now});
 }

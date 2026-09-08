@@ -33,6 +33,7 @@ Launch _launch2(
     depositDueDays: 7,
     depositDueAt: DateTime.utc(2026, 11, 5, 20, 59, 59),
     courseStartAt: courseStartAt ?? DateTime.utc(2026, 11, 12),
+    webinarAt: DateTime.utc(2020, 1, 1, 16),
     channelId: channelId,
     activate: activate,
   );

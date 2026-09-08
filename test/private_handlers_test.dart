@@ -121,15 +121,48 @@ void main() {
     );
 
     expect(harness.sender.documents, contains('file-guide'));
-    expect(harness.sender.messages.any((m) => m.text.contains('алфавит')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
     expect(
       harness.sender.messages
-          .where((m) => m.text.contains('алфавит'))
+          .where((m) => m.text.contains('Эфир'))
           .every((m) => !_inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOptOut)),
       isTrue,
     );
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
+  });
+
+  test('webinar RSVP stores the flag and confirms', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      nowProvider: () => DateTime.utc(2026, 9, 8, 12),
+    );
+    addTearDown(extra.dispose);
+    await extra.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
+    );
+    await extra.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    final invite = extra.sender.messages.firstWhere((m) => m.text.contains('Эфир'));
+    expect(_inlineButtonTexts(invite.replyMarkup), contains(MessageTemplates.buttonRsvp));
+    extra.sender.messages.clear();
+    await extra.handlers.handle(
+      privateCallbackUpdate(callbackId: '2', chatId: 42, userId: 42, data: MessageTemplates.cbRsvp),
+    );
+    expect(
+      extra.course
+          .getEnrollment(userId: 42, launchId: extra.course.activeLaunch()!.id)
+          ?.webinarRsvp,
+      isTrue,
+    );
+    expect(extra.sender.messages.any((m) => m.text.contains('Ты в списке')), isTrue);
   });
 
   test('repeat /start after the guide restores guide, enroll and help', () async {
@@ -256,7 +289,7 @@ void main() {
     expect(extra.course.activeLaunch()?.leadMagnetFileId, 'cached-guide');
   });
 
-  test('enroll shows full price, deposit and 5 October due date', () async {
+  test('enroll shows regular price and pay buttons after sales open', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -267,13 +300,19 @@ void main() {
       ),
     );
 
-    final enroll = harness.sender.messages.last.text;
-    expect(enroll, contains('18000 ₽'));
-    expect(enroll, contains('5000 ₽'));
-    expect(enroll, contains('05.10.2026'));
-    expect(enroll, contains('12.10.2026'));
-    expect(enroll, isNot(contains('t.me/+')));
+    final enroll = harness.sender.messages.last;
+    expect(enroll.text, contains('18000 ₽'));
+    expect(enroll.text, contains('12.10.2026'));
+    expect(enroll.text, contains('Запись на поток'));
+    expect(enroll.text, isNot(contains('t.me/+')));
+    expect(_inlineButtonTexts(enroll.replyMarkup), contains(MessageTemplates.buttonPayFull));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
+    expect(
+      harness.course
+          .getEnrollment(userId: 42, launchId: harness.course.activeLaunch()!.id)
+          ?.enrollIntentAt,
+      isNotNull,
+    );
   });
 
   test('/start after invite without join resends the existing link', () async {

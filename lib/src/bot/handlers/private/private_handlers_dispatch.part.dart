@@ -47,7 +47,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
   bool _defersCallbackAnswer(String data) {
     return data == MessageTemplates.cbToggleOffer ||
         data == MessageTemplates.cbTogglePersonalData ||
-        data == MessageTemplates.cbGoToPay;
+        data == MessageTemplates.cbGoToPay ||
+        data == MessageTemplates.cbRsvp;
   }
 
   Future<void> _answerCallback(
@@ -109,6 +110,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _showOffer(context, PaymentKind.deposit);
       case MessageTemplates.cbPayInstallment:
         return _showOffer(context, PaymentKind.installment);
+      case MessageTemplates.cbRsvp:
+        return _rsvpWebinar(context);
       case MessageTemplates.cbToggleOffer:
       case MessageTemplates.cbTogglePersonalData:
         return _toggleOfferCheck(context);

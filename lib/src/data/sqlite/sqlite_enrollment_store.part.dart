@@ -95,6 +95,35 @@ mixin _SqliteEnrollmentStore on _SqliteCatalogStore
     );
   }
 
+  @override
+  void setWebinarRsvp({required int userId, required int launchId, required DateTime now}) {
+    ensureEnrollment(userId: userId, launchId: launchId, now: now);
+    _db.execute(
+      '''
+      UPDATE user_enrollments
+      SET webinar_rsvp = 1,
+          webinar_rsvp_at = COALESCE(webinar_rsvp_at, ?),
+          updated_at = ?
+      WHERE user_id = ? AND launch_id = ?;
+      ''',
+      <Object?>[now.toUtc().toIso8601String(), now.toUtc().toIso8601String(), userId, launchId],
+    );
+  }
+
+  @override
+  void setEnrollIntent({required int userId, required int launchId, required DateTime now}) {
+    ensureEnrollment(userId: userId, launchId: launchId, now: now);
+    _db.execute(
+      '''
+      UPDATE user_enrollments
+      SET enroll_intent_at = COALESCE(enroll_intent_at, ?),
+          updated_at = ?
+      WHERE user_id = ? AND launch_id = ?;
+      ''',
+      <Object?>[now.toUtc().toIso8601String(), now.toUtc().toIso8601String(), userId, launchId],
+    );
+  }
+
   int? resolveEnrollmentLaunchId(int? launchId) {
     return launchId ?? activeLaunch()?.id;
   }

@@ -39,6 +39,8 @@ final class FunnelAnalytics {
     this.inviteIssuedNotJoined = 0,
     this.warmupOptOutCount = 0,
     this.botBlockedCount = 0,
+    this.webinarRsvpCount = 0,
+    this.enrollIntentCount = 0,
   });
 
   final DateTime generatedAt;
@@ -57,6 +59,8 @@ final class FunnelAnalytics {
   final int inviteIssuedNotJoined;
   final int warmupOptOutCount;
   final int botBlockedCount;
+  final int webinarRsvpCount;
+  final int enrollIntentCount;
 
   double? get paidConversion {
     if (startedUsersTotal <= 0) {

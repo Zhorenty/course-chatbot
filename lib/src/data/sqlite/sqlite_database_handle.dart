@@ -97,6 +97,10 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'launches', 'is_active', 'INTEGER NOT NULL DEFAULT 0');
     _ensureColumn(db, 'launches', 'deposit_due_at', 'TEXT');
     _ensureColumn(db, 'launches', 'course_start_at', 'TEXT');
+    _ensureColumn(db, 'launches', 'price_promo_kopecks', 'INTEGER NOT NULL DEFAULT 1500000');
+    _ensureColumn(db, 'launches', 'webinar_at', 'TEXT');
+    _ensureColumn(db, 'launches', 'webinar_url', 'TEXT');
+    _ensureColumn(db, 'launches', 'sales_end_at', 'TEXT');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (
         user_id INTEGER PRIMARY KEY,
@@ -132,6 +136,9 @@ final class SqliteDatabaseHandle {
         PRIMARY KEY (user_id, launch_id)
       );
     ''');
+    _ensureColumn(db, 'user_enrollments', 'webinar_rsvp', 'INTEGER NOT NULL DEFAULT 0');
+    _ensureColumn(db, 'user_enrollments', 'webinar_rsvp_at', 'TEXT');
+    _ensureColumn(db, 'user_enrollments', 'enroll_intent_at', 'TEXT');
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_user_enrollments_launch
       ON user_enrollments (launch_id, funnel_phase);
@@ -219,6 +226,8 @@ final class SqliteDatabaseHandle {
       );
     ''');
     _ensureColumn(db, 'warmup_steps', 'anchor', "TEXT NOT NULL DEFAULT 'magnet'");
+    _ensureColumn(db, 'warmup_steps', 'ignore_quiet_hours', 'INTEGER NOT NULL DEFAULT 0');
+    _ensureColumn(db, 'warmup_steps', 'rsvp_only', 'INTEGER NOT NULL DEFAULT 0');
     _ensureWarmupSentSchema(db);
     db.execute('''
       CREATE TABLE IF NOT EXISTS conversation_log (

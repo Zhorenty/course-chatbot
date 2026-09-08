@@ -51,6 +51,7 @@ final class HandlerHarness {
     int depositKopecks = 500000,
     DateTime? depositDueAt,
     DateTime? courseStartAt,
+    DateTime? webinarAt,
     String? leadMagnetFileId = 'file-guide',
     String? leadMagnetPath,
     bool enableSheets = false,
@@ -71,6 +72,7 @@ final class HandlerHarness {
       depositDueDays: 7,
       depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
       courseStartAt: courseStartAt ?? DateTime.utc(2026, 10, 12),
+      webinarAt: webinarAt ?? DateTime.utc(2020, 1, 1, 16),
       channelId: channelId,
       leadMagnetFileId: leadMagnetFileId,
     );

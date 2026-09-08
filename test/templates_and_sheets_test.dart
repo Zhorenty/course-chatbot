@@ -13,6 +13,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -36,26 +37,32 @@ void main() {
 
   test('enroll CTA stays in templates until access is granted', () {
     final templates = MessageTemplates();
-    expect(templates.warmupStep('warmup_0'), contains('записаться'));
+    expect(templates.warmupStep('warmup_0'), contains('эфир'));
     expect(MessageTemplates.buttonEnroll, contains('Записаться'));
   });
 
   test('offer consent copy names the pay button and one combined checkbox', () {
     final templates = MessageTemplates();
-    const launch = Launch(
+    final launch = Launch(
       id: 1,
       productId: 1,
       code: 'launch-1',
       title: 'Запуск',
-      priceFullKopecks: 1800000,
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
       depositKopecks: 500000,
       depositDueDays: 7,
+      webinarAt: DateTime.utc(2020, 1, 1),
     );
+    final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 8));
     expect(templates.offerConsent(launch), contains('Перейти к оплате'));
     expect(templates.offerConsent(launch), contains('Публичной оферты'));
     expect(templates.offerConsent(launch), contains('нажми галочку'));
-    expect(templates.enrollOptions(launch), contains('Ссылку в канал пришлю после полной оплаты'));
-    expect(templates.enrollOptions(launch), isNot(contains('В канал пущу')));
+    expect(
+      templates.enrollOptions(launch, quote: quote),
+      contains('Ссылку в канал пришлю после полной оплаты'),
+    );
+    expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
     final keyboard = templates.offerKeyboard(accepted: false);
     final rows = keyboard['inline_keyboard'] as List<dynamic>;
     expect(rows, hasLength(2));
@@ -85,6 +92,8 @@ void main() {
     );
     final flat = dashboard.rows.map((row) => row.join(' ')).join('\n');
     expect(flat, contains('Взяли гайд'));
+    expect(flat, contains('Отметились на эфир'));
+    expect(flat, contains('Нажали «Записаться»'));
     expect(flat, contains('Instagram Reels'));
     expect(flat, contains('Конверсия по источникам'));
     expect(flat, contains('Invite выдан, не вошли'));
@@ -101,10 +110,10 @@ void main() {
     expect(look.hideGridlines, isTrue);
     expect(look.frozenRowCount, 4);
     expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
-    expect(look.columnWidthsPx, hasLength(12));
-    expect(look.columnCount, 12);
-    expect(look.notes, hasLength(12));
-    expect(look.notes[7].text, contains('Выбери в календаре'));
+    expect(look.columnWidthsPx, hasLength(16));
+    expect(look.columnCount, 16);
+    expect(look.notes, hasLength(16));
+    expect(look.notes[8].text, contains('Выбери в календаре'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
     expect(look.styles, isNotEmpty);
@@ -703,7 +712,7 @@ void main() {
 
   test('funnel inline keyboards do not repeat the reply menu', () {
     final templates = MessageTemplates();
-    const launch = Launch(
+    final launch = Launch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -711,8 +720,10 @@ void main() {
       priceFullKopecks: 1800000,
       depositKopecks: 500000,
       depositDueDays: 7,
+      webinarAt: DateTime.utc(2020, 1, 1),
     );
-    final enroll = _inlineButtonTexts(templates.enrollKeyboard(launch));
+    final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 8));
+    final enroll = _inlineButtonTexts(templates.enrollKeyboard(launch, quote: quote));
     expect(enroll, isNot(contains(MessageTemplates.buttonGuide)));
     expect(enroll, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(enroll, isNot(contains(MessageTemplates.buttonHelp)));

@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:l/l.dart';
 
@@ -28,7 +29,7 @@ final class PaymentApplyResult {
   final bool repairedInvite;
 }
 
-enum CheckoutBlockReason { alreadyPaid, priceNotSet }
+enum CheckoutBlockReason { alreadyPaid, priceNotSet, salesNotOpen, salesClosed }
 
 final class CreatedCheckout {
   const CreatedCheckout({required this.payment, this.applied});
@@ -107,17 +108,27 @@ final class CheckoutService {
       return existing;
     }
     final now = _nowProvider();
+    final enrollment = _course.getEnrollment(userId: userId, launchId: launch.id);
+    final quote = LaunchSales.quote(launch, rsvp: enrollment?.webinarRsvp ?? false, now: now);
+    if (kind != PaymentKind.remainder && !quote.checkoutOpen) {
+      throw CheckoutBlockedException(
+        quote.phase == SalesPhase.closed
+            ? CheckoutBlockReason.salesClosed
+            : CheckoutBlockReason.salesNotOpen,
+      );
+    }
+    final payable = quote.payableKopecks;
     final dueAt = kind == PaymentKind.deposit ? launch.resolveDepositDueAt(now) : null;
     final amountDue = switch (kind) {
-      PaymentKind.deposit => launch.priceFullKopecks,
-      PaymentKind.remainder => existing?.amountDueKopecks ?? launch.priceFullKopecks,
-      PaymentKind.full || PaymentKind.installment => launch.priceFullKopecks,
+      PaymentKind.deposit => payable,
+      PaymentKind.remainder => existing?.amountDueKopecks ?? payable,
+      PaymentKind.full || PaymentKind.installment => payable,
     };
     return _course.createOrder(
       userId: userId,
       launchId: launch.id,
       kind: kind,
-      priceFullKopecks: launch.priceFullKopecks,
+      priceFullKopecks: payable,
       amountDueKopecks: amountDue,
       now: now,
       dueAt: dueAt,
@@ -366,7 +377,7 @@ final class CheckoutService {
     switch (kind) {
       case PaymentKind.full:
       case PaymentKind.installment:
-        return launch.priceFullKopecks;
+        return order.priceFullKopecks;
       case PaymentKind.deposit:
         return launch.depositKopecks;
       case PaymentKind.remainder:

@@ -154,7 +154,7 @@ abstract final class GoogleSheetsCoursesCatalog {
         ),
       );
     }
-    const dateColumns = <int>[7, 8];
+    const dateColumns = <int>[8, 9, 12];
     for (final column in dateColumns) {
       styles.add(
         GoogleSheetsRangeStyle(
@@ -195,7 +195,24 @@ abstract final class GoogleSheetsCoursesCatalog {
       rows: const <List<Object?>>[],
       charts: const <GoogleSheetsChart>[],
       styles: styles,
-      columnWidthsPx: const <int>[130, 140, 130, 180, 90, 110, 130, 120, 120, 140, 170, 280],
+      columnWidthsPx: const <int>[
+        130,
+        140,
+        130,
+        180,
+        90,
+        110,
+        120,
+        130,
+        120,
+        120,
+        150,
+        160,
+        130,
+        140,
+        170,
+        280,
+      ],
       frozenRowCount: headerRow + 1,
       hideGridlines: true,
       tabColor: header,
@@ -210,8 +227,8 @@ abstract final class GoogleSheetsCoursesCatalog {
         GoogleSheetsValidation(
           startRow: dataStart,
           endRowExclusive: dataEnd,
-          startColumn: 7,
-          endColumnExclusive: 9,
+          startColumn: 8,
+          endColumnExclusive: 10,
           conditionType: 'DATE_IS_VALID',
           inputMessage: 'Выбери дату в календаре. Формат 19.08.2026.',
         ),

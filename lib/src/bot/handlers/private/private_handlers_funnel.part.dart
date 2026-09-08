@@ -100,6 +100,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
           userId,
           _templates.warmupStep(WarmupService.firstStepKey, launch: launch),
           parseMode: 'HTML',
+          replyMarkup: _templates.warmupKeyboard(
+            WarmupService.firstStepKey,
+            launch: launch,
+            rsvp: enrollment.webinarRsvp,
+            rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
+          ),
         ),
       );
     } on Object catch (error, stackTrace) {
@@ -125,13 +131,45 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       return _showCourseStatus(context);
     }
     final launch = _launch;
+    final userId = context.userId!;
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
+    _funnel.markEnrollIntent(userId, launchId: launch.id);
+    final enrollment = _funnel.enrollmentFor(userId, launch: launch);
+    final quote = LaunchSales.quote(
+      launch,
+      rsvp: enrollment?.webinarRsvp ?? false,
+      now: _nowProvider(),
+    );
     return _send(
       context,
-      _templates.enrollOptions(launch),
-      replyMarkup: _templates.enrollKeyboard(launch),
+      _templates.enrollOptions(launch, quote: quote),
+      replyMarkup: quote.checkoutOpen ? _templates.enrollKeyboard(launch, quote: quote) : null,
+    );
+  }
+
+  Future<bool> _rsvpWebinar(PrivateMessageContext context) async {
+    final launch = _launch;
+    final userId = context.userId!;
+    if (launch == null) {
+      return _send(context, _templates.payManualFallback());
+    }
+    final now = _nowProvider();
+    if (!LaunchSales.rsvpOpen(launch, now)) {
+      await _answerCallback(context, text: 'Регистрация на эфир уже закрыта.');
+      return true;
+    }
+    _funnel.markWebinarRsvp(userId, launchId: launch.id);
+    await _answerCallback(context, text: 'Отметила: ты в списке на эфир.');
+    final url = launch.webinarUrl?.trim();
+    final started = launch.webinarAt != null && !now.toUtc().isBefore(launch.webinarAt!.toUtc());
+    return _send(
+      context,
+      _templates.webinarRsvpConfirmed(launch, showLink: started && url != null && url.isNotEmpty),
+      replyMarkup: started && url != null && url.isNotEmpty
+          ? _templates.webinarLinkKeyboard(url)
+          : null,
     );
   }
 

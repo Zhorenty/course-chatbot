@@ -14,6 +14,8 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
             sortOrder: row['sort_order'] as int,
             anchor: WarmupAnchorX.parse(row['anchor'] as String?),
             enabled: (row['enabled'] as int) == 1,
+            ignoreQuietHours: (row['ignore_quiet_hours'] as int?) == 1,
+            rsvpOnly: (row['rsvp_only'] as int?) == 1,
           ),
         )
         .toList(growable: false);
@@ -24,10 +26,38 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
     for (final step in WarmupStep.defaults) {
       _db.execute(
         '''
-        INSERT OR IGNORE INTO warmup_steps (step_key, delay_seconds, sort_order, enabled, anchor)
-        VALUES (?, ?, ?, 1, ?);
+        INSERT OR IGNORE INTO warmup_steps (
+          step_key, delay_seconds, sort_order, enabled, anchor, ignore_quiet_hours, rsvp_only
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
         ''',
-        <Object?>[step.stepKey, step.delay.inSeconds, step.sortOrder, step.anchor.storageValue],
+        <Object?>[
+          step.stepKey,
+          step.delay.inSeconds,
+          step.sortOrder,
+          step.enabled ? 1 : 0,
+          step.anchor.storageValue,
+          step.ignoreQuietHours ? 1 : 0,
+          step.rsvpOnly ? 1 : 0,
+        ],
+      );
+    }
+    for (final key in WarmupStep.retiredKeys) {
+      _db.execute('UPDATE warmup_steps SET enabled = 0 WHERE step_key = ?;', <Object?>[key]);
+    }
+    for (final step in WarmupStep.defaults) {
+      _db.execute(
+        '''
+        UPDATE warmup_steps
+        SET anchor = ?, ignore_quiet_hours = ?, rsvp_only = ?, sort_order = ?
+        WHERE step_key = ?;
+        ''',
+        <Object?>[
+          step.anchor.storageValue,
+          step.ignoreQuietHours ? 1 : 0,
+          step.rsvpOnly ? 1 : 0,
+          step.sortOrder,
+          step.stepKey,
+        ],
       );
     }
   }
@@ -72,6 +102,7 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
     final rows = _db.select(
       '''
       SELECT e.user_id, e.launch_id, e.magnet_issued_at, e.started_at, e.funnel_phase,
+             e.webinar_rsvp, e.enroll_intent_at,
              u.source,
              GROUP_CONCAT(w.step_key) AS sent_keys
       FROM user_enrollments e
@@ -99,6 +130,8 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
           magnetIssuedAt: parseTime(row['magnet_issued_at'] as String?),
           source: row['source'] as String?,
           funnelPhase: FunnelPhaseX.parse(row['funnel_phase'] as String?),
+          webinarRsvp: (row['webinar_rsvp'] as int?) == 1,
+          enrollIntentAt: parseTime(row['enroll_intent_at'] as String?),
           sentKeys: _splitSentKeys(row['sent_keys'] as String?),
         ),
     ];

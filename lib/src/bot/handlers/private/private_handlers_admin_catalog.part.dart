@@ -479,6 +479,53 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           );
         }
         overlay = overlay.copyWith(courseStartAt: CoursesSheetParser.parseDate(text));
+      case CatalogLaunchField.promo:
+        if (text.isEmpty) {
+          overlay = overlay.copyWith(pricePromoKopecks: LaunchPrices.promoKopecks);
+        } else {
+          final error = LaunchCatalogAdminService.validatePrice(text);
+          if (error != null) {
+            return _presentCatalog(
+              context,
+              _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
+            );
+          }
+          overlay = overlay.copyWith(pricePromoKopecks: CoursesSheetParser.parsePriceKopecks(text));
+        }
+      case CatalogLaunchField.webinar:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          overlay = overlay.copyWith(webinarAt: null);
+        } else {
+          final parsed = CoursesSheetParser.parseDateTime(text);
+          if (parsed == null) {
+            return _presentCatalog(
+              context,
+              _templates.adminCatalogAskWithError(
+                CatalogFieldError.badDate,
+                _templates.adminCatalogAskField(field),
+              ),
+            );
+          }
+          overlay = overlay.copyWith(webinarAt: parsed);
+        }
+      case CatalogLaunchField.webinarUrl:
+        overlay = overlay.copyWith(webinarUrl: text.isEmpty ? null : text);
+      case CatalogLaunchField.salesEnd:
+        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
+          overlay = overlay.copyWith(salesEndAt: null);
+        } else {
+          final parsed = CoursesSheetParser.parseDateEndOfDay(text);
+          if (parsed == null) {
+            return _presentCatalog(
+              context,
+              _templates.adminCatalogAskWithError(
+                CatalogFieldError.badDate,
+                _templates.adminCatalogAskField(field),
+              ),
+            );
+          }
+          overlay = overlay.copyWith(salesEndAt: parsed);
+        }
       case CatalogLaunchField.channel:
         final error = LaunchCatalogAdminService.validateChannel(text);
         if (error != null) {
@@ -796,6 +843,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       depositDueDays: CoursesSheet.defaultDepositDueDays,
       depositDueAt: deposit > 0 ? draft?.depositDueAt : null,
       courseStartAt: start,
+      pricePromoKopecks: CoursesSheet.seedPricePromoRub * 100,
       channelId: draft?.channelSkipped == true ? null : draft?.channelId,
     );
   }

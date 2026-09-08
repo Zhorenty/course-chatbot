@@ -143,6 +143,10 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       if (error.reason == CheckoutBlockReason.alreadyPaid) {
         return _showCourseStatus(context);
       }
+      if (error.reason == CheckoutBlockReason.salesNotOpen ||
+          error.reason == CheckoutBlockReason.salesClosed) {
+        return _showEnroll(context);
+      }
       return _send(context, _templates.payManualFallback());
     } on PaymentUnavailableException catch (error, stackTrace) {
       l.w('Checkout unavailable: $error', stackTrace);

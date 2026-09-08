@@ -12,13 +12,14 @@ import 'package:test/test.dart';
 import 'support/fakes.dart';
 
 void main() {
-  test('seed row parses to 18000/5000 rub and October 2026 dates', () {
+  test('seed row parses to 19000/15000/5000 rub and October 2026 dates', () {
     final parsed = CoursesSheetParser.parse(CoursesSheet.seedRows());
     expect(parsed.rows, hasLength(1));
     final draft = parsed.active!;
     expect(draft.launchCode, 'launch-1');
     expect(draft.productCode, 'course');
-    expect(draft.priceFullKopecks, 1800000);
+    expect(draft.priceFullKopecks, 1900000);
+    expect(draft.pricePromoKopecks, 1500000);
     expect(draft.depositKopecks, 500000);
     expect(draft.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(draft.courseStartAt, DateTime.utc(2026, 10, 12));
@@ -46,8 +47,7 @@ void main() {
       second,
     ]);
     expect(parsed.multipleActive, isTrue);
-    expect(parsed.active!.launchCode, 'launch-1');
-    expect(parsed.active!.priceFullKopecks, 1800000);
+    expect(parsed.active!.priceFullKopecks, 1900000);
   });
 
   test('invalid price or date skips the row', () {
@@ -111,6 +111,7 @@ void main() {
         'Запуск',
         'да',
         18000,
+        15000,
         5000,
         '05.10.2026',
         '12.10.2026',
@@ -120,6 +121,11 @@ void main() {
     expect(parsed.active!.isActive, isTrue);
     expect(parsed.active!.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(parsed.active!.courseStartAt, DateTime.utc(2026, 10, 12));
+  });
+
+  test('webinar datetime parses Moscow wall time and date-only 19:00', () {
+    expect(CoursesSheetParser.parseDateTime('05.10.2026 19:00'), DateTime.utc(2026, 10, 5, 16));
+    expect(CoursesSheetParser.parseDateTime('05.10.2026'), DateTime.utc(2026, 10, 5, 16));
   });
 
   test('legacy Оферта and Ссылка на гайд still parse', () {
@@ -173,7 +179,7 @@ void main() {
     expect(rows[4].last.toString(), startsWith('='));
     expect(CoursesSheetParser.headerRowIndex(rows), 3);
     final parsed = CoursesSheetParser.parse(rows);
-    expect(parsed.active!.priceFullKopecks, 1800000);
+    expect(parsed.active!.priceFullKopecks, 1900000);
   });
 
   test('status formula names missing fields and готов', () {
@@ -185,10 +191,10 @@ void main() {
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));
     expect(formula, contains('нет даты доплаты'));
-    expect(formula, contains('OR(G5=""; H5<>"")'));
-    expect(formula, contains('AND(G5<>""; H5="")'));
+    expect(formula, contains('OR(H5=""; I5<>"")'));
+    expect(formula, contains('AND(H5<>""; I5="")'));
     expect(formula, isNot(contains('.env')));
-    expect(CoursesSheet.headerNotes[7], contains('Выбери в календаре'));
+    expect(CoursesSheet.headerNotes[8], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
     expect(CoursesSheet.displayHeaders, isNot(contains('file_id гайда')));
     expect(CoursesSheet.displayHeaders, isNot(contains('Оферта')));
@@ -261,11 +267,11 @@ void main() {
       final first = await sync.sync();
       expect(first.ok, isTrue);
       expect(first.seeded, isTrue);
-      expect(course.activeLaunch()?.priceFullKopecks, 1800000);
+      expect(course.activeLaunch()?.priceFullKopecks, 1900000);
       expect(gateway.applyLookCount, 2);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(12));
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 12);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(16));
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 16);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -341,6 +347,7 @@ void main() {
           'Запуск',
           '1',
           18000,
+          15000,
           5000,
           '2026-10-05',
           '2026-10-12',
@@ -436,7 +443,7 @@ void main() {
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.code, 'launch-1');
       expect(course.launchByCode('launch-2')?.priceFullKopecks, 2100000);
-      expect(course.launchByCode('launch-1')?.priceFullKopecks, 1800000);
+      expect(course.launchByCode('launch-1')?.priceFullKopecks, 1900000);
     });
 
     test('sync drops unused sqlite launches missing from COURSES', () async {

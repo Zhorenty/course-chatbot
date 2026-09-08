@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
@@ -146,8 +147,8 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('алфавит')), isTrue);
-    final warmup = harness.sender.messages.where((m) => m.text.contains('алфавит')).single;
+    expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
+    final warmup = harness.sender.messages.where((m) => m.text.contains('Эфир')).single;
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
@@ -302,12 +303,22 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('Напоминаю про доплату')), isTrue);
   });
 
-  test('course-start warmup uses the current slot and skips a missed week copy', () {
+  test('webinar reminder uses the current slot and skips a missed copy', () {
     final warmup = WarmupService(
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
     );
-    final launch = harness.course.activeLaunch()!;
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 11, 16),
+      courseStartAt: DateTime.utc(2026, 10, 12),
+    );
     const sent = <String>{
       'warmup_0',
       'warmup_d1',
@@ -326,11 +337,11 @@ void main() {
     );
     final decision = warmup.nextFor(
       candidate,
-      DateTime.utc(2026, 10, 10, 12),
+      DateTime.utc(2026, 10, 10, 17),
       steps: WarmupStep.defaults,
       launch: launch,
     );
-    expect(decision?.stepKey, 'warmup_start_d3');
+    expect(decision?.stepKey, 'webinar_24h');
   });
 
   test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {

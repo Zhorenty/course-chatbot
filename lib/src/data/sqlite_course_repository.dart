@@ -159,6 +159,9 @@ class _SqliteCourseStore {
       warmupOptOut: (row['warmup_opt_out'] as int) == 1,
       magnetIssuedAt: parseTime(row['magnet_issued_at'] as String?),
       startedAt: DateTime.parse(row['started_at'] as String),
+      webinarRsvp: (row['webinar_rsvp'] as int?) == 1,
+      webinarRsvpAt: parseTime(row['webinar_rsvp_at'] as String?),
+      enrollIntentAt: parseTime(row['enroll_intent_at'] as String?),
     );
   }
 
@@ -189,10 +192,14 @@ class _SqliteCourseStore {
       title: row['title'] as String,
       channelId: row['channel_id'] as int?,
       priceFullKopecks: row['price_full_kopecks'] as int,
+      pricePromoKopecks: (row['price_promo_kopecks'] as int?) ?? 0,
       depositKopecks: row['deposit_kopecks'] as int,
       depositDueDays: row['deposit_due_days'] as int,
       depositDueAt: parseTime(row['deposit_due_at'] as String?),
       courseStartAt: parseTime(row['course_start_at'] as String?),
+      webinarAt: parseTime(row['webinar_at'] as String?),
+      webinarUrl: row['webinar_url'] as String?,
+      salesEndAt: parseTime(row['sales_end_at'] as String?),
       offerUrl: row['offer_url'] as String?,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
       leadMagnetUrl: row['lead_magnet_url'] as String?,

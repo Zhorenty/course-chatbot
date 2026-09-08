@@ -99,6 +99,14 @@ mixin _SqliteAnalyticsStore on _SqliteEnrollmentStore implements FunnelAnalytics
             WHERE e.user_id = u.user_id$enrollLaunch
           );
         ''', launchParams),
+      webinarRsvpCount: scalar(
+        'SELECT COUNT(*) AS c FROM user_enrollments e WHERE e.webinar_rsvp = 1$enrollLaunch;',
+        launchParams,
+      ),
+      enrollIntentCount: scalar(
+        'SELECT COUNT(*) AS c FROM user_enrollments e WHERE e.enroll_intent_at IS NOT NULL$enrollLaunch;',
+        launchParams,
+      ),
     );
   }
 

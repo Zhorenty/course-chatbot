@@ -89,6 +89,22 @@ final class FunnelService {
     );
   }
 
+  void markWebinarRsvp(int userId, {int? launchId}) {
+    final launch = launchId == null ? _course.activeLaunch() : _course.getLaunch(launchId);
+    if (launch == null) {
+      return;
+    }
+    _course.setWebinarRsvp(userId: userId, launchId: launch.id, now: _nowProvider());
+  }
+
+  void markEnrollIntent(int userId, {int? launchId}) {
+    final launch = launchId == null ? _course.activeLaunch() : _course.getLaunch(launchId);
+    if (launch == null) {
+      return;
+    }
+    _course.setEnrollIntent(userId: userId, launchId: launch.id, now: _nowProvider());
+  }
+
   void markCheckout(int userId, {int? launchId}) {
     final user = _course.getUser(userId);
     if (user == null) {

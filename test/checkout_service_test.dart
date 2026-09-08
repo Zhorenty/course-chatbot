@@ -593,4 +593,58 @@ void main() {
     expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
     expect(harness.gateway.creates, 1);
   });
+
+  test('checkout stays closed until the webinar', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      nowProvider: () => DateTime.utc(2026, 9, 8, 12),
+    );
+    addTearDown(extra.dispose);
+    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 9, 8, 12));
+    final launch = extra.course.activeLaunch()!;
+    expect(
+      () => extra.checkout.startOrReuseOrder(userId: 42, launch: launch, kind: PaymentKind.full),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.salesNotOpen,
+        ),
+      ),
+    );
+  });
+
+  test('promo checkout is 15000 only after RSVP', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      priceFullKopecks: 1900000,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      nowProvider: () => DateTime.utc(2026, 10, 6, 12),
+    );
+    addTearDown(extra.dispose);
+    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
+    final launch = extra.course.activeLaunch()!;
+    expect(
+      () => extra.checkout.startOrReuseOrder(userId: 42, launch: launch, kind: PaymentKind.full),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.salesNotOpen,
+        ),
+      ),
+    );
+    extra.course.setWebinarRsvp(
+      userId: 42,
+      launchId: launch.id,
+      now: DateTime.utc(2026, 10, 5, 16),
+    );
+    final order = extra.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    expect(order.priceFullKopecks, 1500000);
+  });
 }

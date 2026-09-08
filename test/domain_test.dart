@@ -2,9 +2,11 @@ import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -103,6 +105,45 @@ void main() {
     expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.accessGranted), isTrue);
     expect(FunnelPhase.paid.canTransitionTo(FunnelPhase.cancelled), isTrue);
     expect(FunnelPhase.cancelled.canTransitionTo(FunnelPhase.paid), isTrue);
+  });
+
+  test('promo price is 15000 for RSVP during three days after webinar', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final during = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 6, 12));
+    expect(during.phase, SalesPhase.promo);
+    expect(during.checkoutOpen, isTrue);
+    expect(during.payableKopecks, 1500000);
+    final outsider = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 6, 12));
+    expect(outsider.checkoutOpen, isFalse);
+    final regular = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 9, 12));
+    expect(regular.phase, SalesPhase.regular);
+    expect(regular.payableKopecks, 1900000);
+    expect(regular.checkoutOpen, isTrue);
+  });
+
+  test('sales stay closed when webinar date is empty', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+    );
+    final quote = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 8));
+    expect(quote.phase, SalesPhase.preSales);
+    expect(quote.checkoutOpen, isFalse);
   });
 
   test('parseRubStringToKopecks avoids binary float drift', () {

@@ -157,7 +157,7 @@ void main() {
     final text = harness.sender.messages.last.text;
     expect(text, contains('Как устроена воронка'));
     expect(text, contains('Аккаунты админов'));
-    expect(text, contains('через 1 день'));
+    expect(text, contains('Буду на эфире'));
     expect(text, contains('на 1-й и на 3-й день'));
     expect(text, contains('10:00'));
     expect(text, contains('12.10.2026'));
@@ -1374,7 +1374,7 @@ void main() {
         data: MessageTemplates.cbCatalogKeepCode,
       ),
     );
-    expect(sheets.sender.messages.last.text, contains('Полная цена'));
+    expect(sheets.sender.messages.last.text, contains('Обычная цена'));
     expect(_inlineButtonTexts(sheets.sender.messages.last.replyMarkup), isEmpty);
   });
 

@@ -9,6 +9,9 @@ final class UserEnrollment {
     required this.startedAt,
     this.warmupOptOut = false,
     this.magnetIssuedAt,
+    this.webinarRsvp = false,
+    this.webinarRsvpAt,
+    this.enrollIntentAt,
   });
 
   final int userId;
@@ -17,4 +20,7 @@ final class UserEnrollment {
   final bool warmupOptOut;
   final DateTime? magnetIssuedAt;
   final DateTime startedAt;
+  final bool webinarRsvp;
+  final DateTime? webinarRsvpAt;
+  final DateTime? enrollIntentAt;
 }

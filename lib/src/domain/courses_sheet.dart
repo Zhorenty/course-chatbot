@@ -5,7 +5,7 @@ import 'package:course_chatbot/src/domain/money.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 12;
+  static const int columnCount = 16;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -17,9 +17,13 @@ abstract final class CoursesSheet {
   static const String launchTitle = 'launch_title';
   static const String isActive = 'is_active';
   static const String priceFullRub = 'price_full_rub';
+  static const String pricePromoRub = 'price_promo_rub';
   static const String depositRub = 'deposit_rub';
   static const String depositDueDate = 'deposit_due_date';
   static const String courseStartDate = 'course_start_date';
+  static const String webinarAt = 'webinar_at';
+  static const String webinarUrl = 'webinar_url';
+  static const String salesEndDate = 'sales_end_date';
   static const String channelId = 'channel_id';
   static const String offerUrl = 'offer_url';
   static const String leadMagnetFileId = 'lead_magnet_file_id';
@@ -29,7 +33,8 @@ abstract final class CoursesSheet {
   static const String title = 'Курс · Каталог запусков';
   static const String titleAside = 'Админ в боте или руками';
   static const String hint =
-      'Поставь «да» в одной строке — это текущий набор. Цены в рублях, даты как 19.08.2026. '
+      'Поставь «да» в одной строке — это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
+      'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
       'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
@@ -40,9 +45,13 @@ abstract final class CoursesSheet {
     launchTitle,
     isActive,
     priceFullRub,
+    pricePromoRub,
     depositRub,
     depositDueDate,
     courseStartDate,
+    webinarAt,
+    webinarUrl,
+    salesEndDate,
     channelId,
     leadMagnetFileId,
     status,
@@ -55,9 +64,13 @@ abstract final class CoursesSheet {
     'Название запуска',
     'Активен',
     'Цена, ₽',
+    'Спеццена, ₽',
     'Предоплата, ₽',
     'Доплата до',
     'Старт курса',
+    'Эфир',
+    'Ссылка на эфир',
+    'Конец продаж',
     'ID канала',
     'Файл гайда',
     'статус',
@@ -69,11 +82,17 @@ abstract final class CoursesSheet {
     'Короткий код этого потока. Пример: launch-1. Без кода строка не попадёт в бота.',
     'Как называется этот поток. Это увидят в боте.',
     'Поставь «да», если это текущий набор. «Да» должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
-    'Полная цена курса в рублях. Пиши число: 18000 или 18 000.',
+    'Обычная цена в рублях. Пиши число: 19000 или 19 000. Для тех, кто не отмечался на эфир.',
+    'Спеццена эфира в рублях. 15000. Для тех, кто нажал «Буду на эфире». Действует 3 дня с даты эфира. '
+        'Пусто — подставим 15000.',
     'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Нужна, только если есть предоплата. '
         'Если предоплаты нет — оставь пустым.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
+    'Дата и время эфира по Москве. Формат 05.10.2026 19:00. Без времени возьмём 19:00. '
+        'Пока пусто — продажи закрыты, в боте описание курса и «ждём старт продаж».',
+    'Ссылка на эфир. Бот пришлёт её отметившимся в день эфира. Можно дописать позже.',
+    'Последний день продаж, как 11.10.2026. Пусто — продажи не закрываем по календарю.',
     'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
     'Не заполняй. Бот сам запомнит файл гайда. Сюда пишет только тот, кто меняет гайд в Telegram.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
@@ -83,7 +102,8 @@ abstract final class CoursesSheet {
   static const String seedProductTitle = 'Курс';
   static const String seedLaunchCode = 'launch-1';
   static const String seedLaunchTitle = 'Запуск';
-  static const int seedPriceFullRub = 18000;
+  static const int seedPriceFullRub = 19000;
+  static const int seedPricePromoRub = 15000;
   static const int seedDepositRub = 5000;
   static const String seedDepositDueDate = '05.10.2026';
   static const String seedCourseStartDate = '12.10.2026';
@@ -121,9 +141,13 @@ abstract final class CoursesSheet {
       seedLaunchTitle,
       'да',
       seedPriceFullRub,
+      seedPricePromoRub,
       seedDepositRub,
       seedDepositDueDate,
       seedCourseStartDate,
+      '',
+      '',
+      '',
       '',
       '',
       statusFormula(row: defaultHeaderRow + 2),
@@ -186,6 +210,18 @@ abstract final class CoursesSheet {
     return '$dd.$mm.${local.year}';
   }
 
+  static String formatDottedDateTime(
+    DateTime date, {
+    int timezoneOffsetHours = defaultTimezoneOffsetHours,
+  }) {
+    final local = date.toUtc().add(Duration(hours: timezoneOffsetHours));
+    final dd = local.day.toString().padLeft(2, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$dd.$mm.${local.year} $hh:$min';
+  }
+
   static Object priceCell(int kopecks) {
     if (kopecks <= 0) {
       return '';
@@ -204,9 +240,13 @@ abstract final class CoursesSheet {
       draft.launchTitle,
       draft.isActive ? 'да' : '',
       priceCell(draft.priceFullKopecks),
+      draft.pricePromoKopecks > 0 ? priceCell(draft.pricePromoKopecks) : '',
       draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : '',
       draft.depositDueAt == null ? '' : formatDottedDate(draft.depositDueAt!),
       draft.courseStartAt == null ? '' : formatDottedDate(draft.courseStartAt!),
+      draft.webinarAt == null ? '' : formatDottedDateTime(draft.webinarAt!),
+      draft.webinarUrl ?? '',
+      draft.salesEndAt == null ? '' : formatDottedDate(draft.salesEndAt!),
       draft.channelId ?? '',
       draft.leadMagnetFileId ?? '',
       statusFormula(row: rowNumber),
@@ -264,8 +304,12 @@ final class CatalogLaunchDraft {
     required this.priceFullKopecks,
     required this.depositKopecks,
     required this.depositDueDays,
+    this.pricePromoKopecks = 0,
     this.depositDueAt,
     this.courseStartAt,
+    this.webinarAt,
+    this.webinarUrl,
+    this.salesEndAt,
     this.channelId,
     this.offerUrl,
     this.leadMagnetFileId,
@@ -278,10 +322,14 @@ final class CatalogLaunchDraft {
   final String launchTitle;
   final bool isActive;
   final int priceFullKopecks;
+  final int pricePromoKopecks;
   final int depositKopecks;
   final int depositDueDays;
   final DateTime? depositDueAt;
   final DateTime? courseStartAt;
+  final DateTime? webinarAt;
+  final String? webinarUrl;
+  final DateTime? salesEndAt;
   final int? channelId;
   final String? offerUrl;
   final String? leadMagnetFileId;
@@ -300,10 +348,14 @@ final class CatalogLaunchDraft {
       launchTitle: launchTitle,
       isActive: isActive,
       priceFullKopecks: priceFullKopecks,
+      pricePromoKopecks: pricePromoKopecks,
       depositKopecks: depositKopecks,
       depositDueDays: depositDueDays,
       depositDueAt: depositDueAt,
       courseStartAt: courseStartAt,
+      webinarAt: webinarAt,
+      webinarUrl: webinarUrl,
+      salesEndAt: salesEndAt,
       channelId: this.channelId ?? channelId,
       offerUrl: this.offerUrl ?? offerUrl,
       leadMagnetFileId: this.leadMagnetFileId ?? leadMagnetFileId,
@@ -318,10 +370,14 @@ final class CatalogLaunchDraft {
     String? launchTitle,
     bool? isActive,
     int? priceFullKopecks,
+    int? pricePromoKopecks,
     int? depositKopecks,
     int? depositDueDays,
     Object? depositDueAt = _catalogDraftUnset,
     Object? courseStartAt = _catalogDraftUnset,
+    Object? webinarAt = _catalogDraftUnset,
+    Object? webinarUrl = _catalogDraftUnset,
+    Object? salesEndAt = _catalogDraftUnset,
     Object? channelId = _catalogDraftUnset,
     Object? offerUrl = _catalogDraftUnset,
     Object? leadMagnetFileId = _catalogDraftUnset,
@@ -334,6 +390,7 @@ final class CatalogLaunchDraft {
       launchTitle: launchTitle ?? this.launchTitle,
       isActive: isActive ?? this.isActive,
       priceFullKopecks: priceFullKopecks ?? this.priceFullKopecks,
+      pricePromoKopecks: pricePromoKopecks ?? this.pricePromoKopecks,
       depositKopecks: depositKopecks ?? this.depositKopecks,
       depositDueDays: depositDueDays ?? this.depositDueDays,
       depositDueAt: identical(depositDueAt, _catalogDraftUnset)
@@ -342,6 +399,13 @@ final class CatalogLaunchDraft {
       courseStartAt: identical(courseStartAt, _catalogDraftUnset)
           ? this.courseStartAt
           : courseStartAt as DateTime?,
+      webinarAt: identical(webinarAt, _catalogDraftUnset) ? this.webinarAt : webinarAt as DateTime?,
+      webinarUrl: identical(webinarUrl, _catalogDraftUnset)
+          ? this.webinarUrl
+          : webinarUrl as String?,
+      salesEndAt: identical(salesEndAt, _catalogDraftUnset)
+          ? this.salesEndAt
+          : salesEndAt as DateTime?,
       channelId: identical(channelId, _catalogDraftUnset) ? this.channelId : channelId as int?,
       offerUrl: identical(offerUrl, _catalogDraftUnset) ? this.offerUrl : offerUrl as String?,
       leadMagnetFileId: identical(leadMagnetFileId, _catalogDraftUnset)
@@ -403,6 +467,10 @@ abstract final class CoursesSheetParser {
     'цена руб': CoursesSheet.priceFullRub,
     'цена': CoursesSheet.priceFullRub,
     'полная цена': CoursesSheet.priceFullRub,
+    CoursesSheet.pricePromoRub: CoursesSheet.pricePromoRub,
+    'спеццена руб': CoursesSheet.pricePromoRub,
+    'спеццена': CoursesSheet.pricePromoRub,
+    'цена эфира': CoursesSheet.pricePromoRub,
     CoursesSheet.depositRub: CoursesSheet.depositRub,
     'предоплата руб': CoursesSheet.depositRub,
     'предоплата': CoursesSheet.depositRub,
@@ -411,6 +479,15 @@ abstract final class CoursesSheetParser {
     'дата доплаты': CoursesSheet.depositDueDate,
     CoursesSheet.courseStartDate: CoursesSheet.courseStartDate,
     'старт курса': CoursesSheet.courseStartDate,
+    CoursesSheet.webinarAt: CoursesSheet.webinarAt,
+    'эфир': CoursesSheet.webinarAt,
+    'дата эфира': CoursesSheet.webinarAt,
+    CoursesSheet.webinarUrl: CoursesSheet.webinarUrl,
+    'ссылка на эфир': CoursesSheet.webinarUrl,
+    'ссылка эфира': CoursesSheet.webinarUrl,
+    CoursesSheet.salesEndDate: CoursesSheet.salesEndDate,
+    'конец продаж': CoursesSheet.salesEndDate,
+    'последний день продаж': CoursesSheet.salesEndDate,
     CoursesSheet.channelId: CoursesSheet.channelId,
     'id канала': CoursesSheet.channelId,
     'канал': CoursesSheet.channelId,
@@ -476,6 +553,13 @@ abstract final class CoursesSheetParser {
   static bool isValidLaunchCode(String raw) => launchCodePattern.hasMatch(raw.trim());
 
   static DateTime? parseDate(String? raw) => _parseIsoDate(raw);
+
+  static DateTime? parseDateTime(
+    String? raw, {
+    int timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
+  }) {
+    return _parseDateTime(raw, timezoneOffsetHours: timezoneOffsetHours);
+  }
 
   static DateTime? parseDateEndOfDay(
     String? raw, {
@@ -722,6 +806,23 @@ abstract final class CoursesSheetParser {
         return null;
       }
     }
+    final webinarRaw = _cell(raw, headerIndex, CoursesSheet.webinarAt);
+    DateTime? webinarAt;
+    if (webinarRaw != null && webinarRaw.isNotEmpty) {
+      webinarAt = _parseDateTime(webinarRaw, timezoneOffsetHours: timezoneOffsetHours);
+      if (webinarAt == null) {
+        return null;
+      }
+    }
+    final salesEndRaw = _cell(raw, headerIndex, CoursesSheet.salesEndDate);
+    DateTime? salesEndAt;
+    if (salesEndRaw != null && salesEndRaw.isNotEmpty) {
+      salesEndAt = _parseIsoDateEndOfDay(salesEndRaw, timezoneOffsetHours: timezoneOffsetHours);
+      if (salesEndAt == null) {
+        return null;
+      }
+    }
+    final promoKopecks = _priceKopecks(raw, headerIndex, CoursesSheet.pricePromoRub) ?? 1500000;
     final depositKopecks = _priceKopecks(raw, headerIndex, CoursesSheet.depositRub) ?? 0;
     if (depositKopecks < 0) {
       return null;
@@ -746,10 +847,14 @@ abstract final class CoursesSheetParser {
       launchTitle: _cell(raw, headerIndex, CoursesSheet.launchTitle) ?? launchCode,
       isActive: _isTruthy(_cell(raw, headerIndex, CoursesSheet.isActive)),
       priceFullKopecks: priceKopecks,
+      pricePromoKopecks: promoKopecks,
       depositKopecks: depositKopecks,
       depositDueDays: CoursesSheet.defaultDepositDueDays,
       depositDueAt: depositDueAt,
       courseStartAt: courseStartAt,
+      webinarAt: webinarAt,
+      webinarUrl: _cell(raw, headerIndex, CoursesSheet.webinarUrl),
+      salesEndAt: salesEndAt,
       channelId: channelId,
       offerUrl: _cell(raw, headerIndex, CoursesSheet.offerUrl),
       leadMagnetFileId: _cell(raw, headerIndex, CoursesSheet.leadMagnetFileId),
@@ -815,6 +920,12 @@ abstract final class CoursesSheetParser {
 
 final _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
 final _dottedDate = RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$');
+final _isoDateTime = RegExp(
+  r'^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$',
+);
+final _dottedDateTime = RegExp(
+  r'^(\d{1,2})\.(\d{1,2})\.(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$',
+);
 
 /// ASCII hyphen, unicode dashes, and minus sign — what admins type or copy
 /// when Telegram will not send an empty message.
@@ -854,6 +965,76 @@ DateTime? _utcDate(String yearRaw, String monthRaw, String dayRaw) {
     return null;
   }
   return date;
+}
+
+DateTime? _parseDateTime(String? raw, {required int timezoneOffsetHours}) {
+  final trimmed = raw?.trim() ?? '';
+  if (trimmed.isEmpty) {
+    return null;
+  }
+  var match = _dottedDateTime.firstMatch(trimmed);
+  if (match != null) {
+    return _moscowDateTime(
+      match.group(3)!,
+      match.group(2)!,
+      match.group(1)!,
+      match.group(4)!,
+      match.group(5)!,
+      match.group(6) ?? '0',
+      timezoneOffsetHours: timezoneOffsetHours,
+    );
+  }
+  match = _isoDateTime.firstMatch(trimmed);
+  if (match != null) {
+    return _moscowDateTime(
+      match.group(1)!,
+      match.group(2)!,
+      match.group(3)!,
+      match.group(4)!,
+      match.group(5)!,
+      match.group(6) ?? '0',
+      timezoneOffsetHours: timezoneOffsetHours,
+    );
+  }
+  final dateOnly = _parseIsoDate(trimmed);
+  if (dateOnly == null) {
+    return null;
+  }
+  return DateTime.utc(
+    dateOnly.year,
+    dateOnly.month,
+    dateOnly.day,
+    19,
+    0,
+  ).subtract(Duration(hours: timezoneOffsetHours));
+}
+
+DateTime? _moscowDateTime(
+  String yearRaw,
+  String monthRaw,
+  String dayRaw,
+  String hourRaw,
+  String minuteRaw,
+  String secondRaw, {
+  required int timezoneOffsetHours,
+}) {
+  final year = int.parse(yearRaw);
+  final month = int.parse(monthRaw);
+  final day = int.parse(dayRaw);
+  final hour = int.parse(hourRaw);
+  final minute = int.parse(minuteRaw);
+  final second = int.parse(secondRaw);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) {
+    return null;
+  }
+  return DateTime.utc(
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second,
+  ).subtract(Duration(hours: timezoneOffsetHours));
 }
 
 DateTime? _parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours}) {

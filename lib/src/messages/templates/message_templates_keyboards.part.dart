@@ -59,7 +59,10 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> enrollKeyboard(Launch launch) {
+  Map<String, Object?> enrollKeyboard(Launch launch, {required SalesQuote quote}) {
+    if (!quote.checkoutOpen) {
+      return const <String, Object?>{};
+    }
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{
@@ -69,7 +72,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
     ];
     final extra = <Map<String, String>>[
-      if (launch.hasDepositOption)
+      if (launch.hasDepositOptionFor(quote.payableKopecks))
         <String, String>{
           'text': MessageTemplates.buttonPayDeposit,
           'callback_data': MessageTemplates.cbPayDeposit,
@@ -81,6 +84,41 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ];
     rows.add(extra);
     return inlineKeyboard(rows);
+  }
+
+  Map<String, Object?>? warmupKeyboard(
+    String stepKey, {
+    required Launch launch,
+    required bool rsvp,
+    bool rsvpOpen = true,
+  }) {
+    if (stepKey == 'webinar_live') {
+      final url = launch.webinarUrl?.trim();
+      if (url != null && url.isNotEmpty) {
+        return webinarLinkKeyboard(url);
+      }
+      return null;
+    }
+    const rsvpSteps = <String>{'warmup_0', 'webinar_24h', 'webinar_10m'};
+    if (!rsvpSteps.contains(stepKey) || rsvp || !rsvpOpen) {
+      return null;
+    }
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageTemplates.buttonRsvp,
+          'callback_data': MessageTemplates.cbRsvp,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> webinarLinkKeyboard(String url) {
+    return inlineKeyboard(<List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{'text': 'Открыть эфир', 'url': url},
+      ],
+    ]);
   }
 
   Map<String, Object?> offerKeyboard({required bool accepted}) {

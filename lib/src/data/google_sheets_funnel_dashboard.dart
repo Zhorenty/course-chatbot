@@ -250,9 +250,11 @@ final class _FunnelSheetBuilder {
     final steps = <(String, int)>[
       ('1. Start', analytics.startedUsersTotal),
       ('2. Взяли гайд', analytics.guideTaken),
-      ('3. В прогреве / воронке', analytics.funnelUsers),
-      ('4. Начали оплату', analytics.checkoutStarted),
-      ('5. Купили / списание', analytics.paidUsers),
+      ('3. Отметились на эфир', analytics.webinarRsvpCount),
+      ('4. Нажали «Записаться»', analytics.enrollIntentCount),
+      ('5. В прогреве / воронке', analytics.funnelUsers),
+      ('6. Начали оплату', analytics.checkoutStarted),
+      ('7. Купили / списание', analytics.paidUsers),
     ];
     final firstData = nextRow;
     var previous = started;

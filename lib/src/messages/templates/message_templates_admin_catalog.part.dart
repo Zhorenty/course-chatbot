@@ -37,7 +37,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       ..writeln('<b>${escapeHtml(launch.title)}</b>')
       ..writeln()
       ..writeln('код: <code>${escapeHtml(launch.code)}</code>')
-      ..writeln('цена: ${formatRubFromKopecks(launch.priceFullKopecks)}');
+      ..writeln('цена: ${formatRubFromKopecks(launch.priceFullKopecks)}')
+      ..writeln('спеццена: ${formatRubFromKopecks(launch.resolvedPricePromoKopecks)}');
     if (launch.depositKopecks > 0) {
       buf.writeln('предоплата: ${formatRubFromKopecks(launch.depositKopecks)}');
       final due = _formatDate(launch.depositDueAt);
@@ -48,6 +49,12 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       buf.writeln('предоплата: нет');
     }
     buf.writeln('старт: ${_formatDate(launch.courseStartAt) ?? 'не указан'}');
+    buf.writeln('эфир: ${_formatDateTime(launch.webinarAt) ?? 'не указан'}');
+    final webinarUrl = launch.webinarUrl?.trim();
+    buf.writeln(
+      webinarUrl == null || webinarUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
+    );
+    buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt) ?? 'не указан'}');
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
     buf.writeln(_catalogGuideLine(launch));
@@ -69,7 +76,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskPrice() {
-    return 'Полная цена в рублях. Число, как 18000 или 18 000.';
+    return 'Обычная цена в рублях. Число, как 19000 или 19 000.';
   }
 
   String adminCatalogAskDeposit() {
@@ -144,10 +151,16 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.code =>
         'Новый код запуска: латиница, цифры, _ и -.\n\n'
             'Если сменишь код, диплинки на листе ССЫЛКИ с этим кодом поправь руками.',
-      CatalogLaunchField.price => 'Новая полная цена в рублях. Число, как 18000 или 18 000.',
+      CatalogLaunchField.price => 'Новая обычная цена в рублях. Число, как 19000.',
+      CatalogLaunchField.promo => 'Спеццена эфира в рублях. Число, как 15000. Пусто — 15000.',
       CatalogLaunchField.deposit => 'Новая предоплата в рублях. Пусто или 0 — без предоплаты.',
       CatalogLaunchField.depositDue => 'Новая дата доплаты, как 19.08.2026.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
+      CatalogLaunchField.webinar =>
+        'Дата и время эфира по Москве, как 05.10.2026 19:00. Пусто или «-» — сбросить.',
+      CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
+      CatalogLaunchField.salesEnd =>
+        'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.',
       CatalogLaunchField.channel =>
         'Новый ID канала (число вида −100…).\n\n'
             'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}» '
@@ -219,9 +232,13 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     CatalogLaunchField.title => '📝 Название',
     CatalogLaunchField.code => '🔖 Код',
     CatalogLaunchField.price => '💰 Цена',
+    CatalogLaunchField.promo => '🎁 Спеццена',
     CatalogLaunchField.deposit => '💵 Предоплата',
     CatalogLaunchField.depositDue => '📅 Доплата до',
     CatalogLaunchField.start => '🚀 Старт',
+    CatalogLaunchField.webinar => '📺 Эфир',
+    CatalogLaunchField.webinarUrl => '🔗 Ссылка эфира',
+    CatalogLaunchField.salesEnd => '🚪 Конец продаж',
     CatalogLaunchField.channel => '📣 Канал',
     CatalogLaunchField.guide => '📘 Гайд',
   };
