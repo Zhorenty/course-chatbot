@@ -11,7 +11,6 @@ extension MessageTemplatesRich on MessageTemplates {
   String guideReadyRich() {
     return '${richH2('Гайд «Язык цвета»')}'
         '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}'
-        '${richP('Без имени, почты и телефона. PDF в этом сообщении.')}'
         '${richFooter('Дальше — эфир. Напомню следующим сообщением.')}';
   }
 
