@@ -38,8 +38,7 @@ abstract final class CoursesSheet {
   static const String activeNo = 'НЕТ';
 
   static const String hint =
-      'Флажок «Активен» — ровно в одной строке, это текущий набор. Код продукта и продукт '
-      'по умолчанию course / Курс. Обычная цена 19000, спеццена эфира 15000. '
+      'Флажок «Активен» — ровно в одной строке, это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
       'Старт продаж — когда открывается касса и продающий прогрев. Пусто — как дата эфира. '
       'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
       'Доплата после предоплаты — за неделю до старта курса. '
@@ -83,8 +82,8 @@ abstract final class CoursesSheet {
   ];
 
   static const List<String> headerNotes = <String>[
-    'Короткий код продукта. По умолчанию course. В боте не спрашиваем — подставится сам.',
-    'Как называется продукт. По умолчанию Курс. В боте не спрашиваем — подставится сам.',
+    'Короткий код продукта. Пример: course.',
+    'Как называется продукт. Пример: Курс.',
     'Короткий код этого потока. Пример: launch-1. Без кода строка не попадёт в бота.',
     'Как называется этот поток. Это увидят в боте.',
     'Флажок: ДА — текущий набор. ДА должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
@@ -589,15 +588,11 @@ abstract final class CoursesSheetParser {
   }
 
   static bool isVacantDataRow(List<Object?> raw, Map<String, int> headerIndex) {
-    for (final name in CoursesSheet.headers) {
-      if (name == CoursesSheet.status) {
-        continue;
-      }
-      if (_cell(raw, headerIndex, name) != null) {
-        return false;
-      }
-    }
-    return true;
+    // A row is free if it has no launch_code. Status formulas, unchecked
+    // «Активен» flags and NUMBER-formatted zeros must not push the next
+    // course below the table.
+    final code = _cell(raw, headerIndex, CoursesSheet.launchCode);
+    return code == null || code.isEmpty;
   }
 
   static final RegExp launchCodePattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');

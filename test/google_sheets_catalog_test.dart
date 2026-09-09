@@ -666,6 +666,73 @@ void main() {
       expect(gateway.deletedSheetIds, isEmpty);
     });
 
+    test('upsertCourseRow reuses a vacant in-table row instead of appending below', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.sync();
+      final headerAt = CoursesSheet.defaultHeaderRow;
+      final headerIndex = CoursesSheetParser.headerIndexMap(gateway.valuesBySheetId[0]![headerAt]);
+      final sheetAfterSync = gateway.valuesBySheetId[0]!;
+      final tableEnd = headerAt + 1 + CoursesSheet.extraDataRows;
+      while (sheetAfterSync.length < tableEnd) {
+        sheetAfterSync.add(<Object?>[]);
+      }
+      for (var i = headerAt + 2; i < tableEnd; i++) {
+        final row = List<Object?>.from(sheetAfterSync[i]);
+        while (row.length < CoursesSheet.columnCount) {
+          row.add('');
+        }
+        row[headerIndex[CoursesSheet.isActive]!] = false;
+        row[headerIndex[CoursesSheet.priceFullRub]!] = 0;
+        row[headerIndex[CoursesSheet.status]!] = CoursesSheet.statusFormula(row: i + 1);
+        sheetAfterSync[i] = row;
+      }
+      gateway.valuesBySheetId[0] = sheetAfterSync;
+
+      await sync.upsertCourseRow(
+        draft: CatalogLaunchDraft(
+          productCode: 'color',
+          productTitle: 'Колористика',
+          launchCode: 'nov-26',
+          launchTitle: 'Ноябрь',
+          isActive: false,
+          priceFullKopecks: 2000000,
+          depositKopecks: 0,
+          depositDueDays: 7,
+          courseStartAt: DateTime.utc(2026, 11, 1),
+        ),
+      );
+
+      final sheet = gateway.valuesBySheetId[0]!;
+      expect(sheet.length, tableEnd);
+      expect(sheet[headerAt + 2][headerIndex[CoursesSheet.launchCode]!], 'nov-26');
+      expect(sheet[headerAt + 2][headerIndex[CoursesSheet.productCode]!], 'color');
+      expect(sheet[headerAt + 2][headerIndex[CoursesSheet.productTitle]!], 'Колористика');
+    });
+
+    test('isVacantDataRow looks only at launch_code', () {
+      final headerIndex = CoursesSheetParser.headerIndexMap(CoursesSheet.displayHeaders);
+      expect(CoursesSheetParser.isVacantDataRow(CoursesSheet.seedDataRow(), headerIndex), isFalse);
+      final vacant = CoursesSheet.padded(<Object?>[
+        CoursesSheet.seedProductCode,
+        CoursesSheet.seedProductTitle,
+        '',
+        '',
+        false,
+        0,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        CoursesSheet.statusFormula(row: 6),
+      ]);
+      expect(CoursesSheetParser.isVacantDataRow(vacant, headerIndex), isTrue);
+    });
+
     test('upsertCourseRow writes Активен by header name, not column order', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = <List<Object?>>[
         <Object?>[

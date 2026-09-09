@@ -63,9 +63,27 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return buf.toString();
   }
 
-  String adminCatalogAskTitle() {
+  String adminCatalogAskProductCode(String suggested) {
     return _catalogWizardStep(
       1,
+      'Код продукта',
+      'Служебный код продукта в таблице. Только латиница, цифры, _ и -.\n\n'
+          'Предлагаю <code>${escapeHtml(suggested)}</code>. Кнопка ниже оставит его, или пришли другой.',
+    );
+  }
+
+  String adminCatalogAskProductTitle(String suggested) {
+    return _catalogWizardStep(
+      2,
+      'Продукт',
+      'Как называется продукт. Это не название потока.\n\n'
+          'Предлагаю <code>${escapeHtml(suggested)}</code>. Кнопка ниже оставит его, или пришли другой.',
+    );
+  }
+
+  String adminCatalogAskTitle() {
+    return _catalogWizardStep(
+      3,
       'Название',
       'Как поток назовут в боте.',
       example: 'Колористика · октябрь',
@@ -74,7 +92,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskCode(String suggested) {
     return _catalogWizardStep(
-      2,
+      4,
       'Код запуска',
       'Служебный id потока в таблице и диплинках, не название для учеников. '
           'Только латиница, цифры, _ и - — не на русском. Без кода строка в бота не попадёт.\n\n'
@@ -83,12 +101,12 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskPrice() {
-    return _catalogWizardStep(3, 'Цена', 'Обычная цена в рублях.', example: '19000');
+    return _catalogWizardStep(5, 'Цена', 'Обычная цена в рублях.', example: '19000');
   }
 
   String adminCatalogAskPromo() {
     return _catalogWizardStep(
-      4,
+      6,
       'Спеццена',
       'Спеццена эфира в рублях.',
       example: '15000',
@@ -98,7 +116,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskWebinar() {
     return _catalogWizardStep(
-      7,
+      9,
       'Эфир',
       'Дата и время эфира по Москве.',
       example: '05.10.2026 19:00',
@@ -108,7 +126,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskWebinarUrl() {
     return _catalogWizardStep(
-      8,
+      10,
       'Ссылка на эфир',
       'URL эфира.',
       example: 'https://',
@@ -118,7 +136,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskSalesStart() {
     return _catalogWizardStep(
-      9,
+      11,
       'Старт продаж',
       'Когда открывается касса и продающий прогрев. Дата и время по Москве. '
           'Без эфира и без этой даты продажи закрыты.',
@@ -129,7 +147,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskSalesEnd() {
     return _catalogWizardStep(
-      10,
+      12,
       'Конец продаж',
       'Последний день продаж.',
       example: '11.10.2026',
@@ -139,7 +157,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskDeposit() {
     return _catalogWizardStep(
-      5,
+      7,
       'Предоплата',
       'Предоплата в рублях. Срок доплаты бот поставит сам: за неделю до старта курса.',
       example: '5000',
@@ -148,12 +166,12 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   }
 
   String adminCatalogAskStart() {
-    return _catalogWizardStep(6, 'Старт курса', 'Дата старта курса.', example: '19.08.2026');
+    return _catalogWizardStep(8, 'Старт курса', 'Дата старта курса.', example: '19.08.2026');
   }
 
   String adminCatalogAskChannel() {
     return _catalogWizardStep(
-      11,
+      13,
       'Канал',
       'ID канала этого потока (число вида −100…).',
       skipHint:
@@ -163,7 +181,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskGuide() {
     return _catalogWizardStep(
-      12,
+      14,
       'Гайд',
       'Пришли PDF гайда этого потока в чат.',
       skipHint: '«Пропустить» — без файла, можно прикрепить позже в карточке курса.',
@@ -172,7 +190,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogAskActive() {
     return _catalogWizardStep(
-      13,
+      15,
       'Активный поток',
       'Сделать этот поток активным? «Да» снимет метку с остальных.',
     );
@@ -185,7 +203,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     String? example,
     String? skipHint,
   }) {
-    const total = 13;
+    const total = 15;
     final buf = StringBuffer()
       ..writeln('<b>Шаг $step из $total · $title</b>')
       ..writeln()
@@ -209,6 +227,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     final buf = StringBuffer()
       ..writeln('<b>Проверь</b>')
       ..writeln()
+      ..writeln('код продукта: <code>${escapeHtml(draft.productCode)}</code>')
+      ..writeln('продукт: ${escapeHtml(draft.productTitle)}')
       ..writeln('название: ${escapeHtml(draft.launchTitle)}')
       ..writeln('код: <code>${escapeHtml(draft.launchCode)}</code>')
       ..writeln('цена: ${formatRubFromKopecks(draft.priceFullKopecks)}')

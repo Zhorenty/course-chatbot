@@ -90,6 +90,7 @@ final class MessageTemplates {
   static const String buttonAdminCatalogBack = '↩️ К списку';
   static const String buttonAdminCatalogSave = '💾 Записать';
   static const String buttonAdminCatalogKeepCode = '✅ Оставить этот код';
+  static const String buttonAdminCatalogKeepSuggested = '✅ Оставить так';
   static const String buttonAdminCatalogSkipChannel = 'Без своего канала';
   static const String buttonAdminCatalogSkip = 'Пропустить';
   static const String buttonAdminCatalogYes = '✅ Да';

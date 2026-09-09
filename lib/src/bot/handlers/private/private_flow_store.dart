@@ -15,6 +15,8 @@ enum PrivateFlowStep {
   adminGuideConfirm,
   adminComposeDm,
   adminCatalogMenu,
+  adminCatalogCreateProductCode,
+  adminCatalogCreateProductTitle,
   adminCatalogCreateTitle,
   adminCatalogCreateCode,
   adminCatalogCreatePrice,
@@ -42,6 +44,8 @@ enum PrivateFlowStep {
 
 final class CatalogWizardDraft {
   const CatalogWizardDraft({
+    this.productCode,
+    this.productTitle,
     this.title,
     this.code,
     this.priceKopecks,
@@ -60,6 +64,8 @@ final class CatalogWizardDraft {
     this.editField,
   });
 
+  final String? productCode;
+  final String? productTitle;
   final String? title;
   final String? code;
   final int? priceKopecks;
@@ -78,6 +84,8 @@ final class CatalogWizardDraft {
   final CatalogLaunchField? editField;
 
   CatalogWizardDraft copyWith({
+    Object? productCode = _unset,
+    Object? productTitle = _unset,
     Object? title = _unset,
     Object? code = _unset,
     Object? priceKopecks = _unset,
@@ -96,6 +104,8 @@ final class CatalogWizardDraft {
     Object? editField = _unset,
   }) {
     return CatalogWizardDraft(
+      productCode: identical(productCode, _unset) ? this.productCode : productCode as String?,
+      productTitle: identical(productTitle, _unset) ? this.productTitle : productTitle as String?,
       title: identical(title, _unset) ? this.title : title as String?,
       code: identical(code, _unset) ? this.code : code as String?,
       priceKopecks: identical(priceKopecks, _unset) ? this.priceKopecks : priceKopecks as int?,

@@ -42,6 +42,10 @@ final class LaunchCatalogAdminService {
     return raw.trim().isEmpty ? CatalogFieldError.emptyTitle : null;
   }
 
+  static CatalogFieldError? validateProductCode(String raw) {
+    return CoursesSheetParser.isValidLaunchCode(raw) ? null : CatalogFieldError.badCode;
+  }
+
   static CatalogFieldError? validateCode(
     String raw, {
     String? currentCode,

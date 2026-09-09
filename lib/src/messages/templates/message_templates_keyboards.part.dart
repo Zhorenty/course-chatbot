@@ -510,6 +510,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
+  Map<String, Object?> adminCatalogKeepSuggestedKeyboard() {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogKeepSuggested,
+          'callback_data': MessageTemplates.cbCatalogKeepCode,
+        },
+      ],
+    ]);
+  }
+
   Map<String, Object?> adminCatalogBackToCardKeyboard(int launchId) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[

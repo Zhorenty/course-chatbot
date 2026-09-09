@@ -3,6 +3,8 @@ part of 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 extension _PrivateHandlersAdminCatalog on PrivateHandlers {
   bool _isCatalogStep(PrivateFlowStep? step) {
     return step == PrivateFlowStep.adminCatalogMenu ||
+        step == PrivateFlowStep.adminCatalogCreateProductCode ||
+        step == PrivateFlowStep.adminCatalogCreateProductTitle ||
         step == PrivateFlowStep.adminCatalogCreateTitle ||
         step == PrivateFlowStep.adminCatalogCreateCode ||
         step == PrivateFlowStep.adminCatalogCreatePrice ||
@@ -91,10 +93,13 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     _setCatalogFlow(
       context.userId!,
-      PrivateFlowStep.adminCatalogCreateTitle,
-      catalogDraft: const CatalogWizardDraft(),
+      PrivateFlowStep.adminCatalogCreateProductCode,
+      catalogDraft: const CatalogWizardDraft(
+        productCode: CoursesSheet.seedProductCode,
+        productTitle: CoursesSheet.seedProductTitle,
+      ),
     );
-    return _presentCatalog(context, _templates.adminCatalogAskTitle());
+    return _presentCatalogAskProductCode(context, CoursesSheet.seedProductCode);
   }
 
   Future<bool> _captureCatalog(PrivateMessageContext context, {String? rawOverride}) async {
@@ -122,6 +127,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final text = (rawOverride ?? context.text)?.trim() ?? '';
     final draft = flow?.catalogDraft ?? const CatalogWizardDraft();
     switch (step) {
+      case PrivateFlowStep.adminCatalogCreateProductCode:
+        final raw = text.isEmpty ? (draft.productCode ?? CoursesSheet.seedProductCode) : text;
+        return _acceptCatalogCreateProductCode(context, raw);
+      case PrivateFlowStep.adminCatalogCreateProductTitle:
+        final raw = text.isEmpty ? (draft.productTitle ?? CoursesSheet.seedProductTitle) : text;
+        return _acceptCatalogCreateProductTitle(context, raw);
       case PrivateFlowStep.adminCatalogCreateTitle:
         final error = LaunchCatalogAdminService.validateTitle(text);
         if (error != null) {
@@ -440,10 +451,82 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return false;
     }
     final flow = _flowByUserId[context.userId!];
-    if (flow?.step != PrivateFlowStep.adminCatalogCreateCode) {
-      return true;
+    final draft = flow?.catalogDraft ?? const CatalogWizardDraft();
+    switch (flow?.step) {
+      case PrivateFlowStep.adminCatalogCreateProductCode:
+        return _acceptCatalogCreateProductCode(
+          context,
+          draft.productCode ?? CoursesSheet.seedProductCode,
+        );
+      case PrivateFlowStep.adminCatalogCreateProductTitle:
+        return _acceptCatalogCreateProductTitle(
+          context,
+          draft.productTitle ?? CoursesSheet.seedProductTitle,
+        );
+      case PrivateFlowStep.adminCatalogCreateCode:
+        return _acceptCatalogCreateCode(context, draft.code ?? '');
+      default:
+        return true;
     }
-    return _acceptCatalogCreateCode(context, flow?.catalogDraft?.code ?? '');
+  }
+
+  Future<bool> _acceptCatalogCreateProductCode(PrivateMessageContext context, String raw) async {
+    final draft = _flowByUserId[context.userId!]?.catalogDraft ?? const CatalogWizardDraft();
+    final suggested = draft.productCode ?? CoursesSheet.seedProductCode;
+    final error = LaunchCatalogAdminService.validateProductCode(raw);
+    if (error != null) {
+      return _presentCatalogAskProductCode(context, suggested, error: error);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreateProductTitle,
+      catalogDraft: draft.copyWith(productCode: raw.trim()),
+    );
+    return _presentCatalogAskProductTitle(
+      context,
+      draft.productTitle ?? CoursesSheet.seedProductTitle,
+    );
+  }
+
+  Future<bool> _acceptCatalogCreateProductTitle(PrivateMessageContext context, String raw) async {
+    final draft = _flowByUserId[context.userId!]?.catalogDraft ?? const CatalogWizardDraft();
+    final suggested = draft.productTitle ?? CoursesSheet.seedProductTitle;
+    final error = LaunchCatalogAdminService.validateTitle(raw);
+    if (error != null) {
+      return _presentCatalogAskProductTitle(context, suggested, error: error);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogCreateTitle,
+      catalogDraft: draft.copyWith(productTitle: raw.trim()),
+    );
+    return _presentCatalog(context, _templates.adminCatalogAskTitle());
+  }
+
+  Future<bool> _presentCatalogAskProductCode(
+    PrivateMessageContext context,
+    String suggested, {
+    CatalogFieldError? error,
+  }) {
+    final ask = _templates.adminCatalogAskProductCode(suggested);
+    return _presentCatalog(
+      context,
+      error == null ? ask : _templates.adminCatalogAskWithError(error, ask),
+      replyMarkup: _templates.adminCatalogKeepSuggestedKeyboard(),
+    );
+  }
+
+  Future<bool> _presentCatalogAskProductTitle(
+    PrivateMessageContext context,
+    String suggested, {
+    CatalogFieldError? error,
+  }) {
+    final ask = _templates.adminCatalogAskProductTitle(suggested);
+    return _presentCatalog(
+      context,
+      error == null ? ask : _templates.adminCatalogAskWithError(error, ask),
+      replyMarkup: _templates.adminCatalogKeepSuggestedKeyboard(),
+    );
   }
 
   Future<bool> _acceptCatalogCreateCode(PrivateMessageContext context, String raw) async {
@@ -1012,8 +1095,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     final deposit = draft?.depositKopecks ?? 0;
     return CatalogLaunchDraft(
-      productCode: CoursesSheet.seedProductCode,
-      productTitle: CoursesSheet.seedProductTitle,
+      productCode: CoursesSheet.resolvedProductCode(draft?.productCode),
+      productTitle: CoursesSheet.resolvedProductTitle(draft?.productTitle),
       launchCode: code,
       launchTitle: title,
       isActive: draft?.isActive ?? false,

@@ -1001,6 +1001,11 @@ void main() {
     expect(created![CoursesSheet.headers.indexOf(CoursesSheet.productCode)], 'course');
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.productTitle)], 'Курс');
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Ноябрь');
+    expect(sheet.indexOf(created), CoursesSheet.defaultHeaderRow + 2);
+    expect(
+      sheet.length,
+      lessThanOrEqualTo(CoursesSheet.defaultHeaderRow + 1 + CoursesSheet.extraDataRows),
+    );
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)], 20000);
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.pricePromoRub)], 15000);
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.isActive)], CoursesSheet.activeYes);
@@ -1017,6 +1022,24 @@ void main() {
       isFalse,
     );
     expect(sheets.sheetsWriter!.replaceDashboardCount, 0);
+  });
+
+  test('admin catalog wizard writes product code and title from the first steps', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await _runCatalogCreateWizard(
+      sheets,
+      title: 'Ноябрь',
+      code: 'nov-26',
+      active: false,
+      productCode: 'color',
+      productTitle: 'Колористика',
+    );
+    final created = _coursesRowByCode(sheets.sheetsGateway!.valuesBySheetId[0]!, 'nov-26')!;
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.productCode)], 'color');
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.productTitle)], 'Колористика');
   });
 
   test('admin catalog wizard attaches a guide PDF during create', () async {
@@ -1067,6 +1090,7 @@ void main() {
         data: MessageTemplates.cbCatalogNew,
       ),
     );
+    await _sendCatalogCreateProductDefaults(sheets);
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'nov-26'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'нет'));
@@ -1095,6 +1119,7 @@ void main() {
         data: MessageTemplates.cbCatalogNew,
       ),
     );
+    await _sendCatalogCreateProductDefaults(sheets);
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'nov-26'));
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '20000'));
@@ -1374,6 +1399,8 @@ void main() {
         data: MessageTemplates.cbCatalogNew,
       ),
     );
+    expect(sheets.sender.messages.last.text, contains('Код продукта'));
+    await _sendCatalogCreateProductDefaults(sheets);
     await sheets.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь', messageId: 41),
     );
@@ -1398,6 +1425,28 @@ void main() {
         chatId: 1,
         userId: 1,
         data: MessageTemplates.cbCatalogNew,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('Код продукта'));
+    expect(
+      _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminCatalogKeepSuggested),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ckc-product',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogKeepCode,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('Продукт'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ckc-title',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogKeepCode,
       ),
     );
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: 'Ноябрь'));
@@ -1637,6 +1686,8 @@ Future<void> _runCatalogCreateWizardToChannel(
   HandlerHarness sheets, {
   String title = 'Ноябрь',
   String code = 'nov-26',
+  String productCode = CoursesSheet.seedProductCode,
+  String productTitle = CoursesSheet.seedProductTitle,
   bool openCatalog = true,
 }) async {
   if (openCatalog) {
@@ -1651,6 +1702,11 @@ Future<void> _runCatalogCreateWizardToChannel(
       userId: 1,
       data: MessageTemplates.cbCatalogNew,
     ),
+  );
+  await _sendCatalogCreateProductDefaults(
+    sheets,
+    productCode: productCode,
+    productTitle: productTitle,
   );
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: title));
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: code));
@@ -1669,12 +1725,16 @@ Future<void> _runCatalogCreateWizard(
   required String title,
   required String code,
   required bool active,
+  String productCode = CoursesSheet.seedProductCode,
+  String productTitle = CoursesSheet.seedProductTitle,
   bool openCatalog = true,
 }) async {
   await _runCatalogCreateWizardToChannel(
     sheets,
     title: title,
     code: code,
+    productCode: productCode,
+    productTitle: productTitle,
     openCatalog: openCatalog,
   );
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
@@ -1702,6 +1762,15 @@ Future<void> _runCatalogCreateWizard(
       data: MessageTemplates.cbCatalogCreateYes,
     ),
   );
+}
+
+Future<void> _sendCatalogCreateProductDefaults(
+  HandlerHarness sheets, {
+  String productCode = CoursesSheet.seedProductCode,
+  String productTitle = CoursesSheet.seedProductTitle,
+}) async {
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: productCode));
+  await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: productTitle));
 }
 
 List<Object?> _coursesDataRow({

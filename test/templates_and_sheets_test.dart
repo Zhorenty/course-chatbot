@@ -177,12 +177,18 @@ void main() {
     expect(
       look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
       containsAll(<int>[
-        CoursesSheet.headers.indexOf(CoursesSheet.productCode),
-        CoursesSheet.headers.indexOf(CoursesSheet.productTitle),
         CoursesSheet.headers.indexOf(CoursesSheet.isActive),
         CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
         CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
       ]),
+    );
+    expect(
+      look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
+      isNot(contains(CoursesSheet.headers.indexOf(CoursesSheet.productCode))),
+    );
+    expect(
+      look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
+      isNot(contains(CoursesSheet.headers.indexOf(CoursesSheet.productTitle))),
     );
     expect(
       look.validations.any(
@@ -346,6 +352,7 @@ void main() {
       ..._inlineCallbackData(templates.adminCatalogCardKeyboard(launch)),
       ..._inlineCallbackData(templates.adminCatalogFieldsKeyboard(launch.id)),
       ..._inlineCallbackData(templates.adminCatalogKeepCodeKeyboard()),
+      ..._inlineCallbackData(templates.adminCatalogKeepSuggestedKeyboard()),
       ..._inlineCallbackData(templates.adminCatalogBackToCardKeyboard(12)),
       ..._inlineCallbackData(templates.adminCatalogSkipChannelKeyboard()),
       ..._inlineCallbackData(templates.adminCatalogSkipOptionalKeyboard()),
@@ -396,6 +403,30 @@ void main() {
       templates.adminCatalogFieldError(CatalogFieldError.badChannel),
       contains(MessageTemplates.buttonAdminCatalogSkipChannel),
     );
+  });
+
+  test('admin catalog create wizard starts with product fields', () {
+    final templates = MessageTemplates();
+    expect(templates.adminCatalogAskProductCode('course'), contains('Шаг 1 из 15'));
+    expect(templates.adminCatalogAskProductCode('course'), contains('Код продукта'));
+    expect(templates.adminCatalogAskProductTitle('Курс'), contains('Шаг 2 из 15'));
+    expect(templates.adminCatalogAskActive(), contains('Шаг 15 из 15'));
+    final preview = templates.adminCatalogPreview(
+      CatalogLaunchDraft(
+        productCode: 'color',
+        productTitle: 'Колористика',
+        launchCode: 'nov-26',
+        launchTitle: 'Ноябрь',
+        isActive: false,
+        priceFullKopecks: 2000000,
+        depositKopecks: 0,
+        depositDueDays: 7,
+        courseStartAt: DateTime.utc(2026, 11, 1),
+      ),
+    );
+    expect(preview, contains('код продукта'));
+    expect(preview, contains('color'));
+    expect(preview, contains('Колористика'));
   });
 
   test('admin sheets hub keyboard nests catalog, links and refresh', () {
