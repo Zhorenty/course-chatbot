@@ -88,18 +88,14 @@ extension MessageTemplateKeyboards on MessageTemplates {
         },
       ],
     ];
-    final extra = <Map<String, Object?>>[
-      if (launch.hasDepositOptionFor(quote.payableKopecks))
+    if (launch.hasDepositOptionFor(quote.payableKopecks)) {
+      rows.add(<Map<String, Object?>>[
         <String, Object?>{
           'text': payDepositButtonLabel(launch.depositKopecks),
           'callback_data': MessageTemplates.cbPayDeposit,
         },
-      <String, Object?>{
-        'text': MessageTemplates.buttonPayInstallment,
-        'callback_data': MessageTemplates.cbPayInstallment,
-      },
-    ];
-    rows.add(extra);
+      ]);
+    }
     return inlineKeyboard(rows);
   }
 

@@ -26,6 +26,7 @@ enum PrivateFlowStep {
   adminCatalogCreateSalesStart,
   adminCatalogCreateSalesEnd,
   adminCatalogCreateChannel,
+  adminCatalogCreateGuide,
   adminCatalogCreateActive,
   adminCatalogCreateConfirm,
   adminCatalogEditValue,
@@ -53,6 +54,7 @@ final class CatalogWizardDraft {
     this.salesEndAt,
     this.channelId,
     this.channelSkipped = false,
+    this.guideFileId,
     this.isActive,
     this.editLaunchId,
     this.editField,
@@ -70,6 +72,7 @@ final class CatalogWizardDraft {
   final DateTime? salesEndAt;
   final int? channelId;
   final bool channelSkipped;
+  final String? guideFileId;
   final bool? isActive;
   final int? editLaunchId;
   final CatalogLaunchField? editField;
@@ -87,6 +90,7 @@ final class CatalogWizardDraft {
     Object? salesEndAt = _unset,
     Object? channelId = _unset,
     bool? channelSkipped,
+    Object? guideFileId = _unset,
     Object? isActive = _unset,
     Object? editLaunchId = _unset,
     Object? editField = _unset,
@@ -110,6 +114,7 @@ final class CatalogWizardDraft {
       salesEndAt: identical(salesEndAt, _unset) ? this.salesEndAt : salesEndAt as DateTime?,
       channelId: identical(channelId, _unset) ? this.channelId : channelId as int?,
       channelSkipped: channelSkipped ?? this.channelSkipped,
+      guideFileId: identical(guideFileId, _unset) ? this.guideFileId : guideFileId as String?,
       isActive: identical(isActive, _unset) ? this.isActive : isActive as bool?,
       editLaunchId: identical(editLaunchId, _unset) ? this.editLaunchId : editLaunchId as int?,
       editField: identical(editField, _unset) ? this.editField : editField as CatalogLaunchField?,

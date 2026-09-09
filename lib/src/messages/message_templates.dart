@@ -41,7 +41,6 @@ final class MessageTemplates {
   static const String buttonOptOut = 'Отписаться от рассылки';
   static const String buttonPayFull = 'Оплатить';
   static const String buttonPayDeposit = 'Предоплата';
-  static const String buttonPayInstallment = 'Рассрочка в кассе';
   static const String buttonPayRemainder = 'Доплатить';
   static const String buttonGoToPay = 'Перейти к оплате';
   static const String buttonContinuePay = 'Продолжить оплату';
@@ -109,7 +108,6 @@ final class MessageTemplates {
   static const String cbRsvp = 'wr';
   static const String cbPayFull = 'pf';
   static const String cbPayDeposit = 'pd';
-  static const String cbPayInstallment = 'pi';
   static const String cbPayRemainder = 'pr:';
   static const String cbToggleOffer = 'oo';
   static const String cbTogglePersonalData = 'op';
@@ -251,9 +249,6 @@ final class MessageTemplates {
         return 'Оплата: предоплата, $paid из $full. '
             'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due.';
       case OrderStatus.paid:
-        if (order.kind == PaymentKind.installment) {
-          return 'Оплата: списание по рассрочке, $paid.';
-        }
         return 'Оплата: закрыта, $paid из $full.';
       case OrderStatus.checkoutStarted:
       case OrderStatus.awaitingPayment:
@@ -505,11 +500,8 @@ final class MessageTemplates {
       if (deposit != null && due != null) {
         buf.write(' Можно внести предоплату $deposit и закрыть остаток до $due.');
       }
-      buf.write(' Рассрочка открывается на странице кассы — график ведёт касса, не бот.');
     } else {
-      buf.write(
-        'Можно закрыть полную сумму, внести предоплату или открыть рассрочку на странице кассы.',
-      );
+      buf.write('Можно закрыть полную сумму или внести предоплату.');
     }
     buf
       ..writeln()
@@ -591,8 +583,7 @@ final class MessageTemplates {
       case SalesPhase.regular:
         return '<b>Запись на поток</b>\n\n'
             'Стоимость: ${formatRubFromKopecks(quote.payableKopecks)}. '
-            'Старт потока $start. Ссылку в канал пришлю после полной оплаты.\n\n'
-            'Рассрочка только на странице кассы — график ведёт касса, не бот.';
+            'Старт потока $start. Ссылку в канал пришлю после полной оплаты.';
     }
   }
 
@@ -673,7 +664,6 @@ final class MessageTemplates {
     PaymentKind.full => 'полная оплата',
     PaymentKind.deposit => 'предоплата',
     PaymentKind.remainder => 'доплата',
-    PaymentKind.installment => 'рассрочка',
   };
 
   String adminGuideMissing({required int userId}) {
@@ -794,9 +784,8 @@ final class MessageTemplates {
         'В день обычной цены и дожим до конца продаж — тоже, даже без гайда.\n\n'
         '<b>Запись и оплата</b>\n'
         '«${MessageTemplates.buttonEnroll}» — пока нет успешной оплаты. Потом в меню «Мой курс».\n'
-        '• полная оплата или списание по рассрочке — ссылка в канал этого потока;\n'
-        '• предоплата — канала нет, пока не доплатят;\n'
-        '• рассрочка считается только после реального списания, не после заявки.\n\n'
+        '• полная оплата — ссылка в канал этого потока;\n'
+        '• предоплата — канала нет, пока не доплатят.\n\n'
         '<b>Открыли оплату и не закончили</b>\n'
         'Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.\n\n'
         '<b>Внесли предоплату</b>\n'
@@ -1417,7 +1406,6 @@ final class MessageTemplates {
     PaymentKind.full => 'полная оплата',
     PaymentKind.deposit => 'предоплата',
     PaymentKind.remainder => 'доплата',
-    PaymentKind.installment => 'рассрочка',
   };
 
   String _adminOrderStatusLabel(OrderStatus status) => switch (status) {

@@ -48,11 +48,10 @@ void main() {
     expect(catalog.opensCourseCard('unknown_tag'), isFalse);
   });
 
-  test('deposit does not grant access on success, full and installment do', () {
+  test('deposit does not grant access on success, full and remainder do', () {
     expect(PaymentKind.deposit.grantsAccessOnSuccess, isFalse);
     expect(PaymentKind.full.grantsAccessOnSuccess, isTrue);
     expect(PaymentKind.remainder.grantsAccessOnSuccess, isTrue);
-    expect(PaymentKind.installment.grantsAccessOnSuccess, isTrue);
   });
 
   test('callback id parser uses the prefix length', () {

@@ -161,9 +161,18 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     );
   }
 
-  String adminCatalogAskActive() {
+  String adminCatalogAskGuide() {
     return _catalogWizardStep(
       12,
+      'Гайд',
+      'Пришли PDF гайда этого потока в чат.',
+      skipHint: '«Пропустить» — без файла, можно прикрепить позже в карточке курса.',
+    );
+  }
+
+  String adminCatalogAskActive() {
+    return _catalogWizardStep(
+      13,
       'Активный поток',
       'Сделать этот поток активным? «Да» снимет метку с остальных.',
     );
@@ -176,7 +185,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     String? example,
     String? skipHint,
   }) {
-    const total = 12;
+    const total = 13;
     final buf = StringBuffer()
       ..writeln('<b>Шаг $step из $total · $title</b>')
       ..writeln()
@@ -228,6 +237,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt) ?? 'не указан'}');
     final channel = draft.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
+    final guideId = draft.leadMagnetFileId?.trim();
+    buf.writeln(guideId == null || guideId.isEmpty ? 'гайд: нет' : 'гайд: есть');
     buf
       ..writeln(draft.isActive ? 'активен: да' : 'активен: нет')
       ..writeln()

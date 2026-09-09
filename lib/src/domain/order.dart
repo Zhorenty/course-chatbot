@@ -33,19 +33,17 @@ extension OrderStatusX on OrderStatus {
 /// Waves for deposit remainder reminders. Each wave fires once.
 enum RemainderWave { beforeDue, onDueDay, overdue }
 
-enum PaymentKind { full, deposit, remainder, installment }
+enum PaymentKind { full, deposit, remainder }
 
 extension PaymentKindX on PaymentKind {
   String get storageValue => switch (this) {
     PaymentKind.full => 'full',
     PaymentKind.deposit => 'deposit',
     PaymentKind.remainder => 'remainder',
-    PaymentKind.installment => 'installment',
   };
 
-  /// Full payment or an actual installment charge grants channel access.
-  bool get grantsAccessOnSuccess =>
-      this == PaymentKind.full || this == PaymentKind.remainder || this == PaymentKind.installment;
+  /// Full payment or remainder charge grants channel access.
+  bool get grantsAccessOnSuccess => this == PaymentKind.full || this == PaymentKind.remainder;
 
   static PaymentKind parse(String? raw, {PaymentKind fallback = PaymentKind.full}) {
     return parseStoredEnum(

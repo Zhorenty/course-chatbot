@@ -144,7 +144,12 @@ final class GoogleSheetsCatalogSync {
     final preserved = existingAt == null
         ? draft
         : _overlayDraft(draft, rows[existingAt], headerIndex);
-    final cells = CoursesSheet.rowFromDraft(preserved, rowNumber: targetAt + 1);
+    final cells = CoursesSheet.rowFromDraft(
+      preserved,
+      rowNumber: targetAt + 1,
+      headerIndex: headerIndex,
+      existing: targetAt < rows.length ? rows[targetAt] : null,
+    );
     await _gateway
         .updateValues(
           a1Range: '${layout.quoted}!A${targetAt + 1}',
@@ -435,7 +440,13 @@ final class GoogleSheetsCatalogSync {
           ? CoursesSheetParser.cellOf(rows[i], headerIndex, CoursesSheet.launchCode)
           : null;
       final isTarget = i == activeRow || code == activeCode;
-      flags.add(<Object?>[isTarget ? 'да' : '']);
+      if (isTarget) {
+        flags.add(<Object?>[CoursesSheet.activeYes]);
+      } else if (code == null || code.isEmpty) {
+        flags.add(<Object?>['']);
+      } else {
+        flags.add(<Object?>[CoursesSheet.activeNo]);
+      }
     }
     if (flags.isEmpty) {
       return;

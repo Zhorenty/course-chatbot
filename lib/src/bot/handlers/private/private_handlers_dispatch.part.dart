@@ -110,8 +110,6 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _showOffer(context, PaymentKind.full);
       case MessageTemplates.cbPayDeposit:
         return _showOffer(context, PaymentKind.deposit);
-      case MessageTemplates.cbPayInstallment:
-        return _showOffer(context, PaymentKind.installment);
       case MessageTemplates.cbRsvp:
         return _rsvpWebinar(context);
       case MessageTemplates.cbToggleOffer:

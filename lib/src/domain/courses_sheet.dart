@@ -34,8 +34,12 @@ abstract final class CoursesSheet {
 
   static const String title = 'Курс · Каталог запусков';
   static const String titleAside = 'Админ в боте или руками';
+  static const String activeYes = 'ДА';
+  static const String activeNo = 'НЕТ';
+
   static const String hint =
-      'Поставь «да» в одной строке — это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
+      'Флажок «Активен» — ровно в одной строке, это текущий набор. Код продукта и продукт '
+      'по умолчанию course / Курс. Обычная цена 19000, спеццена эфира 15000. '
       'Старт продаж — когда открывается касса и продающий прогрев. Пусто — как дата эфира. '
       'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
       'Доплата после предоплаты — за неделю до старта курса. '
@@ -79,11 +83,11 @@ abstract final class CoursesSheet {
   ];
 
   static const List<String> headerNotes = <String>[
-    'Короткий код продукта. Пример: course. Можно не заполнять.',
-    'Как называется продукт. Пример: Курс.',
+    'Короткий код продукта. По умолчанию course. В боте не спрашиваем — подставится сам.',
+    'Как называется продукт. По умолчанию Курс. В боте не спрашиваем — подставится сам.',
     'Короткий код этого потока. Пример: launch-1. Без кода строка не попадёт в бота.',
     'Как называется этот поток. Это увидят в боте.',
-    'Поставь «да», если это текущий набор. «Да» должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
+    'Флажок: ДА — текущий набор. ДА должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
     'Обычная цена в рублях. Пиши число: 19000 или 19 000. Для тех, кто не отмечался на эфир.',
     'Спеццена эфира в рублях. 15000. Для тех, кто нажал «Буду на эфире». Действует 3 дня с даты эфира. '
         'Пусто — подставим 15000.',
@@ -139,7 +143,7 @@ abstract final class CoursesSheet {
       seedProductTitle,
       seedLaunchCode,
       seedLaunchTitle,
-      'да',
+      activeYes,
       seedPriceFullRub,
       seedPricePromoRub,
       seedDepositRub,
@@ -228,13 +232,30 @@ abstract final class CoursesSheet {
     return (kopecks / 100).toStringAsFixed(2);
   }
 
-  static List<Object?> rowFromDraft(CatalogLaunchDraft draft, {required int rowNumber}) {
-    return padded(<Object?>[
-      draft.productCode,
-      draft.productTitle,
+  static Object activeCell(bool isActive) => isActive ? activeYes : activeNo;
+
+  static String resolvedProductCode(String? raw) {
+    final value = raw?.trim() ?? '';
+    return value.isEmpty ? seedProductCode : value;
+  }
+
+  static String resolvedProductTitle(String? raw) {
+    final value = raw?.trim() ?? '';
+    return value.isEmpty ? seedProductTitle : value;
+  }
+
+  static List<Object?> rowFromDraft(
+    CatalogLaunchDraft draft, {
+    required int rowNumber,
+    Map<String, int>? headerIndex,
+    List<Object?>? existing,
+  }) {
+    final spec = padded(<Object?>[
+      resolvedProductCode(draft.productCode),
+      resolvedProductTitle(draft.productTitle),
       draft.launchCode,
       draft.launchTitle,
-      draft.isActive ? 'да' : '',
+      activeCell(draft.isActive),
       priceCell(draft.priceFullKopecks),
       draft.pricePromoKopecks > 0 ? priceCell(draft.pricePromoKopecks) : '',
       draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : '',
@@ -246,6 +267,32 @@ abstract final class CoursesSheet {
       draft.channelId ?? '',
       statusFormula(row: rowNumber),
     ]);
+    if (headerIndex == null || headerIndex.isEmpty) {
+      return spec;
+    }
+    var width = existing?.length ?? 0;
+    for (final index in headerIndex.values) {
+      if (index + 1 > width) {
+        width = index + 1;
+      }
+    }
+    if (width < columnCount) {
+      width = columnCount;
+    }
+    final cells = <Object?>[
+      for (var i = 0; i < width; i++) i < (existing?.length ?? 0) ? existing![i] : '',
+    ];
+    for (var i = 0; i < headers.length; i++) {
+      final dest = headerIndex[headers[i]];
+      if (dest == null) {
+        continue;
+      }
+      while (cells.length <= dest) {
+        cells.add('');
+      }
+      cells[dest] = spec[i];
+    }
+    return cells;
   }
 
   static List<Object?> toDisplayHeaders(List<Object?> headerRow) {
@@ -844,10 +891,12 @@ abstract final class CoursesSheetParser {
       }
     }
     return CatalogLaunchDraft(
-      productCode:
-          _cell(raw, headerIndex, CoursesSheet.productCode) ?? CoursesSheet.seedProductCode,
-      productTitle:
-          _cell(raw, headerIndex, CoursesSheet.productTitle) ?? CoursesSheet.seedProductTitle,
+      productCode: CoursesSheet.resolvedProductCode(
+        _cell(raw, headerIndex, CoursesSheet.productCode),
+      ),
+      productTitle: CoursesSheet.resolvedProductTitle(
+        _cell(raw, headerIndex, CoursesSheet.productTitle),
+      ),
       launchCode: launchCode,
       launchTitle: _cell(raw, headerIndex, CoursesSheet.launchTitle) ?? launchCode,
       isActive: _isTruthy(_cell(raw, headerIndex, CoursesSheet.isActive)),

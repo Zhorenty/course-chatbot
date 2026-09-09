@@ -109,6 +109,6 @@ final class PaymentCallback {
   final int? userId;
   final int? amountKopecks;
 
-  /// False when the kassa only approved an installment application.
+  /// False when the kassa reported success without an actual charge.
   final bool charged;
 }

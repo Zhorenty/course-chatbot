@@ -122,7 +122,7 @@ final class CheckoutService {
     final amountDue = switch (kind) {
       PaymentKind.deposit => payable,
       PaymentKind.remainder => existing?.amountDueKopecks ?? payable,
-      PaymentKind.full || PaymentKind.installment => payable,
+      PaymentKind.full => payable,
     };
     return _course.createOrder(
       userId: userId,
@@ -376,7 +376,6 @@ final class CheckoutService {
   int amountFor(Launch launch, CourseOrder order, PaymentKind kind) {
     switch (kind) {
       case PaymentKind.full:
-      case PaymentKind.installment:
         return order.priceFullKopecks;
       case PaymentKind.deposit:
         return launch.depositKopecks;

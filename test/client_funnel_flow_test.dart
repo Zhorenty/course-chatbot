@@ -84,9 +84,9 @@ void main() {
       containsAll(<String>[
         templates.payFullButtonLabel(LaunchPrices.promoKopecks),
         templates.payDepositButtonLabel(500000),
-        MessageTemplates.buttonPayInstallment,
       ]),
     );
+    expect(_inlineButtonTexts(promo.replyMarkup), isNot(contains('Рассрочка')));
 
     await client.payWithConsent(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
@@ -245,64 +245,6 @@ void main() {
     expect(afterFull.grantedAccess, isTrue);
     expect(harness.channel.created, isNotEmpty);
     expect(_phase(harness, 42), FunnelPhase.accessGranted);
-  });
-
-  test('C: installment approval without a charge does not grant access', () async {
-    final clock = _Clock(DateTime.utc(2026, 10, 4, 12));
-    final harness = await _clientHarness(clock);
-    addTearDown(harness.dispose);
-    final client = _Client(harness);
-    await _reachPromoCheckout(client, clock);
-
-    await client.payWithConsent(MessageTemplates.cbPayInstallment);
-    final launch = harness.course.activeLaunch()!;
-    final order = harness.course.latestOrder(42, launchId: launch.id)!;
-    final payment = harness.course.latestPendingPayment(order.id)!;
-
-    final approved = await client.settle(
-      kind: PaymentKind.installment,
-      amountKopecks: LaunchPrices.promoKopecks,
-      charged: false,
-    );
-    expect(approved.grantedAccess, isFalse);
-    expect(harness.channel.created, isEmpty);
-    expect(_phase(harness, 42), FunnelPhase.checkout);
-
-    final charged = await harness.checkout.applyCallback(
-      PaymentCallback(
-        provider: 'fake',
-        providerPaymentId: payment.providerPaymentId!,
-        succeeded: true,
-        charged: true,
-        kind: PaymentKind.installment,
-        orderId: order.id,
-        paymentDbId: payment.id,
-        userId: 42,
-        amountKopecks: LaunchPrices.promoKopecks,
-      ),
-      launch: launch,
-    );
-    await harness.handlers.notifyPaymentResult(charged);
-    expect(charged.grantedAccess, isTrue);
-    expect(harness.channel.created, hasLength(1));
-    expect(_phase(harness, 42), FunnelPhase.accessGranted);
-
-    final again = await harness.checkout.applyCallback(
-      PaymentCallback(
-        provider: 'fake',
-        providerPaymentId: payment.providerPaymentId!,
-        succeeded: true,
-        charged: true,
-        kind: PaymentKind.installment,
-        orderId: order.id,
-        paymentDbId: payment.id,
-        userId: 42,
-        amountKopecks: LaunchPrices.promoKopecks,
-      ),
-      launch: launch,
-    );
-    expect(again.alreadyApplied, isTrue);
-    expect(harness.channel.created, hasLength(1));
   });
 
   test('D: abandoned checkout reminds once, then continue pay reuses the URL', () async {
@@ -473,8 +415,7 @@ List<String> _payButtonTexts(Map<String, Object?>? markup) {
       .where(
         (text) =>
             text.startsWith(MessageTemplates.buttonPayFull) ||
-            text.startsWith(MessageTemplates.buttonPayDeposit) ||
-            text == MessageTemplates.buttonPayInstallment,
+            text.startsWith(MessageTemplates.buttonPayDeposit),
       )
       .toList();
 }

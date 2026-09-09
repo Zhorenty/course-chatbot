@@ -180,17 +180,17 @@ void main() {
     expect(harness.channel.created, isNotEmpty);
   });
 
-  test('installment application without charge does not grant access', () async {
+  test('success without a charge does not grant access', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;
     final order = harness.checkout.startOrReuseOrder(
       userId: 42,
       launch: launch,
-      kind: PaymentKind.installment,
+      kind: PaymentKind.full,
     );
     final payment = (await harness.checkout.createCheckout(
       order: order,
-      kind: PaymentKind.installment,
+      kind: PaymentKind.full,
       amountKopecks: launch.priceFullKopecks,
     )).payment;
     final approved = await harness.checkout.applyCallback(
@@ -199,7 +199,7 @@ void main() {
         providerPaymentId: payment.providerPaymentId!,
         succeeded: true,
         charged: false,
-        kind: PaymentKind.installment,
+        kind: PaymentKind.full,
         orderId: order.id,
         paymentDbId: payment.id,
         userId: 42,

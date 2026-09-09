@@ -666,6 +666,65 @@ void main() {
       expect(gateway.deletedSheetIds, isEmpty);
     });
 
+    test('upsertCourseRow writes Активен by header name, not column order', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = <List<Object?>>[
+        <Object?>[
+          'Код продукта',
+          'Продукт',
+          'Код запуска',
+          'Название запуска',
+          'Цена, ₽',
+          'Активен',
+          'Спеццена, ₽',
+          'Предоплата, ₽',
+          'Старт курса',
+          'Эфир',
+          'Ссылка на эфир',
+          'Старт продаж',
+          'Конец продаж',
+          'ID канала',
+          'статус',
+        ],
+        <Object?>[
+          'course',
+          'Курс',
+          'launch-1',
+          'Запуск',
+          19000,
+          CoursesSheet.activeYes,
+          15000,
+          5000,
+          '12.10.2026',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ],
+      ];
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      await sync.upsertCourseRow(
+        draft: CatalogLaunchDraft(
+          productCode: CoursesSheet.seedProductCode,
+          productTitle: CoursesSheet.seedProductTitle,
+          launchCode: 'nov-26',
+          launchTitle: 'Ноябрь',
+          isActive: true,
+          priceFullKopecks: 2000000,
+          depositKopecks: 0,
+          depositDueDays: 7,
+          courseStartAt: DateTime.utc(2026, 11, 1),
+        ),
+      );
+      final sheet = gateway.valuesBySheetId[0]!;
+      final created = sheet.firstWhere((row) => row.length > 2 && row[2] == 'nov-26');
+      expect(created[4], 20000);
+      expect(created[5], CoursesSheet.activeYes);
+      expect(created[0], 'course');
+      expect(created[1], 'Курс');
+    });
+
     test('insertOnly upsert refuses a launch_code already on COURSES', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);

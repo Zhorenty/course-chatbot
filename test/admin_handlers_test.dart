@@ -922,11 +922,11 @@ void main() {
     expect(sheets.sender.messages.last.text, isNot(contains('Пусто')));
 
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
-    expect(sheets.sender.messages.last.text, contains('активным'));
+    expect(sheets.sender.messages.last.text, contains('Гайд'));
     expect(sheets.sender.messages.last.text, isNot(contains('Админка')));
     expect(
       _inlineButtonTexts(sheets.sender.messages.last.replyMarkup),
-      contains(MessageTemplates.buttonAdminCatalogYes),
+      contains(MessageTemplates.buttonAdminCatalogSkip),
     );
   });
 
@@ -937,7 +937,7 @@ void main() {
 
     await _runCatalogCreateWizardToChannel(sheets);
     await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '−'));
-    expect(sheets.sender.messages.last.text, contains('активным'));
+    expect(sheets.sender.messages.last.text, contains('Гайд'));
     expect(sheets.sender.messages.last.text, isNot(contains('Админка')));
   });
 
@@ -953,6 +953,15 @@ void main() {
         chatId: 1,
         userId: 1,
         data: MessageTemplates.cbCatalogSkipChannel,
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('Гайд'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'csg',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogSkipOptional,
       ),
     );
     expect(sheets.sender.messages.last.text, contains('активным'));
@@ -989,14 +998,16 @@ void main() {
     expect(sheet[CoursesSheet.defaultHeaderRow].first, 'Код продукта');
     final created = _coursesRowByCode(sheet, 'nov-26');
     expect(created, isNotNull);
-    expect(created![CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Ноябрь');
+    expect(created![CoursesSheet.headers.indexOf(CoursesSheet.productCode)], 'course');
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.productTitle)], 'Курс');
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)], 'Ноябрь');
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)], 20000);
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.pricePromoRub)], 15000);
-    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.isActive)], 'да');
+    expect(created[CoursesSheet.headers.indexOf(CoursesSheet.isActive)], CoursesSheet.activeYes);
     expect(created[CoursesSheet.headers.indexOf(CoursesSheet.status)].toString(), startsWith('='));
     final seed = _coursesRowByCode(sheet, 'launch-1');
     expect(seed, isNotNull);
-    expect(seed![CoursesSheet.headers.indexOf(CoursesSheet.isActive)], '');
+    expect(seed![CoursesSheet.headers.indexOf(CoursesSheet.isActive)], CoursesSheet.activeNo);
     expect(sheets.course.launchByCode('nov-26')?.title, 'Ноябрь');
     expect(sheets.course.launchByCode('nov-26')?.isActive, isTrue);
     expect(sheets.course.activeLaunch()?.code, 'nov-26');
@@ -1006,6 +1017,38 @@ void main() {
       isFalse,
     );
     expect(sheets.sheetsWriter!.replaceDashboardCount, 0);
+  });
+
+  test('admin catalog wizard attaches a guide PDF during create', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+
+    await _runCatalogCreateWizardToChannel(sheets, title: 'Ноябрь', code: 'nov-26');
+    await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+    expect(sheets.sender.messages.last.text, contains('Гайд'));
+    await sheets.handlers.handle(
+      privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'create-guide'),
+    );
+    expect(sheets.sender.messages.last.text, contains('активным'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cay-guide',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogActiveNo,
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ccy-guide',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbCatalogCreateYes,
+      ),
+    );
+    expect(sheets.course.launchByCode('nov-26')?.leadMagnetFileId, 'create-guide');
+    expect(sheets.course.launchByCode('launch-1')?.leadMagnetFileId, 'file-guide');
   });
 
   test('admin catalog invalid price stays on the same step', () async {
@@ -1193,11 +1236,11 @@ void main() {
     final sheet = sheets.sheetsGateway!.valuesBySheetId[0]!;
     expect(
       _coursesRowByCode(sheet, 'nov-26')![CoursesSheet.headers.indexOf(CoursesSheet.isActive)],
-      'да',
+      CoursesSheet.activeYes,
     );
     expect(
       _coursesRowByCode(sheet, 'launch-1')![CoursesSheet.headers.indexOf(CoursesSheet.isActive)],
-      '',
+      CoursesSheet.activeNo,
     );
   });
 
@@ -1635,6 +1678,14 @@ Future<void> _runCatalogCreateWizard(
     openCatalog: openCatalog,
   );
   await sheets.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '-'));
+  await sheets.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'csg-$code',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbCatalogSkipOptional,
+    ),
+  );
   await sheets.handlers.handle(
     privateCallbackUpdate(
       callbackId: 'cay-$code',

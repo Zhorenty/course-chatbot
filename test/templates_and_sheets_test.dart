@@ -39,7 +39,7 @@ void main() {
     final templates = MessageTemplates();
     final rich = templates.guideReadyRich();
     expect(rich, contains('<tg-document src="tg://document?id=guide"></tg-document>'));
-    expect(rich, contains('PDF в этом сообщении'));
+    expect(rich, contains('Дальше — эфир'));
     expect(classicHtmlFromRich(rich), isNot(contains('tg-document')));
     expect(classicHtmlFromRich(rich), contains('Гайд «Язык цвета»'));
   });
@@ -177,9 +177,22 @@ void main() {
     expect(
       look.validations.where((rule) => !rule.clear).map((rule) => rule.startColumn),
       containsAll(<int>[
+        CoursesSheet.headers.indexOf(CoursesSheet.productCode),
+        CoursesSheet.headers.indexOf(CoursesSheet.productTitle),
+        CoursesSheet.headers.indexOf(CoursesSheet.isActive),
         CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate),
         CoursesSheet.headers.indexOf(CoursesSheet.salesEndDate),
       ]),
+    );
+    expect(
+      look.validations.any(
+        (rule) =>
+            !rule.clear &&
+            rule.conditionType == 'BOOLEAN' &&
+            rule.startColumn == CoursesSheet.headers.indexOf(CoursesSheet.isActive) &&
+            rule.conditionValues.first == CoursesSheet.activeYes,
+      ),
+      isTrue,
     );
     expect(look.styles, isNotEmpty);
   });
