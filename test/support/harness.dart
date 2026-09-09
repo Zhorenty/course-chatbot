@@ -50,10 +50,14 @@ final class HandlerHarness {
     int? adminChatId,
     int channelId = -1001,
     int priceFullKopecks = 1800000,
+    int pricePromoKopecks = 0,
     int depositKopecks = 500000,
     DateTime? depositDueAt,
     DateTime? courseStartAt,
     Object? webinarAt = _unsetWebinar,
+    String? webinarUrl,
+    DateTime? salesStartAt,
+    DateTime? salesEndAt,
     String? leadMagnetFileId = 'file-guide',
     String? leadMagnetPath,
     bool enableSheets = false,
@@ -70,6 +74,7 @@ final class HandlerHarness {
       launchCode: 'launch-1',
       launchTitle: 'Запуск',
       priceFullKopecks: priceFullKopecks,
+      pricePromoKopecks: pricePromoKopecks,
       depositKopecks: depositKopecks,
       depositDueDays: 7,
       depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
@@ -77,6 +82,9 @@ final class HandlerHarness {
       webinarAt: identical(webinarAt, _unsetWebinar)
           ? DateTime.utc(2020, 1, 1, 16)
           : webinarAt as DateTime?,
+      webinarUrl: webinarUrl,
+      salesStartAt: salesStartAt,
+      salesEndAt: salesEndAt,
       channelId: channelId,
       leadMagnetFileId: leadMagnetFileId,
     );
