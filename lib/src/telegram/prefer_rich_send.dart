@@ -18,12 +18,13 @@ Future<int> sendPreferRich(
   final html = _resolveRichHtml(text, richHtml);
   if (html.isNotEmpty) {
     try {
-      return await sender.sendRichMessage(
+      final sent = await sender.sendRichMessage(
         chatId,
         InputRichMessage(html: html),
         disableNotification: disableNotification,
         replyMarkup: replyMarkup,
       );
+      return sent.messageId;
     } on Object catch (error, stackTrace) {
       l.w('sendRichMessage failed, falling back to sendMessage: $error', stackTrace);
     }

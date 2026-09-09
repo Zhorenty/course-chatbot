@@ -41,25 +41,30 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
-  Future<int> sendRichMessage(
+  Future<SentTelegramDocument> sendRichMessage(
     int chatId,
     InputRichMessage richMessage, {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) async {
-    final messageId = await _inner.sendRichMessage(
+    final sent = await _inner.sendRichMessage(
       chatId,
       richMessage,
       disableNotification: disableNotification,
       replyMarkup: replyMarkup,
     );
+    final document = richMessage.media.isEmpty ? null : richMessage.media.first.document;
     await _safeAppend(
       chatId: chatId,
-      telegramMessageId: messageId,
-      contentType: ConversationContentType.text,
-      textPreview: richMessage.html,
+      telegramMessageId: sent.messageId,
+      contentType: document == null
+          ? ConversationContentType.text
+          : ConversationContentType.document,
+      textPreview: document == null
+          ? richMessage.html
+          : 'document ${document.filename ?? document.ref}',
     );
-    return messageId;
+    return sent;
   }
 
   @override

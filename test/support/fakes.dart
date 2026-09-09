@@ -50,7 +50,7 @@ final class FakeMessageSender implements MessageSender {
   }
 
   @override
-  Future<int> sendRichMessage(
+  Future<SentTelegramDocument> sendRichMessage(
     int chatId,
     InputRichMessage richMessage, {
     bool disableNotification = true,
@@ -64,6 +64,15 @@ final class FakeMessageSender implements MessageSender {
       throw StateError('Forbidden: bot was blocked by the user');
     }
     _nextMessageId += 1;
+    String? fileId;
+    for (final item in richMessage.media) {
+      documents.add(item.document.ref);
+      if (item.isLocal) {
+        fileId ??= 'cached-guide';
+      } else {
+        fileId ??= item.document.fileId;
+      }
+    }
     messages.add(
       SentMessage(
         chatId: chatId,
@@ -75,7 +84,7 @@ final class FakeMessageSender implements MessageSender {
         isRich: true,
       ),
     );
-    return _nextMessageId;
+    return SentTelegramDocument(messageId: _nextMessageId, fileId: fileId);
   }
 
   @override

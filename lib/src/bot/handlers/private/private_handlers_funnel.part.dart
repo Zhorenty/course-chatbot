@@ -10,20 +10,9 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     final localPath = leadMagnetPath;
     final menu = _homeKeyboard(userId);
     if (fileId != null && fileId.isNotEmpty) {
-      await _sender.sendDocument(chatId, document: fileId);
-      await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
+      await _deliverGuideFile(chatId: chatId, menu: menu, fileId: fileId);
     } else if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
-      final sent = await _sender.sendDocument(
-        chatId,
-        document: localPath,
-        filename: leadMagnetFilename,
-        fromFile: true,
-      );
-      final cachedId = sent.fileId;
-      if (cachedId != null && cachedId.isNotEmpty) {
-        _course.setLeadMagnetFileId(cachedId);
-      }
-      await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
+      await _deliverGuideFile(chatId: chatId, menu: menu, localPath: localPath);
     } else if (url != null && url.isNotEmpty) {
       await _sendHtml(chatId, _templates.guideAsUrl(url), replyMarkup: menu);
     } else {
@@ -37,6 +26,72 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _sendWarmupZero(userId);
     }
     return true;
+  }
+
+  Future<void> _deliverGuideFile({
+    required int chatId,
+    required Map<String, Object?> menu,
+    String? fileId,
+    String? localPath,
+  }) async {
+    final useFileId = fileId != null && fileId.isNotEmpty;
+    final media = InputRichMessageMedia.document(
+      id: MessageTemplates.guideDocumentMediaId,
+      document: useFileId
+          ? InputRichDocument.fileId(fileId)
+          : InputRichDocument.file(localPath: localPath!, filename: leadMagnetFilename),
+    );
+    try {
+      final sent = await _sender.sendRichMessage(
+        chatId,
+        InputRichMessage(html: _templates.guideReadyRich(), media: <InputRichMessageMedia>[media]),
+        replyMarkup: menu,
+      );
+      if (!useFileId) {
+        _cacheLeadMagnetFileId(sent.fileId);
+      }
+      return;
+    } on Object catch (error, stackTrace) {
+      l.w(
+        'sendRichMessage with guide file failed, falling back to sendDocument: $error',
+        stackTrace,
+      );
+    }
+    await _deliverGuideFileClassic(
+      chatId: chatId,
+      menu: menu,
+      fileId: fileId,
+      localPath: localPath,
+      useFileId: useFileId,
+    );
+  }
+
+  Future<void> _deliverGuideFileClassic({
+    required int chatId,
+    required Map<String, Object?> menu,
+    required String? fileId,
+    required String? localPath,
+    required bool useFileId,
+  }) async {
+    if (useFileId) {
+      await _sender.sendDocument(chatId, document: fileId!);
+    } else {
+      final sent = await _sender.sendDocument(
+        chatId,
+        document: localPath!,
+        filename: leadMagnetFilename,
+        fromFile: true,
+      );
+      _cacheLeadMagnetFileId(sent.fileId);
+    }
+    await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
+  }
+
+  void _cacheLeadMagnetFileId(String? fileId) {
+    if (fileId == null || fileId.isEmpty) {
+      return;
+    }
+    _course.setLeadMagnetFileId(fileId);
   }
 
   Future<void> _notifyGuideMissing(int userId) async {

@@ -17,6 +17,7 @@ import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/messages/rich_html.dart';
+import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -32,6 +33,41 @@ void main() {
       '<table><tr><td>код</td><td><code>a</code></td></tr><tr><td>цена</td><td>1000 ₽</td></tr></table>',
     );
     expect(richHtmlFromClassic('Ссылка на оплату готова.'), '<p>Ссылка на оплату готова.</p>');
+  });
+
+  test('guide ready rich embeds the PDF and strips it for classic HTML', () {
+    final templates = MessageTemplates();
+    final rich = templates.guideReadyRich();
+    expect(rich, contains('<tg-document src="tg://document?id=guide"></tg-document>'));
+    expect(rich, contains('PDF в этом сообщении'));
+    expect(classicHtmlFromRich(rich), isNot(contains('tg-document')));
+    expect(classicHtmlFromRich(rich), contains('Гайд «Язык цвета»'));
+  });
+
+  test('rich message media serializes file_id and local attach://', () {
+    final byId = InputRichMessage(
+      html: '<tg-document src="tg://document?id=guide"></tg-document>',
+      media: <InputRichMessageMedia>[
+        InputRichMessageMedia.document(id: 'guide', document: InputRichDocument.fileId('file-1')),
+      ],
+    );
+    expect(byId.toJson()['media'], <Object?>[
+      <String, Object?>{
+        'id': 'guide',
+        'media': <String, Object?>{'type': 'document', 'media': 'file-1'},
+      },
+    ]);
+    final local = InputRichMessage(
+      html: '<tg-document src="tg://document?id=guide"></tg-document>',
+      media: <InputRichMessageMedia>[
+        InputRichMessageMedia.document(
+          id: 'guide',
+          document: InputRichDocument.file(localPath: '/tmp/a.pdf', filename: 'a.pdf'),
+        ),
+      ],
+    );
+    final media = (local.toJson()['media'] as List<dynamic>).first as Map<String, Object?>;
+    expect((media['media'] as Map<String, Object?>)['media'], 'attach://rich_guide');
   });
 
   test('enroll day-1 and day-3 warmup copy is not identical', () {

@@ -8,6 +8,13 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richFooter('Гайд — кнопка в меню внизу.')}';
   }
 
+  String guideReadyRich() {
+    return '${richH2('Гайд «Язык цвета»')}'
+        '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}'
+        '${richP('Без имени, почты и телефона. PDF в этом сообщении.')}'
+        '${richFooter('Дальше — эфир. Напомню следующим сообщением.')}';
+  }
+
   String startCourseCardRich({Launch? launch}) {
     final start = _formatDate(launch?.courseStartAt);
     final price = _formatPrice(launch?.priceFullKopecks);

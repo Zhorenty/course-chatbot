@@ -33,6 +33,7 @@ final class MessageTemplates {
   final DateFormat _dateTime = DateFormat('dd.MM.yyyy HH:mm');
 
   static const String buttonGuide = 'Забрать гайд';
+  static const String guideDocumentMediaId = 'guide';
   static const String buttonEnroll = 'Записаться на курс';
   static const String buttonRsvp = 'Буду на эфире';
   static const String buttonCourseStatus = 'Мой курс';

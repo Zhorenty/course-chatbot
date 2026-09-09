@@ -47,8 +47,18 @@ String richDetails(String summary, String bodyHtml, {bool open = false}) {
   return '<details$openAttr><summary>${escapeHtml(summary)}</summary>$bodyHtml</details>';
 }
 
+/// Embed a file from `InputRichMessage.media` (`<tg-document>`, Bot API 10.3).
+String richDocument({required String mediaId, String? caption}) {
+  final tag = '<tg-document src="tg://document?id=${escapeHtml(mediaId)}"></tg-document>';
+  final captionText = caption?.trim();
+  if (captionText == null || captionText.isEmpty) {
+    return tag;
+  }
+  return '<figure>$tag<figcaption>${escapeHtml(captionText)}</figcaption></figure>';
+}
+
 final _richBlockTag = RegExp(
-  r'<(h[1-6]|p|table|details|ul|ol|footer|blockquote)\b',
+  r'<(h[1-6]|p|table|details|ul|ol|footer|blockquote|tg-document|figure)\b',
   caseSensitive: false,
 );
 final _boldOnly = RegExp(r'^<b>(.*?)</b>$', dotAll: true);
@@ -172,5 +182,12 @@ String classicHtmlFromRich(String richHtml) {
   });
   text = text.replaceAll(RegExp(r'<tg-button-row[\s\S]*?</tg-button-row>'), '');
   text = text.replaceAll(RegExp(r'<tg-button[\s\S]*?</tg-button>'), '');
+  text = text.replaceAllMapped(
+    RegExp(r'<figcaption>(.*?)</figcaption>', dotAll: true, caseSensitive: false),
+    (match) => '${match.group(1)}\n',
+  );
+  text = text.replaceAll(RegExp(r'<tg-document[\s\S]*?</tg-document>', caseSensitive: false), '');
+  text = text.replaceAll(RegExp(r'<tg-document[^>]*/?>', caseSensitive: false), '');
+  text = text.replaceAll(RegExp(r'</?figure>', caseSensitive: false), '');
   return text.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
 }

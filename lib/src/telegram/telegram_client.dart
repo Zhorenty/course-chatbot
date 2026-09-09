@@ -186,12 +186,20 @@ final class TelegramClient implements MessageSender, ChannelApi {
   }
 
   @override
-  Future<int> sendRichMessage(
+  Future<SentTelegramDocument> sendRichMessage(
     int chatId,
     InputRichMessage richMessage, {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) async {
+    if (richMessage.hasLocalFiles) {
+      return _sendRichMessageMultipart(
+        chatId: chatId,
+        richMessage: richMessage,
+        disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
+      );
+    }
     final body = <String, Object?>{
       'chat_id': chatId,
       'rich_message': richMessage.toJson(),
@@ -201,11 +209,48 @@ final class TelegramClient implements MessageSender, ChannelApi {
       body['reply_markup'] = replyMarkup;
     }
     final payload = await _post('sendRichMessage', body: body);
-    final result = payload['result'];
-    if (result is! Map || result['message_id'] is! int) {
-      throw const TelegramApiException('Telegram did not return message_id');
+    return _sentDocumentFromPayload(payload);
+  }
+
+  Future<SentTelegramDocument> _sendRichMessageMultipart({
+    required int chatId,
+    required InputRichMessage richMessage,
+    required bool disableNotification,
+    required Map<String, Object?>? replyMarkup,
+  }) async {
+    final fields = <String, String>{
+      'chat_id': '$chatId',
+      'rich_message': jsonEncode(richMessage.toJson()),
+      'disable_notification': '$disableNotification',
+    };
+    if (replyMarkup != null) {
+      fields['reply_markup'] = jsonEncode(replyMarkup);
     }
-    return result['message_id'] as int;
+    final payload = await _postMultipart(
+      'sendRichMessage',
+      fields: fields,
+      files: () async {
+        final files = <http.MultipartFile>[];
+        for (final item in richMessage.media) {
+          if (!item.isLocal) {
+            continue;
+          }
+          final path = item.document.localPath!;
+          if (!File(path).existsSync()) {
+            throw TelegramApiException('Lead magnet file is missing: $path');
+          }
+          files.add(
+            await http.MultipartFile.fromPath(
+              item.attachName,
+              path,
+              filename: item.document.filename ?? _basename(path),
+            ),
+          );
+        }
+        return files;
+      },
+    );
+    return _sentDocumentFromPayload(payload);
   }
 
   Future<int> _sendMessageChunk(
@@ -390,15 +435,47 @@ final class TelegramClient implements MessageSender, ChannelApi {
     if (result is! Map || result['message_id'] is! int) {
       throw const TelegramApiException('Telegram did not return message_id');
     }
-    final document = result['document'];
-    String? fileId;
-    if (document is Map) {
-      fileId = document['file_id']?.toString();
+    final fileId = _documentFileIdFromMessage(result);
+    return SentTelegramDocument(messageId: result['message_id'] as int, fileId: fileId);
+  }
+
+  String? _documentFileIdFromMessage(Map<dynamic, dynamic> result) {
+    final top = result['document'];
+    if (top is Map) {
+      final id = top['file_id']?.toString();
+      if (id != null && id.isNotEmpty) {
+        return id;
+      }
     }
-    return SentTelegramDocument(
-      messageId: result['message_id'] as int,
-      fileId: fileId == null || fileId.isEmpty ? null : fileId,
-    );
+    final rich = result['rich_message'];
+    if (rich is Map) {
+      return _documentFileIdFromBlocks(rich['blocks']);
+    }
+    return null;
+  }
+
+  String? _documentFileIdFromBlocks(Object? blocks) {
+    if (blocks is! List) {
+      return null;
+    }
+    for (final block in blocks) {
+      if (block is! Map) {
+        continue;
+      }
+      final document = block['document'];
+      if (document is Map) {
+        final id = document['file_id']?.toString();
+        if (id != null && id.isNotEmpty) {
+          return id;
+        }
+      }
+      final nested =
+          _documentFileIdFromBlocks(block['blocks']) ?? _documentFileIdFromBlocks(block['items']);
+      if (nested != null) {
+        return nested;
+      }
+    }
+    return null;
   }
 
   String _basename(String path) {

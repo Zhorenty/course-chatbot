@@ -19,7 +19,10 @@ abstract interface class MessageSender {
 
   /// Structured screen (Bot API 10.1+). Callers must fall back to [sendMessage]
   /// if this throws — old clients show an “update the app” stub.
-  Future<int> sendRichMessage(
+  ///
+  /// [SentTelegramDocument.fileId] is set when the rich payload uploaded or
+  /// reused a document (lead-magnet cache).
+  Future<SentTelegramDocument> sendRichMessage(
     int chatId,
     InputRichMessage richMessage, {
     bool disableNotification = true,

@@ -121,6 +121,15 @@ void main() {
     );
 
     expect(harness.sender.documents, contains('file-guide'));
+    expect(
+      harness.sender.messages.any(
+        (m) =>
+            m.isRich &&
+            m.text.contains('tg://document?id=${MessageTemplates.guideDocumentMediaId}'),
+      ),
+      isTrue,
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('файл выше')), isFalse);
     expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
     expect(
       harness.sender.messages
@@ -287,6 +296,33 @@ void main() {
 
     expect(extra.sender.documents, contains(pdf.path));
     expect(extra.course.activeLaunch()?.leadMagnetFileId, 'cached-guide');
+    expect(
+      extra.sender.messages.any(
+        (m) =>
+            m.isRich &&
+            m.text.contains('tg://document?id=${MessageTemplates.guideDocumentMediaId}'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('guide PDF falls back to sendDocument when rich fails', () async {
+    harness.sender.throwOnRich = StateError('rich unavailable');
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: '1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+
+    expect(harness.sender.documents, contains('file-guide'));
+    expect(harness.sender.messages.any((m) => m.text.contains('файл выше')), isTrue);
+    expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
   });
 
   test('enroll shows regular price and pay buttons after sales open', () async {
