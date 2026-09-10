@@ -250,24 +250,6 @@ void main() {
         username: 'masha',
       ),
     );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '3',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbToggleOffer,
-        username: 'masha',
-      ),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '4',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbGoToPay,
-        username: 'masha',
-      ),
-    );
 
     expect(
       harness.sender.messages.any(
@@ -281,5 +263,53 @@ void main() {
     expect(admin.first.text, contains('42'));
     expect(admin.first.text, contains('Test'));
     expect(admin.first.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
+  });
+
+  test('PaymentAlertNotifier pushes guide, RSVP and paid-with-invite to admin chats', () async {
+    harness = HandlerHarness();
+    await harness.init(adminUserIds: <int>{1});
+    final templates = MessageTemplates();
+    final notifier = PaymentAlertNotifier(
+      sender: harness.sender,
+      templates: templates,
+      notificationChatIds: <int>{1, 42},
+    );
+    harness.course.ensureUser(
+      userId: 42,
+      username: 'masha',
+      firstName: 'Маша',
+      now: DateTime.utc(2026, 1, 1),
+    );
+    final user = harness.course.getUser(42)!;
+    final launch = harness.course.activeLaunch()!;
+    final order = CourseOrder(
+      id: 7,
+      userId: 42,
+      launchId: launch.id,
+      status: OrderStatus.paid,
+      kind: PaymentKind.full,
+      priceFullKopecks: launch.priceFullKopecks,
+      amountPaidKopecks: launch.priceFullKopecks,
+      amountDueKopecks: 0,
+      checkoutStartedAt: DateTime.utc(2026, 10, 6),
+    );
+
+    await notifier.notifyGuideIssued(user: user, launch: launch);
+    await notifier.notifyWebinarRsvp(user: user, launch: launch);
+    await notifier.notifyPaidWithInvite(user: user, order: order, launch: launch);
+
+    final admin = harness.sender.messages.where((message) => message.chatId == 1).toList();
+    expect(admin, hasLength(3));
+    expect(admin[0].text, contains('Получил гайд'));
+    expect(admin[1].text, contains('Записался на эфир'));
+    expect(admin[2].text, contains('Оплатил — ссылка в канал выдана'));
+    expect(
+      harness.sender.messages.where((message) => message.chatId == 42),
+      isEmpty,
+      reason: 'the person who triggered the event must not get the admin copy',
+    );
+    for (final message in admin) {
+      expect(message.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
+    }
   });
 }

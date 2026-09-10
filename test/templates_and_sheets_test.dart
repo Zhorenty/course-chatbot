@@ -92,7 +92,7 @@ void main() {
     expect(MessageTemplates.buttonEnroll, contains('Записаться'));
   });
 
-  test('offer consent copy names the pay button and one combined checkbox', () {
+  test('enroll copy still points to the channel after full payment', () {
     final templates = MessageTemplates();
     final launch = Launch(
       id: 1,
@@ -106,22 +106,13 @@ void main() {
       webinarAt: DateTime.utc(2020, 1, 1),
     );
     final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 8));
-    expect(templates.offerConsent(launch), contains('Перейти к оплате'));
-    expect(templates.offerConsent(launch), contains('Публичной оферты'));
-    expect(templates.offerConsent(launch), contains('поставь галочку'));
     expect(
       templates.enrollOptions(launch, quote: quote),
       contains('Ссылку в канал пришлю после полной оплаты'),
     );
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
-    final keyboard = templates.offerKeyboard(accepted: false);
-    final rows = keyboard['inline_keyboard'] as List<dynamic>;
-    expect(rows, hasLength(2));
-    expect(rows[0].toString(), contains('☐'));
-    expect(rows[0].toString(), contains(MessageTemplates.buttonAcceptConsent));
-    expect(rows[1].toString(), contains('Перейти к оплате'));
-    expect('☑️ ${MessageTemplates.buttonAcceptConsent}'.length, lessThanOrEqualTo(64));
-    expect(templates.offerKeyboard(accepted: true)['inline_keyboard'].toString(), contains('☑️'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('Можно оплатить'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('Продажи открылись'));
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {
@@ -628,6 +619,55 @@ void main() {
     expect(templates.adminIncomingUserMessage(user: checkoutUser), isNot(contains('оформляешь')));
   });
 
+  test('admin funnel event copy names the person and does not leak the invite', () {
+    final templates = MessageTemplates();
+    final user = UserProfile(
+      userId: 42,
+      username: 'masha',
+      firstName: 'Маша',
+      source: 'ig_reels_guide',
+      funnelPhase: FunnelPhase.warming,
+      firstStartedAt: DateTime.utc(2026, 9, 1),
+      lastSeenAt: DateTime.utc(2026, 9, 1),
+    );
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final order = CourseOrder(
+      id: 9,
+      userId: 42,
+      launchId: 1,
+      status: OrderStatus.paid,
+      kind: PaymentKind.full,
+      priceFullKopecks: 1500000,
+      amountPaidKopecks: 1500000,
+      amountDueKopecks: 0,
+      checkoutStartedAt: DateTime.utc(2026, 10, 6),
+    );
+
+    expect(templates.adminGuideIssued(user: user, launch: launch), contains('Получил гайд'));
+    expect(templates.adminGuideIssued(user: user, launch: launch), contains('@masha'));
+    expect(templates.adminGuideIssued(user: user, launch: launch), contains('Instagram Reels'));
+    expect(templates.adminWebinarRsvp(user: user, launch: launch), contains('Записался на эфир'));
+    expect(templates.adminWebinarRsvp(user: user, launch: launch), contains('05.10.2026'));
+    final paid = templates.adminPaidWithInvite(user: user, order: order, launch: launch);
+    expect(paid, contains('Оплатил — ссылка в канал выдана'));
+    expect(paid, contains('15000 ₽'));
+    expect(paid, contains('полная оплата'));
+    expect(paid, isNot(contains('t.me/+')));
+    expect(
+      templates.adminPaidWithInviteRich(user: user, order: order, launch: launch),
+      contains('Оплатил'),
+    );
+  });
+
   test('admin card dialog keeps one line per message and hides file ids', () {
     final startedAt = DateTime.utc(2026, 8, 1);
     final text = MessageTemplates().adminCard(
@@ -795,8 +835,8 @@ void main() {
       now: DateTime.utc(2026, 10, 1),
     );
     expect(waiting, contains('закрыта'));
-    expect(waiting, contains('https://t.me/+keep-me'));
-    expect(waiting, contains('входа пока нет'));
+    expect(waiting, contains('доступ по кнопке ниже'));
+    expect(waiting, isNot(contains('https://t.me/+keep-me')));
     expect(
       _inlineButtonTexts(templates.courseStatusKeyboard(order: paid, access: unjoined)!),
       <String>[MessageTemplates.buttonOpenInvite, MessageTemplates.buttonCopyInvite],
@@ -847,8 +887,10 @@ void main() {
       MessageTemplates.buttonCopyInvite,
     ]);
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
-    expect(templates.inviteMessage('https://t.me/+x'), contains('напиши сюда'));
-    expect(templates.inviteMessage('https://t.me/+x'), isNot(contains('запроси новую')));
+    expect(templates.inviteMessage(), contains('напиши сюда'));
+    expect(templates.inviteMessage(), contains('по кнопке ниже'));
+    expect(templates.inviteMessage(), isNot(contains('https://t.me/')));
+    expect(templates.inviteMessage(), isNot(contains('запроси новую')));
     expect(templates.accessRevoked(), contains('Доступ к потоку снят'));
     expect(templates.accessRevoked(), contains('напиши сюда'));
     expect(templates.paymentResetToUnpaid(), contains('Статус оплаты сброшен'));
@@ -857,8 +899,9 @@ void main() {
       templates.adminCancelled(clientNotified: true, clientReached: false),
       contains('не дошло'),
     );
-    expect(templates.unjoinedInviteReminder('https://t.me/+x'), contains('https://t.me/+x'));
-    expect(templates.unjoinedInviteReminder('https://t.me/+x'), isNot(contains('запроси новую')));
+    expect(templates.unjoinedInviteReminder(), contains('кнопка ниже'));
+    expect(templates.unjoinedInviteReminder(), isNot(contains('https://t.me/')));
+    expect(templates.unjoinedInviteReminder(), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));
     expect(
       _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),

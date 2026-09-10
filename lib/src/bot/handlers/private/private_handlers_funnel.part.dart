@@ -21,7 +21,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _sendHtml(chatId, _templates.menuPinned(), replyMarkup: _homeKeyboard(userId));
       return true;
     }
+    final firstIssue = !_guideAlreadyIssued(userId, launch);
     _funnel.markMagnetIssued(userId, launchId: launch?.id);
+    if (firstIssue) {
+      await _notifyGuideIssued(userId, launch: launch);
+    }
     if (sendWarmup) {
       await _sendWarmupZero(userId);
     }
@@ -94,6 +98,14 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     _course.setLeadMagnetFileId(fileId);
   }
 
+  bool _guideAlreadyIssued(int userId, Launch? launch) {
+    final enrollment = launch == null ? null : _funnel.enrollmentFor(userId, launch: launch);
+    if (enrollment?.magnetIssuedAt != null) {
+      return true;
+    }
+    return _course.getUser(userId)?.magnetIssuedAt != null;
+  }
+
   Future<void> _notifyGuideMissing(int userId) async {
     final port = _adminAlerts;
     if (port == null) {
@@ -109,6 +121,38 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await port.notifyGuideMissing(userId: userId);
     } on Object catch (error, stackTrace) {
       l.w('Failed to alert admins about missing guide: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyGuideIssued(int userId, {Launch? launch}) async {
+    final port = _adminAlerts;
+    if (port == null) {
+      return;
+    }
+    final user = _course.getUser(userId);
+    if (user == null) {
+      return;
+    }
+    try {
+      await port.notifyGuideIssued(user: user, launch: launch ?? _launch);
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to alert admins about guide issued for $userId: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyWebinarRsvp(int userId, Launch launch) async {
+    final port = _adminAlerts;
+    if (port == null) {
+      return;
+    }
+    final user = _course.getUser(userId);
+    if (user == null) {
+      return;
+    }
+    try {
+      await port.notifyWebinarRsvp(user: user, launch: launch);
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to alert admins about webinar RSVP for $userId: $error', stackTrace);
     }
   }
 
@@ -200,7 +244,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _answerCallback(context, text: 'Регистрация на эфир уже закрыта.');
       return true;
     }
+    final firstRsvp = !(_funnel.enrollmentFor(userId, launch: launch)?.webinarRsvp ?? false);
     _funnel.markWebinarRsvp(userId, launchId: launch.id);
+    if (firstRsvp) {
+      await _notifyWebinarRsvp(userId, launch);
+    }
     await _answerCallback(context, text: 'Ты в списке на эфир.');
     final url = launch.webinarUrl?.trim();
     final started = launch.webinarAt != null && !now.toUtc().isBefore(launch.webinarAt!.toUtc());

@@ -93,7 +93,7 @@ final class UnjoinedInviteJob {
         await sendPreferRich(
           _sender,
           item.access.userId,
-          _templates.unjoinedInviteReminder(link),
+          _templates.unjoinedInviteReminder(),
           replyMarkup: _templates.unjoinedInviteKeyboard(link),
         );
         for (final extra in item.alsoClaim) {

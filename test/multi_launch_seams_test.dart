@@ -536,22 +536,6 @@ void main() {
         data: '${MessageTemplates.cbPayRemainder}${order.id}',
       ),
     );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'r2',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbToggleOffer,
-      ),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'r3',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbGoToPay,
-      ),
-    );
 
     expect(harness.course.getOrder(order.id)?.launchId, launch1.id);
     expect(harness.course.latestOrder(42, launchId: launch1.id)?.id, order.id);

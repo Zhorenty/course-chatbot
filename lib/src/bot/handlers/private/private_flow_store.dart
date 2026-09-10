@@ -1,13 +1,11 @@
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
-import 'package:course_chatbot/src/domain/order.dart';
 
 const Object _unset = Object();
 
 enum PrivateFlowStep {
   idle,
-  offerConsent,
   adminSearch,
   adminAddUser,
   adminBroadcastSegment,
@@ -189,9 +187,6 @@ final class PrivateFlowState {
     this.broadcastPickerMessageId,
     this.adminTargetUserId,
     this.pendingGuideFileId,
-    this.pendingPayKind,
-    this.pendingLaunchId,
-    this.acceptedConsent = false,
     this.broadcastExcludeOptOut = false,
     this.catalogDraft,
     this.linksDraft,
@@ -208,16 +203,11 @@ final class PrivateFlowState {
   final int? broadcastPickerMessageId;
   final int? adminTargetUserId;
   final String? pendingGuideFileId;
-  final PaymentKind? pendingPayKind;
-  final int? pendingLaunchId;
-  final bool acceptedConsent;
   final bool broadcastExcludeOptOut;
   final CatalogWizardDraft? catalogDraft;
   final LinksWizardDraft? linksDraft;
   final int? catalogMessageId;
   final int? catalogPinMessageId;
-
-  bool get offerReady => acceptedConsent;
 
   bool get hasBroadcastDraft => broadcastFromChatId != null && broadcastMessageId != null;
 
@@ -233,9 +223,6 @@ final class PrivateFlowState {
     Object? broadcastPickerMessageId = _unset,
     Object? adminTargetUserId = _unset,
     Object? pendingGuideFileId = _unset,
-    Object? pendingPayKind = _unset,
-    Object? pendingLaunchId = _unset,
-    bool? acceptedConsent,
     bool? broadcastExcludeOptOut,
     Object? catalogDraft = _unset,
     Object? linksDraft = _unset,
@@ -270,13 +257,6 @@ final class PrivateFlowState {
       pendingGuideFileId: identical(pendingGuideFileId, _unset)
           ? this.pendingGuideFileId
           : pendingGuideFileId as String?,
-      pendingPayKind: identical(pendingPayKind, _unset)
-          ? this.pendingPayKind
-          : pendingPayKind as PaymentKind?,
-      pendingLaunchId: identical(pendingLaunchId, _unset)
-          ? this.pendingLaunchId
-          : pendingLaunchId as int?,
-      acceptedConsent: acceptedConsent ?? this.acceptedConsent,
       broadcastExcludeOptOut: broadcastExcludeOptOut ?? this.broadcastExcludeOptOut,
       catalogDraft: identical(catalogDraft, _unset)
           ? this.catalogDraft

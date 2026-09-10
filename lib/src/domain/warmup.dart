@@ -7,6 +7,7 @@ enum WarmupAnchor {
   courseStart,
   webinar,
   webinarFollowup,
+  salesStart,
   regularSales,
   salesEnd,
 }
@@ -18,6 +19,7 @@ extension WarmupAnchorX on WarmupAnchor {
     WarmupAnchor.courseStart => 'course_start',
     WarmupAnchor.webinar => 'webinar',
     WarmupAnchor.webinarFollowup => 'webinar_followup',
+    WarmupAnchor.salesStart => 'sales_start',
     WarmupAnchor.regularSales => 'regular_sales',
     WarmupAnchor.salesEnd => 'sales_end',
   };
@@ -106,6 +108,12 @@ final class WarmupStep {
       sortOrder: 23,
       anchor: WarmupAnchor.webinarFollowup,
       rsvpOnly: true,
+    ),
+    WarmupStep(
+      stepKey: 'sales_open',
+      delay: Duration.zero,
+      sortOrder: 25,
+      anchor: WarmupAnchor.salesStart,
     ),
     WarmupStep(
       stepKey: 'sales_regular',

@@ -661,7 +661,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (link != null) {
       reached = await _dmUser(
         targetUserId,
-        _templates.inviteMessage(link),
+        _templates.inviteMessage(),
         replyMarkup: _templates.unjoinedInviteKeyboard(link),
       );
     }

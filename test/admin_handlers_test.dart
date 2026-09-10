@@ -586,7 +586,15 @@ void main() {
     expect(harness.channel.created, hasLength(2));
     expect(harness.channel.revoked, contains(first));
     final next = harness.channel.created.last;
-    expect(harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains(next)), isTrue);
+    expect(harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains(next)), isFalse);
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains('по кнопке ниже')),
+      isTrue,
+    );
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 99 && '${m.replyMarkup}'.contains(next)),
+      isTrue,
+    );
     expect(
       harness.sender.messages.any((m) => m.chatId == 1 && m.text.contains('отправил')),
       isTrue,

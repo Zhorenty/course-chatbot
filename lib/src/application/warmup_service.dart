@@ -55,6 +55,13 @@ final class WarmupService {
           sameAnchor: WarmupAnchor.webinarFollowup,
           cap: launch == null ? null : LaunchSales.regularSalesAt(launch),
         ),
+        WarmupAnchor.salesStart => _afterAnchorDue(
+          step: step,
+          steps: steps,
+          now: now,
+          anchor: launch == null ? null : LaunchSales.salesOpenAt(launch)?.toUtc(),
+          sameAnchor: WarmupAnchor.salesStart,
+        ),
         WarmupAnchor.regularSales => _afterAnchorDue(
           step: step,
           steps: steps,
@@ -98,6 +105,7 @@ final class WarmupService {
     final selling =
         step.anchor == WarmupAnchor.firstStart ||
         step.anchor == WarmupAnchor.webinarFollowup ||
+        step.anchor == WarmupAnchor.salesStart ||
         step.anchor == WarmupAnchor.regularSales ||
         step.anchor == WarmupAnchor.salesEnd;
     if (selling) {
@@ -108,11 +116,19 @@ final class WarmupService {
       if (!quote.checkoutOpen) {
         return false;
       }
+      if (step.anchor == WarmupAnchor.regularSales && step.delay == Duration.zero) {
+        final open = LaunchSales.salesOpenAt(launch);
+        final regular = LaunchSales.regularSalesAt(launch);
+        if (open != null && regular != null && !regular.isAfter(open)) {
+          return false;
+        }
+      }
     }
     return switch (step.anchor) {
       WarmupAnchor.magnet || WarmupAnchor.webinar || WarmupAnchor.webinarFollowup => afterGuide,
       WarmupAnchor.firstStart => waitingLead,
       WarmupAnchor.courseStart ||
+      WarmupAnchor.salesStart ||
       WarmupAnchor.regularSales ||
       WarmupAnchor.salesEnd => afterGuide || waitingLead,
     };

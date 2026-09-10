@@ -49,23 +49,7 @@ extension MessageTemplatesRich on MessageTemplates {
     final next = _courseStatusNextStep(order: order, access: access);
     return '${richH2('Мой курс')}'
         '${richTable(<(String, String)>[('Оплата', _coursePaymentLine(order).replaceFirst('Оплата: ', '')), ('Старт', _courseStartLine(launch, now).replaceFirst('Курс: ', '')), ('Канал', _courseChannelLine(order: order, access: access).replaceFirst('Канал: ', '').split('\n').first)])}'
-        '${next == null ? '' : richP(next)}'
-        '${_courseStatusInviteFooter(access: access, order: order)}';
-  }
-
-  String _courseStatusInviteFooter({CourseOrder? order, ChannelAccess? access}) {
-    if (order != null && order.hasRemainder) {
-      return '';
-    }
-    final link = access?.inviteLink?.trim();
-    if (access == null ||
-        access.revokedAt != null ||
-        access.hasJoined ||
-        link == null ||
-        link.isEmpty) {
-      return '';
-    }
-    return richP('🔗 ${escapeHtml(link)}');
+        '${next == null ? '' : richP(next)}';
   }
 
   String enrollOptionsRich(Launch launch, {required SalesQuote quote}) {
@@ -132,7 +116,7 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — экран про «Язык цвета»;', 'ссылка на курс — карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
         '${richDetails('Гайд', richP('Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.'))}'
         '${richDetails('Прогрев после гайда', richP('Сразу приглашение на эфир и кнопка «Буду на эфире». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
-        '${richDetails('Продажи', richP('До старта продаж «Записаться» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — как дата эфира). После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
+        '${richDetails('Продажи', richP('До старта продаж «Записаться» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — как дата эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
         '${richDetails('Если гайд не забрали', richP('Напоминания на 1-й и на 3-й день после первого /start, пока не нажали «Записаться» и пока касса уже открыта для этого человека. После записи до старта продаж молчим про оплату. В день обычной цены и дожим до конца продаж — тоже, даже без гайда.'))}'
         '${richDetails('Запись и оплата', '${richP('«${escapeHtml(MessageTemplates.buttonEnroll)}» — пока нет успешной оплаты. Потом в меню «Мой курс».')}${richUl(<String>['полная оплата — ссылка в канал этого потока;', 'предоплата — канала нет, пока не доплатят.'])}')}'
         '${richDetails('Открыли оплату и не закончили', richP('Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.'))}'
@@ -293,5 +277,57 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richP('Не получилось открыть ссылку на кассу.')}'
         '${richTable(<(String, String)>[('Кто', _adminWhoLine(userId: userId, username: username, firstName: firstName).replaceFirst('Кто: ', '')), ('Способ', _payKindLabel(kind)), ('Провайдер', '<code>${escapeHtml(provider)}</code>'), if (reasonText != null && reasonText.isNotEmpty) ('Причина', escapeHtml(reasonText))])}'
         '${richP('Человеку показан запасной путь через администратора. Можно отметить оплату вручную из карточки.')}';
+  }
+
+  String adminGuideIssuedRich({required UserProfile user, Launch? launch}) {
+    return '${richH2('Получил гайд')}'
+        '${richTable(_adminFunnelAlertRows(user: user, launch: launch, extra: <(String, String)>[('источник', _adminSourceValue(user.source))]))}';
+  }
+
+  String adminWebinarRsvpRich({required UserProfile user, required Launch launch}) {
+    final when = _formatDateTime(launch.webinarAt) ?? 'дата ещё не стоит';
+    return '${richH2('Записался на эфир')}'
+        '${richTable(_adminFunnelAlertRows(user: user, launch: launch, extra: <(String, String)>[('эфир', when)]))}';
+  }
+
+  String adminPaidWithInviteRich({
+    required UserProfile user,
+    required CourseOrder order,
+    Launch? launch,
+  }) {
+    return '${richH2('Оплатил — ссылка в канал выдана')}'
+        '${richTable(_adminFunnelAlertRows(user: user, launch: launch, extra: <(String, String)>[('заказ', '#${order.id} · ${_adminPaymentKindLabel(order.kind)}'), ('сумма', '${formatRubFromKopecks(order.amountPaidKopecks)} из ${formatRubFromKopecks(order.priceFullKopecks)}')]))}';
+  }
+
+  List<(String, String)> _adminFunnelAlertRows({
+    required UserProfile user,
+    Launch? launch,
+    List<(String, String)> extra = const <(String, String)>[],
+  }) {
+    return <(String, String)>[
+      ('Кто', _adminWhoLineFor(user).replaceFirst('Кто: ', '')),
+      ('поток', _adminLaunchValue(launch)),
+      ...extra,
+    ];
+  }
+
+  String _adminLaunchValue(Launch? launch) {
+    final title = launch?.title.trim();
+    if (title == null || title.isEmpty) {
+      return 'не выбран';
+    }
+    return escapeHtml(title);
+  }
+
+  String _adminSourceValue(String? source) {
+    final raw = source?.trim();
+    if (raw == null || raw.isEmpty) {
+      return 'без метки';
+    }
+    final label = _adminSourceLabel(raw);
+    if (label == raw) {
+      return '<code>${escapeHtml(raw)}</code>';
+    }
+    return '$label · <code>${escapeHtml(raw)}</code>';
   }
 }

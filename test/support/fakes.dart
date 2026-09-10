@@ -2,9 +2,11 @@ import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:course_chatbot/src/telegram/channel_api.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
@@ -400,6 +402,9 @@ final class GatewayAlert {
 final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, AdminAlertPort {
   final List<GatewayAlert> alerts = <GatewayAlert>[];
   final List<int> guideMissing = <int>[];
+  final List<UserProfile> guideIssued = <UserProfile>[];
+  final List<UserProfile> webinarRsvp = <UserProfile>[];
+  final List<CourseOrder> paidWithInvite = <CourseOrder>[];
 
   @override
   Future<void> notifyGatewayUnavailable({
@@ -427,6 +432,25 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
   @override
   Future<void> notifyGuideMissing({required int userId}) async {
     guideMissing.add(userId);
+  }
+
+  @override
+  Future<void> notifyGuideIssued({required UserProfile user, Launch? launch}) async {
+    guideIssued.add(user);
+  }
+
+  @override
+  Future<void> notifyWebinarRsvp({required UserProfile user, required Launch launch}) async {
+    webinarRsvp.add(user);
+  }
+
+  @override
+  Future<void> notifyPaidWithInvite({
+    required UserProfile user,
+    required CourseOrder order,
+    Launch? launch,
+  }) async {
+    paidWithInvite.add(order);
   }
 }
 

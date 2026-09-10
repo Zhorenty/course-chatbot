@@ -135,26 +135,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> offerKeyboard({required bool accepted}) {
-    return inlineKeyboard(<List<Map<String, Object?>>>[
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': _checkbox(accepted, MessageTemplates.buttonAcceptConsent),
-          'callback_data': MessageTemplates.cbToggleOffer,
-        },
-      ],
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': MessageTemplates.buttonGoToPay,
-          'callback_data': MessageTemplates.cbGoToPay,
-          'style': 'primary',
-        },
-      ],
-    ]);
-  }
-
-  String _checkbox(bool checked, String label) => '${checked ? '☑️' : '☐'} $label';
-
   Map<String, Object?> payUrlKeyboard(String url) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[

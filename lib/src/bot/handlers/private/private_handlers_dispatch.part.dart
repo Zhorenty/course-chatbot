@@ -45,10 +45,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
   }
 
   bool _defersCallbackAnswer(String data) {
-    return data == MessageTemplates.cbToggleOffer ||
-        data == MessageTemplates.cbTogglePersonalData ||
-        data == MessageTemplates.cbGoToPay ||
-        data == MessageTemplates.cbRsvp;
+    return data == MessageTemplates.cbRsvp;
   }
 
   Future<void> _answerCallback(
@@ -107,16 +104,15 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       case MessageTemplates.cbEnroll:
         return _showEnroll(context);
       case MessageTemplates.cbPayFull:
-        return _showOffer(context, PaymentKind.full);
+        return _startPay(context, PaymentKind.full);
       case MessageTemplates.cbPayDeposit:
-        return _showOffer(context, PaymentKind.deposit);
+        return _startPay(context, PaymentKind.deposit);
       case MessageTemplates.cbRsvp:
         return _rsvpWebinar(context);
       case MessageTemplates.cbToggleOffer:
       case MessageTemplates.cbTogglePersonalData:
-        return _toggleOfferCheck(context);
       case MessageTemplates.cbGoToPay:
-        return _confirmOfferAndPay(context);
+        return _showEnroll(context);
       case MessageTemplates.cbOptOut:
         return _optOut(context);
       case MessageTemplates.cbHelp:
@@ -161,7 +157,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       );
     }
     if (data.startsWith(MessageTemplates.cbPayRemainder)) {
-      return _showOffer(
+      return _startPay(
         context,
         PaymentKind.remainder,
         orderId: MessageTemplates.idFromCallback(data, MessageTemplates.cbPayRemainder),

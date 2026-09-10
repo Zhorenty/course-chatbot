@@ -455,6 +455,102 @@ void main() {
     );
   });
 
+  test('sales_open pings when checkout opens and skips overlapping sales_regular', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final afterGuide = WarmupCandidate(
+      userId: 3,
+      launchId: 1,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: const <String>{'warmup_0'},
+      webinarRsvp: true,
+    );
+    final beforeOpen = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      salesStartAt: DateTime.utc(2026, 1, 10, 12),
+    );
+    expect(
+      warmup.nextFor(
+        afterGuide,
+        DateTime.utc(2026, 1, 9, 12),
+        steps: WarmupStep.defaults,
+        launch: beforeOpen,
+      ),
+      isNull,
+    );
+    expect(
+      warmup
+          .nextFor(
+            afterGuide,
+            DateTime.utc(2026, 1, 10, 13),
+            steps: WarmupStep.defaults,
+            launch: beforeOpen,
+          )
+          ?.stepKey,
+      'sales_open',
+    );
+    final noWebinar = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      salesStartAt: DateTime.utc(2026, 1, 10, 12),
+    );
+    final afterSalesOpen = WarmupCandidate(
+      userId: 3,
+      launchId: 1,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: const <String>{'warmup_0', 'sales_open'},
+      webinarRsvp: true,
+    );
+    expect(
+      warmup.nextFor(
+        afterSalesOpen,
+        DateTime.utc(2026, 1, 10, 13),
+        steps: WarmupStep.defaults,
+        launch: noWebinar,
+      ),
+      isNull,
+    );
+    final withPromo = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 1, 8, 16),
+      salesStartAt: DateTime.utc(2026, 1, 8, 16),
+    );
+    expect(
+      warmup
+          .nextFor(
+            afterSalesOpen,
+            DateTime.utc(2026, 1, 12, 12),
+            steps: WarmupStep.defaults,
+            launch: withPromo,
+          )
+          ?.stepKey,
+      'sales_regular',
+    );
+  });
+
   test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
     harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);
@@ -478,7 +574,8 @@ void main() {
     await job.run();
     final toUser = harness.sender.messages.where((m) => m.chatId == 42).toList();
     expect(toUser, hasLength(1));
-    expect(toUser.single.text, contains('https://t.me/+keep'));
+    expect(toUser.single.text, contains('кнопка ниже'));
+    expect(toUser.single.text, isNot(contains('https://t.me/+keep')));
     expect('${toUser.single.replyMarkup}', contains(MessageTemplates.buttonOpenInvite));
     expect('${toUser.single.replyMarkup}', isNot(contains(MessageTemplates.buttonGuide)));
     expect('${toUser.single.replyMarkup}', isNot(contains(MessageTemplates.buttonHelp)));

@@ -369,12 +369,12 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+keep-me')), isFalse);
     expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
     expect(harness.channel.created, isEmpty);
     expect(harness.channel.revoked, isEmpty);
     final reminder = harness.sender.messages.firstWhere(
-      (m) => m.text.contains('https://t.me/+keep-me'),
+      (m) => m.text.contains('доступ по кнопке ниже'),
     );
     expect(_inlineButtonTexts(reminder.replyMarkup), <String>[
       MessageTemplates.buttonOpenInvite,
@@ -471,7 +471,7 @@ void main() {
     expect(harness.sender.messages.single.text, isNot(contains('Запись на поток')));
   });
 
-  test('checkout is blocked until the offer checkbox is accepted', () async {
+  test('pay button opens checkout without an offer checkbox', () async {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     await harness.handlers.handle(
       privateCallbackUpdate(
@@ -490,47 +490,9 @@ void main() {
       ),
     );
 
-    expect(harness.sender.messages.last.text, contains('Публичной оферты'));
-    expect(harness.sender.messages.last.text, contains('поставь галочку'));
-    expect(harness.gateway.creates, 0);
-
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '3',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbGoToPay,
-      ),
-    );
-    expect(harness.gateway.creates, 0);
-    expect(
-      harness.sender.callbackAnswers.any(
-        (answer) => answer.showAlert && (answer.text?.contains('галочку') ?? false),
-      ),
-      isTrue,
-    );
-
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '4',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbToggleOffer,
-      ),
-    );
-    expect(harness.sender.markupEdits, isNotEmpty);
-    expect(harness.sender.markupEdits.last.replyMarkup.toString(), contains('☑️'));
-
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: '5',
-        chatId: 42,
-        userId: 42,
-        data: MessageTemplates.cbGoToPay,
-      ),
-    );
     expect(harness.gateway.creates, 1);
     expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Публичной оферты')), isFalse);
   });
 
   test('repeat /start after guide does not re-offer the first screen', () async {

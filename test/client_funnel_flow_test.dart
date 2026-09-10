@@ -88,7 +88,7 @@ void main() {
     );
     expect(_inlineButtonTexts(promo.replyMarkup), isNot(contains('Рассрочка')));
 
-    await client.payWithConsent(MessageTemplates.cbPayFull);
+    await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
     expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
     expect(_phase(harness, 42), FunnelPhase.checkout);
@@ -104,7 +104,12 @@ void main() {
     );
     expect(paid.grantedAccess, isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+invite')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Доступ в поток')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+invite')), isFalse);
+    expect(
+      harness.sender.messages.any((m) => '${m.replyMarkup}'.contains('https://t.me/+invite')),
+      isTrue,
+    );
     expect(harness.channel.created, hasLength(1));
     expect(_phase(harness, 42), FunnelPhase.accessGranted);
     final paidMenu = _replyButtonTexts(
@@ -184,7 +189,7 @@ void main() {
     final client = _Client(harness);
     await _reachPromoCheckout(client, clock);
 
-    await client.payWithConsent(MessageTemplates.cbPayDeposit);
+    await client.pay(MessageTemplates.cbPayDeposit);
     expect(harness.gateway.creates, 1);
     final launch = harness.course.activeLaunch()!;
     final order = harness.course.latestOrder(42, launchId: launch.id)!;
@@ -236,7 +241,6 @@ void main() {
 
     harness.sender.messages.clear();
     await client.press('${MessageTemplates.cbPayRemainder}${order.id}');
-    await client.completeOffer();
     expect(harness.gateway.creates, 2);
     final afterFull = await client.settle(
       kind: PaymentKind.remainder,
@@ -253,7 +257,7 @@ void main() {
     addTearDown(harness.dispose);
     final client = _Client(harness);
     await _reachPromoCheckout(client, clock);
-    await client.payWithConsent(MessageTemplates.cbPayFull);
+    await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
     final launch = harness.course.activeLaunch()!;
     final order = harness.course.latestOrder(42, launchId: launch.id)!;
@@ -448,26 +452,9 @@ final class _Client {
     );
   }
 
-  Future<void> payWithConsent(String payCallback) async {
-    await press(payCallback);
-    await completeOffer();
-  }
-
-  Future<void> completeOffer() async {
+  Future<void> pay(String payCallback) async {
     final createsBefore = harness.gateway.creates;
-    expect(harness.sender.messages.last.text, contains('Публичной оферты'));
-    await press(MessageTemplates.cbGoToPay);
-    expect(harness.gateway.creates, createsBefore);
-    expect(
-      harness.sender.callbackAnswers.any(
-        (answer) => answer.showAlert && (answer.text?.contains('галочку') ?? false),
-      ),
-      isTrue,
-    );
-    await press(MessageTemplates.cbToggleOffer);
-    expect(harness.sender.markupEdits, isNotEmpty);
-    expect(harness.sender.markupEdits.last.replyMarkup.toString(), contains('☑️'));
-    await press(MessageTemplates.cbGoToPay);
+    await press(payCallback);
     expect(harness.gateway.creates, createsBefore + 1);
     expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
   }

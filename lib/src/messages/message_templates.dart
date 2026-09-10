@@ -46,7 +46,6 @@ final class MessageTemplates {
   static const String buttonContinuePay = 'Продолжить оплату';
   static const String buttonOpenInvite = 'Открыть канал';
   static const String buttonCopyInvite = 'Скопировать ссылку';
-  static const String buttonAcceptConsent = 'Принимаю оферту';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminAddUser = '➕ Добавить на курс';
   static const String buttonAdminSheetsHub = '📊 Google Sheets';
@@ -110,6 +109,7 @@ final class MessageTemplates {
   static const String cbPayFull = 'pf';
   static const String cbPayDeposit = 'pd';
   static const String cbPayRemainder = 'pr:';
+  // Leftover callbacks from the removed offer-consent screen.
   static const String cbToggleOffer = 'oo';
   static const String cbTogglePersonalData = 'op';
   static const String cbGoToPay = 'og';
@@ -287,8 +287,7 @@ final class MessageTemplates {
     if (link == null || link.isEmpty) {
       return 'Канал: ссылка ещё не выдана. Напиши сюда — новую выдаст админ.';
     }
-    return 'Канал: ссылка выдана, входа пока нет.\n\n'
-        '🔗 ${escapeHtml(link)}';
+    return 'Канал: доступ по кнопке ниже, входа пока нет.';
   }
 
   String? _courseStatusNextStep({CourseOrder? order, ChannelAccess? access}) {
@@ -373,6 +372,7 @@ final class MessageTemplates {
       'webinar_10m' => _webinarReminder(launch, when: 'через 10 минут'),
       'webinar_live' => _webinarLive(launch),
       'webinar_next' => _webinarNextDay(launch),
+      'sales_open' => _salesOpen(launch),
       'sales_regular' => _salesRegular(launch),
       'dozhim_d1' => _dozhim(launch, headline: 'Кейс'),
       'dozhim_d2' => _dozhim(launch, headline: 'Возражения'),
@@ -442,6 +442,14 @@ final class MessageTemplates {
       depositKopecks: 0,
       depositDueDays: 7,
     );
+  }
+
+  String _salesOpen(Launch? launch) {
+    final start = _formatDate(launch?.courseStartAt);
+    final startLine = start == null ? '' : ' Старт потока $start.';
+    return '<b>Можно оплатить</b>\n\n'
+        'Продажи открылись.$startLine '
+        'Записаться — «${MessageTemplates.buttonEnroll}» в меню внизу.';
   }
 
   String _salesRegular(Launch? launch) {
@@ -588,27 +596,6 @@ final class MessageTemplates {
     }
   }
 
-  String offerConsent(Launch launch) {
-    final offerPhrase = _offerPhrase(launch);
-    return 'Чтобы открыть оплату, поставь галочку ниже.\n\n'
-        'Нажимая «${MessageTemplates.buttonGoToPay}», ты подтверждаешь, '
-        'что принимаешь условия $offerPhrase '
-        'на оказание информационно-консультационных/образовательных услуг '
-        'и даёшь согласие на обработку персональных данных.';
-  }
-
-  String offerNeedCheck() {
-    return 'Сначала поставь галочку ниже — без этого оплата не откроется.';
-  }
-
-  String _offerPhrase(Launch launch) {
-    final url = launch.offerUrl?.trim();
-    if (url == null || url.isEmpty) {
-      return 'Публичной оферты';
-    }
-    return '<a href="${escapeHtml(url)}">Публичной оферты</a>';
-  }
-
   String payButton(String url) {
     if (url.isEmpty) {
       return payManualFallback();
@@ -661,6 +648,18 @@ final class MessageTemplates {
     return 'Кто: ${parts.join(' · ')} · id <code>$userId</code>';
   }
 
+  String _adminWhoLineFor(UserProfile user) {
+    return _adminWhoLine(userId: user.userId, username: user.username, firstName: user.firstName);
+  }
+
+  String _adminLaunchLine(Launch? launch) {
+    final title = launch?.title.trim();
+    if (title == null || title.isEmpty) {
+      return 'поток не выбран';
+    }
+    return 'поток: ${escapeHtml(title)}';
+  }
+
   String _payKindLabel(PaymentKind kind) => switch (kind) {
     PaymentKind.full => 'полная оплата',
     PaymentKind.deposit => 'предоплата',
@@ -673,9 +672,38 @@ final class MessageTemplates {
         'Пришли PDF в этот чат и сохрани как гайд запуска.';
   }
 
+  String adminGuideIssued({required UserProfile user, Launch? launch}) {
+    return '<b>Получил гайд</b>\n\n'
+        '${_adminWhoLineFor(user)}\n'
+        '${_adminSourceLine(user.source)}\n'
+        '${_adminLaunchLine(launch)}';
+  }
+
+  String adminWebinarRsvp({required UserProfile user, required Launch launch}) {
+    final when = _formatDateTime(launch.webinarAt);
+    final whenLine = when == null ? 'эфир: дата ещё не стоит' : 'эфир: $when';
+    return '<b>Записался на эфир</b>\n\n'
+        '${_adminWhoLineFor(user)}\n'
+        '${_adminLaunchLine(launch)}\n'
+        '$whenLine';
+  }
+
+  String adminPaidWithInvite({
+    required UserProfile user,
+    required CourseOrder order,
+    Launch? launch,
+  }) {
+    return '<b>Оплатил — ссылка в канал выдана</b>\n\n'
+        '${_adminWhoLineFor(user)}\n'
+        '${_adminLaunchLine(launch)}\n'
+        'заказ #${order.id} · ${_adminPaymentKindLabel(order.kind)}\n'
+        'оплачено ${formatRubFromKopecks(order.amountPaidKopecks)} '
+        'из ${formatRubFromKopecks(order.priceFullKopecks)}';
+  }
+
   String paymentSucceeded() {
     return '<b>Оплата прошла</b>\n\n'
-        'Дальше — одноразовая ссылка в канал этого потока. На одного человека.';
+        'Дальше — доступ в канал этого потока. На одного человека.';
   }
 
   String depositSucceeded(CourseOrder order) {
@@ -685,8 +713,8 @@ final class MessageTemplates {
         'Ссылку в канал пришлю, когда закроется полная сумма.';
   }
 
-  String inviteMessage(String link) {
-    return 'Одноразовая ссылка в канал потока:\n${escapeHtml(link)}\n\n'
+  String inviteMessage() {
+    return 'Доступ в поток — по кнопке ниже.\n\n'
         'На одного человека. Если не открылась — напиши сюда, новую выдаст админ.';
   }
 
@@ -718,9 +746,9 @@ final class MessageTemplates {
         'После полной суммы открою канал потока.';
   }
 
-  String unjoinedInviteReminder(String link) {
-    return 'Ссылка в канал потока ещё не использована:\n${escapeHtml(link)}\n\n'
-        'Открой её кнопкой ниже. Если не сработает — напиши сюда, новую выдаст админ.';
+  String unjoinedInviteReminder() {
+    return 'Доступ в поток ещё не открыт — кнопка ниже.\n\n'
+        'Если не сработает — напиши сюда, новую выдаст админ.';
   }
 
   String inviteAskAdmin() {
@@ -776,6 +804,7 @@ final class MessageTemplates {
         '<b>Продажи</b>\n'
         'До старта продаж «Записаться» — карточка курса и «ждём кассу», без оплаты. '
         'Старт продаж — поле в карточке курса (пусто — как дата эфира). '
+        'В день старта продаж пишем тем, кто уже может оплатить. '
         'После окна спеццены — обычная цена и дожим. '
         'В последний день продаж — «последний вагон». Старт потока $startLine.\n\n'
         '<b>Если гайд не забрали</b>\n'
