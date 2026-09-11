@@ -22,6 +22,7 @@ Launch _launch2(
   bool activate = true,
   int channelId = -2002,
   DateTime? courseStartAt,
+  String? leadMagnetFileId,
 }) {
   return harness.course.upsertLaunch(
     productCode: 'course',
@@ -35,6 +36,7 @@ Launch _launch2(
     courseStartAt: courseStartAt ?? DateTime.utc(2026, 11, 12),
     webinarAt: DateTime.utc(2020, 1, 1, 16),
     channelId: channelId,
+    leadMagnetFileId: leadMagnetFileId,
     activate: activate,
   );
 }
@@ -392,7 +394,7 @@ void main() {
     },
   );
 
-  test('phaseOf after switching active is lead even if the profile still says paid', () {
+  test('switching active resets the profile mirror to lead for the new launch', () {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch1 = harness.course.activeLaunch()!;
     harness.course.setFunnelPhase(
@@ -402,6 +404,8 @@ void main() {
     );
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.accessGranted);
     _launch2(harness);
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNull);
     expect(harness.funnel.phaseOf(harness.course.getUser(42)!), FunnelPhase.lead);
     expect(harness.funnel.shouldOfferEnroll(harness.course.getUser(42)!), isTrue);
   });
@@ -541,4 +545,114 @@ void main() {
     expect(harness.course.latestOrder(42, launchId: launch1.id)?.id, order.id);
     expect(harness.course.latestOrder(42, launchId: harness.course.activeLaunch()!.id), isNull);
   });
+
+  test('switching active restarts /start as a new funnel and reissues the guide', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'g1',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    final launch1 = harness.course.launchByCode('launch-1')!;
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
+    expect(
+      harness.course.hasWarmupBeenSent(userId: 42, launchId: launch1.id, stepKey: 'warmup_0'),
+      isTrue,
+    );
+
+    final launch2 = _launch2(harness, leadMagnetFileId: 'file-guide');
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNull);
+    expect(harness.course.getEnrollment(userId: 42, launchId: launch2.id), isNull);
+
+    harness.sender.messages.clear();
+    harness.sender.documents.clear();
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
+      isFalse,
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('Твой поток')), isFalse);
+    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
+    expect(
+      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonEnroll),
+    );
+    expect(
+      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonCourseStatus)),
+    );
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'g2',
+        chatId: 42,
+        userId: 42,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    expect(
+      harness.course.hasWarmupBeenSent(userId: 42, launchId: launch2.id, stepKey: 'warmup_0'),
+      isTrue,
+    );
+    expect(
+      harness.course.getEnrollment(userId: 42, launchId: launch2.id)?.funnelPhase,
+      FunnelPhase.warming,
+    );
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
+  });
+
+  test('schema backfill does not copy an old paid phase onto the new active launch', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch1 = harness.course.activeLaunch()!;
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.accessGranted,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+      launchId: launch1.id,
+    );
+    final launch2 = _launch2(harness);
+    harness.handle.ensureCourseSchema();
+    expect(harness.course.getEnrollment(userId: 42, launchId: launch2.id), isNull);
+    expect(
+      harness.course.getEnrollment(userId: 42, launchId: launch1.id)?.funnelPhase,
+      FunnelPhase.accessGranted,
+    );
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.lead);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNull);
+  });
+
+  test('activating a launch keeps progress already made on that launch', () {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch2 = _launch2(harness, activate: false);
+    harness.course.ensureEnrollment(
+      userId: 42,
+      launchId: launch2.id,
+      now: DateTime.utc(2026, 1, 2),
+    );
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 2),
+      launchId: launch2.id,
+    );
+    harness.course.setActiveLaunch(launch2.code);
+    expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
+    expect(harness.funnel.phaseOf(harness.course.getUser(42)!), FunnelPhase.warming);
+    expect(harness.funnel.shouldOfferEnroll(harness.course.getUser(42)!), isTrue);
+  });
+}
+
+List<String> _replyButtonTexts(Map<String, Object?>? markup) {
+  final rows = markup?['keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
 }

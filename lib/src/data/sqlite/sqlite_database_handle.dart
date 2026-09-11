@@ -307,6 +307,8 @@ final class SqliteDatabaseHandle {
   }
 
   void _backfillEnrollments(Database db) {
+    // One-time migration from pre-enrollment schema. Do not copy telegram_users
+    // onto a newly active launch for people who already have another stream.
     db.execute('''
       INSERT OR IGNORE INTO user_enrollments (
         user_id, launch_id, funnel_phase, warmup_opt_out, magnet_issued_at, started_at, updated_at
@@ -314,18 +316,10 @@ final class SqliteDatabaseHandle {
       SELECT u.user_id, l.id, u.funnel_phase, u.warmup_opt_out, u.magnet_issued_at,
              u.first_started_at, u.updated_at
       FROM telegram_users u
-      JOIN launches l ON l.id = (
-        SELECT id FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1
-      );
-    ''');
-    db.execute('''
-      INSERT OR IGNORE INTO user_enrollments (
-        user_id, launch_id, funnel_phase, warmup_opt_out, magnet_issued_at, started_at, updated_at
+      JOIN launches l ON l.id = COALESCE(
+        (SELECT id FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1),
+        (SELECT id FROM launches ORDER BY id DESC LIMIT 1)
       )
-      SELECT u.user_id, l.id, u.funnel_phase, u.warmup_opt_out, u.magnet_issued_at,
-             u.first_started_at, u.updated_at
-      FROM telegram_users u
-      JOIN launches l ON l.id = (SELECT id FROM launches ORDER BY id DESC LIMIT 1)
       WHERE NOT EXISTS (
         SELECT 1 FROM user_enrollments e WHERE e.user_id = u.user_id
       );

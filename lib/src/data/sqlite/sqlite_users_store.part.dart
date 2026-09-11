@@ -47,6 +47,7 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
     final launch = activeLaunch();
     if (launch != null) {
       ensureEnrollment(userId: userId, launchId: launch.id, now: now);
+      _syncProfileToEnrollment(userId: userId, launchId: launch.id);
     }
     return getUser(userId)!;
   }
@@ -97,6 +98,43 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
       magnetIssuedAt: magnetIssuedAt,
       force: force,
     );
+  }
+
+  void _syncProfileToEnrollment({required int userId, required int launchId}) {
+    final user = getUser(userId);
+    if (user == null) {
+      return;
+    }
+    final enrollment = getEnrollment(userId: userId, launchId: launchId);
+    final phase = enrollment?.funnelPhase ?? FunnelPhase.lead;
+    final magnet = enrollment?.magnetIssuedAt;
+    final optOut = enrollment?.warmupOptOut ?? false;
+    if (user.funnelPhase == phase &&
+        user.warmupOptOut == optOut &&
+        _sameInstant(user.magnetIssuedAt, magnet)) {
+      return;
+    }
+    _db.execute(
+      '''
+      UPDATE telegram_users
+      SET funnel_phase = ?, magnet_issued_at = ?, warmup_opt_out = ?, updated_at = ?
+      WHERE user_id = ?;
+      ''',
+      <Object?>[
+        phase.storageValue,
+        magnet?.toUtc().toIso8601String(),
+        optOut ? 1 : 0,
+        _nowProvider().toUtc().toIso8601String(),
+        userId,
+      ],
+    );
+  }
+
+  bool _sameInstant(DateTime? left, DateTime? right) {
+    if (left == null || right == null) {
+      return left == right;
+    }
+    return left.toUtc().isAtSameMomentAs(right.toUtc());
   }
 
   void _writeUserFunnelPhase({

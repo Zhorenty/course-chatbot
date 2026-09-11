@@ -99,11 +99,10 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
   }
 
   bool _guideAlreadyIssued(int userId, Launch? launch) {
-    final enrollment = launch == null ? null : _funnel.enrollmentFor(userId, launch: launch);
-    if (enrollment?.magnetIssuedAt != null) {
-      return true;
+    if (launch == null) {
+      return _course.getUser(userId)?.magnetIssuedAt != null;
     }
-    return _course.getUser(userId)?.magnetIssuedAt != null;
+    return _funnel.enrollmentFor(userId, launch: launch)?.magnetIssuedAt != null;
   }
 
   Future<void> _notifyGuideMissing(int userId) async {

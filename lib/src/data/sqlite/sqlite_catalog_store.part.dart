@@ -133,8 +133,45 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
 
   @override
   void setActiveLaunch(String launchCode) {
+    final previousId = activeLaunch()?.id;
     _db.execute('UPDATE launches SET is_active = 0;');
     _db.execute('UPDATE launches SET is_active = 1 WHERE code = ?;', <Object?>[launchCode]);
+    final next = launchByCode(launchCode);
+    if (next != null && next.id != previousId) {
+      _mirrorProfilesOntoLaunch(next.id);
+    }
+  }
+
+  /// CTA/drip read `telegram_users` as a mirror of the active enrollment.
+  /// A new active launch starts from that launch's row, or `lead` if none.
+  void _mirrorProfilesOntoLaunch(int launchId) {
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    _db.execute(
+      '''
+      UPDATE telegram_users
+      SET
+        funnel_phase = COALESCE(
+          (
+            SELECT e.funnel_phase FROM user_enrollments e
+            WHERE e.user_id = telegram_users.user_id AND e.launch_id = ?
+          ),
+          'lead'
+        ),
+        magnet_issued_at = (
+          SELECT e.magnet_issued_at FROM user_enrollments e
+          WHERE e.user_id = telegram_users.user_id AND e.launch_id = ?
+        ),
+        warmup_opt_out = COALESCE(
+          (
+            SELECT e.warmup_opt_out FROM user_enrollments e
+            WHERE e.user_id = telegram_users.user_id AND e.launch_id = ?
+          ),
+          0
+        ),
+        updated_at = ?;
+      ''',
+      <Object?>[launchId, launchId, launchId, nowIso],
+    );
   }
 
   @override
