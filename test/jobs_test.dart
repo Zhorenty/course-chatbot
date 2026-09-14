@@ -73,13 +73,13 @@ void main() {
     );
     await dayJob.run();
     expect(
-      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      harness.sender.messages.where((m) => m.text.contains('Оформление заказа началось')),
       hasLength(1),
     );
 
     await dayJob.run();
     expect(
-      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      harness.sender.messages.where((m) => m.text.contains('Оформление заказа началось')),
       hasLength(1),
     );
   });
@@ -125,7 +125,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Доплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('остатка')), isTrue);
   });
 
   test('warmup job sends the next unsent step after the delay', () async {
@@ -147,8 +147,8 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
-    final warmup = harness.sender.messages.where((m) => m.text.contains('Эфир')).single;
+    expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
+    final warmup = harness.sender.messages.where((m) => m.text.contains('мастер-класс')).single;
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });
@@ -204,9 +204,7 @@ void main() {
     harness.sender.messages.clear();
     await job.run();
     expect(
-      harness.sender.messages.any(
-        (m) => m.chatId == 7 && m.text.contains('Гайд и запись ещё здесь'),
-      ),
+      harness.sender.messages.any((m) => m.chatId == 7 && m.text.contains('Подарок всё ещё здесь')),
       isTrue,
     );
   });
@@ -250,9 +248,7 @@ void main() {
     harness.sender.messages.clear();
     await job.run();
     expect(
-      harness.sender.messages.any(
-        (m) => m.chatId == 8 && m.text.contains('Гайд и запись ещё здесь'),
-      ),
+      harness.sender.messages.any((m) => m.chatId == 8 && m.text.contains('Подарок всё ещё здесь')),
       isTrue,
     );
   });
@@ -276,9 +272,7 @@ void main() {
     await job.run();
     expect(harness.sender.messages.where((m) => m.chatId == 1), isEmpty);
     expect(
-      harness.sender.messages.any(
-        (m) => m.chatId == 8 && m.text.contains('Гайд и запись ещё здесь'),
-      ),
+      harness.sender.messages.any((m) => m.chatId == 8 && m.text.contains('Подарок всё ещё здесь')),
       isTrue,
     );
   });
@@ -323,7 +317,10 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Напоминаю про доплату')), isTrue);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Напоминаю про внесение остатка')),
+      isTrue,
+    );
   });
 
   test('webinar reminder uses the current slot and skips a missed copy', () {
@@ -574,7 +571,7 @@ void main() {
     await job.run();
     final toUser = harness.sender.messages.where((m) => m.chatId == 42).toList();
     expect(toUser, hasLength(1));
-    expect(toUser.single.text, contains('кнопка ниже'));
+    expect(toUser.single.text, contains('кнопку ниже'));
     expect(toUser.single.text, isNot(contains('https://t.me/+keep')));
     expect('${toUser.single.replyMarkup}', contains(MessageTemplates.buttonOpenInvite));
     expect('${toUser.single.replyMarkup}', isNot(contains(MessageTemplates.buttonGuide)));
@@ -613,8 +610,8 @@ void main() {
     await job.run();
 
     expect(harness.course.getOrder(order.id)?.status, OrderStatus.paid);
-    expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
     await job.run();
-    expect(harness.sender.messages.where((m) => m.text.contains('Оплата прошла')), hasLength(1));
+    expect(harness.sender.messages.where((m) => m.text.contains('Успешная оплата')), hasLength(1));
   });
 }

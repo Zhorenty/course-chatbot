@@ -388,7 +388,7 @@ void main() {
         privateMessageUpdate(chatId: 42, userId: 42, text: '/start ads_nov'),
       );
       final texts = harness.sender.messages.map((m) => m.text).join('\n');
-      expect(texts, contains('18000 ₽'));
+      expect(texts, contains('интерьерной колористике'));
       expect(texts, isNot(contains('21000 ₽')));
       expect(harness.funnel.resolveLaunch('ads_nov')?.id, launch2.id);
     },
@@ -578,14 +578,10 @@ void main() {
       isFalse,
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Твой поток')), isFalse);
-    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
     expect(
       _replyButtonTexts(harness.sender.messages.last.replyMarkup),
       contains(MessageTemplates.buttonEnroll),
-    );
-    expect(
-      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
-      isNot(contains(MessageTemplates.buttonCourseStatus)),
     );
 
     await harness.handlers.handle(

@@ -123,7 +123,8 @@ void main() {
     expect(during.checkoutOpen, isTrue);
     expect(during.payableKopecks, 1500000);
     final outsider = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 6, 12));
-    expect(outsider.checkoutOpen, isFalse);
+    expect(outsider.checkoutOpen, isTrue);
+    expect(outsider.payableKopecks, 1900000);
     final regular = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 9, 12));
     expect(regular.phase, SalesPhase.regular);
     expect(regular.payableKopecks, 1900000);

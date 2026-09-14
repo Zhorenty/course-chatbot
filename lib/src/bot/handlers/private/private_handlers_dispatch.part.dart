@@ -314,11 +314,11 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     if (text == MessageTemplates.buttonGuide || text == '/guide') {
       return _deliverGuide(context, sendWarmup: true);
     }
-    if (text == MessageTemplates.buttonEnroll || text == '/enroll') {
+    if (text == MessageTemplates.buttonEnroll ||
+        text == MessageTemplates.buttonCourseStatus ||
+        text == '/enroll' ||
+        text == '/course') {
       return _showEnroll(context);
-    }
-    if (text == MessageTemplates.buttonCourseStatus || text == '/course') {
-      return _showCourseStatus(context);
     }
     if (text == '👤 Профиль' || text == '📋 Меню' || text == '/profile' || text == '/menu') {
       return _showHome(context);

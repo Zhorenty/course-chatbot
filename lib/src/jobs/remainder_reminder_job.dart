@@ -38,19 +38,22 @@ final class RemainderReminderJob {
       now: now,
       wave: RemainderWave.beforeDue,
       suffix: 'before',
-      textOf: _templates.remainderBeforeDue,
+      textOf: (order) =>
+          _templates.remainderBeforeDue(order, launch: _course.getLaunch(order.launchId)),
     );
     await _sendWave(
       now: now,
       wave: RemainderWave.onDueDay,
       suffix: 'due',
-      textOf: _templates.remainderReminder,
+      textOf: (order) =>
+          _templates.remainderReminder(order, launch: _course.getLaunch(order.launchId)),
     );
     await _sendWave(
       now: now,
       wave: RemainderWave.overdue,
       suffix: 'overdue',
-      textOf: _templates.remainderReminder,
+      textOf: (order) =>
+          _templates.remainderReminder(order, launch: _course.getLaunch(order.launchId)),
     );
   }
 

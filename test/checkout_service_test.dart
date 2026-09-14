@@ -625,23 +625,20 @@ void main() {
     addTearDown(extra.dispose);
     extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
     final launch = extra.course.activeLaunch()!;
-    expect(
-      () => extra.checkout.startOrReuseOrder(userId: 42, launch: launch, kind: PaymentKind.full),
-      throwsA(
-        isA<CheckoutBlockedException>().having(
-          (error) => error.reason,
-          'reason',
-          CheckoutBlockReason.salesNotOpen,
-        ),
-      ),
-    );
-    extra.course.setWebinarRsvp(
+    final outsider = extra.checkout.startOrReuseOrder(
       userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    expect(outsider.priceFullKopecks, 1900000);
+    extra.course.ensureUser(userId: 43, now: DateTime.utc(2026, 10, 1));
+    extra.course.setWebinarRsvp(
+      userId: 43,
       launchId: launch.id,
       now: DateTime.utc(2026, 10, 5, 16),
     );
     final order = extra.checkout.startOrReuseOrder(
-      userId: 42,
+      userId: 43,
       launch: launch,
       kind: PaymentKind.full,
     );

@@ -108,8 +108,7 @@ final class SalesQuote {
 
   bool get checkoutOpen => switch (phase) {
     SalesPhase.preSales || SalesPhase.closed => false,
-    SalesPhase.promo => rsvp,
-    SalesPhase.regular => true,
+    SalesPhase.promo || SalesPhase.regular => true,
   };
 
   bool get promoPriceApplies => phase == SalesPhase.promo && rsvp;

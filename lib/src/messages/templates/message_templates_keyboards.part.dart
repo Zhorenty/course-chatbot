@@ -69,7 +69,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
       return inlineKeyboard(<List<Map<String, Object?>>>[
         <Map<String, Object?>>[
           <String, Object?>{
-            'text': MessageTemplates.buttonRsvp,
+            'text': MessageTemplates.buttonRsvpEnroll,
             'callback_data': MessageTemplates.cbRsvp,
             'style': 'success',
           },
@@ -82,13 +82,15 @@ extension MessageTemplateKeyboards on MessageTemplates {
     final rows = <List<Map<String, Object?>>>[
       <Map<String, Object?>>[
         <String, Object?>{
-          'text': payFullButtonLabel(quote.payableKopecks),
+          'text': payFullButtonLabel(quote),
           'callback_data': MessageTemplates.cbPayFull,
           'style': 'primary',
         },
       ],
     ];
-    if (launch.hasDepositOptionFor(quote.payableKopecks)) {
+    final showDeposit =
+        !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks);
+    if (showDeposit) {
       rows.add(<Map<String, Object?>>[
         <String, Object?>{
           'text': payDepositButtonLabel(launch.depositKopecks),
@@ -116,10 +118,13 @@ extension MessageTemplateKeyboards on MessageTemplates {
     if (!rsvpSteps.contains(stepKey) || rsvp || !rsvpOpen) {
       return null;
     }
+    final label = stepKey == 'webinar_24h'
+        ? MessageTemplates.buttonRsvpList
+        : MessageTemplates.buttonRsvp;
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[
         <String, Object?>{
-          'text': MessageTemplates.buttonRsvp,
+          'text': label,
           'callback_data': MessageTemplates.cbRsvp,
           'style': 'success',
         },
@@ -130,7 +135,11 @@ extension MessageTemplateKeyboards on MessageTemplates {
   Map<String, Object?> webinarLinkKeyboard(String url) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[
-        <String, Object?>{'text': 'Открыть эфир', 'url': url, 'style': 'primary'},
+        <String, Object?>{
+          'text': MessageTemplates.buttonJoinWebinar,
+          'url': url,
+          'style': 'primary',
+        },
       ],
     ]);
   }
@@ -155,11 +164,13 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> remainderKeyboard(int orderId) {
+  Map<String, Object?> remainderKeyboard(int orderId, {bool immediate = false}) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[
         <String, Object?>{
-          'text': MessageTemplates.buttonPayRemainder,
+          'text': immediate
+              ? MessageTemplates.buttonPayRemainderNow
+              : MessageTemplates.buttonPayRemainder,
           'callback_data': '${MessageTemplates.cbPayRemainder}$orderId',
           'style': 'primary',
         },

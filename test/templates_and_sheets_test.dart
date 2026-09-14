@@ -39,7 +39,7 @@ void main() {
     final templates = MessageTemplates();
     final rich = templates.guideReadyRich();
     expect(rich, contains('<tg-document src="tg://document?id=guide"></tg-document>'));
-    expect(rich, contains('Дальше — эфир'));
+    expect(rich, contains('Следующим сообщением пришлю приглашение'));
     expect(classicHtmlFromRich(rich), isNot(contains('tg-document')));
     expect(classicHtmlFromRich(rich), contains('Гайд «Язык цвета»'));
   });
@@ -74,8 +74,8 @@ void main() {
     final templates = MessageTemplates();
     final day1 = templates.warmupStep('enroll_d1');
     final day3 = templates.warmupStep('enroll_d3');
-    expect(day1, contains('Гайд и запись ещё здесь'));
-    expect(day3, contains('Гайд всё ещё можно забрать'));
+    expect(day1, contains('Подарок всё ещё здесь'));
+    expect(day3, contains('Гайд никуда не делся'));
     expect(day1, isNot(equals(day3)));
   });
 
@@ -86,10 +86,61 @@ void main() {
     expect(text, contains('Аккаунты админов'));
   });
 
-  test('enroll CTA stays in templates until access is granted', () {
+  test('customer copy uses the interior color voice and new CTAs', () {
     final templates = MessageTemplates();
-    expect(templates.warmupStep('warmup_0'), contains('эфир'));
-    expect(MessageTemplates.buttonEnroll, contains('Записаться'));
+    expect(MessageTemplates.buttonGuide, contains('Получить гайд'));
+    expect(MessageTemplates.buttonEnroll, MessageTemplates.buttonCourseStatus);
+    expect(MessageTemplates.buttonEnroll, contains('Цвет в интерьере'));
+    expect(templates.startGuideOffer(), contains('Привет'));
+    expect(templates.startGuideOffer(), contains('Анастасия Дубовскова'));
+    expect(templates.startGuideOffer(), isNot(contains('без имени, почты')));
+    expect(templates.warmupStep('warmup_0'), contains('мастер-класс'));
+    expect(templates.warmupStep('last_wagon'), contains('последний вагон'));
+    expect(templates.optOutConfirmed(), contains('отписались'));
+    expect(templates.help(), isNot(contains('Гайд не пришёл')));
+    expect(templates.paymentSucceeded(), contains('Успешная оплата'));
+  });
+
+  test('selling drip uses interior voice not wardrobe stubs', () {
+    final templates = MessageTemplates();
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Цвет в интерьере. Основы и практика',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+    );
+    const keys = <String>[
+      'enroll_d1',
+      'enroll_d3',
+      'sales_open',
+      'sales_regular',
+      'dozhim_d1',
+      'dozhim_d2',
+      'dozhim_d3',
+      'dozhim_d4',
+      'warmup_d1',
+      'warmup_d3',
+      'warmup_d7',
+      'warmup_start_d1',
+    ];
+    for (final key in keys) {
+      final text = templates.warmupStep(key, launch: launch);
+      expect(text, isNot(contains('гардероб')), reason: key);
+      expect(text, isNot(contains('коже')), reason: key);
+      expect(text, isNot(contains('Сюда встанет')), reason: key);
+      expect(text, isNot(contains('Можно оплатить')), reason: key);
+      expect(text, isNot(contains('Продажи открылись')), reason: key);
+    }
+    expect(templates.warmupStep('sales_regular', launch: launch), contains('19 000 руб.'));
+    expect(templates.warmupStep('dozhim_d1', launch: launch), contains('12 октября'));
+    expect(templates.warmupStep('dozhim_d1', launch: launch), contains('почерк'));
+    expect(templates.warmupStep('dozhim_d2', launch: launch), contains('сломать'));
+    expect(templates.warmupStep('dozhim_d4', launch: launch), contains('так можно было'));
+    expect(templates.warmupStep('warmup_d1'), contains('объект'));
   });
 
   test('enroll copy still points to the channel after full payment', () {
@@ -108,11 +159,15 @@ void main() {
     final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 8));
     expect(
       templates.enrollOptions(launch, quote: quote),
-      contains('Ссылку в канал пришлю после полной оплаты'),
+      contains('Ссылка в канал курса придет в этот чат после полной оплаты'),
     );
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
-    expect(templates.warmupStep('sales_open', launch: launch), contains('Можно оплатить'));
-    expect(templates.warmupStep('sales_open', launch: launch), contains('Продажи открылись'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('Двери курса открыты'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('присоединиться'));
+    expect(
+      templates.warmupStep('sales_open', launch: launch),
+      isNot(contains('Продажи открылись')),
+    );
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {
@@ -714,7 +769,8 @@ void main() {
     expect(text, contains('<b>Диалог</b>'));
     expect(text, contains('→ файл'));
     expect(text, contains('→ Как это устроено'));
-    expect(text, contains('← ${MessageTemplates.buttonEnroll}'));
+    expect(text, contains('← Курс'));
+    expect(text, contains('Цвет в интерьере'));
     expect(text, isNot(contains('BQACAgIA')));
     expect(text, isNot(contains('оформляешь')));
     expect(text, isNot(contains('Сейчас:')));
@@ -749,7 +805,6 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonHelp));
-    expect(texts, isNot(contains(MessageTemplates.buttonCourseStatus)));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
@@ -765,7 +820,6 @@ void main() {
 
     final paid = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: true));
     expect(paid, contains(MessageTemplates.buttonCourseStatus));
-    expect(paid, isNot(contains(MessageTemplates.buttonEnroll)));
     expect(paid, contains(MessageTemplates.buttonGuide));
     expect(paid, contains(MessageTemplates.buttonHelp));
     expect(paid, isNot(contains('👤 Профиль')));
@@ -802,13 +856,12 @@ void main() {
       now: DateTime.utc(2026, 10, 1),
     );
     expect(beforeStart, contains('предоплата'));
-    expect(beforeStart, contains('5000 ₽'));
-    expect(beforeStart, contains('18000 ₽'));
-    expect(beforeStart, contains('13000 ₽'));
-    expect(beforeStart, contains('05.10.2026'));
-    expect(beforeStart, contains('ещё не начался'));
-    expect(beforeStart, contains('после полной суммы'));
-    expect(beforeStart, contains('доплатить остаток'));
+    expect(beforeStart, contains('5 000 ₽'));
+    expect(beforeStart, contains('13 000 ₽'));
+    expect(beforeStart, contains('12.10.2026'));
+    expect(beforeStart, isNot(contains('ещё не начался')));
+    expect(beforeStart, contains('после полной оплаты'));
+    expect(beforeStart, contains('каналу курса'));
     expect(
       _inlineButtonTexts(templates.courseStatusKeyboard(order: deposit)!),
       contains(MessageTemplates.buttonPayRemainder),
@@ -835,7 +888,7 @@ void main() {
       now: DateTime.utc(2026, 10, 1),
     );
     expect(waiting, contains('закрыта'));
-    expect(waiting, contains('доступ по кнопке ниже'));
+    expect(waiting, contains('Доступ по кнопке ниже'));
     expect(waiting, isNot(contains('https://t.me/+keep-me')));
     expect(
       _inlineButtonTexts(templates.courseStatusKeyboard(order: paid, access: unjoined)!),
@@ -856,7 +909,7 @@ void main() {
       access: joined,
       now: DateTime.utc(2026, 10, 13),
     );
-    expect(started, contains('идёт с 12.10.2026'));
+    expect(started, contains('Идёт с 12.10.2026'));
     expect(started, contains('уже внутри'));
     expect(started, isNot(contains('https://t.me/+')));
     expect(templates.courseStatusKeyboard(order: paid, access: joined), isNull);
@@ -881,14 +934,14 @@ void main() {
     expect(enroll, isNot(contains(MessageTemplates.buttonHelp)));
     expect(enroll.any((text) => text.startsWith(MessageTemplates.buttonPayFull)), isTrue);
     expect(_inlineButtonTexts(templates.helpKeyboard()), <String>[MessageTemplates.buttonOptOut]);
-    expect(templates.help(), contains(MessageTemplates.buttonOptOut));
+    expect(templates.help(), contains('перешлю человеку на связи'));
     expect(_inlineButtonTexts(templates.unjoinedInviteKeyboard('https://t.me/+x')), <String>[
       MessageTemplates.buttonOpenInvite,
       MessageTemplates.buttonCopyInvite,
     ]);
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
     expect(templates.inviteMessage(), contains('напиши сюда'));
-    expect(templates.inviteMessage(), contains('по кнопке ниже'));
+    expect(templates.inviteMessage(), contains('кнопку ниже'));
     expect(templates.inviteMessage(), isNot(contains('https://t.me/')));
     expect(templates.inviteMessage(), isNot(contains('запроси новую')));
     expect(templates.accessRevoked(), contains('Доступ к потоку снят'));
@@ -899,7 +952,7 @@ void main() {
       templates.adminCancelled(clientNotified: true, clientReached: false),
       contains('не дошло'),
     );
-    expect(templates.unjoinedInviteReminder(), contains('кнопка ниже'));
+    expect(templates.unjoinedInviteReminder(), contains('кнопку ниже'));
     expect(templates.unjoinedInviteReminder(), isNot(contains('https://t.me/')));
     expect(templates.unjoinedInviteReminder(), isNot(contains('запроси новую')));
     expect(templates.help(), isNot(contains('Новая ссылка')));

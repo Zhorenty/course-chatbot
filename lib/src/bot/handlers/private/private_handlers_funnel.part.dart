@@ -248,7 +248,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (firstRsvp) {
       await _notifyWebinarRsvp(userId, launch);
     }
-    await _answerCallback(context, text: 'Ты в списке на эфир.');
+    await _answerCallback(context, text: 'Ты в списке участников!');
     final url = launch.webinarUrl?.trim();
     final started = launch.webinarAt != null && !now.toUtc().isBefore(launch.webinarAt!.toUtc());
     return _send(

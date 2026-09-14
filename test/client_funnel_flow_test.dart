@@ -27,8 +27,7 @@ void main() {
     await client.tap('/start ig_reels_guide');
     expect(harness.course.getUser(42)?.source, 'ig_reels_guide');
     expect(_phase(harness, 42), FunnelPhase.lead);
-    expect(harness.sender.messages.any((m) => m.text.contains('Гайд')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
     expect(_inlineButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
     expect(
       _replyButtonTexts(harness.sender.messages.last.replyMarkup),
@@ -41,16 +40,16 @@ void main() {
 
     await client.tap(MessageTemplates.buttonGuide);
     expect(harness.sender.documents, contains('file-guide'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
     expect(
       harness.sender.messages
-          .where((m) => m.text.contains('Эфир'))
+          .where((m) => m.text.contains('мастер-класс'))
           .every((m) => !_inlineButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonOptOut)),
       isTrue,
     );
     expect(
       _inlineButtonTexts(
-        harness.sender.messages.firstWhere((m) => m.text.contains('Эфир')).replyMarkup,
+        harness.sender.messages.firstWhere((m) => m.text.contains('навстречу цвету')).replyMarkup,
       ),
       contains(MessageTemplates.buttonRsvp),
     );
@@ -68,7 +67,7 @@ void main() {
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonEnroll);
     final preSales = harness.sender.messages.last;
-    expect(preSales.text, contains('Касса откроется'));
+    expect(preSales.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(preSales.replyMarkup), isEmpty);
     expect(_enrollment(harness, 42)?.enrollIntentAt, isNotNull);
     expect(_phase(harness, 42), FunnelPhase.warming);
@@ -77,14 +76,14 @@ void main() {
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonEnroll);
     final promo = harness.sender.messages.last;
-    expect(promo.text, contains('15000 ₽'));
-    expect(promo.text, contains('спеццена'));
+    expect(promo.text, contains('15 000 руб.'));
+    expect(promo.text, contains('специальн'));
+    expect(_inlineButtonTexts(promo.replyMarkup), contains(MessageTemplates.buttonPayFullPromo));
     expect(
-      _inlineButtonTexts(promo.replyMarkup),
-      containsAll(<String>[
-        templates.payFullButtonLabel(LaunchPrices.promoKopecks),
-        templates.payDepositButtonLabel(500000),
-      ]),
+      _inlineButtonTexts(
+        promo.replyMarkup,
+      ).any((text) => text.startsWith(MessageTemplates.buttonPayDeposit)),
+      isFalse,
     );
     expect(_inlineButtonTexts(promo.replyMarkup), isNot(contains('Рассрочка')));
 
@@ -103,8 +102,8 @@ void main() {
       amountKopecks: LaunchPrices.promoKopecks,
     );
     expect(paid.grantedAccess, isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('Оплата прошла')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('Доступ в поток')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('канал этого потока')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+invite')), isFalse);
     expect(
       harness.sender.messages.any((m) => '${m.replyMarkup}'.contains('https://t.me/+invite')),
@@ -120,7 +119,6 @@ void main() {
     expect(paidMenu, contains(MessageTemplates.buttonCourseStatus));
     expect(paidMenu, contains(MessageTemplates.buttonGuide));
     expect(paidMenu, contains(MessageTemplates.buttonHelp));
-    expect(paidMenu, isNot(contains(MessageTemplates.buttonEnroll)));
 
     final repeat = await harness.checkout.applyCallback(
       PaymentCallback(
@@ -156,7 +154,7 @@ void main() {
     await client.tap('/start');
     expect(harness.course.getUser(42)?.source, 'ig_reels_guide');
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
-    expect(harness.sender.messages.any((m) => m.text.contains('ты уже внутри')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('уже внутри')), isTrue);
     expect(harness.channel.created, hasLength(1));
     expect(harness.channel.revoked, isEmpty);
 
@@ -177,9 +175,9 @@ void main() {
     await client.tap(MessageTemplates.buttonCourseStatus);
     final status = harness.sender.messages.single;
     expect(status.text, contains('закрыта'));
-    expect(status.text, contains('15000 ₽'));
+    expect(status.text, contains('15 000 ₽'));
     expect(status.text, contains('12.10.2026'));
-    expect(status.text, contains('ты уже внутри'));
+    expect(status.text, contains('уже внутри'));
   });
 
   test('B: deposit does not open the channel until remainder is paid', () async {
@@ -202,7 +200,7 @@ void main() {
     expect(harness.channel.created, isEmpty);
     expect(_phase(harness, 42), FunnelPhase.depositPaid);
     expect(harness.sender.messages.any((m) => m.text.contains('Предоплата дошла')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('10000 ₽')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('канал курса')), isTrue);
     expect(
       _replyButtonTexts(
         harness.sender.messages
@@ -216,9 +214,8 @@ void main() {
     await client.tap(MessageTemplates.buttonCourseStatus);
     final status = harness.sender.messages.single;
     expect(status.text, contains('предоплата'));
-    expect(status.text, contains('5000 ₽'));
-    expect(status.text, contains('10000 ₽'));
-    expect(status.text, contains('ещё не начался'));
+    expect(status.text, contains('5 000 ₽'));
+    expect(status.text, contains('10 000 ₽'));
     expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
 
     await client.tap(MessageTemplates.buttonHelp);
@@ -237,7 +234,7 @@ void main() {
       quietHours: quietHours,
       nowProvider: () => DateTime.utc(2026, 10, 8, 12),
     ).run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Доплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('остатка')), isTrue);
 
     harness.sender.messages.clear();
     await client.press('${MessageTemplates.cbPayRemainder}${order.id}');
@@ -294,12 +291,12 @@ void main() {
     );
     await dayJob.run();
     expect(
-      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      harness.sender.messages.where((m) => m.text.contains('Оформление заказа началось')),
       hasLength(1),
     );
     await dayJob.run();
     expect(
-      harness.sender.messages.where((m) => m.text.contains('Оформление началось')),
+      harness.sender.messages.where((m) => m.text.contains('Оформление заказа началось')),
       hasLength(1),
     );
 
@@ -317,7 +314,10 @@ void main() {
     await client.settle(kind: PaymentKind.full, amountKopecks: LaunchPrices.promoKopecks);
     harness.sender.messages.clear();
     await dayJob.run();
-    expect(harness.sender.messages.any((m) => m.text.contains('Оформление началось')), isFalse);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Оформление заказа началось')),
+      isFalse,
+    );
   });
 
   test('E: course deep link opens the card and keeps checkout closed before the webinar', () async {
@@ -339,14 +339,14 @@ void main() {
 
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonEnroll);
-    expect(harness.sender.messages.last.text, contains('Касса откроется'));
+    expect(harness.sender.messages.last.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(harness.sender.messages.last.replyMarkup), isEmpty);
     expect(_phase(harness, 7), FunnelPhase.lead);
 
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonGuide);
     expect(harness.sender.documents, contains('file-guide'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Эфир')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
     expect(_phase(harness, 7), FunnelPhase.warming);
 
     harness.sender.messages.clear();

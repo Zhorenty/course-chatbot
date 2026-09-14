@@ -6,6 +6,31 @@ String formatRubFromKopecks(int kopecks) {
   return '${rub.toStringAsFixed(2)} ₽';
 }
 
+/// User-facing amount with a thousands separator: `15 000 ₽` or `15 000 руб.`
+String formatRubSpaced(int kopecks, {String unit = '₽'}) {
+  final negative = kopecks < 0;
+  final abs = kopecks.abs();
+  final rub = abs ~/ 100;
+  final frac = abs % 100;
+  final digits = rub.toString();
+  final buf = StringBuffer();
+  if (negative) {
+    buf.write('−');
+  }
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      buf.write(' ');
+    }
+    buf.write(digits[i]);
+  }
+  if (frac != 0) {
+    buf.write(',');
+    buf.write(frac.toString().padLeft(2, '0'));
+  }
+  buf.write(' $unit');
+  return buf.toString();
+}
+
 int rubToKopecks(int rub) => rub * 100;
 
 /// Parses a kassa amount like `10000.00` without binary floating error.

@@ -157,7 +157,7 @@ void main() {
     final text = harness.sender.messages.last.text;
     expect(text, contains('Как устроена воронка'));
     expect(text, contains('Аккаунты админов'));
-    expect(text, contains('Буду на эфире'));
+    expect(text, contains(MessageTemplates.buttonRsvp));
     expect(text, contains('на 1-й и на 3-й день'));
     expect(text, contains('10:00'));
     expect(text, contains('12.10.2026'));
@@ -588,7 +588,7 @@ void main() {
     final next = harness.channel.created.last;
     expect(harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains(next)), isFalse);
     expect(
-      harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains('по кнопке ниже')),
+      harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains('кнопку ниже')),
       isTrue,
     );
     expect(

@@ -31,20 +31,44 @@ final class MessageTemplates {
   final String? _botUsername;
   final DateFormat _date = DateFormat('dd.MM.yyyy');
   final DateFormat _dateTime = DateFormat('dd.MM.yyyy HH:mm');
+  final DateFormat _clock = DateFormat('HH:mm');
+  static const List<String> _monthsGenitive = <String>[
+    'января',
+    'февраля',
+    'марта',
+    'апреля',
+    'мая',
+    'июня',
+    'июля',
+    'августа',
+    'сентября',
+    'октября',
+    'ноября',
+    'декабря',
+  ];
 
-  static const String buttonGuide = 'Забрать гайд';
+  static const String buttonGuide = 'Получить гайд "Язык цвета"';
   static const String guideDocumentMediaId = 'guide';
-  static const String buttonEnroll = 'Записаться на курс';
-  static const String buttonRsvp = 'Буду на эфире';
-  static const String buttonCourseStatus = 'Мой курс';
+  static const String buttonEnroll = 'Курс "Цвет в интерьере. Основы и практика"';
+  static const String buttonRsvp = 'Хочу на Мастер-класс';
+  static const String buttonRsvpList = 'Попасть в список участников';
+  static const String buttonRsvpEnroll = 'Хочу на мастер-класс';
+  static const String buttonJoinWebinar = 'Присоединиться';
+  static const String buttonCourseStatus = buttonEnroll;
   static const String buttonHelp = 'Помощь';
   static const String buttonOptOut = 'Отписаться от рассылки';
   static const String buttonPayFull = 'Оплатить';
-  static const String buttonPayDeposit = 'Предоплата';
-  static const String buttonPayRemainder = 'Доплатить';
+  static const String buttonPayFullPromo = 'Оплатить курс по специальной цене';
+  static const String buttonPayDeposit = 'Бронь места по предоплате';
+  static const String buttonPayRemainder = 'Внести остаток';
+  static const String buttonPayRemainderNow = 'Внести остаток сейчас';
   static const String buttonGoToPay = 'Перейти к оплате';
   static const String buttonContinuePay = 'Продолжить оплату';
-  static const String buttonOpenInvite = 'Открыть канал';
+  static const String buttonOpenInvite = 'Открыть канал курса';
+  static const String defaultCourseTitle = 'Цвет в интерьере. Основы и практика';
+  static const String guideTitle = 'Язык цвета';
+  static const String masterClassTitle =
+      'Как начать работать с цветом смелее и не бояться ошибиться';
   static const String buttonCopyInvite = 'Скопировать ссылку';
   static const String buttonAdminSearch = '🔍 Поиск человека';
   static const String buttonAdminAddUser = '➕ Добавить на курс';
@@ -171,49 +195,32 @@ final class MessageTemplates {
   static const String cbAdminClearFunnelAbort = 'cfn';
 
   String startGuideOffer() {
-    return '<b>Гайд «Язык цвета»</b>\n\n'
-        'Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает». '
-        'PDF пришлю сюда: без имени, почты и телефона.\n\n'
-        'Гайд — кнопка в меню внизу.';
+    return '<b>Привет 🤍</b>\n\n'
+        'На связи Анастасия Дубовскова — дизайнер и автор 80+ узнаваемых проектов, где цвет является частью характера пространства, преподаватель в Академии дизайна, член жюри Евразийской премии по хоумстейджингу 2026 и лауреат премий.\n\n'
+        'А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать управлять им осознанно.\n\n'
+        'Для начала у меня для тебя подарок — гайд «${MessageTemplates.guideTitle}». Забирай его по кнопке «Получить гайд» 🍂';
   }
 
   String startCourseCard({Launch? launch}) {
-    final start = _formatDate(launch?.courseStartAt);
-    final price = _formatPrice(launch?.priceFullKopecks);
-    final rawTitle = launch?.title.trim();
-    final headline = rawTitle == null || rawTitle.isEmpty
-        ? 'Курс по колористике'
-        : escapeHtml(rawTitle);
-    final buf = StringBuffer()
-      ..writeln('<b>$headline</b>')
-      ..writeln()
-      ..write('Собрать свой язык цвета и гардероб, который не спорит с тоном кожи.');
-    if (start != null) {
-      buf.write(' Старт $start.');
-    }
-    if (price != null) {
-      buf.write(' Стоимость $price.');
-    }
-    buf
-      ..writeln()
-      ..writeln()
-      ..write(
-        'Дальше — записаться на поток или сначала забрать гайд «Язык цвета». Оба в меню внизу.',
-      );
-    return buf.toString();
+    return '<b>Курс ${_quotedCourseTitle(launch)}</b>\n\n'
+        'Скоро стартует мой курс по интерьерной колористике, после которого твои объекты обретут почерк, а вместо страха придет уверенная и осознанная работа с цветом!\n\n'
+        '16 уроков: от терминологии, физики и психологии цвета до практической работы с палитрами, деревом, металлом и цветовыми сценариями в интерьере. 🧡 '
+        'Старт потока ${_formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата'}. '
+        'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+        'А пока что можно получить гайд-шпаргалку «${MessageTemplates.guideTitle}» и записаться на Мастер-класс «${MessageTemplates.masterClassTitle}» прямо в боте!';
   }
 
   String alreadyInFunnel() {
     return '<b>Продолжаем с того же места</b>\n\n'
-        'В меню внизу: гайд, запись на поток и помощь.';
+        'В меню внизу: гайд, курс и помощь.';
   }
 
   String menuPinned() {
-    return 'Меню внизу: гайд, запись и помощь.';
+    return 'Меню внизу: гайд, курс и помощь.';
   }
 
   String courseMenuPinned() {
-    return 'В меню вместо записи — «${MessageTemplates.buttonCourseStatus}»: оплата, старт и канал.';
+    return 'После полной оплаты пришлю доступ к каналу курса и чату потока.';
   }
 
   String courseStatus({
@@ -223,7 +230,7 @@ final class MessageTemplates {
     required DateTime now,
   }) {
     final buf = StringBuffer()
-      ..writeln('<b>Твой поток</b>')
+      ..writeln('<b>Курс ${_quotedCourseTitle(launch)}</b>')
       ..writeln()
       ..writeln(_coursePaymentLine(order))
       ..writeln(_courseStartLine(launch, now))
@@ -240,65 +247,65 @@ final class MessageTemplates {
 
   String _coursePaymentLine(CourseOrder? order) {
     if (order == null) {
-      return 'Оплата: доступ к этому потоку уже есть.';
+      return 'Доступ к этому потоку уже есть.';
     }
-    final paid = formatRubFromKopecks(order.amountPaidKopecks);
-    final full = formatRubFromKopecks(order.priceFullKopecks);
+    final paid = formatRubSpaced(order.amountPaidKopecks);
+    final full = formatRubSpaced(order.priceFullKopecks);
     switch (order.status) {
       case OrderStatus.depositPaid:
-        final due = _dueDateLabel(order.dueAt, fallback: 'по договорённости');
-        return 'Оплата: предоплата, $paid из $full. '
-            'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due.';
+        return 'Внесена предоплата $paid. '
+            'Остаток ${formatRubSpaced(order.amountDueKopecks)} до старта программы';
       case OrderStatus.paid:
-        return 'Оплата: закрыта, $paid из $full.';
+        return 'Оплата закрыта, $paid из $full.';
       case OrderStatus.checkoutStarted:
       case OrderStatus.awaitingPayment:
-        return 'Оплата: ещё не закрыта, пока $paid из $full.';
+        return 'Оплата ещё не закрыта, пока $paid из $full.';
       case OrderStatus.cancelled:
-        return 'Оплата: отменена.';
+        return 'Оплата отменена.';
     }
   }
 
   String _courseStartLine(Launch? launch, DateTime now) {
     final start = _formatDate(launch?.courseStartAt);
     if (start == null) {
-      return 'Курс: дата старта пока не указана.';
+      return 'Дата старта пока не указана.';
     }
     if (_courseHasStarted(launch?.courseStartAt, now)) {
-      return 'Курс: идёт с $start.';
+      return 'Идёт с $start.';
     }
-    return 'Курс: старт $start, ещё не начался.';
+    return start;
   }
 
   String _courseChannelLine({CourseOrder? order, ChannelAccess? access}) {
     if (order != null && order.hasRemainder) {
-      return 'Канал: открою после полной суммы.';
+      return 'Откроется после полной оплаты';
     }
     if (access == null) {
-      return 'Канал: оплата есть, канал ещё не привязан. Напиши сюда — новую ссылку выдаст админ.';
+      return 'Оплата есть, канал ещё не привязан. Напиши сюда — новую ссылку выдаст админ.';
     }
     if (access.revokedAt != null) {
-      return 'Канал: доступ снят. Напиши сюда, если это ошибка.';
+      return 'Доступ снят. Напиши сюда, если это ошибка.';
     }
     if (access.hasJoined) {
-      return 'Канал: ты уже внутри.';
+      return 'Ты уже внутри.';
     }
     final link = access.inviteLink?.trim();
     if (link == null || link.isEmpty) {
-      return 'Канал: ссылка ещё не выдана. Напиши сюда — новую выдаст админ.';
+      return 'Ссылка ещё не выдана. Напиши сюда — новую выдаст админ.';
     }
-    return 'Канал: доступ по кнопке ниже, входа пока нет.';
+    return 'Доступ по кнопке ниже.';
   }
 
   String? _courseStatusNextStep({CourseOrder? order, ChannelAccess? access}) {
     if (order != null && order.hasRemainder) {
-      return 'Дальше — доплатить остаток.';
+      return 'После того, как будет внесена полная сумма, пришлю доступ к каналу курса и чату потока.';
     }
     if (access != null &&
         access.revokedAt == null &&
         !access.hasJoined &&
         (access.inviteLink?.trim().isNotEmpty ?? false)) {
-      return 'Открой канал кнопкой ниже. Если ссылка не сработает — напиши сюда, новую выдаст админ.';
+      return 'Вижу, что ты еще не открывал(а) доступ в канал курса — скорее жми на кнопку ниже. '
+          'Если не сработает, напиши сюда, новую выдаст админ.';
     }
     if (access == null || access.revokedAt != null || access.inviteLink == null) {
       return 'Новую ссылку в канал выдаёт админ. Напиши сюда.';
@@ -318,13 +325,7 @@ final class MessageTemplates {
 
   String help() {
     return '<b>Помощь</b>\n\n'
-        'Гайд, запись и статус — в меню внизу. Если что-то сломалось, напиши сюда: '
-        'перешлю человеку на связи.\n\n'
-        '• Гайд не пришёл — «${MessageTemplates.buttonGuide}» в меню, пришлю ещё раз.\n'
-        '• Касса не открылась — «${MessageTemplates.buttonEnroll}», затем «Продолжить оплату».\n'
-        '• Ссылка в канал не сработала — напиши сюда, новую выдаст админ.\n'
-        '• Продающие сообщения не нужны — «${MessageTemplates.buttonOptOut}» ниже. '
-        'Гайд, запись и напоминания про оплату останутся.';
+        'Если что-то сломалось или не пришло, напиши сюда: перешлю человеку на связи.';
   }
 
   String helpReceived() {
@@ -368,16 +369,16 @@ final class MessageTemplates {
       'warmup_d7' => _warmupDay7(launch),
       'enroll_d1' => _enrollDay1(launch),
       'enroll_d3' => _enrollDay3(launch),
-      'webinar_24h' => _webinarReminder(launch, when: 'завтра'),
-      'webinar_10m' => _webinarReminder(launch, when: 'через 10 минут'),
+      'webinar_24h' => _webinarTomorrow(launch),
+      'webinar_10m' => _webinarTenMinutes(launch),
       'webinar_live' => _webinarLive(launch),
       'webinar_next' => _webinarNextDay(launch),
       'sales_open' => _salesOpen(launch),
       'sales_regular' => _salesRegular(launch),
-      'dozhim_d1' => _dozhim(launch, headline: 'Кейс'),
-      'dozhim_d2' => _dozhim(launch, headline: 'Возражения'),
-      'dozhim_d3' => _dozhim(launch, headline: 'До и после'),
-      'dozhim_d4' => _dozhim(launch, headline: 'Отзывы'),
+      'dozhim_d1' => _dozhimCase(launch),
+      'dozhim_d2' => _dozhimFear(launch),
+      'dozhim_d3' => _dozhimBeforeAfter(launch),
+      'dozhim_d4' => _dozhimReviews(launch),
       'last_wagon' => _lastWagon(launch),
       'warmup_start_d7' => _startNudge(launch),
       'warmup_start_d3' => _startNudge(launch),
@@ -390,46 +391,64 @@ final class MessageTemplates {
   }
 
   String _warmupZero(Launch? launch) {
-    final webinar = _formatDateTime(launch?.webinarAt);
-    final start = _formatDate(launch?.courseStartAt);
-    final when = webinar ?? 'когда будет дата';
-    final startLine = start == null ? '' : ' Старт потока $start.';
-    return '<b>Эфир</b>\n\n'
-        'Гайд уже у тебя. Следующий шаг — живой эфир ($when), не касса.$startLine '
-        'Отметься, если будешь: после эфира у отметившихся открывается спеццена.\n\n'
-        'Продажи откроем на эфире. «Записаться» в меню пока показывает карточку курса, без оплаты.';
+    return '<b>Отлично, гайд у тебя — это уже первый шаг навстречу цвету🤍</b>\n\n'
+        '${_formatHumanDate(launch?.webinarAt) ?? 'Скоро'} я проведу живой мастер-класс — '
+        '«${MessageTemplates.masterClassTitle}» и приглашаю тебя!\n\n'
+        'Разберём, почему интерьерная колористика — это глубже, но при этом проще, чем привычные круг Иттена и схема 60-30-10. '
+        'Покажу на своих реальных объектах, как принимать решение по цвету за 3 простых ориентира — без калькулятора и без страха всё сломать.\n\n'
+        'Особенно жду тебя, если ты уже проходил интенсивы по колористике и стало только сложнее.\n\n'
+        '📅 Дата: ${_formatHumanDate(launch?.webinarAt) ?? 'скоро'}\n'
+        '⏰ Время: ${_formatClock(launch?.webinarAt) ?? 'ХХ:ХХ'}\n\n'
+        'Мастер-класс бесплатный! Нажми на кнопку, чтобы попасть в список участников в 1 клик';
   }
 
-  String _webinarReminder(Launch? launch, {required String when}) {
-    return '<b>Эфир $when</b>\n\n'
-        'Напомню: эфир ${_formatDateTime(launch?.webinarAt) ?? 'уже близко'}. '
-        'Если ещё не отметился — кнопка ниже. Ссылку пришлю тем, кто в списке.';
+  String _webinarTomorrow(Launch? launch) {
+    return '<b>Мастер-класс уже завтра!</b>\n\n'
+        'Напоминаю, завтра в ${_formatClock(launch?.webinarAt) ?? 'ХХ:ХХ'} по мск проведу мастер-класс '
+        '«${MessageTemplates.masterClassTitle}»!\n\n'
+        'Это будет не стандартный набор формул и круг Иттена, о которых вы уже много раз слышали. '
+        'Именно после этого материала мои ученики-дизайнеры говорят «А что, так можно было?!» 🤭, '
+        'а их объекты обретают почерк.\n\n'
+        'Ссылка придет тем, кто отметился по кнопке внизу, нажимай скорее';
+  }
+
+  String _webinarTenMinutes(Launch? launch) {
+    return '<b>Начинаем через 10 минут</b>\n\n'
+        'Мастер-класс «${MessageTemplates.masterClassTitle}» стартует ровно в '
+        '${_formatClock(launch?.webinarAt) ?? 'ХХ:ХХ'}.\n\n'
+        '🤫 По секрету между нами: нажимай на кнопку, даже если не получится быть онлайн — '
+        'пришлю запись и специальное предложение на мой курс по интерьерной колористике.';
   }
 
   String _webinarLive(Launch? launch) {
     final url = launch?.webinarUrl?.trim();
-    final promo = _formatPrice(launch?.resolvedPricePromoKopecks);
-    final promoLine = promo == null
-        ? ''
-        : ' После эфира — спеццена $promo на 3 дня у отметившихся.';
     if (url == null || url.isEmpty) {
-      return '<b>Эфир начался</b>\n\n'
+      return '<b>Мы начинаем!🔥</b>\n\n'
           'Ссылку пришлю, как только она будет в карточке курса. Ты в списке.';
     }
-    return '<b>Эфир начался</b>\n\n'
-        'Входи по кнопке ниже.$promoLine';
+    return '<b>Мы начинаем!🔥</b>\n\n'
+        'Мастер-класс «${MessageTemplates.masterClassTitle}» вот-вот стартует. '
+        'Присоединяйся по кнопке ниже.';
   }
 
   String _webinarNextDay(Launch? launch) {
     final resolved = launch ?? _placeholderLaunch();
-    final until = _formatDate(LaunchSales.promoEndsAt(resolved));
-    final promo = _formatPrice(resolved.resolvedPricePromoKopecks) ?? 'спеццена';
-    final regular = _formatPrice(resolved.resolvedPriceFullKopecks);
-    final untilLine = until == null ? '.' : ' до $until.';
-    final next = regular == null ? '' : ' Дальше $regular.';
-    return '<b>Спеццена после эфира</b>\n\n'
-        'Ты в списке на эфир — курс сейчас $promo$untilLine$next '
-        'Запись — в меню внизу.';
+    final until = _formatHumanDate(LaunchSales.promoEndsAt(resolved));
+    final promo = formatRubSpaced(resolved.resolvedPricePromoKopecks, unit: 'руб.');
+    final regular = formatRubSpaced(resolved.resolvedPriceFullKopecks, unit: 'руб.');
+    final untilLine = until == null
+        ? 'Предложение действует 3 дня.'
+        : 'Предложение действует 3 дня. Далее цена повысится и зайти на программу по специальной цене будет нельзя.';
+    return '<b>Спеццена после мастер-класса</b>\n\n'
+        'Спасибо, что был(а) со мной сегодня 🤍\n\n'
+        'Если после эфира захотелось разобраться в цвете уже системно, а не по кусочкам, приглашаю тебя на следующий шаг — '
+        'курс ${_quotedCourseTitle(resolved)}.\n\n'
+        'Здесь не будет попытки всё высчитать по схемам. Каждый урок построен на реальных инструментах именно интерьерной колористики, '
+        'не на абстрактных примерах, а на разборе моих объектов, которые уже получали премии и публиковались в журналах. Без пересказа одного и того же.\n\n'
+        '🎁 И только для тех, кто участвовал в Мастер-классе я даю специальные условия: стоимость всего курса для вас — '
+        '$promo <s>$regular</s>\n'
+        '⚡ $untilLine\n\n'
+        'Успевай сделать финальный шаг навстречу осознанной работе с цветом и узнаваемым объектам со вкусом!';
   }
 
   Launch _placeholderLaunch() {
@@ -445,154 +464,226 @@ final class MessageTemplates {
   }
 
   String _salesOpen(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start == null ? '' : ' Старт потока $start.';
-    return '<b>Можно оплатить</b>\n\n'
-        'Продажи открылись.$startLine '
-        'Записаться — «${MessageTemplates.buttonEnroll}» в меню внизу.';
+    return '<b>Двери курса открыты</b>\n\n'
+        'Можно присоединиться к курсу ${_quotedCourseTitle(launch)}.'
+        '${_startFact(launch)}\n\n'
+        'Курс — в меню внизу.';
   }
 
   String _salesRegular(Launch? launch) {
-    final price = _formatPrice(launch?.resolvedPriceFullKopecks);
-    final start = _formatDate(launch?.courseStartAt) ?? 'когда будет дата';
-    final priceLine = price == null ? '' : ' Стоимость $price.';
-    return '<b>Продажи открыты</b>\n\n'
-        'Курс: система цвета и базы гардероба. Старт потока $start.$priceLine '
-        'Запись — в меню внизу.';
+    final price = _marketingPrice(launch?.resolvedPriceFullKopecks);
+    final priceLine = price == null
+        ? 'Специальная цена уже не действует.'
+        : 'Специальная цена уже не действует. Сейчас курс ${_quotedCourseTitle(launch)} стоит $price.';
+    return '<b>Двери курса еще открыты</b>\n\n'
+        '$priceLine'
+        '${_startFact(launch)}\n\n'
+        'Присоединиться можно из меню внизу.';
   }
 
-  String _dozhim(Launch? launch, {required String headline}) {
-    final price = _formatPrice(launch?.resolvedPriceFullKopecks);
-    final openLine = price == null ? 'Запись открыта.' : 'Запись открыта, цена $price.';
+  String _dozhimCase(Launch? launch) {
+    return _dozhim(
+      launch,
+      headline: 'Когда объект обретает почерк',
+      body:
+          'Цвет в интерьере — часть характера пространства, а не модный оттенок на стене. '
+          'На курсе разбираем это на реальных объектах.',
+    );
+  }
+
+  String _dozhimFear(Launch? launch) {
+    return _dozhim(
+      launch,
+      headline: 'Если страшно всё сломать',
+      body:
+          'Круг Иттена и схема 60-30-10 есть, а решение по цвету всё равно пугает — знакомо. '
+          'На курсе как раз про ориентиры, с которыми можно работать без калькулятора и без страха.',
+    );
+  }
+
+  String _dozhimBeforeAfter(Launch? launch) {
+    return _dozhim(
+      launch,
+      headline: 'До и после цвета',
+      body:
+          'После этого материала объекты учеников-дизайнеров начинают звучать иначе: '
+          'появляется почерк, а не «как у всех».',
+    );
+  }
+
+  String _dozhimReviews(Launch? launch) {
+    return _dozhim(
+      launch,
+      headline: '«А что, так можно было?»',
+      body: 'Именно это говорят дизайнеры, когда цвет становится решением, а не лотереей.',
+    );
+  }
+
+  String _dozhim(Launch? launch, {required String headline, required String body}) {
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final price = _marketingPrice(launch?.resolvedPriceFullKopecks);
+    final facts = <String>[
+      if (start != null) 'Старт потока $start.',
+      if (price != null) 'Стоимость $price.',
+    ];
+    final factsBlock = facts.isEmpty ? '' : '${facts.join(' ')}\n\n';
     return '<b>$headline</b>\n\n'
-        'Сюда встанет ваш текст: $headline. $openLine';
+        '$body\n\n'
+        '$factsBlock'
+        'Курс — в меню внизу.';
   }
 
   String _lastWagon(Launch? launch) {
-    return '<b>Последний вагон</b>\n\n'
-        'Сегодня последний день записи. Старт потока ${_formatDate(launch?.courseStartAt) ?? 'когда будет дата'}. '
-        'Запись — в меню внизу.';
+    return '<b>Любителям запрыгнуть в последний вагон</b>\n\n'
+        'Сегодня последний день, когда можно присоединиться к курсу ${_quotedCourseTitle(launch)}! '
+        'Старт потока ${_formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата'}.\n\n'
+        'Присоединиться по кнопке в нижнем меню.';
   }
 
   String webinarRsvpConfirmed(Launch launch, {required bool showLink}) {
     if (showLink) {
-      return '<b>Ты в списке</b>\n\nЭфир уже идёт — кнопка со ссылкой ниже.';
+      return '<b>Поздравляю! Ты в списке участников!</b>\n\n'
+          'Мастер-класс уже идёт — кнопка со ссылкой ниже.';
     }
-    final when = _formatDateTime(launch.webinarAt);
-    final promo = _formatPrice(launch.resolvedPricePromoKopecks);
-    final promoLine = promo == null ? '' : ' Спеццена $promo — 3 дня после эфира.';
-    return '<b>Ты в списке на эфир</b>\n\n'
-        '${when == null ? 'Напомню ближе к эфиру и пришлю ссылку.' : 'Эфир $when. Напомню и пришлю ссылку.'}'
-        '$promoLine';
+    final day = _formatHumanDate(launch.webinarAt);
+    final time = _formatClock(launch.webinarAt);
+    final when = day == null
+        ? 'Напомню ближе к мастер-классу и пришлю ссылку.'
+        : 'Встречаемся $day${time == null ? '' : ' в $time'}.';
+    return '<b>Поздравляю! Ты в списке участников!</b>\n\n'
+        '$when\n'
+        'Ссылка на Мастер-класс придет в этом боте. Жду встречи! 🤍';
   }
 
   String _warmupDay1() {
-    return '<b>Почему любимый цвет «не идёт»</b>\n\n'
-        'Часто дело не во вкусе, а в подтоне: холодный розовый на тёплой коже выглядит грязновато, '
-        'тёплый беж на холодной — желтит.\n\n'
-        'Гайд это подсвечивает. На курсе разбираем, как собрать базу, которая не спорит с кожей. '
-        'Запись — в меню, когда будет момент.';
+    return '<b>Почему любимый цвет «не работает» в объекте</b>\n\n'
+        'Часто дело не во вкусе, а в том, как оттенок живёт со светом, деревом и металлом: '
+        'один и тот же цвет может звучать чисто — или грязно.\n\n'
+        'Гайд это подсвечивает. На курсе собираем палитру, которая держит характер пространства. '
+        'Курс — в меню, когда будет момент.';
   }
 
   String _warmupDay3(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final price = _formatPrice(launch?.priceFullKopecks);
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final price = _marketingPrice(launch?.priceFullKopecks);
     final deposit = launch != null && launch.hasDepositOption
-        ? formatRubFromKopecks(launch.depositKopecks)
+        ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
         : null;
-    final due = _formatDate(launch?.depositDueAt);
+    final due = _formatHumanDate(launch?.depositDueAt);
     final buf = StringBuffer()
-      ..writeln(start == null ? '<b>Если идёшь в поток</b>' : '<b>Поток $start</b>')
+      ..writeln(start == null ? '<b>Если идёшь на курс</b>' : '<b>Старт потока $start</b>')
       ..writeln();
+    buf.write('Курс ${_quotedCourseTitle(launch)}.');
     if (price != null) {
-      buf.write('Полная стоимость $price.');
-      if (deposit != null && due != null) {
-        buf.write(' Можно внести предоплату $deposit и закрыть остаток до $due.');
+      buf.write(' Полная стоимость $price.');
+      if (deposit != null) {
+        final until = due == null ? 'до старта' : 'до $due';
+        buf.write(' Можно внести предоплату $deposit и закрыть остаток $until.');
       }
     } else {
-      buf.write('Можно закрыть полную сумму или внести предоплату.');
+      buf.write(' Можно закрыть полную сумму или внести предоплату.');
     }
     buf
       ..writeln()
       ..writeln()
       ..write(
-        'В канал потока пускаю после полной суммы или после списания. '
-        'Запись — в меню внизу.',
+        'Ссылка в канал курса придёт после полной оплаты. '
+        'Курс — в меню внизу.',
       );
     return buf.toString();
   }
 
   String _warmupDay7(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start == null ? 'Поток ещё можно успеть.' : 'Старт потока $start.';
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final startLine = start == null ? 'Курс ещё можно успеть.' : 'Старт потока $start.';
     return '<b>Неделя с гайдом</b>\n\n'
-        '$startLine Если хочешь собрать гардероб в систему — запись в меню внизу.';
+        '$startLine Если хочешь собирать цвет в интерьере как систему — курс в меню внизу.';
   }
 
   String _enrollDay1(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start == null ? '' : ' Старт потока $start.';
-    return '<b>Гайд и запись ещё здесь</b>\n\n'
-        'Можно забрать «Язык цвета» или записаться на поток.$startLine '
-        'Оба в меню внизу.';
+    return '<b>Подарок всё ещё здесь</b>\n\n'
+        'Гайд «${MessageTemplates.guideTitle}» никуда не делся — '
+        'и курс ${_quotedCourseTitle(launch)} тоже.'
+        '${_startFact(launch)}\n\n'
+        'Оба ждут в меню внизу.';
   }
 
   String _enrollDay3(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start == null ? 'Поток ещё можно успеть.' : 'Старт потока $start.';
-    return '<b>Гайд всё ещё можно забрать</b>\n\n'
-        '$startLine «Язык цвета» и запись по-прежнему в меню внизу — '
-        'можно открыть, когда будет минута.';
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final startLine = start == null ? 'Курс ещё можно успеть.' : 'Старт потока $start.';
+    return '<b>Гайд никуда не делся</b>\n\n'
+        '$startLine «${MessageTemplates.guideTitle}» и курс ${_quotedCourseTitle(launch)} '
+        'всё ещё в меню внизу — открой, когда будет минута.';
   }
 
   String _startNudge(Launch? launch) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start == null ? 'Поток близко.' : 'Поток $start.';
-    return '<b>$startLine</b>\n\n'
-        'Записаться ещё можно из меню внизу. Ссылку в канал пришлю после полной оплаты или после списания.';
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final headline = start == null ? 'Курс близко' : 'Старт потока $start';
+    return '<b>$headline</b>\n\n'
+        'Присоединиться ещё можно из меню внизу. '
+        'Ссылку в канал курса пришлю после полной оплаты.';
+  }
+
+  String _startFact(Launch? launch) {
+    final start = _formatHumanDate(launch?.courseStartAt);
+    return start == null ? '' : ' Старт потока $start.';
+  }
+
+  String? _marketingPrice(int? kopecks) {
+    if (kopecks == null || kopecks <= 0) {
+      return null;
+    }
+    return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
   String optOutConfirmed() {
-    return 'Продающие сообщения больше не пришлю.\n\n'
-        'Гайд и запись остаются в меню. Если оплата уже начата или есть доплата — про это напомню, это не реклама.';
+    return '<b>Вы отписались от сообщений бота</b>\n\n'
+        'Жаль, что ты уходишь! Ты в любой момент можешь возобновить чат, чтобы получить полезные материалы и анонсы.';
   }
 
   String enrollOptions(Launch launch, {required SalesQuote quote}) {
-    final start = _formatDate(launch.courseStartAt) ?? 'когда будет дата';
-    final promo = formatRubFromKopecks(quote.pricePromoKopecks);
-    final regular = formatRubFromKopecks(quote.priceFullKopecks);
+    final start = _formatHumanDate(launch.courseStartAt) ?? 'когда будет дата';
+    final title = _quotedCourseTitle(launch);
+    final promo = formatRubSpaced(quote.pricePromoKopecks, unit: 'руб.');
+    final regularRub = formatRubSpaced(quote.priceFullKopecks, unit: 'руб.');
     switch (quote.phase) {
       case SalesPhase.preSales:
-        final openAt = quote.salesStartAt ?? quote.webinarAt;
-        final when = _formatDateTime(openAt);
-        final whenLine = when == null ? 'Продажи ещё не открыты.' : 'Касса откроется $when.';
-        return '<b>Курс</b>\n\n'
-            'Система цвета и базы гардероба: какие оттенки тебе идут и как собирать образы без «любимый цвет вдруг не работает».\n\n'
-            'Старт потока $start. $whenLine '
-            'Пока можно ждать — напишу, когда можно будет оплатить.\n\n'
-            'Эфир: если ещё не в списке, вернись к сообщению про эфир.';
+        return '<b>Курс $title</b>\n\n'
+            'Скоро стартует мой курс по интерьерной колористике\n\n'
+            'Старт потока $start. Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+            'А пока можно записаться на бесплатный Мастер-класс «${MessageTemplates.masterClassTitle}», '
+            'после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после. '
+            'Нажимай на кнопку внизу, чтобы попасть в список участников за 1 клик.';
       case SalesPhase.closed:
         return '<b>Запись закрыта</b>\n\n'
             'Продажи этого потока закончились. Старт $start. '
             'Если оплата уже шла — напиши в «${MessageTemplates.buttonHelp}».';
       case SalesPhase.promo:
         if (quote.rsvp) {
-          final until = _formatDate(quote.promoEndsAt);
-          return '<b>Запись · спеццена</b>\n\n'
-              'Ты в списке на эфир. Сейчас $promo'
-              '${until == null ? '.' : ' до $until.'} Дальше $regular.\n\n'
-              'Старт потока $start. Ссылку в канал пришлю после полной оплаты.';
+          final until = _formatHumanDate(quote.promoEndsAt);
+          final untilLine = until == null
+              ? 'Предложение актуально 3 дня'
+              : 'Предложение актуально до $until';
+          return '<b>Специальная цена на курс $title</b>\n\n'
+              '🎁 Для тебя открыты специальные условия — стоимость курса составляет $promo вместо <s>$regularRub</s>. '
+              '$untilLine, далее цена сменится на обычную и приобрести программу по специальной стоимости уже не получится.\n\n'
+              'Старт потока $start. Оплатить можно по ссылке внизу. После полной оплаты придет ссылка на канал курса.';
         }
-        final regularAt = _formatDate(quote.regularSalesAt);
-        return '<b>Курс</b>\n\n'
-            'Сейчас спеццена только у тех, кто отметился на эфир. '
-            'Обычная цена $regular откроется${regularAt == null ? ' после окна спеццены' : ' $regularAt'}. '
-            'Старт потока $start.\n\n'
-            'Напишу в день старта продаж по основной цене.';
+        final deposit = launch.hasDepositOption
+            ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
+            : null;
+        final depositLine = deposit == null
+            ? ''
+            : ' или забронировать место по предоплате $deposit и внести остаток до старта курса';
+        return '<b>Вы еще успеваете присоединиться</b>\n\n'
+            'Предложение о специальной цене истекло, но двери курса еще открыты! 🧡\n'
+            'Сейчас ты можешь приобрести программу за $regularRub$depositLine. Старт потока $start\n'
+            'Ты с нами?';
       case SalesPhase.regular:
-        return '<b>Запись на поток</b>\n\n'
-            'Стоимость: ${formatRubFromKopecks(quote.payableKopecks)}. '
-            'Старт потока $start. Ссылку в канал пришлю после полной оплаты.';
+        return '<b>Запись на курс $title</b>\n\n'
+            'Стоимость: ${formatRubSpaced(quote.payableKopecks)}\n'
+            'Стартуем $start.\n'
+            'Ссылка в канал курса придет в этот чат после полной оплаты.';
     }
   }
 
@@ -601,8 +692,7 @@ final class MessageTemplates {
       return payManualFallback();
     }
     return 'Ссылка на оплату готова. После успешного платежа статус в этом чате обновится сам. '
-        'Если страница кассы не вернула сюда — всё равно жди сообщение здесь. '
-        'Если это предоплата, ссылку в канал пришлю после полной оплаты.';
+        'Если ты вносишь предоплату, то ссылка в канал курса придет тебе после внесения остатка.';
   }
 
   // TODO(launch): replace the hardcoded @zhorenty support username below with
@@ -701,21 +791,28 @@ final class MessageTemplates {
         'из ${formatRubFromKopecks(order.priceFullKopecks)}';
   }
 
-  String paymentSucceeded() {
-    return '<b>Оплата прошла</b>\n\n'
-        'Дальше — доступ в канал этого потока. На одного человека.';
+  String paymentSucceeded({Launch? launch}) {
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final startLine = start == null ? '' : '\nСтартуем $start.\n';
+    return '<b>Успешная оплата</b>\n\n'
+        'Поздравляю с поступлением на курс ${_quotedCourseTitle(launch)}! 🎆\n'
+        'Вступай в канал этого потока по ссылке ниже — там тебя будут ждать уроки и чат.$startLine'
+        'До встречи!';
   }
 
-  String depositSucceeded(CourseOrder order) {
-    final due = _dueDateLabel(order.dueAt, fallback: 'по договорённости');
+  String depositSucceeded(CourseOrder order, {Launch? launch}) {
+    final start =
+        _formatHumanDate(launch?.courseStartAt, withYear: true) ??
+        _dueDateLabel(order.dueAt, fallback: 'старта курса');
     return '<b>Предоплата дошла</b>\n\n'
-        'Остаток ${formatRubFromKopecks(order.amountDueKopecks)} — до $due. '
-        'Ссылку в канал пришлю, когда закроется полная сумма.';
+        'Остаток необходимо внести до старта курса — $start. '
+        'Ссылку в канал курса и чат потока пришлю, когда закроется полная сумма.';
   }
 
   String inviteMessage() {
-    return 'Доступ в поток — по кнопке ниже.\n\n'
-        'На одного человека. Если не открылась — напиши сюда, новую выдаст админ.';
+    return '<b>Вступай в канал курса</b>\n\n'
+        'Вижу, что ты еще не открывал(а) доступ в канал курса — скорее жми на кнопку ниже.\n\n'
+        'Если не сработает, напиши сюда, новую выдаст админ.';
   }
 
   String inviteUnavailable() {
@@ -723,7 +820,7 @@ final class MessageTemplates {
   }
 
   String abandonedFirst() {
-    return 'Оформление началось, оплата пока не закрылась. Можно продолжить с того же места.';
+    return 'Оформление заказа началось, но оплата пока не проведена. Можно продолжить с того же места.';
   }
 
   String abandonedSecond() {
@@ -734,21 +831,22 @@ final class MessageTemplates {
     return 'Поток близко, а оплата ещё не закрылась. Можно продолжить с того же места.';
   }
 
-  String remainderBeforeDue(CourseOrder order) {
-    final due = _dueDateLabel(order.dueAt, fallback: 'скоро');
-    return 'Напоминаю про доплату: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due. '
-        'После полной суммы открою канал потока.';
+  String remainderBeforeDue(CourseOrder order, {Launch? launch}) {
+    final due = _formatDate(order.dueAt) ?? _formatDate(launch?.courseStartAt) ?? 'скоро';
+    return '<b>Напоминаю про внесение остатка за курс</b>\n\n'
+        'Уже внесена предоплата ${formatRubSpaced(order.amountPaidKopecks, unit: 'руб.')}, '
+        'остаток ${formatRubSpaced(order.amountDueKopecks, unit: 'руб.')}, срок до $due. '
+        'После того, как будет внесена полная сумма, пришлю доступ к каналу курса и чату потока.';
   }
 
-  String remainderReminder(CourseOrder order) {
-    final due = _dueDateLabel(order.dueAt, fallback: 'скоро');
-    return 'Доплата по курсу: остаток ${formatRubFromKopecks(order.amountDueKopecks)}, срок $due. '
-        'После полной суммы открою канал потока.';
+  String remainderReminder(CourseOrder order, {Launch? launch}) {
+    return remainderBeforeDue(order, launch: launch);
   }
 
   String unjoinedInviteReminder() {
-    return 'Доступ в поток ещё не открыт — кнопка ниже.\n\n'
-        'Если не сработает — напиши сюда, новую выдаст админ.';
+    return '<b>Вступай в канал курса</b>\n\n'
+        'Вижу, что ты еще не открывал(а) доступ в канал курса — скорее жми на кнопку ниже.\n\n'
+        'Если не сработает, напиши сюда, новую выдаст админ.';
   }
 
   String inviteAskAdmin() {
@@ -798,11 +896,11 @@ final class MessageTemplates {
         '<b>Гайд</b>\n'
         'Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.\n\n'
         '<b>Прогрев после гайда</b>\n'
-        'Сразу приглашение на эфир и кнопка «Буду на эфире». '
+        'Сразу приглашение на мастер-класс и кнопка «${MessageTemplates.buttonRsvp}». '
         'Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. '
         'Спеццена — 3 дня с эфира, только у отметившихся.\n\n'
         '<b>Продажи</b>\n'
-        'До старта продаж «Записаться» — карточка курса и «ждём кассу», без оплаты. '
+        'До старта продаж «${MessageTemplates.buttonEnroll}» — карточка курса и «ждём кассу», без оплаты. '
         'Старт продаж — поле в карточке курса (пусто — как дата эфира). '
         'В день старта продаж пишем тем, кто уже может оплатить. '
         'После окна спеццены — обычная цена и дожим. '
@@ -813,7 +911,7 @@ final class MessageTemplates {
         'После записи до старта продаж молчим про оплату. '
         'В день обычной цены и дожим до конца продаж — тоже, даже без гайда.\n\n'
         '<b>Запись и оплата</b>\n'
-        '«${MessageTemplates.buttonEnroll}» — пока нет успешной оплаты. Потом в меню «Мой курс».\n'
+        '«${MessageTemplates.buttonEnroll}» — пока нет успешной оплаты. Потом та же кнопка открывает статус оплаты, старт и канал.\n'
         '• полная оплата — ссылка в канал этого потока;\n'
         '• предоплата — канала нет, пока не доплатят.\n\n'
         '<b>Открыли оплату и не закончили</b>\n'
@@ -1558,6 +1656,39 @@ final class MessageTemplates {
     return _date.format(MoscowTime.toMoscow(value));
   }
 
+  String? _formatHumanDate(DateTime? value, {bool withYear = false}) {
+    if (value == null) {
+      return null;
+    }
+    final moscow = MoscowTime.toMoscow(value);
+    final month = _monthsGenitive[moscow.month - 1];
+    if (withYear) {
+      return '${moscow.day} $month ${moscow.year}';
+    }
+    return '${moscow.day} $month';
+  }
+
+  String? _formatClock(DateTime? value) {
+    if (value == null) {
+      return null;
+    }
+    return _clock.format(MoscowTime.toMoscow(value));
+  }
+
+  String _courseTitle(Launch? launch) {
+    final raw = launch?.title.trim();
+    if (raw == null || raw.isEmpty) {
+      return MessageTemplates.defaultCourseTitle;
+    }
+    return raw;
+  }
+
+  String _quotedCourseTitle(Launch? launch, {bool escape = true}) {
+    final title = _courseTitle(launch);
+    final body = escape ? escapeHtml(title) : title;
+    return '"$body"';
+  }
+
   String _dueDateLabel(DateTime? value, {required String fallback}) {
     return _formatDate(value) ?? fallback;
   }
@@ -1567,18 +1698,14 @@ final class MessageTemplates {
     return _dateTime.format(moscow);
   }
 
-  String? _formatPrice(int? kopecks) {
-    if (kopecks == null || kopecks <= 0) {
-      return null;
+  String payFullButtonLabel(SalesQuote quote) {
+    if (quote.promoPriceApplies) {
+      return MessageTemplates.buttonPayFullPromo;
     }
-    return formatRubFromKopecks(kopecks);
-  }
-
-  String payFullButtonLabel(int kopecks) {
-    return '${MessageTemplates.buttonPayFull} ${formatRubFromKopecks(kopecks)}';
+    return '${MessageTemplates.buttonPayFull} всю сумму ${formatRubSpaced(quote.payableKopecks)}';
   }
 
   String payDepositButtonLabel(int kopecks) {
-    return '${MessageTemplates.buttonPayDeposit} ${formatRubFromKopecks(kopecks)}';
+    return '${MessageTemplates.buttonPayDeposit} ${formatRubSpaced(kopecks)}';
   }
 }

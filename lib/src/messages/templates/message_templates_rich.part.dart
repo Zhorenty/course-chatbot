@@ -2,42 +2,34 @@ part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplatesRich on MessageTemplates {
   String startGuideOfferRich() {
-    return '${richH2('Гайд «Язык цвета»')}'
-        '${richP('Какие оттенки тебе идут — и почему любимый цвет в зеркале вдруг «не работает».')}'
-        '${richP('PDF пришлю сюда: без имени, почты и телефона.')}'
-        '${richFooter('Гайд — кнопка в меню внизу.')}';
+    return '${richH2('Привет 🤍')}'
+        '${richP('На связи Анастасия Дубовскова — дизайнер и автор 80+ узнаваемых проектов, где цвет является частью характера пространства, преподаватель в Академии дизайна, член жюри Евразийской премии по хоумстейджингу 2026 и лауреат премий.')}'
+        '${richP('А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать управлять им осознанно.')}'
+        '${richP('Для начала у меня для тебя подарок — гайд «${MessageTemplates.guideTitle}». Забирай его по кнопке «Получить гайд» 🍂')}';
   }
 
   String guideReadyRich() {
-    return '${richH2('Гайд «Язык цвета»')}'
+    return '${richH2('Гайд «${MessageTemplates.guideTitle}»')}'
         '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}'
-        '${richFooter('Дальше — эфир. Напомню следующим сообщением.')}';
+        '${richFooter('Файл выше. Следующим сообщением пришлю приглашение.')}';
   }
 
   String startCourseCardRich({Launch? launch}) {
-    final start = _formatDate(launch?.courseStartAt);
-    final price = _formatPrice(launch?.priceFullKopecks);
-    final rawTitle = launch?.title.trim();
-    final headline = rawTitle == null || rawTitle.isEmpty ? 'Курс по колористике' : rawTitle;
-    final rows = <(String, String)>[
-      if (start != null) ('Старт', start),
-      if (price != null) ('Стоимость', price),
-    ];
-    return '${richH2(headline)}'
-        '${richP('Собрать свой язык цвета и гардероб, который не спорит с тоном кожи.')}'
-        '${rows.isEmpty ? '' : richTable(rows)}'
-        '${richP('Дальше — записаться на поток или сначала забрать гайд «Язык цвета». Оба в меню внизу.')}';
+    final start = _formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата';
+    return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)}')}'
+        '${richP('Скоро стартует мой курс по интерьерной колористике, после которого твои объекты обретут почерк, а вместо страха придет уверенная и осознанная работа с цветом!')}'
+        '${richP('16 уроков: от терминологии, физики и психологии цвета до практической работы с палитрами, деревом, металлом и цветовыми сценариями в интерьере. 🧡 Старт потока $start. Сообщу тебе, когда откроются продажи по самой выгодной цене.')}'
+        '${richP('А пока что можно получить гайд-шпаргалку «${MessageTemplates.guideTitle}» и записаться на Мастер-класс «${MessageTemplates.masterClassTitle}» прямо в боте!')}';
   }
 
   String alreadyInFunnelRich() {
     return '${richH2('Продолжаем с того же места')}'
-        '${richP('В меню внизу: гайд, запись на поток и помощь.')}';
+        '${richP('В меню внизу: гайд, курс и помощь.')}';
   }
 
   String helpRich() {
     return '${richH2('Помощь')}'
-        '${richP('Гайд, запись и статус — в меню внизу. Если что-то сломалось, напиши сюда: перешлю человеку на связи.')}'
-        '${richUl(<String>['Гайд не пришёл — «${escapeHtml(MessageTemplates.buttonGuide)}» в меню, пришлю ещё раз.', 'Касса не открылась — «${escapeHtml(MessageTemplates.buttonEnroll)}», затем «Продолжить оплату».', 'Ссылка в канал не сработала — напиши сюда, новую выдаст админ.', 'Продающие сообщения не нужны — «${escapeHtml(MessageTemplates.buttonOptOut)}» ниже. Гайд, запись и напоминания про оплату останутся.'])}';
+        '${richP('Если что-то сломалось или не пришло, напиши сюда: перешлю человеку на связи.')}';
   }
 
   String courseStatusRich({
@@ -47,23 +39,13 @@ extension MessageTemplatesRich on MessageTemplates {
     required DateTime now,
   }) {
     final next = _courseStatusNextStep(order: order, access: access);
-    return '${richH2('Мой курс')}'
-        '${richTable(<(String, String)>[('Оплата', _coursePaymentLine(order).replaceFirst('Оплата: ', '')), ('Старт', _courseStartLine(launch, now).replaceFirst('Курс: ', '')), ('Канал', _courseChannelLine(order: order, access: access).replaceFirst('Канал: ', '').split('\n').first)])}'
+    return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)}')}'
+        '${richTable(<(String, String)>[('Оплата', _coursePaymentLine(order)), ('Старт', _courseStartLine(launch, now)), ('Канал', _courseChannelLine(order: order, access: access).split('\n').first)])}'
         '${next == null ? '' : richP(next)}';
   }
 
   String enrollOptionsRich(Launch launch, {required SalesQuote quote}) {
-    return '${richH2(_enrollHeadline(quote))}${richP(enrollOptions(launch, quote: quote).replaceFirst(RegExp(r'^<b>.*?</b>\n\n'), ''))}';
-  }
-
-  String _enrollHeadline(SalesQuote quote) {
-    return switch (quote.phase) {
-      SalesPhase.preSales => 'Курс',
-      SalesPhase.closed => 'Запись закрыта',
-      SalesPhase.promo when quote.rsvp => 'Запись · спеццена',
-      SalesPhase.promo => 'Курс',
-      SalesPhase.regular => 'Запись на поток',
-    };
+    return richHtmlFromClassic(enrollOptions(launch, quote: quote));
   }
 
   String adminCardRich({
@@ -115,10 +97,10 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richDetails('Кто не получает прогрев', richP('Аккаунты админов. Карточка может появиться (админ тоже пишет боту), но продающие сообщения админу не шлём.'))}'
         '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — экран про «Язык цвета»;', 'ссылка на курс — карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
         '${richDetails('Гайд', richP('Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.'))}'
-        '${richDetails('Прогрев после гайда', richP('Сразу приглашение на эфир и кнопка «Буду на эфире». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
-        '${richDetails('Продажи', richP('До старта продаж «Записаться» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — как дата эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
+        '${richDetails('Прогрев после гайда', richP('Сразу приглашение на мастер-класс и кнопка «${escapeHtml(MessageTemplates.buttonRsvp)}». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
+        '${richDetails('Продажи', richP('До старта продаж «${escapeHtml(MessageTemplates.buttonEnroll)}» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — как дата эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
         '${richDetails('Если гайд не забрали', richP('Напоминания на 1-й и на 3-й день после первого /start, пока не нажали «Записаться» и пока касса уже открыта для этого человека. После записи до старта продаж молчим про оплату. В день обычной цены и дожим до конца продаж — тоже, даже без гайда.'))}'
-        '${richDetails('Запись и оплата', '${richP('«${escapeHtml(MessageTemplates.buttonEnroll)}» — пока нет успешной оплаты. Потом в меню «Мой курс».')}${richUl(<String>['полная оплата — ссылка в канал этого потока;', 'предоплата — канала нет, пока не доплатят.'])}')}'
+        '${richDetails('Запись и оплата', '${richP('«${escapeHtml(MessageTemplates.buttonEnroll)}» — пока нет успешной оплаты. Потом та же кнопка открывает статус оплаты, старт и канал.')}${richUl(<String>['полная оплата — ссылка в канал этого потока;', 'предоплата — канала нет, пока не доплатят.'])}')}'
         '${richDetails('Открыли оплату и не закончили', richP('Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.'))}'
         '${richDetails('Внесли предоплату', richP('Напоминание за 1–3 дня до срока, в день срока и один раз после просрочки. Отписка от рассылки это не глушит.'))}'
         '${richDetails('Отписка', richP('«${escapeHtml(MessageTemplates.buttonOptOut)}» в «${escapeHtml(MessageTemplates.buttonHelp)}». Гайд и запись остаются. Напоминания про начатую оплату и доплату тоже.'))}'

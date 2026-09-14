@@ -161,8 +161,8 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (result.depositOnly) {
       final reached = await _dmUser(
         userId,
-        _templates.depositSucceeded(result.order),
-        replyMarkup: _templates.remainderKeyboard(result.order.id),
+        _templates.depositSucceeded(result.order, launch: _course.getLaunch(result.order.launchId)),
+        replyMarkup: _templates.remainderKeyboard(result.order.id, immediate: true),
       );
       final pinned = await _dmUser(userId, _templates.courseMenuPinned());
       return reached && pinned;
@@ -170,21 +170,21 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     if (!result.grantedAccess) {
       return true;
     }
-    var reached = await _dmUser(userId, _templates.paymentSucceeded());
+    final launch = _course.getLaunch(result.order.launchId) ?? _launch;
     final link = result.inviteLink;
-    if (link != null) {
+    var reached = await _dmUser(
+      userId,
+      _templates.paymentSucceeded(launch: launch),
+      replyMarkup: link != null && link.isNotEmpty ? _templates.unjoinedInviteKeyboard(link) : null,
+    );
+    if (link != null && link.isNotEmpty) {
       await _notifyPaidWithInvite(result);
-      final inviteReached = await _dmUser(
-        userId,
-        _templates.inviteMessage(),
-        replyMarkup: _templates.unjoinedInviteKeyboard(link),
-      );
-      reached = reached && inviteReached;
     } else {
       final missing = await _dmUser(userId, _templates.inviteUnavailable());
       reached = reached && missing;
     }
-    return reached;
+    final pinned = await _dmUser(userId, _templates.menuPinned());
+    return reached && pinned;
   }
 
   Future<void> _notifyPaidWithInvite(PaymentApplyResult result) async {
