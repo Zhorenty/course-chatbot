@@ -62,6 +62,14 @@ final class WarmupStep {
     'warmup_start_d1',
   };
 
+  static const String lastWagonKey = 'last_wagon';
+
+  static bool isBuiltinDozhim(String stepKey) => stepKey.startsWith('dozhim_d');
+
+  static String customDozhimKey(int id) => 'dozhim:$id';
+
+  static bool isCustomDozhim(String stepKey) => stepKey.startsWith('dozhim:');
+
   /// Seeded with INSERT OR IGNORE so a live DB picks up new keys without
   /// resetting customer-edited delays.
   static const List<WarmupStep> defaults = <WarmupStep>[

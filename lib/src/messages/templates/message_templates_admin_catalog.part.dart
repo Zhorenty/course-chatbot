@@ -32,7 +32,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return '$title ($code) · $price · $start$active';
   }
 
-  String adminCatalogCard(Launch launch) {
+  String adminCatalogCard(Launch launch, {int dozhimCount = 0}) {
     final buf = StringBuffer()
       ..writeln('<b>${escapeHtml(launch.title)}</b>')
       ..writeln()
@@ -59,6 +59,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
     buf.writeln(_catalogGuideLine(launch));
+    buf.writeln(_catalogDozhimLine(dozhimCount));
     buf.write(launch.isActive ? 'активен: да' : 'активен: нет');
     return buf.toString();
   }
@@ -390,6 +391,89 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String _catalogGuideLine(Launch launch) {
     return _catalogHasGuide(launch) ? 'гайд: есть' : 'гайд: нет';
+  }
+
+  String _catalogDozhimLine(int count) {
+    if (count <= 0) {
+      return 'дожим: нет';
+    }
+    return 'дожим: $count ${_dayWord(count)}';
+  }
+
+  String _dayWord(int count) {
+    final n10 = count % 10;
+    final n100 = count % 100;
+    if (n10 == 1 && n100 != 11) {
+      return 'день';
+    }
+    if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) {
+      return 'дня';
+    }
+    return 'дней';
+  }
+
+  String adminCatalogDozhimList(Launch launch, List<LaunchDozhimMessage> messages) {
+    final buf = StringBuffer()
+      ..writeln('<b>Дожим</b>')
+      ..writeln()
+      ..writeln(escapeHtml(launch.title))
+      ..writeln();
+    if (messages.isEmpty) {
+      buf.writeln(
+        'Пока пусто. Добавь день — текст, фото или файл, с форматированием. '
+        'Без своих сообщений уйдёт встроенный дожим.',
+      );
+    } else {
+      buf.writeln(
+        'Свои сообщения заменяют встроенный дожим. День 1 — через сутки после обычной цены.',
+      );
+      buf.writeln();
+      for (final message in messages) {
+        buf.writeln(_catalogDozhimListLine(message));
+      }
+    }
+    buf
+      ..writeln()
+      ..write('Не удаляй исходные сообщения в этом чате — бот копирует их ученикам.');
+    return buf.toString();
+  }
+
+  String _catalogDozhimListLine(LaunchDozhimMessage message) {
+    final kind = broadcastContentKindLabel(message.contentKind);
+    return 'день ${message.dayIndex} · $kind';
+  }
+
+  String adminCatalogDozhimAsk({required int dayIndex, required bool replace}) {
+    final action = replace ? 'Замени' : 'Пришли';
+    return '<b>Дожим · день $dayIndex</b>\n\n'
+        '$action сообщение: текст, фото или файл. Жирное и ссылки сохранятся.\n\n'
+        'Не удаляй его в этом чате — бот будет копировать ученикам.';
+  }
+
+  String adminCatalogDozhimItem(LaunchDozhimMessage message) {
+    final kind = broadcastContentKindLabel(message.contentKind);
+    final preview = message.previewText?.trim();
+    final buf = StringBuffer()
+      ..writeln('<b>Дожим · день ${message.dayIndex}</b>')
+      ..writeln()
+      ..write('содержимое: $kind');
+    if (preview != null && preview.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(escapeHtml(_clipBroadcastPreview(preview)));
+    }
+    return buf.toString();
+  }
+
+  String adminCatalogDozhimCopyFailed() {
+    return 'Не получилось показать это сообщение. Замени его новым.';
+  }
+
+  String adminCatalogDozhimButton(int count) {
+    return count <= 0
+        ? MessageTemplates.buttonAdminCatalogDozhim
+        : '${MessageTemplates.buttonAdminCatalogDozhim} ($count)';
   }
 
   bool _catalogHasGuide(Launch launch) {

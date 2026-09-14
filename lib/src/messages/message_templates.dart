@@ -8,6 +8,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
@@ -108,6 +109,10 @@ final class MessageTemplates {
   static const String buttonAdminCatalogEdit = '✏️ Изменить поле';
   static const String buttonAdminCatalogReplaceGuide = '📘 Заменить гайд';
   static const String buttonAdminCatalogAttachGuide = '📘 Прикрепить гайд';
+  static const String buttonAdminCatalogDozhim = '📣 Дожим';
+  static const String buttonAdminCatalogDozhimAdd = '➕ Добавить день';
+  static const String buttonAdminCatalogDozhimReplace = '✏️ Заменить';
+  static const String buttonAdminCatalogDozhimDelete = '🗑 Удалить день';
   static const String buttonAdminCatalogActivate = '⭐ Сделать активным';
   static const String buttonAdminCatalogDelete = '🗑 Удалить';
   static const String buttonAdminCatalogBack = '↩️ К списку';
@@ -177,6 +182,11 @@ final class MessageTemplates {
   static const String cbCatalogKeepCode = 'ckc';
   static const String cbCatalogSkipChannel = 'csk';
   static const String cbCatalogSkipOptional = 'cso';
+  static const String cbCatalogDozhim = 'cz:';
+  static const String cbCatalogDozhimAdd = 'cza:';
+  static const String cbCatalogDozhimOpen = 'czo:';
+  static const String cbCatalogDozhimReplace = 'czr:';
+  static const String cbCatalogDozhimDelete = 'czx:';
   static const String cbLinksMenu = 'lm';
   static const String cbLinksNew = 'ln';
   static const String cbLinksOpen = 'lo:';
@@ -1351,6 +1361,27 @@ final class MessageTemplates {
       return null;
     }
     return (id: id, field: field);
+  }
+
+  static String catalogDozhimItemData(String prefix, int launchId, int id) {
+    return '$prefix$launchId:$id';
+  }
+
+  static ({int launchId, int id})? catalogDozhimItemFromCallback(String data, String prefix) {
+    if (!data.startsWith(prefix)) {
+      return null;
+    }
+    final rest = data.substring(prefix.length);
+    final sep = rest.indexOf(':');
+    if (sep <= 0) {
+      return null;
+    }
+    final launchId = int.tryParse(rest.substring(0, sep));
+    final id = int.tryParse(rest.substring(sep + 1));
+    if (launchId == null || id == null) {
+      return null;
+    }
+    return (launchId: launchId, id: id);
   }
 
   static String linksFieldData(int index, CatalogLinkField field) {

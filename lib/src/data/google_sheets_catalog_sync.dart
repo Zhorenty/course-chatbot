@@ -90,6 +90,10 @@ final class GoogleSheetsCatalogSync {
     return retry(() => _deleteCourseRowOnce(launchCode), shouldRetry: _shouldRetry);
   }
 
+  Future<void> writeDozhimPresence() {
+    return retry(_writeDozhimPresenceOnce, shouldRetry: _shouldRetry);
+  }
+
   Future<void> upsertLinkRow({
     required AcquisitionLink link,
     String? previousPayload,
@@ -281,7 +285,9 @@ final class GoogleSheetsCatalogSync {
       throw StateError('COURSES catalog sheet gid=0 is missing.');
     }
     final quoted = quoteA1SheetTitle(catalogSheet.title);
-    final rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    final rows = await _gateway
+        .getValues('$quoted!${CoursesSheet.valuesA1Range}')
+        .timeout(requestTimeout);
     final headerAt = CoursesSheetParser.headerRowIndex(rows);
     if (headerAt == null) {
       throw StateError('COURSES is missing the launch_code header.');
@@ -492,7 +498,9 @@ final class GoogleSheetsCatalogSync {
     }
 
     final quoted = quoteA1SheetTitle(title);
-    var rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    var rows = await _gateway
+        .getValues('$quoted!${CoursesSheet.valuesA1Range}')
+        .timeout(requestTimeout);
     var parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     final legacyFileIds = <String, String?>{
       for (final row in parsed.rows) row.launchCode: row.leadMagnetFileId,
@@ -507,7 +515,9 @@ final class GoogleSheetsCatalogSync {
           )
           .timeout(requestTimeout);
       seeded = true;
-      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      rows = await _gateway
+          .getValues('$quoted!${CoursesSheet.valuesA1Range}')
+          .timeout(requestTimeout);
       parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     } else if (CoursesSheetParser.needsLayoutRewrite(rows, hasValidRows: parsed.rows.isNotEmpty)) {
       await _gateway
@@ -517,7 +527,9 @@ final class GoogleSheetsCatalogSync {
             valueInputOption: 'USER_ENTERED',
           )
           .timeout(requestTimeout);
-      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      rows = await _gateway
+          .getValues('$quoted!${CoursesSheet.valuesA1Range}')
+          .timeout(requestTimeout);
       parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     }
 
@@ -611,6 +623,11 @@ final class GoogleSheetsCatalogSync {
     } on Object catch (error, stackTrace) {
       l.w('COURSES catalog look failed: $error', stackTrace);
     }
+    try {
+      await _writeDozhimPresenceOnce();
+    } on Object catch (error, stackTrace) {
+      l.w('COURSES dozhim flags failed: $error', stackTrace);
+    }
     l.i(
       'COURSES catalog synced. launch=${launch.code} '
       'price=${launch.priceFullKopecks} seeded=$seeded',
@@ -641,6 +658,64 @@ final class GoogleSheetsCatalogSync {
         .updateValues(
           a1Range: '$quoted!$letter${headerAt + 1}',
           rows: rows,
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+  }
+
+  Future<void> _writeDozhimPresenceOnce() async {
+    final layout = await _coursesLayout();
+    final counts = <String, int>{
+      for (final launch in _catalog.listLaunches())
+        launch.code: _catalog.listLaunchDozhim(launch.id).length,
+    };
+    var maxDays = 0;
+    for (final count in counts.values) {
+      if (count > maxDays) {
+        maxDays = count;
+      }
+    }
+    final existing = layout.headerAt < layout.rows.length
+        ? CoursesSheet.dozhimColumnCount(layout.rows[layout.headerAt])
+        : 0;
+    if (maxDays < existing) {
+      maxDays = existing;
+    }
+    if (maxDays <= 0) {
+      return;
+    }
+    final startCol = CoursesSheet.dozhimStartColumn;
+    final letter = CoursesSheet.columnLetter(startCol);
+    final headerCells = <Object?>[
+      for (var day = 1; day <= maxDays; day++) CoursesSheet.dozhimDisplayHeader(day),
+    ];
+    await _gateway
+        .updateValues(
+          a1Range: '${layout.quoted}!$letter${layout.headerAt + 1}',
+          rows: <List<Object?>>[headerCells],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+
+    final flags = <List<Object?>>[];
+    for (var i = layout.headerAt + 1; i < layout.rows.length; i++) {
+      final code = CoursesSheetParser.cellOf(
+        layout.rows[i],
+        layout.headerIndex,
+        CoursesSheet.launchCode,
+      );
+      final count = code == null || code.isEmpty ? 0 : (counts[code] ?? 0);
+      flags.add(<Object?>[
+        for (var day = 1; day <= maxDays; day++) day <= count ? CoursesSheet.presentYes : '',
+      ]);
+    }
+    if (flags.isEmpty) {
+      return;
+    }
+    await _gateway
+        .updateValues(
+          a1Range: '${layout.quoted}!$letter${layout.headerAt + 2}',
+          rows: flags,
           valueInputOption: 'USER_ENTERED',
         )
         .timeout(requestTimeout);
@@ -806,7 +881,7 @@ final class GoogleSheetsCatalogSync {
       );
     }
     final rows = await _gateway
-        .getValues('${quoteA1SheetTitle(catalog.title)}!A1:Z')
+        .getValues('${quoteA1SheetTitle(catalog.title)}!${CoursesSheet.valuesA1Range}')
         .timeout(requestTimeout);
     final parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     final seen = <String>{};

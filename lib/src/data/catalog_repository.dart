@@ -1,5 +1,7 @@
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 
 abstract interface class CatalogRepository {
   Launch upsertLaunch({
@@ -66,4 +68,26 @@ abstract interface class CatalogRepository {
   bool tryDeleteLaunch(int id);
 
   void setLeadMagnetFileId(String fileId, {int? launchId});
+
+  List<LaunchDozhimMessage> listLaunchDozhim(int launchId);
+
+  LaunchDozhimMessage? getLaunchDozhim(int id);
+
+  LaunchDozhimMessage addLaunchDozhim({
+    required int launchId,
+    required int sourceChatId,
+    required int sourceMessageId,
+    required BroadcastContentKind contentKind,
+    String? previewText,
+  });
+
+  LaunchDozhimMessage? replaceLaunchDozhim({
+    required int id,
+    required int sourceChatId,
+    required int sourceMessageId,
+    required BroadcastContentKind contentKind,
+    String? previewText,
+  });
+
+  bool deleteLaunchDozhim(int id);
 }

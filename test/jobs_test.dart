@@ -1,8 +1,10 @@
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
@@ -546,6 +548,73 @@ void main() {
           ?.stepKey,
       'sales_regular',
     );
+  });
+
+  test('custom launch dozhim replaces builtin copy and is copied as-is', () async {
+    harness.course.upsertActiveLaunch(
+      productCode: 'course',
+      productTitle: 'Курс',
+      launchCode: 'launch-1',
+      launchTitle: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 1, 8, 16),
+      salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      channelId: -1001,
+      leadMagnetFileId: 'file-guide',
+    );
+    final launch = harness.course.activeLaunch()!;
+    final custom = harness.course.addLaunchDozhim(
+      launchId: launch.id,
+      sourceChatId: 1,
+      sourceMessageId: 77,
+      contentKind: BroadcastContentKind.photo,
+      previewText: 'кейс',
+    );
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+    );
+    for (final key in <String>['warmup_0', 'sales_open', 'sales_regular']) {
+      harness.course.recordWarmupSent(userId: 42, stepKey: key, sentAt: DateTime.utc(2026, 1, 12));
+    }
+
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    expect(
+      warmup
+          .stepsFor(global: WarmupStep.defaults, dozhim: <LaunchDozhimMessage>[custom])
+          .map((step) => step.stepKey),
+      contains(custom.stepKey),
+    );
+    expect(
+      warmup
+          .stepsFor(global: WarmupStep.defaults, dozhim: <LaunchDozhimMessage>[custom])
+          .map((step) => step.stepKey),
+      isNot(contains('dozhim_d1')),
+    );
+
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: warmup,
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+    );
+    harness.sender.messages.clear();
+    harness.sender.copies.clear();
+    await job.run();
+    expect(harness.sender.copies, hasLength(1));
+    expect(harness.sender.copies.single.chatId, 42);
+    expect(harness.sender.copies.single.fromChatId, 1);
+    expect(harness.sender.copies.single.messageId, 77);
+    expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
   });
 
   test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {

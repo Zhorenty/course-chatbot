@@ -238,6 +238,39 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       }
       return _adminEnsureAndShowCard(context, targetId);
     }
+    if (data.startsWith(MessageTemplates.cbCatalogDozhimAdd)) {
+      return _askCatalogDozhimCompose(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogDozhimAdd),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDozhimOpen)) {
+      final parsed = MessageTemplates.catalogDozhimItemFromCallback(
+        data,
+        MessageTemplates.cbCatalogDozhimOpen,
+      );
+      return _showCatalogDozhimItem(context, parsed?.launchId, parsed?.id);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDozhimReplace)) {
+      final parsed = MessageTemplates.catalogDozhimItemFromCallback(
+        data,
+        MessageTemplates.cbCatalogDozhimReplace,
+      );
+      return _askCatalogDozhimCompose(context, parsed?.launchId, replaceId: parsed?.id);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDozhimDelete)) {
+      final parsed = MessageTemplates.catalogDozhimItemFromCallback(
+        data,
+        MessageTemplates.cbCatalogDozhimDelete,
+      );
+      return _deleteCatalogDozhim(context, parsed?.launchId, parsed?.id);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogDozhim)) {
+      return _showCatalogDozhim(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogDozhim),
+      );
+    }
     if (data.startsWith(MessageTemplates.cbCatalogDeleteYes)) {
       return _confirmCatalogDelete(
         context,

@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/launch_windows.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
@@ -16,6 +17,25 @@ final class WarmupService {
 
   final CourseRepository _course;
   final JobDedupeRepository _dedupe;
+
+  /// Builtin `dozhim_d*` copy applies only when this launch has no custom days.
+  /// Custom days sit after `sales_regular` and before `last_wagon`.
+  List<WarmupStep> stepsFor({
+    required List<WarmupStep> global,
+    List<LaunchDozhimMessage> dozhim = const <LaunchDozhimMessage>[],
+  }) {
+    if (dozhim.isEmpty) {
+      return global;
+    }
+    return <WarmupStep>[
+      for (final step in global)
+        if (!WarmupStep.isBuiltinDozhim(step.stepKey) && step.stepKey != WarmupStep.lastWagonKey)
+          step,
+      for (final message in dozhim) message.toWarmupStep(),
+      for (final step in global)
+        if (step.stepKey == WarmupStep.lastWagonKey) step,
+    ];
+  }
 
   WarmupDecision? nextFor(
     WarmupCandidate candidate,

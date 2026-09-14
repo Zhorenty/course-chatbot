@@ -83,11 +83,35 @@ extension MessageTemplatesRich on MessageTemplates {
     return buf.toString();
   }
 
-  String adminCatalogCardRich(Launch launch) {
+  String adminCatalogCardRich(Launch launch, {int dozhimCount = 0}) {
     final webinarUrl = launch.webinarUrl?.trim();
     final channel = launch.channelId;
     return '${richH2(launch.title)}'
-        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'как дата эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('активен', launch.isActive ? 'да' : 'нет')])}';
+        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'как дата эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
+  }
+
+  String adminCatalogDozhimListRich(Launch launch, List<LaunchDozhimMessage> messages) {
+    final items = messages.isEmpty
+        ? <String>[
+            'Пока пусто. Добавь день — текст, фото или файл.',
+            'Без своих сообщений уйдёт встроенный дожим.',
+          ]
+        : <String>[
+            'Свои сообщения заменяют встроенный дожим. День 1 — через сутки после обычной цены.',
+            for (final message in messages) escapeHtml(_catalogDozhimListLine(message)),
+          ];
+    return '${richH2('Дожим')}'
+        '${richP(escapeHtml(launch.title))}'
+        '${richUl(items)}'
+        '${richFooter('Не удаляй исходные сообщения в этом чате — бот копирует их ученикам.')}';
+  }
+
+  String adminCatalogDozhimItemRich(LaunchDozhimMessage message) {
+    final kind = broadcastContentKindLabel(message.contentKind);
+    final preview = message.previewText?.trim();
+    return '${richH2('Дожим · день ${message.dayIndex}')}'
+        '${richP('содержимое: $kind')}'
+        '${preview == null || preview.isEmpty ? '' : richQuote(escapeHtml(_clipBroadcastPreview(preview)))}';
   }
 
   String adminFunnelLogicRich({Launch? launch}) {

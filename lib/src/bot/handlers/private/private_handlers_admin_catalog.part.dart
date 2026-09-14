@@ -19,7 +19,9 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogCreateGuide ||
         step == PrivateFlowStep.adminCatalogCreateActive ||
         step == PrivateFlowStep.adminCatalogCreateConfirm ||
-        step == PrivateFlowStep.adminCatalogEditValue;
+        step == PrivateFlowStep.adminCatalogEditValue ||
+        step == PrivateFlowStep.adminCatalogDozhim ||
+        step == PrivateFlowStep.adminCatalogDozhimCompose;
   }
 
   Future<bool> _openCatalogFromMenu(PrivateMessageContext context) async {
@@ -76,11 +78,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       PrivateFlowStep.adminCatalogMenu,
       catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
     );
+    final dozhimCount = _course.listLaunchDozhim(launch.id).length;
     return _presentCatalog(
       context,
-      _templates.adminCatalogCard(launch),
-      richHtml: _templates.adminCatalogCardRich(launch),
-      replyMarkup: _templates.adminCatalogCardKeyboard(launch),
+      _templates.adminCatalogCard(launch, dozhimCount: dozhimCount),
+      richHtml: _templates.adminCatalogCardRich(launch, dozhimCount: dozhimCount),
+      replyMarkup: _templates.adminCatalogCardKeyboard(launch, dozhimCount: dozhimCount),
     );
   }
 
@@ -103,9 +106,15 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
   }
 
   Future<bool> _captureCatalog(PrivateMessageContext context, {String? rawOverride}) async {
-    await _deleteInboundMessage(context);
     final flow = _flowByUserId[context.userId!];
     final step = flow?.step;
+    if (step == PrivateFlowStep.adminCatalogDozhimCompose) {
+      return _captureCatalogDozhim(context);
+    }
+    await _deleteInboundMessage(context);
+    if (step == PrivateFlowStep.adminCatalogDozhim) {
+      return true;
+    }
     if (step == PrivateFlowStep.adminCatalogEditValue) {
       return _captureCatalogEdit(context, rawOverride: rawOverride);
     }
@@ -950,6 +959,191 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return _templates.adminCatalogRefreshFailed('$error');
     }
     return null;
+  }
+
+  Future<bool> _showCatalogDozhim(PrivateMessageContext context, int? launchId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null) {
+      return false;
+    }
+    if (_catalogAdmin == null) {
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
+    }
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
+      return _showCatalogList(context);
+    }
+    final messages = _course.listLaunchDozhim(launchId);
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogDozhim,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogDozhimList(launch, messages),
+      richHtml: _templates.adminCatalogDozhimListRich(launch, messages),
+      replyMarkup: _templates.adminCatalogDozhimListKeyboard(launchId, messages),
+    );
+  }
+
+  Future<bool> _askCatalogDozhimCompose(
+    PrivateMessageContext context,
+    int? launchId, {
+    int? replaceId,
+  }) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null) {
+      return false;
+    }
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
+      return _showCatalogList(context);
+    }
+    var dayIndex = _course.listLaunchDozhim(launchId).length + 1;
+    if (replaceId != null) {
+      final existing = _course.getLaunchDozhim(replaceId);
+      if (existing == null || existing.launchId != launchId) {
+        return _showCatalogDozhim(context, launchId);
+      }
+      dayIndex = existing.dayIndex;
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogDozhimCompose,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId, dozhimReplaceId: replaceId),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogDozhimAsk(dayIndex: dayIndex, replace: replaceId != null),
+      replyMarkup: _templates.adminCatalogDozhimComposeKeyboard(launchId),
+    );
+  }
+
+  Future<bool> _showCatalogDozhimItem(
+    PrivateMessageContext context,
+    int? launchId,
+    int? messageId,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || messageId == null) {
+      return false;
+    }
+    final message = _course.getLaunchDozhim(messageId);
+    if (message == null || message.launchId != launchId) {
+      return _showCatalogDozhim(context, launchId);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogDozhim,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
+    );
+    final chatId = context.chatId;
+    if (chatId != null) {
+      try {
+        await _sender.copyMessage(
+          chatId: chatId,
+          fromChatId: message.sourceChatId,
+          messageId: message.sourceMessageId,
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Dozhim preview copy failed: $error', stackTrace);
+        return _presentCatalog(
+          context,
+          _templates.adminCatalogDozhimCopyFailed(),
+          replyMarkup: _templates.adminCatalogDozhimItemKeyboard(launchId, messageId),
+        );
+      }
+    }
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogDozhimItem(message),
+      richHtml: _templates.adminCatalogDozhimItemRich(message),
+      replyMarkup: _templates.adminCatalogDozhimItemKeyboard(launchId, messageId),
+    );
+  }
+
+  Future<bool> _deleteCatalogDozhim(
+    PrivateMessageContext context,
+    int? launchId,
+    int? messageId,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || messageId == null) {
+      return false;
+    }
+    final existing = _course.getLaunchDozhim(messageId);
+    if (existing != null && existing.launchId == launchId) {
+      _course.deleteLaunchDozhim(messageId);
+      await _writeDozhimPresenceFlags();
+    }
+    return _showCatalogDozhim(context, launchId);
+  }
+
+  Future<bool> _captureCatalogDozhim(PrivateMessageContext context) async {
+    final userId = context.userId!;
+    final message = context.message;
+    if (message == null) {
+      return false;
+    }
+    if (isTelegramAlbum(message)) {
+      return _presentCatalog(context, _templates.adminBroadcastAlbumRejected());
+    }
+    final kind = broadcastContentKindOf(message);
+    final messageId = asTelegramInt(message['message_id']);
+    final chatId = context.chatId;
+    if (kind == null || messageId == null || chatId == null) {
+      return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
+    }
+    final draft = _flowByUserId[userId]?.catalogDraft;
+    final launchId = draft?.editLaunchId;
+    if (launchId == null || _course.getLaunch(launchId) == null) {
+      return _showCatalogList(context);
+    }
+    final preview = _dozhimPreviewText(context.text);
+    final replaceId = draft?.dozhimReplaceId;
+    if (replaceId != null) {
+      final existing = _course.getLaunchDozhim(replaceId);
+      if (existing == null || existing.launchId != launchId) {
+        return _showCatalogDozhim(context, launchId);
+      }
+      _course.replaceLaunchDozhim(
+        id: replaceId,
+        sourceChatId: chatId,
+        sourceMessageId: messageId,
+        contentKind: kind,
+        previewText: preview,
+      );
+    } else {
+      _course.addLaunchDozhim(
+        launchId: launchId,
+        sourceChatId: chatId,
+        sourceMessageId: messageId,
+        contentKind: kind,
+        previewText: preview,
+      );
+    }
+    await _writeDozhimPresenceFlags();
+    return _showCatalogDozhim(context, launchId);
+  }
+
+  String? _dozhimPreviewText(String? raw) {
+    final text = raw?.trim();
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+    if (text.length <= 400) {
+      return text;
+    }
+    return '${text.substring(0, 400)}…';
+  }
+
+  Future<void> _writeDozhimPresenceFlags() async {
+    final sync = _catalogSync;
+    if (sync == null) {
+      return;
+    }
+    try {
+      await sync.writeDozhimPresence();
+    } on Object catch (error, stackTrace) {
+      l.w('COURSES dozhim flags failed: $error', stackTrace);
+    }
   }
 
   void _setCatalogFlow(

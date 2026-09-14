@@ -229,6 +229,22 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'warmup_steps', 'anchor', "TEXT NOT NULL DEFAULT 'magnet'");
     _ensureColumn(db, 'warmup_steps', 'ignore_quiet_hours', 'INTEGER NOT NULL DEFAULT 0');
     _ensureColumn(db, 'warmup_steps', 'rsvp_only', 'INTEGER NOT NULL DEFAULT 0');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS launch_dozhim (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        launch_id INTEGER NOT NULL REFERENCES launches(id) ON DELETE CASCADE,
+        day_index INTEGER NOT NULL,
+        source_chat_id INTEGER NOT NULL,
+        source_message_id INTEGER NOT NULL,
+        content_kind TEXT NOT NULL,
+        preview_text TEXT,
+        UNIQUE(launch_id, day_index)
+      );
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_launch_dozhim_launch
+      ON launch_dozhim (launch_id, day_index);
+    ''');
     _ensureWarmupSentSchema(db);
     db.execute('''
       CREATE TABLE IF NOT EXISTS conversation_log (

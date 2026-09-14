@@ -435,7 +435,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     ]);
   }
 
-  Map<String, Object?> adminCatalogCardKeyboard(Launch launch) {
+  Map<String, Object?> adminCatalogCardKeyboard(Launch launch, {int dozhimCount = 0}) {
     final rows = <List<Map<String, Object?>>>[
       <Map<String, Object?>>[
         <String, Object?>{
@@ -447,6 +447,12 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, Object?>{
           'text': adminCatalogGuideButton(launch),
           'callback_data': MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.guide),
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': adminCatalogDozhimButton(dozhimCount),
+          'callback_data': '${MessageTemplates.cbCatalogDozhim}${launch.id}',
         },
       ],
       if (!launch.isActive)
@@ -518,6 +524,88 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, Object?>{
           'text': MessageTemplates.buttonAdminCatalogBack,
           'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogDozhimListKeyboard(
+    int launchId,
+    List<LaunchDozhimMessage> messages,
+  ) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final message in messages.take(20))
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': adminCatalogDozhimDayButton(message),
+            'callback_data': MessageTemplates.catalogDozhimItemData(
+              MessageTemplates.cbCatalogDozhimOpen,
+              launchId,
+              message.id,
+            ),
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogDozhimAdd,
+          'callback_data': '${MessageTemplates.cbCatalogDozhimAdd}$launchId',
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  String adminCatalogDozhimDayButton(LaunchDozhimMessage message) {
+    final kind = broadcastContentKindLabel(message.contentKind);
+    final label = 'День ${message.dayIndex} · $kind';
+    if (label.length <= 64) {
+      return label;
+    }
+    return '${label.substring(0, 63)}…';
+  }
+
+  Map<String, Object?> adminCatalogDozhimItemKeyboard(int launchId, int messageId) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogDozhimReplace,
+          'callback_data': MessageTemplates.catalogDozhimItemData(
+            MessageTemplates.cbCatalogDozhimReplace,
+            launchId,
+            messageId,
+          ),
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogDozhimDelete,
+          'callback_data': MessageTemplates.catalogDozhimItemData(
+            MessageTemplates.cbCatalogDozhimDelete,
+            launchId,
+            messageId,
+          ),
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogDozhim}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogDozhimComposeKeyboard(int launchId) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogDozhim}$launchId',
         },
       ],
     ]);

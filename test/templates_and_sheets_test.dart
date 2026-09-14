@@ -11,6 +11,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
@@ -414,6 +415,15 @@ void main() {
     expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
     expect(data, contains(MessageTemplates.cbCatalogSkipOptional));
     expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
+    expect(templates.adminCatalogCard(launch), contains('дожим: нет'));
+    expect(templates.adminCatalogCard(launch, dozhimCount: 2), contains('дожим: 2 дня'));
+    expect(data, contains('${MessageTemplates.cbCatalogDozhim}12'));
+    expect(
+      _inlineCallbackData(
+        templates.adminCatalogDozhimListKeyboard(12, const <LaunchDozhimMessage>[]),
+      ),
+      contains('${MessageTemplates.cbCatalogDozhimAdd}12'),
+    );
     expect(
       templates.adminCatalogGuideButton(launch),
       MessageTemplates.buttonAdminCatalogAttachGuide,

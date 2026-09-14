@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -36,6 +37,15 @@ void main() {
     ]);
     expect(parsed.rows, hasLength(1));
     expect(parsed.active!.launchCode, 'launch-1');
+  });
+
+  test('dozhim sheet headers stay outside the spec and parse as day numbers', () {
+    expect(CoursesSheet.dozhimDayFromHeader('Дожим 1'), 1);
+    expect(CoursesSheet.dozhimDayFromHeader('дожим 12'), 12);
+    expect(CoursesSheet.dozhimDisplayHeader(2), 'Дожим 2');
+    final header = <Object?>[...CoursesSheet.displayHeaders, 'Дожим 1', 'Дожим 2'];
+    expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+    expect(CoursesSheet.dozhimColumnCount(header), 2);
   });
 
   test('multiple is_active flags pick the first row and stay valid', () {
@@ -469,6 +479,40 @@ void main() {
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.channelId, -1001);
       expect(course.launchByCode('launch-2')?.channelId, isNull);
+    });
+
+    test('sync writes Дожим N = ЕСТЬ flags and keeps the spec headers', () async {
+      gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
+      gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final first = await sync.sync();
+      expect(first.ok, isTrue);
+      final launch = course.activeLaunch()!;
+      course.addLaunchDozhim(
+        launchId: launch.id,
+        sourceChatId: 1,
+        sourceMessageId: 10,
+        contentKind: BroadcastContentKind.photo,
+      );
+      course.addLaunchDozhim(
+        launchId: launch.id,
+        sourceChatId: 1,
+        sourceMessageId: 11,
+        contentKind: BroadcastContentKind.text,
+        previewText: 'второй день',
+      );
+      await sync.writeDozhimPresence();
+      final sheet = gateway.valuesBySheetId[0]!;
+      final header = sheet[CoursesSheet.defaultHeaderRow];
+      expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+      expect(header[CoursesSheet.dozhimStartColumn], 'Дожим 1');
+      expect(header[CoursesSheet.dozhimStartColumn + 1], 'Дожим 2');
+      final dataRow = sheet[CoursesSheet.defaultHeaderRow + 1];
+      expect(dataRow[CoursesSheet.dozhimStartColumn], CoursesSheet.presentYes);
+      expect(dataRow[CoursesSheet.dozhimStartColumn + 1], CoursesSheet.presentYes);
+      final parsed = CoursesSheetParser.parse(sheet);
+      expect(parsed.rows, hasLength(1));
+      expect(parsed.active!.launchCode, 'launch-1');
     });
   });
 

@@ -292,6 +292,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (launchUsage(id).hasPeople) {
       return false;
     }
+    _db.execute('DELETE FROM launch_dozhim WHERE launch_id = ?;', <Object?>[id]);
     _db.execute('DELETE FROM launches WHERE id = ?;', <Object?>[id]);
     return true;
   }
@@ -303,5 +304,117 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       return;
     }
     _db.execute('UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;', <Object?>[fileId, id]);
+  }
+
+  @override
+  List<LaunchDozhimMessage> listLaunchDozhim(int launchId) {
+    final rows = _db.select(
+      'SELECT * FROM launch_dozhim WHERE launch_id = ? ORDER BY day_index, id;',
+      <Object?>[launchId],
+    );
+    return <LaunchDozhimMessage>[for (final row in rows) mapDozhim(row)];
+  }
+
+  @override
+  LaunchDozhimMessage? getLaunchDozhim(int id) {
+    final rows = _db.select('SELECT * FROM launch_dozhim WHERE id = ?;', <Object?>[id]);
+    if (rows.isEmpty) {
+      return null;
+    }
+    return mapDozhim(rows.first);
+  }
+
+  @override
+  LaunchDozhimMessage addLaunchDozhim({
+    required int launchId,
+    required int sourceChatId,
+    required int sourceMessageId,
+    required BroadcastContentKind contentKind,
+    String? previewText,
+  }) {
+    final next =
+        ((_db.select(
+                  'SELECT COALESCE(MAX(day_index), 0) AS n FROM launch_dozhim WHERE launch_id = ?;',
+                  <Object?>[launchId],
+                ).first['n']
+                as int?) ??
+            0) +
+        1;
+    _db.execute(
+      '''
+      INSERT INTO launch_dozhim (
+        launch_id, day_index, source_chat_id, source_message_id, content_kind, preview_text
+      ) VALUES (?, ?, ?, ?, ?, ?);
+      ''',
+      <Object?>[launchId, next, sourceChatId, sourceMessageId, contentKind.name, previewText],
+    );
+    final id = _db.lastInsertRowId;
+    return getLaunchDozhim(id)!;
+  }
+
+  @override
+  LaunchDozhimMessage? replaceLaunchDozhim({
+    required int id,
+    required int sourceChatId,
+    required int sourceMessageId,
+    required BroadcastContentKind contentKind,
+    String? previewText,
+  }) {
+    _db.execute(
+      '''
+      UPDATE launch_dozhim
+      SET source_chat_id = ?, source_message_id = ?, content_kind = ?, preview_text = ?
+      WHERE id = ?;
+      ''',
+      <Object?>[sourceChatId, sourceMessageId, contentKind.name, previewText, id],
+    );
+    return getLaunchDozhim(id);
+  }
+
+  @override
+  bool deleteLaunchDozhim(int id) {
+    final existing = getLaunchDozhim(id);
+    if (existing == null) {
+      return false;
+    }
+    _db.execute('DELETE FROM launch_dozhim WHERE id = ?;', <Object?>[id]);
+    _reindexLaunchDozhim(existing.launchId);
+    return true;
+  }
+
+  void _reindexLaunchDozhim(int launchId) {
+    final rows = _db.select(
+      'SELECT id FROM launch_dozhim WHERE launch_id = ? ORDER BY day_index, id;',
+      <Object?>[launchId],
+    );
+    var day = 1;
+    for (final row in rows) {
+      _db.execute('UPDATE launch_dozhim SET day_index = ? WHERE id = ?;', <Object?>[
+        day,
+        row['id'] as int,
+      ]);
+      day += 1;
+    }
+  }
+
+  LaunchDozhimMessage mapDozhim(Row row) {
+    return LaunchDozhimMessage(
+      id: row['id'] as int,
+      launchId: row['launch_id'] as int,
+      dayIndex: row['day_index'] as int,
+      sourceChatId: row['source_chat_id'] as int,
+      sourceMessageId: row['source_message_id'] as int,
+      contentKind: _dozhimKind(row['content_kind'] as String?),
+      previewText: row['preview_text'] as String?,
+    );
+  }
+
+  BroadcastContentKind _dozhimKind(String? raw) {
+    for (final value in BroadcastContentKind.values) {
+      if (value.name == raw) {
+        return value;
+      }
+    }
+    return BroadcastContentKind.text;
   }
 }

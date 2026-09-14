@@ -30,6 +30,8 @@ enum PrivateFlowStep {
   adminCatalogCreateActive,
   adminCatalogCreateConfirm,
   adminCatalogEditValue,
+  adminCatalogDozhim,
+  adminCatalogDozhimCompose,
   adminSheetsHub,
   adminLinksMenu,
   adminLinksCreateOrigin,
@@ -60,6 +62,7 @@ final class CatalogWizardDraft {
     this.isActive,
     this.editLaunchId,
     this.editField,
+    this.dozhimReplaceId,
   });
 
   final String? productCode;
@@ -80,6 +83,7 @@ final class CatalogWizardDraft {
   final bool? isActive;
   final int? editLaunchId;
   final CatalogLaunchField? editField;
+  final int? dozhimReplaceId;
 
   CatalogWizardDraft copyWith({
     Object? productCode = _unset,
@@ -100,6 +104,7 @@ final class CatalogWizardDraft {
     Object? isActive = _unset,
     Object? editLaunchId = _unset,
     Object? editField = _unset,
+    Object? dozhimReplaceId = _unset,
   }) {
     return CatalogWizardDraft(
       productCode: identical(productCode, _unset) ? this.productCode : productCode as String?,
@@ -126,6 +131,9 @@ final class CatalogWizardDraft {
       isActive: identical(isActive, _unset) ? this.isActive : isActive as bool?,
       editLaunchId: identical(editLaunchId, _unset) ? this.editLaunchId : editLaunchId as int?,
       editField: identical(editField, _unset) ? this.editField : editField as CatalogLaunchField?,
+      dozhimReplaceId: identical(dozhimReplaceId, _unset)
+          ? this.dozhimReplaceId
+          : dozhimReplaceId as int?,
     );
   }
 }

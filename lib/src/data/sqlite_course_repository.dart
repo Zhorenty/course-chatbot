@@ -16,6 +16,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';

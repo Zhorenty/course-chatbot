@@ -917,6 +917,60 @@ void main() {
     expect(sheets.sender.messages.last.text, contains('launch-1'));
   });
 
+  test('admin catalog dozhim appends days with text and photo', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cz',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhim}${launch.id}',
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('Дожим'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cza',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhimAdd}${launch.id}',
+      ),
+    );
+    expect(sheets.sender.messages.last.text, contains('день 1'));
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Кейс ученицы', messageId: 31),
+    );
+    expect(sheets.course.listLaunchDozhim(launch.id), hasLength(1));
+    expect(sheets.sender.messages.last.text, contains('день 1'));
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cza2',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhimAdd}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(privatePhotoUpdate(chatId: 1, userId: 1, caption: 'до/после'));
+    final messages = sheets.course.listLaunchDozhim(launch.id);
+    expect(messages, hasLength(2));
+    expect(messages.last.contentKind, BroadcastContentKind.photo);
+    expect(messages.last.dayIndex, 2);
+    final sheet = sheets.sheetsGateway!.valuesBySheetId[CoursesSheet.sheetId]!;
+    final header = sheet[CoursesSheet.defaultHeaderRow];
+    expect(header, contains('Дожим 1'));
+    expect(header, contains('Дожим 2'));
+    expect(header[CoursesSheet.dozhimStartColumn], 'Дожим 1');
+    final row = _coursesRowByCode(sheet, 'launch-1')!;
+    expect(row[CoursesSheet.dozhimStartColumn], CoursesSheet.presentYes);
+    expect(row[CoursesSheet.dozhimStartColumn + 1], CoursesSheet.presentYes);
+  });
+
   test('admin catalog wizard skips channel on dash and does not dump to admin menu', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
