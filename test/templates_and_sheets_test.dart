@@ -171,6 +171,87 @@ void main() {
     );
   });
 
+  test('empty launch fields keep CTAs honest and do not hide RSVP', () {
+    final templates = MessageTemplates();
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 15, 12));
+    final card = templates.enrollOptions(launch, quote: quote);
+    expect(card, contains('Нажимай на кнопку внизу'));
+    expect(card, contains('прикрепим позже'));
+    expect(
+      _inlineButtonTexts(templates.enrollKeyboard(launch, quote: quote, rsvpOpen: true)),
+      contains(MessageTemplates.buttonRsvpEnroll),
+    );
+
+    final afterRsvp = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 15, 12));
+    final listed = templates.enrollOptions(launch, quote: afterRsvp);
+    expect(listed, contains('уже в списке'));
+    expect(listed, contains('прикрепим позже'));
+    expect(listed, isNot(contains('Нажимай на кнопку внизу')));
+    expect(
+      _inlineButtonTexts(
+        templates.enrollKeyboard(launch, quote: afterRsvp, rsvpOpen: true, webinarStarted: true),
+      ),
+      isEmpty,
+    );
+
+    final live = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      webinarUrl: 'https://example.com/live',
+      salesStartAt: DateTime.utc(2026, 10, 20, 16),
+    );
+    expect(
+      _inlineButtonTexts(
+        templates.enrollKeyboard(
+          live,
+          quote: LaunchSales.quote(live, rsvp: true, now: DateTime.utc(2026, 10, 5, 16)),
+          webinarStarted: true,
+        ),
+      ),
+      contains(MessageTemplates.buttonJoinWebinar),
+    );
+
+    expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('ХХ:ХХ')));
+    expect(templates.warmupStep('warmup_0', launch: launch), contains('прикрепим позже'));
+    expect(
+      templates.warmupStep(
+        'warmup_0',
+        launch: const Launch(
+          id: 2,
+          productId: 1,
+          code: 'launch-2',
+          title: '',
+          priceFullKopecks: 0,
+          depositKopecks: 0,
+          depositDueDays: 7,
+        ),
+      ),
+      contains('Дату и время пришлю'),
+    );
+    expect(templates.warmupStep('webinar_live', launch: launch), contains('прикрепим позже'));
+    expect(templates.webinarRsvpConfirmed(launch, showLink: false), contains('прикрепим позже'));
+  });
+
   test('ВОРОНКА dashboard has course steps not club quiz', () {
     final dashboard = GoogleSheetsFunnelDashboard.build(
       FunnelAnalytics(

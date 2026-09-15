@@ -67,6 +67,16 @@ final class Launch {
   bool hasDepositOptionFor(int payableKopecks) =>
       depositKopecks > 0 && depositKopecks < payableKopecks;
 
+  String? get resolvedWebinarUrl {
+    final url = webinarUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return null;
+    }
+    return url;
+  }
+
+  bool get hasWebinarUrl => resolvedWebinarUrl != null;
+
   DateTime? get impliedDepositDueAt =>
       MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays);
 

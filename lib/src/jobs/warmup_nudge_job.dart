@@ -113,7 +113,7 @@ final class WarmupNudgeJob {
     await sendPreferRich(
       _sender,
       candidate.userId,
-      _templates.warmupStep(decision.stepKey, launch: launch),
+      _templates.warmupStep(decision.stepKey, launch: launch, rsvp: candidate.webinarRsvp),
       replyMarkup: launch == null
           ? null
           : _templates.warmupKeyboard(

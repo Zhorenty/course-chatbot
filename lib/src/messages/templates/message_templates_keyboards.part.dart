@@ -64,6 +64,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     Launch launch, {
     required SalesQuote quote,
     bool rsvpOpen = true,
+    bool webinarStarted = false,
   }) {
     if (quote.phase == SalesPhase.preSales && !quote.rsvp && rsvpOpen) {
       return inlineKeyboard(<List<Map<String, Object?>>>[
@@ -77,6 +78,10 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ]);
     }
     if (!quote.checkoutOpen) {
+      final liveUrl = launch.resolvedWebinarUrl;
+      if (quote.rsvp && webinarStarted && liveUrl != null) {
+        return webinarLinkKeyboard(liveUrl);
+      }
       return const <String, Object?>{};
     }
     final rows = <List<Map<String, Object?>>>[
@@ -108,8 +113,8 @@ extension MessageTemplateKeyboards on MessageTemplates {
     bool rsvpOpen = true,
   }) {
     if (stepKey == 'webinar_live') {
-      final url = launch.webinarUrl?.trim();
-      if (url != null && url.isNotEmpty) {
+      final url = launch.resolvedWebinarUrl;
+      if (url != null) {
         return webinarLinkKeyboard(url);
       }
       return null;

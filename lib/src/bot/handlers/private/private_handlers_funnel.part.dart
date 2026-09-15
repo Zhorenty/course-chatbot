@@ -177,7 +177,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
         send: () => sendPreferRich(
           _sender,
           userId,
-          _templates.warmupStep(WarmupService.firstStepKey, launch: launch),
+          _templates.warmupStep(
+            WarmupService.firstStepKey,
+            launch: launch,
+            rsvp: enrollment.webinarRsvp,
+          ),
           replyMarkup: _templates.warmupKeyboard(
             WarmupService.firstStepKey,
             launch: launch,
@@ -215,19 +219,29 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     }
     _funnel.markEnrollIntent(userId, launchId: launch.id);
     final enrollment = _funnel.enrollmentFor(userId, launch: launch);
-    final quote = LaunchSales.quote(
-      launch,
-      rsvp: enrollment?.webinarRsvp ?? false,
-      now: _nowProvider(),
-    );
+    final now = _nowProvider();
+    final quote = LaunchSales.quote(launch, rsvp: enrollment?.webinarRsvp ?? false, now: now);
+    final rsvpOpen = LaunchSales.rsvpOpen(launch, now);
+    final webinarStarted = LaunchSales.webinarStarted(launch, now);
     return _send(
       context,
-      _templates.enrollOptions(launch, quote: quote),
-      richHtml: _templates.enrollOptionsRich(launch, quote: quote),
+      _templates.enrollOptions(
+        launch,
+        quote: quote,
+        rsvpOpen: rsvpOpen,
+        webinarStarted: webinarStarted,
+      ),
+      richHtml: _templates.enrollOptionsRich(
+        launch,
+        quote: quote,
+        rsvpOpen: rsvpOpen,
+        webinarStarted: webinarStarted,
+      ),
       replyMarkup: _templates.enrollKeyboard(
         launch,
         quote: quote,
-        rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
+        rsvpOpen: rsvpOpen,
+        webinarStarted: webinarStarted,
       ),
     );
   }
@@ -249,14 +263,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _notifyWebinarRsvp(userId, launch);
     }
     await _answerCallback(context, text: 'Ты в списке участников!');
-    final url = launch.webinarUrl?.trim();
-    final started = launch.webinarAt != null && !now.toUtc().isBefore(launch.webinarAt!.toUtc());
+    final url = launch.resolvedWebinarUrl;
+    final started = LaunchSales.webinarStarted(launch, now);
     return _send(
       context,
-      _templates.webinarRsvpConfirmed(launch, showLink: started && url != null && url.isNotEmpty),
-      replyMarkup: started && url != null && url.isNotEmpty
-          ? _templates.webinarLinkKeyboard(url)
-          : null,
+      _templates.webinarRsvpConfirmed(launch, showLink: started && url != null),
+      replyMarkup: started && url != null ? _templates.webinarLinkKeyboard(url) : null,
     );
   }
 

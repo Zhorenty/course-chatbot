@@ -174,6 +174,28 @@ void main() {
     expect(extra.sender.messages.any((m) => m.text.contains('Ты в списке')), isTrue);
   });
 
+  test('pre-sales course card keeps RSVP without a webinar URL', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      nowProvider: () => DateTime.utc(2026, 9, 15, 12),
+    );
+    addTearDown(extra.dispose);
+    await extra.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start tg_announce'),
+    );
+    extra.sender.messages.clear();
+    await extra.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
+    );
+    final card = extra.sender.messages.last;
+    expect(card.text, contains('самой выгодной цене'));
+    expect(card.text, contains('Нажимай на кнопку внизу'));
+    expect(card.text, contains('прикрепим позже'));
+    expect(_inlineButtonTexts(card.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
+  });
+
   test('repeat /start after the guide restores guide, enroll and help', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),

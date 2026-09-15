@@ -341,6 +341,10 @@ void main() {
     await client.tap(MessageTemplates.buttonEnroll);
     expect(harness.sender.messages.last.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(harness.sender.messages.last.replyMarkup), isEmpty);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonRsvpEnroll),
+    );
     expect(_phase(harness, 7), FunnelPhase.lead);
 
     harness.sender.messages.clear();

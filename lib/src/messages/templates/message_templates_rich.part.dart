@@ -44,8 +44,15 @@ extension MessageTemplatesRich on MessageTemplates {
         '${next == null ? '' : richP(next)}';
   }
 
-  String enrollOptionsRich(Launch launch, {required SalesQuote quote}) {
-    return richHtmlFromClassic(enrollOptions(launch, quote: quote));
+  String enrollOptionsRich(
+    Launch launch, {
+    required SalesQuote quote,
+    bool rsvpOpen = true,
+    bool webinarStarted = false,
+  }) {
+    return richHtmlFromClassic(
+      enrollOptions(launch, quote: quote, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted),
+    );
   }
 
   String adminCardRich({

@@ -186,6 +186,33 @@ void main() {
     expect(atSales.checkoutOpen, isTrue);
   });
 
+  test('RSVP stays open without a webinar date and live starts only after it', () {
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+    );
+    final now = DateTime.utc(2026, 9, 15, 12);
+    expect(LaunchSales.rsvpOpen(launch, now), isTrue);
+    expect(LaunchSales.webinarStarted(launch, now), isFalse);
+    final dated = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    expect(LaunchSales.webinarStarted(dated, DateTime.utc(2026, 10, 5, 15)), isFalse);
+    expect(LaunchSales.webinarStarted(dated, DateTime.utc(2026, 10, 5, 16)), isTrue);
+  });
+
   test('parseRubStringToKopecks avoids binary float drift', () {
     expect(parseRubStringToKopecks('10000.00'), 1000000);
     expect(parseRubStringToKopecks('19.99'), 1999);

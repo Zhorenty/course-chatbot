@@ -79,6 +79,14 @@ final class LaunchSales {
     }
     return now.toUtc().isBefore(webinar.add(rsvpGrace));
   }
+
+  static bool webinarStarted(Launch launch, DateTime now) {
+    final webinar = launch.webinarAt?.toUtc();
+    if (webinar == null) {
+      return false;
+    }
+    return !now.toUtc().isBefore(webinar);
+  }
 }
 
 final class SalesQuote {
