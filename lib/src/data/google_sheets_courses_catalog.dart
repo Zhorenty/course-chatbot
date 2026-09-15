@@ -216,6 +216,16 @@ abstract final class GoogleSheetsCoursesCatalog {
         wrap: true,
       ),
     );
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: dataStart,
+        endRowExclusive: dataEnd,
+        startColumn: CoursesSheet.descriptionColumn,
+        endColumnExclusive: CoursesSheet.dozhimStartColumn + 1,
+        horizontalAlignment: 'CENTER',
+        foreground: muted,
+      ),
+    );
 
     return GoogleSheetsDashboard(
       sheetTitle: CoursesSheet.tabTitle,
@@ -237,9 +247,9 @@ abstract final class GoogleSheetsCoursesCatalog {
         150,
         130,
         140,
+        110,
+        110,
         280,
-        110,
-        110,
       ],
       frozenRowCount: headerRow + 1,
       hideGridlines: true,
@@ -248,12 +258,6 @@ abstract final class GoogleSheetsCoursesCatalog {
       notes: <GoogleSheetsNote>[
         for (var i = 0; i < CoursesSheet.headerNotes.length; i++)
           GoogleSheetsNote(row: headerRow, column: i, text: CoursesSheet.headerNotes[i]),
-        for (var i = 0; i < CoursesSheet.presenceNotes.length; i++)
-          GoogleSheetsNote(
-            row: headerRow,
-            column: CoursesSheet.descriptionColumn + i,
-            text: CoursesSheet.presenceNotes[i],
-          ),
       ],
       columnCount: columnCount,
       rowCount: canvasEnd,

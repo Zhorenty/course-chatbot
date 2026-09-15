@@ -47,8 +47,14 @@ void main() {
     expect(CoursesSheet.isDescriptionHeader('Описание'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим 2'), isTrue);
-    final header = <Object?>[...CoursesSheet.displayHeaders, 'Описание', 'Дожим'];
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.description), 14);
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.dozhim), 15);
+    expect(CoursesSheet.headers.last, CoursesSheet.status);
+    final header = <Object?>[...CoursesSheet.displayHeaders];
     expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+    expect(header[CoursesSheet.descriptionColumn], 'Описание');
+    expect(header[CoursesSheet.dozhimStartColumn], 'Дожим');
+    expect(header.last, 'статус');
     expect(CoursesSheet.leftoverDozhimColumns(<Object?>[...header, 'Дожим 2']), 1);
   });
 
@@ -355,7 +361,7 @@ void main() {
         gateway.valuesBySheetId[0]![3][CoursesSheet.headers.indexOf(CoursesSheet.status)],
         'статус',
       );
-      expect(gateway.valuesBySheetId[0]![3].last, 'Дожим');
+      expect(gateway.valuesBySheetId[0]![3].last, 'статус');
       expect(course.activeLaunch()?.code, 'launch-1');
     });
 
@@ -411,7 +417,7 @@ void main() {
         expect(header, isNot(contains('Доплата до')));
         expect(header, contains('Старт продаж'));
         expect(header[CoursesSheet.headers.indexOf(CoursesSheet.status)], 'статус');
-        expect(header.last, 'Дожим');
+        expect(header.last, 'статус');
         expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
         expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
         expect(course.activeLaunch()?.offerUrl, isNull);

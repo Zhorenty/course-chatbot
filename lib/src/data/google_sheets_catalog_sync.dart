@@ -674,22 +674,31 @@ final class GoogleSheetsCatalogSync {
         : 0;
     final startCol = CoursesSheet.descriptionColumn;
     final letter = CoursesSheet.columnLetter(startCol);
-    final headerCells = <Object?>[
-      ...CoursesSheet.presenceHeaders,
-      for (var i = 0; i < leftover; i++) '',
-    ];
     await _gateway
         .updateValues(
           a1Range: '${layout.quoted}!$letter${layout.headerAt + 1}',
-          rows: <List<Object?>>[headerCells],
+          rows: <List<Object?>>[List<Object?>.from(CoursesSheet.presenceHeaders)],
           valueInputOption: 'USER_ENTERED',
         )
         .timeout(requestTimeout);
+    if (leftover > 0) {
+      final leftoverLetter = CoursesSheet.columnLetter(CoursesSheet.columnCount);
+      await _gateway
+          .updateValues(
+            a1Range: '${layout.quoted}!$leftoverLetter${layout.headerAt + 1}',
+            rows: <List<Object?>>[
+              <Object?>[for (var i = 0; i < leftover; i++) ''],
+            ],
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(requestTimeout);
+    }
 
     if (layout.rows.length <= layout.headerAt + 1) {
       return;
     }
     final flags = <List<Object?>>[];
+    final leftoverFlags = leftover <= 0 ? null : <List<Object?>>[];
     for (var i = layout.headerAt + 1; i < layout.rows.length; i++) {
       final code = CoursesSheetParser.cellOf(
         layout.rows[i],
@@ -697,12 +706,15 @@ final class GoogleSheetsCatalogSync {
         CoursesSheet.launchCode,
       );
       final launch = code == null || code.isEmpty ? null : _catalog.launchByCode(code);
-      final count = launch == null ? 0 : (counts[launch.code] ?? 0);
-      flags.add(<Object?>[
-        CoursesSheet.descriptionCell(launch?.hasCustomDescription ?? false),
-        CoursesSheet.dozhimCell(count),
-        for (var extra = 0; extra < leftover; extra++) '',
-      ]);
+      if (launch == null) {
+        flags.add(<Object?>['', '']);
+      } else {
+        flags.add(<Object?>[
+          CoursesSheet.descriptionCell(launch.hasCustomDescription),
+          CoursesSheet.dozhimCell(counts[launch.code] ?? 0),
+        ]);
+      }
+      leftoverFlags?.add(<Object?>[for (var extra = 0; extra < leftover; extra++) '']);
     }
     await _gateway
         .updateValues(
@@ -711,6 +723,16 @@ final class GoogleSheetsCatalogSync {
           valueInputOption: 'USER_ENTERED',
         )
         .timeout(requestTimeout);
+    if (leftoverFlags != null && leftoverFlags.isNotEmpty) {
+      final leftoverLetter = CoursesSheet.columnLetter(CoursesSheet.columnCount);
+      await _gateway
+          .updateValues(
+            a1Range: '${layout.quoted}!$leftoverLetter${layout.headerAt + 2}',
+            rows: leftoverFlags,
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(requestTimeout);
+    }
   }
 
   Future<void> _syncLinksOnce() async {

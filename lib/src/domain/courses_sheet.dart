@@ -6,7 +6,7 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 15;
+  static const int columnCount = 17;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -33,6 +33,8 @@ abstract final class CoursesSheet {
   static const String salesStartAt = 'sales_start_at';
   static const String salesEndDate = 'sales_end_date';
   static const String channelId = 'channel_id';
+  static const String description = 'description';
+  static const String dozhim = 'dozhim';
   static const String offerUrl = 'offer_url';
   static const String leadMagnetFileId = 'lead_magnet_file_id';
   static const String leadMagnetUrl = 'lead_magnet_url';
@@ -68,6 +70,8 @@ abstract final class CoursesSheet {
     salesStartAt,
     salesEndDate,
     channelId,
+    description,
+    dozhim,
     status,
   ];
 
@@ -86,6 +90,8 @@ abstract final class CoursesSheet {
     'Старт продаж',
     'Конец продаж',
     'ID канала',
+    'Описание',
+    'Дожим',
     'статус',
   ];
 
@@ -107,6 +113,8 @@ abstract final class CoursesSheet {
         'Пусто — как дата эфира. Без эфира и без этой даты продажи закрыты.',
     'Последний день продаж, как 11.10.2026. Пусто — продажи не закрываем по календарю.',
     'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
+    'Свой текст карточки курса. Да — админ задал текст в боте. Нет — шаблон. Не правь руками.',
+    'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
   ];
 
@@ -155,6 +163,8 @@ abstract final class CoursesSheet {
       seedPricePromoRub,
       seedDepositRub,
       seedCourseStartDate,
+      '',
+      '',
       '',
       '',
       '',
@@ -272,6 +282,8 @@ abstract final class CoursesSheet {
       draft.salesStartAt == null ? '' : formatDottedDateTime(draft.salesStartAt!),
       draft.salesEndAt == null ? '' : formatDottedDate(draft.salesEndAt!),
       draft.channelId ?? '',
+      '',
+      '',
       statusFormula(row: rowNumber),
     ]);
     if (headerIndex == null || headerIndex.isEmpty) {
@@ -292,6 +304,9 @@ abstract final class CoursesSheet {
     for (var i = 0; i < headers.length; i++) {
       final dest = headerIndex[headers[i]];
       if (dest == null) {
+        continue;
+      }
+      if (headers[i] == description || headers[i] == dozhim) {
         continue;
       }
       while (cells.length <= dest) {
@@ -325,16 +340,11 @@ abstract final class CoursesSheet {
     return displayHeaders[index];
   }
 
-  static int get descriptionColumn => headers.length;
+  static int get descriptionColumn => headers.indexOf(description);
 
-  static int get dozhimStartColumn => headers.length + 1;
+  static int get dozhimStartColumn => headers.indexOf(dozhim);
 
-  static int get canvasColumnCount => headers.length + presenceHeaders.length;
-
-  static const List<String> presenceNotes = <String>[
-    'Свой текст карточки курса. Да — админ задал текст в боте. Нет — шаблон. Не правь руками.',
-    'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.',
-  ];
+  static int get canvasColumnCount => columnCount;
 
   static final RegExp _legacyDozhimHeader = RegExp(r'^дожим(?:\s+\d+)?$');
   static final RegExp _legacyDescriptionHeader = RegExp(r'^описание$');
@@ -603,6 +613,10 @@ abstract final class CoursesSheetParser {
     CoursesSheet.channelId: CoursesSheet.channelId,
     'id канала': CoursesSheet.channelId,
     'канал': CoursesSheet.channelId,
+    CoursesSheet.description: CoursesSheet.description,
+    'описание': CoursesSheet.description,
+    CoursesSheet.dozhim: CoursesSheet.dozhim,
+    'дожим': CoursesSheet.dozhim,
     CoursesSheet.offerUrl: CoursesSheet.offerUrl,
     'оферта': CoursesSheet.offerUrl,
     CoursesSheet.leadMagnetFileId: CoursesSheet.leadMagnetFileId,
