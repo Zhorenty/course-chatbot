@@ -961,6 +961,9 @@ void main() {
     final messages = sheets.course.listLaunchDozhim(launch.id);
     expect(messages, hasLength(2));
     expect(messages.last.contentKind, BroadcastContentKind.photo);
+    expect(messages.last.payload?.canReplay, isTrue);
+    expect(messages.last.payload?.media.single.fileId, 'photo-large');
+    expect(messages.first.payload?.kind, BroadcastContentKind.text);
     expect(messages.last.dayIndex, 2);
     final sheet = sheets.sheetsGateway!.valuesBySheetId[CoursesSheet.sheetId]!;
     final header = sheet[CoursesSheet.defaultHeaderRow];
@@ -1017,6 +1020,13 @@ void main() {
     expect(messages.single.contentKind, BroadcastContentKind.album);
     expect(messages.single.sourceMessageIds, <int>[41, 42, 43]);
     expect(messages.single.previewText, 'до/после');
+    expect(messages.single.payload?.canReplay, isTrue);
+    expect(messages.single.payload?.media, hasLength(3));
+    expect(messages.single.payload?.media.map((item) => item.fileId).toList(), <String>[
+      'photo-large',
+      'photo-large',
+      'vid-1',
+    ]);
     expect(sheets.sender.messages.last.text, contains('альбом'));
 
     await sheets.handlers.handle(
@@ -1031,8 +1041,9 @@ void main() {
         ),
       ),
     );
-    expect(sheets.sender.copiedBatches, hasLength(1));
-    expect(sheets.sender.copiedBatches.single.messageIds, <int>[41, 42, 43]);
+    expect(sheets.sender.copiedBatches, isEmpty);
+    expect(sheets.sender.storedSends, hasLength(1));
+    expect(sheets.sender.storedSends.single.content.media, hasLength(3));
   });
 
   test('admin catalog dozhim accepts location as a copyable day', () async {
@@ -1064,6 +1075,8 @@ void main() {
     expect(messages, hasLength(1));
     expect(messages.single.contentKind, BroadcastContentKind.location);
     expect(messages.single.sourceMessageId, 55);
+    expect(messages.single.payload?.latitude, 55.75);
+    expect(messages.single.payload?.longitude, 37.62);
   });
 
   test('admin catalog wizard skips channel on dash and does not dump to admin menu', () async {

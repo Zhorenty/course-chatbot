@@ -342,6 +342,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required BroadcastContentKind contentKind,
     List<int>? sourceMessageIds,
     String? previewText,
+    StoredTelegramMessage? payload,
   }) {
     final next =
         ((_db.select(
@@ -356,8 +357,8 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       '''
       INSERT INTO launch_dozhim (
         launch_id, day_index, source_chat_id, source_message_id, source_message_ids,
-        content_kind, preview_text
-      ) VALUES (?, ?, ?, ?, ?, ?, ?);
+        content_kind, preview_text, payload
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
       ''',
       <Object?>[
         launchId,
@@ -367,6 +368,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         jsonEncode(ids),
         contentKind.name,
         previewText,
+        payload == null ? null : jsonEncode(payload.toJson()),
       ],
     );
     final id = _db.lastInsertRowId;
@@ -381,16 +383,25 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required BroadcastContentKind contentKind,
     List<int>? sourceMessageIds,
     String? previewText,
+    StoredTelegramMessage? payload,
   }) {
     final ids = _dozhimMessageIds(sourceMessageId, sourceMessageIds);
     _db.execute(
       '''
       UPDATE launch_dozhim
       SET source_chat_id = ?, source_message_id = ?, source_message_ids = ?,
-          content_kind = ?, preview_text = ?
+          content_kind = ?, preview_text = ?, payload = ?
       WHERE id = ?;
       ''',
-      <Object?>[sourceChatId, ids.first, jsonEncode(ids), contentKind.name, previewText, id],
+      <Object?>[
+        sourceChatId,
+        ids.first,
+        jsonEncode(ids),
+        contentKind.name,
+        previewText,
+        payload == null ? null : jsonEncode(payload.toJson()),
+        id,
+      ],
     );
     return getLaunchDozhim(id);
   }
@@ -435,7 +446,20 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       ),
       contentKind: _dozhimKind(row['content_kind'] as String?),
       previewText: row['preview_text'] as String?,
+      payload: _parseDozhimPayload(row['payload'] as String?),
     );
+  }
+
+  StoredTelegramMessage? _parseDozhimPayload(String? raw) {
+    final encoded = raw?.trim();
+    if (encoded == null || encoded.isEmpty) {
+      return null;
+    }
+    try {
+      return StoredTelegramMessage.fromJson(jsonDecode(encoded));
+    } on Object {
+      return null;
+    }
   }
 
   List<int> _dozhimMessageIds(int sourceMessageId, List<int>? sourceMessageIds) {

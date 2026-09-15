@@ -114,7 +114,7 @@ extension MessageTemplatesRich on MessageTemplates {
     return '${richH2('Дожим')}'
         '${richP(escapeHtml(launch.title))}'
         '${richUl(items)}'
-        '${richFooter('Не удаляй исходные сообщения в этом чате — бот копирует их ученикам.')}';
+        '${richFooter('Сохраняем копию у бота. Исходное сообщение в этом чате можно удалить.')}';
   }
 
   String adminCatalogDozhimItemRich(LaunchDozhimMessage message) {

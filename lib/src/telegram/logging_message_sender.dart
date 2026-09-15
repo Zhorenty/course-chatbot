@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/data/conversation_log_repository.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -203,6 +204,26 @@ final class LoggingMessageSender implements MessageSender {
       textPreview: 'copy $fromChatId:${messageIds.join(',')}',
     );
     return copied;
+  }
+
+  @override
+  Future<List<int>> sendStoredMessage(
+    int chatId,
+    StoredTelegramMessage content, {
+    bool disableNotification = true,
+  }) async {
+    final ids = await _inner.sendStoredMessage(
+      chatId,
+      content,
+      disableNotification: disableNotification,
+    );
+    await _safeAppend(
+      chatId: chatId,
+      telegramMessageId: ids.last,
+      contentType: ConversationContentType.copy,
+      textPreview: content.captionHtml ?? content.kind.name,
+    );
+    return ids;
   }
 
   Future<void> _safeAppend({

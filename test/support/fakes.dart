@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:course_chatbot/src/telegram/channel_api.dart';
@@ -263,6 +264,39 @@ final class FakeMessageSender implements MessageSender {
     }
     return <int>[for (var i = 0; i < messageIds.length; i++) 3000 + copiedBatches.length * 10 + i];
   }
+
+  final List<StoredSend> storedSends = <StoredSend>[];
+
+  @override
+  Future<List<int>> sendStoredMessage(
+    int chatId,
+    StoredTelegramMessage content, {
+    bool disableNotification = true,
+  }) async {
+    final error = throwOnCopy ?? throwOnSend;
+    if (error != null) {
+      throw error;
+    }
+    storedSends.add(
+      StoredSend(chatId: chatId, content: content, disableNotification: disableNotification),
+    );
+    final count = content.media.length > 1 ? content.media.length : 1;
+    final ids = <int>[];
+    for (var i = 0; i < count; i++) {
+      _nextMessageId += 1;
+      ids.add(_nextMessageId);
+      messages.add(
+        SentMessage(
+          chatId: chatId,
+          messageId: _nextMessageId,
+          text: content.captionHtml ?? content.kind.name,
+          parseMode: 'HTML',
+          disableNotification: disableNotification,
+        ),
+      );
+    }
+    return ids;
+  }
 }
 
 final class CallbackAnswer {
@@ -347,6 +381,14 @@ final class CopiedMessages {
   final int chatId;
   final int fromChatId;
   final List<int> messageIds;
+  final bool disableNotification;
+}
+
+final class StoredSend {
+  const StoredSend({required this.chatId, required this.content, this.disableNotification = true});
+
+  final int chatId;
+  final StoredTelegramMessage content;
   final bool disableNotification;
 }
 
@@ -824,6 +866,7 @@ Map<String, dynamic> privateMessageUpdate({
   String? username,
   int messageId = 10,
   Map<String, dynamic>? forwardFrom,
+  List<Map<String, dynamic>>? entities,
 }) {
   return <String, dynamic>{
     'update_id': 1,
@@ -837,6 +880,7 @@ Map<String, dynamic> privateMessageUpdate({
       },
       'text': text,
       if (forwardFrom != null) 'forward_from': forwardFrom,
+      if (entities != null) 'entities': entities,
     },
   };
 }

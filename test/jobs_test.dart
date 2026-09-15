@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
 import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
@@ -571,6 +572,13 @@ void main() {
       sourceMessageId: 77,
       contentKind: BroadcastContentKind.photo,
       previewText: 'кейс',
+      payload: const StoredTelegramMessage(
+        kind: BroadcastContentKind.photo,
+        html: 'кейс',
+        media: <StoredTelegramMedia>[
+          StoredTelegramMedia(type: StoredTelegramMediaType.photo, fileId: 'photo-large'),
+        ],
+      ),
     );
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(
@@ -610,10 +618,10 @@ void main() {
     harness.sender.messages.clear();
     harness.sender.copies.clear();
     await job.run();
-    expect(harness.sender.copies, hasLength(1));
-    expect(harness.sender.copies.single.chatId, 42);
-    expect(harness.sender.copies.single.fromChatId, 1);
-    expect(harness.sender.copies.single.messageId, 77);
+    expect(harness.sender.copies, isEmpty);
+    expect(harness.sender.storedSends, hasLength(1));
+    expect(harness.sender.storedSends.single.chatId, 42);
+    expect(harness.sender.storedSends.single.content.media.single.fileId, 'photo-large');
     expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
   });
 
@@ -639,6 +647,15 @@ void main() {
       sourceMessageIds: const <int>[77, 78, 79],
       contentKind: BroadcastContentKind.album,
       previewText: 'альбом',
+      payload: const StoredTelegramMessage(
+        kind: BroadcastContentKind.album,
+        html: 'альбом',
+        media: <StoredTelegramMedia>[
+          StoredTelegramMedia(type: StoredTelegramMediaType.photo, fileId: 'p1'),
+          StoredTelegramMedia(type: StoredTelegramMediaType.photo, fileId: 'p2'),
+          StoredTelegramMedia(type: StoredTelegramMediaType.video, fileId: 'v1'),
+        ],
+      ),
     );
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(
@@ -665,10 +682,13 @@ void main() {
     harness.sender.messages.clear();
     harness.sender.copies.clear();
     await job.run();
-    expect(harness.sender.copiedBatches, hasLength(1));
-    expect(harness.sender.copiedBatches.single.chatId, 42);
-    expect(harness.sender.copiedBatches.single.fromChatId, 1);
-    expect(harness.sender.copiedBatches.single.messageIds, <int>[77, 78, 79]);
+    expect(harness.sender.copiedBatches, isEmpty);
+    expect(harness.sender.storedSends, hasLength(1));
+    expect(harness.sender.storedSends.single.chatId, 42);
+    expect(
+      harness.sender.storedSends.single.content.media.map((item) => item.fileId).toList(),
+      <String>['p1', 'p2', 'v1'],
+    );
     expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
     expect(custom.stepKey, isNotEmpty);
   });

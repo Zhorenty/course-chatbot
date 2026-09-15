@@ -2,6 +2,7 @@ import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 
 abstract interface class CatalogRepository {
   Launch upsertLaunch({
@@ -82,6 +83,7 @@ abstract interface class CatalogRepository {
     required BroadcastContentKind contentKind,
     List<int>? sourceMessageIds,
     String? previewText,
+    StoredTelegramMessage? payload,
   });
 
   LaunchDozhimMessage? replaceLaunchDozhim({
@@ -91,6 +93,7 @@ abstract interface class CatalogRepository {
     required BroadcastContentKind contentKind,
     List<int>? sourceMessageIds,
     String? previewText,
+    StoredTelegramMessage? payload,
   });
 
   bool deleteLaunchDozhim(int id);

@@ -1,11 +1,12 @@
 import 'package:course_chatbot/src/domain/broadcast.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 
 /// One admin-authored follow-up in a launch’s open-ended dozhim sequence.
 ///
 /// Day 1 is the first day after regular sales start, day 2 the next, and so on.
-/// Content is a Telegram message (text / photo / album / file, including rich
-/// formatting) copied from the admin chat — COURSES only stores a presence flag.
+/// Content is stored on the bot (HTML + Telegram file_id). COURSES only stores
+/// a presence flag. Deleting the original admin message does not drop delivery.
 final class LaunchDozhimMessage {
   LaunchDozhimMessage({
     required this.id,
@@ -16,6 +17,7 @@ final class LaunchDozhimMessage {
     required this.contentKind,
     List<int>? sourceMessageIds,
     this.previewText,
+    this.payload,
   }) : sourceMessageIds = _normalizedSourceMessageIds(sourceMessageId, sourceMessageIds);
 
   final int id;
@@ -28,6 +30,7 @@ final class LaunchDozhimMessage {
   final List<int> sourceMessageIds;
   final BroadcastContentKind contentKind;
   final String? previewText;
+  final StoredTelegramMessage? payload;
 
   bool get isAlbum => contentKind == BroadcastContentKind.album || sourceMessageIds.length > 1;
 

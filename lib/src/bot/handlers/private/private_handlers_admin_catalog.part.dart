@@ -1051,11 +1051,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final chatId = context.chatId;
     if (chatId != null) {
       try {
-        await _sender.copySourceMessages(
-          chatId: chatId,
-          fromChatId: message.sourceChatId,
-          messageIds: message.sourceMessageIds,
-        );
+        await replayDozhimContent(sender: _sender, chatId: chatId, message: message);
       } on Object catch (error, stackTrace) {
         l.w('Dozhim preview copy failed: $error', stackTrace);
         return _presentCatalog(
@@ -1102,18 +1098,19 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (isTelegramAlbum(message)) {
       return _bufferCatalogDozhimAlbum(context);
     }
-    final kind = broadcastContentKindOf(message);
+    final snapshot = snapshotTelegramMessage(message);
     final messageId = asTelegramInt(message['message_id']);
     final chatId = context.chatId;
-    if (kind == null || messageId == null || chatId == null) {
+    if (snapshot == null || !snapshot.canReplay || messageId == null || chatId == null) {
       return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
     }
     return _saveCatalogDozhim(
       context,
       sourceChatId: chatId,
       sourceMessageIds: <int>[messageId],
-      kind: kind,
+      kind: snapshot.kind,
       preview: _dozhimPreviewText(context.text),
+      payload: snapshot,
     );
   }
 
@@ -1124,6 +1121,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final messageId = asTelegramInt(message?['message_id']);
     final chatId = context.chatId;
     if (groupId == null || messageId == null || chatId == null) {
+      return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
+    }
+    final snapshot = snapshotTelegramMessage(message);
+    if (snapshot == null || !snapshot.canReplay) {
       return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
     }
     final draft = _flowByUserId[userId]?.catalogDraft;
@@ -1143,8 +1144,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         launchId: launchId,
         replaceId: draft?.dozhimReplaceId,
         messageIds: <int>[],
+        partsById: <int, StoredTelegramMessage>{},
       ),
     );
+    pending.partsById[messageId] = snapshot;
     if (!pending.messageIds.contains(messageId)) {
       pending.messageIds.add(messageId);
       pending.messageIds.sort();
@@ -1209,6 +1212,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       kind: BroadcastContentKind.album,
       preview: pending.previewText,
       replaceId: pending.replaceId,
+      payload: mergeAlbumSnapshots(<StoredTelegramMessage>[
+        for (final id in pending.messageIds)
+          if (pending.partsById[id] != null) pending.partsById[id]!,
+      ]),
     );
     await _writeDozhimPresenceFlags();
   }
@@ -1219,6 +1226,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     required List<int> sourceMessageIds,
     required BroadcastContentKind kind,
     String? preview,
+    StoredTelegramMessage? payload,
   }) async {
     final draft = _flowByUserId[context.userId!]?.catalogDraft;
     final launchId = draft?.editLaunchId;
@@ -1232,6 +1240,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       kind: kind,
       preview: preview,
       replaceId: draft?.dozhimReplaceId,
+      payload: payload,
     );
     await _writeDozhimPresenceFlags();
     return _showCatalogDozhim(context, launchId);
@@ -1244,6 +1253,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     required BroadcastContentKind kind,
     String? preview,
     int? replaceId,
+    StoredTelegramMessage? payload,
   }) {
     if (replaceId != null) {
       final existing = _course.getLaunchDozhim(replaceId);
@@ -1257,6 +1267,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         sourceMessageIds: sourceMessageIds,
         contentKind: kind,
         previewText: preview,
+        payload: payload,
       );
       return;
     }
@@ -1267,6 +1278,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       sourceMessageIds: sourceMessageIds,
       contentKind: kind,
       previewText: preview,
+      payload: payload,
     );
   }
 
@@ -1476,6 +1488,7 @@ final class _PendingDozhimAlbum {
     required this.chatId,
     required this.launchId,
     required this.messageIds,
+    required this.partsById,
     this.replaceId,
   });
 
@@ -1483,6 +1496,7 @@ final class _PendingDozhimAlbum {
   final int chatId;
   final int launchId;
   final List<int> messageIds;
+  final Map<int, StoredTelegramMessage> partsById;
   final int? replaceId;
   String? previewText;
 }

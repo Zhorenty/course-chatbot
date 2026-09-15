@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 
 final class SentTelegramDocument {
@@ -84,6 +85,13 @@ abstract interface class MessageSender {
     required int chatId,
     required int fromChatId,
     required List<int> messageIds,
+    bool disableNotification = true,
+  });
+
+  /// Resend a stored snapshot (HTML + file_id). Survives deletion of the original.
+  Future<List<int>> sendStoredMessage(
+    int chatId,
+    StoredTelegramMessage content, {
     bool disableNotification = true,
   });
 }

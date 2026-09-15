@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:course_chatbot/src/domain/broadcast.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/telegram/channel_api.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
@@ -709,6 +711,155 @@ final class TelegramClient implements MessageSender, ChannelApi {
       throw const TelegramApiException('Telegram did not return message ids');
     }
     return copied;
+  }
+
+  @override
+  Future<List<int>> sendStoredMessage(
+    int chatId,
+    StoredTelegramMessage content, {
+    bool disableNotification = true,
+  }) async {
+    if (!content.canReplay) {
+      throw const TelegramApiException('Stored message cannot be replayed');
+    }
+    switch (content.kind) {
+      case BroadcastContentKind.text:
+        return <int>[
+          await sendMessage(
+            chatId,
+            content.html!,
+            disableNotification: disableNotification,
+            parseMode: 'HTML',
+          ),
+        ];
+      case BroadcastContentKind.location:
+        final payload = await _post(
+          'sendLocation',
+          body: <String, Object?>{
+            'chat_id': chatId,
+            'latitude': content.latitude,
+            'longitude': content.longitude,
+            'disable_notification': disableNotification,
+          },
+        );
+        return <int>[_messageIdFromPayload(payload)];
+      case BroadcastContentKind.contact:
+        final payload = await _post(
+          'sendContact',
+          body: <String, Object?>{
+            'chat_id': chatId,
+            'phone_number': content.contactPhone,
+            'first_name': content.contactFirstName,
+            if (content.contactLastName != null) 'last_name': content.contactLastName,
+            if (content.contactUserId != null) 'user_id': content.contactUserId,
+            'disable_notification': disableNotification,
+          },
+        );
+        return <int>[_messageIdFromPayload(payload)];
+      case BroadcastContentKind.album:
+        return _sendStoredAlbum(chatId, content, disableNotification: disableNotification);
+      case BroadcastContentKind.photo:
+      case BroadcastContentKind.video:
+      case BroadcastContentKind.document:
+      case BroadcastContentKind.audio:
+      case BroadcastContentKind.voice:
+      case BroadcastContentKind.animation:
+      case BroadcastContentKind.sticker:
+      case BroadcastContentKind.videoNote:
+        final media = content.media.first;
+        if (content.kind == BroadcastContentKind.album || content.media.length > 1) {
+          return _sendStoredAlbum(chatId, content, disableNotification: disableNotification);
+        }
+        return <int>[
+          await _sendStoredFile(
+            chatId: chatId,
+            media: media,
+            captionHtml: media.type.supportsCaption ? content.captionHtml : null,
+            disableNotification: disableNotification,
+          ),
+        ];
+      case BroadcastContentKind.other:
+        throw const TelegramApiException('Stored message cannot be replayed');
+    }
+  }
+
+  Future<List<int>> _sendStoredAlbum(
+    int chatId,
+    StoredTelegramMessage content, {
+    required bool disableNotification,
+  }) async {
+    if (content.media.length == 1) {
+      final media = content.media.single;
+      return <int>[
+        await _sendStoredFile(
+          chatId: chatId,
+          media: media,
+          captionHtml: media.type.supportsCaption ? content.captionHtml : null,
+          disableNotification: disableNotification,
+        ),
+      ];
+    }
+    final caption = content.captionHtml;
+    final media = <Map<String, Object?>>[
+      for (var i = 0; i < content.media.length; i++)
+        <String, Object?>{
+          'type': content.media[i].type.inputMediaType,
+          'media': content.media[i].fileId,
+          if (i == 0 &&
+              caption != null &&
+              content.media[i].type.supportsCaption) ...<String, Object?>{
+            'caption': caption,
+            'parse_mode': 'HTML',
+          },
+        },
+    ];
+    final payload = await _post(
+      'sendMediaGroup',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'media': media,
+        'disable_notification': disableNotification,
+      },
+    );
+    final result = payload['result'];
+    if (result is! List) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    final ids = <int>[
+      for (final item in result)
+        if (item is Map && item['message_id'] is int) item['message_id'] as int,
+    ];
+    if (ids.isEmpty) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    return ids;
+  }
+
+  Future<int> _sendStoredFile({
+    required int chatId,
+    required StoredTelegramMedia media,
+    required String? captionHtml,
+    required bool disableNotification,
+  }) async {
+    final body = <String, Object?>{
+      'chat_id': chatId,
+      media.type.telegramField: media.fileId,
+      'disable_notification': disableNotification,
+    };
+    if (captionHtml != null && media.type.supportsCaption) {
+      body['caption'] = captionHtml;
+      body['parse_mode'] = 'HTML';
+    }
+    final payload = await _post(media.type.telegramMethod, body: body);
+    return _messageIdFromPayload(payload);
+  }
+
+  int _messageIdFromPayload(Map<String, dynamic> payload) {
+    final result = payload['result'];
+    if (result is! Map || result['message_id'] is! int) {
+      throw const TelegramApiException('Telegram did not return message_id');
+    }
+    return result['message_id'] as int;
   }
 
   void close() {

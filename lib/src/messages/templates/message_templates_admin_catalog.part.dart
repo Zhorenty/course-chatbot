@@ -444,7 +444,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     }
     buf
       ..writeln()
-      ..write('Не удаляй исходные сообщения в этом чате — бот копирует их ученикам.');
+      ..write('Сохраняем копию у бота. Исходное сообщение в этом чате можно удалить.');
     return buf.toString();
   }
 
@@ -458,7 +458,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return '<b>Дожим · день $dayIndex</b>\n\n'
         '$action сообщение: текст, фото, альбом, файл, видео или голосовое. '
         'Жирное и ссылки сохранятся.\n\n'
-        'Не удаляй его в этом чате — бот будет копировать ученикам.';
+        'Сохраним у бота — исходное потом можно удалить.';
   }
 
   String adminCatalogDozhimItem(LaunchDozhimMessage message) {

@@ -240,10 +240,12 @@ final class SqliteDatabaseHandle {
         source_message_ids TEXT,
         content_kind TEXT NOT NULL,
         preview_text TEXT,
+        payload TEXT,
         UNIQUE(launch_id, day_index)
       );
     ''');
     _ensureColumn(db, 'launch_dozhim', 'source_message_ids', 'TEXT');
+    _ensureColumn(db, 'launch_dozhim', 'payload', 'TEXT');
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_launch_dozhim_launch
       ON launch_dozhim (launch_id, day_index);

@@ -550,6 +550,11 @@ void main() {
       contains('${MessageTemplates.cbCatalogDozhimAdd}12'),
     );
     expect(templates.adminCatalogDozhimAsk(dayIndex: 1, replace: false), contains('альбом'));
+    expect(templates.adminCatalogDozhimAsk(dayIndex: 1, replace: false), contains('можно удалить'));
+    expect(
+      templates.adminCatalogDozhimList(launch, const <LaunchDozhimMessage>[]),
+      contains('можно удалить'),
+    );
     expect(templates.broadcastContentKindLabel(BroadcastContentKind.album), 'альбом');
     expect(templates.broadcastContentKindLabel(BroadcastContentKind.location), 'геолокация');
     expect(
