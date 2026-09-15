@@ -88,7 +88,7 @@ void main() {
 
   test('customer copy uses the interior color voice and new CTAs', () {
     final templates = MessageTemplates();
-    expect(MessageTemplates.buttonGuide, contains('Получить гайд'));
+    expect(MessageTemplates.buttonGuide, 'Получить гайд');
     expect(MessageTemplates.buttonEnroll, MessageTemplates.buttonCourseStatus);
     expect(MessageTemplates.buttonEnroll, contains('Цвет в интерьере'));
     expect(templates.startGuideOffer(), contains('Привет'));
@@ -136,11 +136,24 @@ void main() {
       expect(text, isNot(contains('Продажи открылись')), reason: key);
     }
     expect(templates.warmupStep('sales_regular', launch: launch), contains('19 000 руб.'));
+    expect(templates.warmupStep('webinar_next', launch: launch), contains('21 000 руб.'));
     expect(templates.warmupStep('dozhim_d1', launch: launch), contains('12 октября'));
-    expect(templates.warmupStep('dozhim_d1', launch: launch), contains('почерк'));
-    expect(templates.warmupStep('dozhim_d2', launch: launch), contains('сломать'));
-    expect(templates.warmupStep('dozhim_d4', launch: launch), contains('так можно было'));
+    expect(templates.warmupStep('dozhim_d1', launch: launch), contains('Иттена'));
+    expect(templates.warmupStep('dozhim_d2', launch: launch), contains('Чувство цвета'));
+    expect(templates.warmupStep('dozhim_d4', launch: launch), contains('Pinterest'));
     expect(templates.warmupStep('warmup_d1'), contains('объект'));
+    for (final key in keys) {
+      expect(templates.warmupStep(key, launch: launch).length, lessThan(4096), reason: key);
+    }
+    expect(templates.warmupStep('webinar_next', launch: launch).length, lessThan(4096));
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard('sales_open', launch: launch, rsvp: false)!),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard('dozhim_d1', launch: launch, rsvp: false)!),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
   });
 
   test('enroll copy still points to the channel after full payment', () {
@@ -161,9 +174,10 @@ void main() {
       templates.enrollOptions(launch, quote: quote),
       contains('Ссылка в канал курса придет в этот чат после полной оплаты'),
     );
+    expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков + эфир'));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
-    expect(templates.warmupStep('sales_open', launch: launch), contains('Двери курса открыты'));
-    expect(templates.warmupStep('sales_open', launch: launch), contains('присоединиться'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('открывает свои двери'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('16 уроков'));
     expect(
       templates.warmupStep('sales_open', launch: launch),
       isNot(contains('Продажи открылись')),
@@ -187,7 +201,7 @@ void main() {
     final quote = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 15, 12));
     final card = templates.enrollOptions(launch, quote: quote);
     expect(card, contains('Нажимай на кнопку внизу'));
-    expect(card, contains('прикрепим позже'));
+    expect(card, contains('Мастер-класс пройдет'));
     expect(
       _inlineButtonTexts(templates.enrollKeyboard(launch, quote: quote, rsvpOpen: true)),
       contains(MessageTemplates.buttonRsvpEnroll),
@@ -196,7 +210,6 @@ void main() {
     final afterRsvp = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 15, 12));
     final listed = templates.enrollOptions(launch, quote: afterRsvp);
     expect(listed, contains('уже в списке'));
-    expect(listed, contains('прикрепим позже'));
     expect(listed, isNot(contains('Нажимай на кнопку внизу')));
     expect(
       _inlineButtonTexts(
@@ -268,12 +281,11 @@ void main() {
     final quote = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 15, 12));
     final card = templates.enrollOptions(launch, quote: quote);
     expect(card, contains('Скоро стартует мой курс по интерьерной колористике'));
-    expect(card, contains('📅 Старт потока: 12 октября'));
-    expect(card, contains('📺 Мастер-класс: 5 октября, 19:00 по мск'));
-    expect(card, contains('🔗 Ссылка: Ссылку прикрепим позже и пришлём в этот чат.'));
+    expect(card, contains('Старт потока 12 октября'));
+    expect(card, contains('📅 Мастер-класс пройдет 5 октября в 19:00 мск'));
     expect(card, contains('Ты уже в списке участников.'));
-    expect(card, isNot(contains('Старт потока 12 октября. Сообщу')));
-    expect(templates.startCourseCard(launch: launch), contains('📅 Старт потока: 12 октября'));
+    expect(card, isNot(contains('Ссылку прикрепим позже')));
+    expect(templates.startCourseCard(launch: launch), contains('Старт потока 12 октября'));
 
     final custom = Launch(
       id: 2,
@@ -290,7 +302,7 @@ void main() {
     final customCard = templates.startCourseCard(launch: custom);
     expect(customCard, contains('Мой поток про цвет в квартирах.'));
     expect(customCard, isNot(contains('Скоро стартует мой курс')));
-    expect(customCard, contains('https://example.com/live'));
+    expect(customCard, contains('дату и время пришлю отдельно'));
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {

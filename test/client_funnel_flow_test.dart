@@ -192,7 +192,7 @@ void main() {
     expect(afterDeposit.grantedAccess, isFalse);
     expect(harness.channel.created, isEmpty);
     expect(_phase(harness, 42), FunnelPhase.depositPaid);
-    expect(harness.sender.messages.any((m) => m.text.contains('Предоплата дошла')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Предоплата прошла')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('канал курса')), isTrue);
     expect(
       _replyButtonTexts(

@@ -120,21 +120,39 @@ extension MessageTemplateKeyboards on MessageTemplates {
       return null;
     }
     const rsvpSteps = <String>{'warmup_0', 'webinar_24h', 'webinar_10m'};
-    if (!rsvpSteps.contains(stepKey) || rsvp || !rsvpOpen) {
-      return null;
+    if (rsvpSteps.contains(stepKey) && !rsvp && rsvpOpen) {
+      return inlineKeyboard(<List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonRsvp,
+            'callback_data': MessageTemplates.cbRsvp,
+            'style': 'success',
+          },
+        ],
+      ]);
     }
-    final label = stepKey == 'webinar_24h'
-        ? MessageTemplates.buttonRsvpList
-        : MessageTemplates.buttonRsvp;
-    return inlineKeyboard(<List<Map<String, Object?>>>[
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': label,
-          'callback_data': MessageTemplates.cbRsvp,
-          'style': 'success',
-        },
-      ],
-    ]);
+    const enrollSteps = <String>{
+      'webinar_next',
+      'sales_open',
+      'sales_regular',
+      'dozhim_d1',
+      'dozhim_d2',
+      'dozhim_d3',
+      'dozhim_d4',
+      'last_wagon',
+    };
+    if (enrollSteps.contains(stepKey)) {
+      return inlineKeyboard(<List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonEnrollInline,
+            'callback_data': MessageTemplates.cbEnroll,
+            'style': 'primary',
+          },
+        ],
+      ]);
+    }
+    return null;
   }
 
   Map<String, Object?> webinarLinkKeyboard(String url) {

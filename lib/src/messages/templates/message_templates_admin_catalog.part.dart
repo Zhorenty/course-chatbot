@@ -54,7 +54,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln(
       webinarUrl == null || webinarUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
-    buf.writeln('старт продаж: ${_formatDateTime(launch.salesStartAt) ?? 'как дата эфира'}');
+    buf.writeln(
+      'старт продаж: ${_formatDateTime(launch.salesStartAt) ?? 'следующий день после эфира'}',
+    );
     buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt) ?? 'не указан'}');
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
@@ -143,7 +145,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       'Когда открывается касса и продающий прогрев. Дата и время по Москве. '
           'Без эфира и без этой даты продажи закрыты.',
       example: '05.10.2026 19:00',
-      skipHint: '«Пропустить» — как дата эфира.',
+      skipHint: '«Пропустить» — следующий день после эфира.',
     );
   }
 
@@ -255,7 +257,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln(
       previewUrl == null || previewUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
-    buf.writeln('старт продаж: ${_formatDateTime(draft.salesStartAt) ?? 'как дата эфира'}');
+    buf.writeln(
+      'старт продаж: ${_formatDateTime(draft.salesStartAt) ?? 'следующий день после эфира'}',
+    );
     buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt) ?? 'не указан'}');
     final channel = draft.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
@@ -305,7 +309,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
       CatalogLaunchField.salesStart =>
         'Когда открывается касса. Дата и время по Москве, как 05.10.2026 19:00. '
-            'Пусто или «-» — как дата эфира.',
+            'Пусто или «-» — следующий день после эфира.',
       CatalogLaunchField.salesEnd =>
         'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.',
       CatalogLaunchField.channel =>

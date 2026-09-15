@@ -365,6 +365,130 @@ void main() {
       launch: launch,
     );
     expect(decision?.stepKey, 'webinar_24h');
+    expect(
+      warmup.nextFor(
+        WarmupCandidate(
+          userId: 2,
+          launchId: launch.id,
+          firstStartedAt: DateTime.utc(2026, 10, 1),
+          magnetIssuedAt: DateTime.utc(2026, 10, 1),
+          funnelPhase: FunnelPhase.warming,
+          sentKeys: sent,
+          webinarRsvp: true,
+        ),
+        DateTime.utc(2026, 10, 10, 17),
+        steps: WarmupStep.defaults,
+        launch: launch,
+      ),
+      isNull,
+    );
+  });
+
+  test('webinar_live is due ten minutes before start for RSVP only', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 11, 16),
+    );
+    const sent = <String>{'warmup_0', 'webinar_24h'};
+    final listed = WarmupCandidate(
+      userId: 1,
+      launchId: launch.id,
+      firstStartedAt: DateTime.utc(2026, 10, 1),
+      magnetIssuedAt: DateTime.utc(2026, 10, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: sent,
+      webinarRsvp: true,
+    );
+    expect(
+      warmup.nextFor(
+        listed,
+        DateTime.utc(2026, 10, 11, 15, 49),
+        steps: WarmupStep.defaults,
+        launch: launch,
+      ),
+      isNull,
+    );
+    expect(
+      warmup
+          .nextFor(
+            listed,
+            DateTime.utc(2026, 10, 11, 15, 50),
+            steps: WarmupStep.defaults,
+            launch: launch,
+          )
+          ?.stepKey,
+      'webinar_live',
+    );
+    expect(
+      warmup
+          .nextFor(
+            WarmupCandidate(
+              userId: 2,
+              launchId: launch.id,
+              firstStartedAt: DateTime.utc(2026, 10, 1),
+              magnetIssuedAt: DateTime.utc(2026, 10, 1),
+              funnelPhase: FunnelPhase.warming,
+              sentKeys: sent,
+            ),
+            DateTime.utc(2026, 10, 11, 15, 50),
+            steps: WarmupStep.defaults,
+            launch: launch,
+          )
+          ?.stepKey,
+      'webinar_10m',
+    );
+  });
+
+  test('webinar_next waits until 12:00 Moscow the day after the webinar', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final listed = WarmupCandidate(
+      userId: 1,
+      launchId: launch.id,
+      firstStartedAt: DateTime.utc(2026, 10, 1),
+      magnetIssuedAt: DateTime.utc(2026, 10, 1),
+      funnelPhase: FunnelPhase.warming,
+      sentKeys: const <String>{'warmup_0', 'webinar_live'},
+      webinarRsvp: true,
+    );
+    expect(
+      warmup.nextFor(
+        listed,
+        DateTime.utc(2026, 10, 6, 8, 59),
+        steps: WarmupStep.defaults,
+        launch: launch,
+      ),
+      isNull,
+    );
+    expect(
+      warmup
+          .nextFor(listed, DateTime.utc(2026, 10, 6, 9), steps: WarmupStep.defaults, launch: launch)
+          ?.stepKey,
+      'webinar_next',
+    );
   });
 
   test('enroll intent and waiting leads do not get pay drip before sales start', () {
@@ -455,101 +579,133 @@ void main() {
     );
   });
 
-  test('sales_open pings when checkout opens and skips overlapping sales_regular', () {
-    final warmup = WarmupService(
-      course: harness.course,
-      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
-    );
-    final afterGuide = WarmupCandidate(
-      userId: 3,
-      launchId: 1,
-      firstStartedAt: DateTime.utc(2026, 1, 1),
-      magnetIssuedAt: DateTime.utc(2026, 1, 1),
-      funnelPhase: FunnelPhase.warming,
-      sentKeys: const <String>{'warmup_0'},
-      webinarRsvp: true,
-    );
-    final beforeOpen = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 500000,
-      depositDueDays: 7,
-      salesStartAt: DateTime.utc(2026, 1, 10, 12),
-    );
-    expect(
-      warmup.nextFor(
-        afterGuide,
-        DateTime.utc(2026, 1, 9, 12),
-        steps: WarmupStep.defaults,
-        launch: beforeOpen,
-      ),
-      isNull,
-    );
-    expect(
-      warmup
-          .nextFor(
-            afterGuide,
-            DateTime.utc(2026, 1, 10, 13),
-            steps: WarmupStep.defaults,
-            launch: beforeOpen,
-          )
-          ?.stepKey,
-      'sales_open',
-    );
-    final noWebinar = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 500000,
-      depositDueDays: 7,
-      salesStartAt: DateTime.utc(2026, 1, 10, 12),
-    );
-    final afterSalesOpen = WarmupCandidate(
-      userId: 3,
-      launchId: 1,
-      firstStartedAt: DateTime.utc(2026, 1, 1),
-      magnetIssuedAt: DateTime.utc(2026, 1, 1),
-      funnelPhase: FunnelPhase.warming,
-      sentKeys: const <String>{'warmup_0', 'sales_open'},
-      webinarRsvp: true,
-    );
-    expect(
-      warmup.nextFor(
-        afterSalesOpen,
-        DateTime.utc(2026, 1, 10, 13),
-        steps: WarmupStep.defaults,
-        launch: noWebinar,
-      ),
-      isNull,
-    );
-    final withPromo = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 500000,
-      depositDueDays: 7,
-      webinarAt: DateTime.utc(2026, 1, 8, 16),
-      salesStartAt: DateTime.utc(2026, 1, 8, 16),
-    );
-    expect(
-      warmup
-          .nextFor(
-            afterSalesOpen,
-            DateTime.utc(2026, 1, 12, 12),
-            steps: WarmupStep.defaults,
-            launch: withPromo,
-          )
-          ?.stepKey,
-      'sales_regular',
-    );
-  });
+  test(
+    'sales_open pings unlisted leads when checkout opens; RSVP gets sales_regular after promo',
+    () {
+      final warmup = WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      );
+      final unlisted = WarmupCandidate(
+        userId: 3,
+        launchId: 1,
+        firstStartedAt: DateTime.utc(2026, 1, 1),
+        magnetIssuedAt: DateTime.utc(2026, 1, 1),
+        funnelPhase: FunnelPhase.warming,
+        sentKeys: const <String>{'warmup_0'},
+      );
+      final listed = WarmupCandidate(
+        userId: 4,
+        launchId: 1,
+        firstStartedAt: DateTime.utc(2026, 1, 1),
+        magnetIssuedAt: DateTime.utc(2026, 1, 1),
+        funnelPhase: FunnelPhase.warming,
+        sentKeys: const <String>{'warmup_0'},
+        webinarRsvp: true,
+      );
+      final beforeOpen = Launch(
+        id: 1,
+        productId: 1,
+        code: 'launch-1',
+        title: 'Запуск',
+        priceFullKopecks: 1900000,
+        depositKopecks: 500000,
+        depositDueDays: 7,
+        salesStartAt: DateTime.utc(2026, 1, 10, 12),
+      );
+      expect(
+        warmup.nextFor(
+          unlisted,
+          DateTime.utc(2026, 1, 9, 12),
+          steps: WarmupStep.defaults,
+          launch: beforeOpen,
+        ),
+        isNull,
+      );
+      expect(
+        warmup
+            .nextFor(
+              unlisted,
+              DateTime.utc(2026, 1, 10, 13),
+              steps: WarmupStep.defaults,
+              launch: beforeOpen,
+            )
+            ?.stepKey,
+        'sales_open',
+      );
+      expect(
+        warmup.nextFor(
+          listed,
+          DateTime.utc(2026, 1, 10, 13),
+          steps: WarmupStep.defaults,
+          launch: beforeOpen,
+        ),
+        isNull,
+      );
+      final noWebinar = Launch(
+        id: 1,
+        productId: 1,
+        code: 'launch-1',
+        title: 'Запуск',
+        priceFullKopecks: 1900000,
+        depositKopecks: 500000,
+        depositDueDays: 7,
+        salesStartAt: DateTime.utc(2026, 1, 10, 12),
+      );
+      final afterSalesOpen = WarmupCandidate(
+        userId: 3,
+        launchId: 1,
+        firstStartedAt: DateTime.utc(2026, 1, 1),
+        magnetIssuedAt: DateTime.utc(2026, 1, 1),
+        funnelPhase: FunnelPhase.warming,
+        sentKeys: const <String>{'warmup_0', 'sales_open'},
+        webinarRsvp: true,
+      );
+      expect(
+        warmup.nextFor(
+          afterSalesOpen,
+          DateTime.utc(2026, 1, 10, 13),
+          steps: WarmupStep.defaults,
+          launch: noWebinar,
+        ),
+        isNull,
+      );
+      final withPromo = Launch(
+        id: 1,
+        productId: 1,
+        code: 'launch-1',
+        title: 'Запуск',
+        priceFullKopecks: 1900000,
+        depositKopecks: 500000,
+        depositDueDays: 7,
+        webinarAt: DateTime.utc(2026, 1, 8, 16),
+        salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      );
+      expect(
+        warmup
+            .nextFor(
+              afterSalesOpen,
+              DateTime.utc(2026, 1, 12, 12),
+              steps: WarmupStep.defaults,
+              launch: withPromo,
+            )
+            ?.stepKey,
+        'sales_regular',
+      );
+      expect(
+        WarmupStep.defaults.firstWhere((step) => step.stepKey == 'sales_open').skipRsvp,
+        isTrue,
+      );
+      expect(
+        WarmupStep.defaults.firstWhere((step) => step.stepKey == 'webinar_24h').skipRsvp,
+        isTrue,
+      );
+      expect(
+        WarmupStep.defaults.firstWhere((step) => step.stepKey == 'sales_regular').rsvpOnly,
+        isTrue,
+      );
+    },
+  );
 
   test('custom launch dozhim replaces builtin copy and is copied as-is', () async {
     harness.course.upsertActiveLaunch(

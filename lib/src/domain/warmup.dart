@@ -43,6 +43,7 @@ final class WarmupStep {
     this.enabled = true,
     this.ignoreQuietHours = false,
     this.rsvpOnly = false,
+    this.skipRsvp = false,
   });
 
   final String stepKey;
@@ -52,6 +53,7 @@ final class WarmupStep {
   final bool enabled;
   final bool ignoreQuietHours;
   final bool rsvpOnly;
+  final bool skipRsvp;
 
   static const Set<String> retiredKeys = <String>{
     'warmup_d1',
@@ -94,6 +96,7 @@ final class WarmupStep {
       delay: Duration(days: 1),
       sortOrder: 20,
       anchor: WarmupAnchor.webinar,
+      skipRsvp: true,
     ),
     WarmupStep(
       stepKey: 'webinar_10m',
@@ -101,6 +104,7 @@ final class WarmupStep {
       sortOrder: 21,
       anchor: WarmupAnchor.webinar,
       ignoreQuietHours: true,
+      skipRsvp: true,
     ),
     WarmupStep(
       stepKey: 'webinar_live',
@@ -122,12 +126,14 @@ final class WarmupStep {
       delay: Duration.zero,
       sortOrder: 25,
       anchor: WarmupAnchor.salesStart,
+      skipRsvp: true,
     ),
     WarmupStep(
       stepKey: 'sales_regular',
       delay: Duration.zero,
       sortOrder: 30,
       anchor: WarmupAnchor.regularSales,
+      rsvpOnly: true,
     ),
     WarmupStep(
       stepKey: 'dozhim_d1',

@@ -230,6 +230,7 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'warmup_steps', 'anchor', "TEXT NOT NULL DEFAULT 'magnet'");
     _ensureColumn(db, 'warmup_steps', 'ignore_quiet_hours', 'INTEGER NOT NULL DEFAULT 0');
     _ensureColumn(db, 'warmup_steps', 'rsvp_only', 'INTEGER NOT NULL DEFAULT 0');
+    _ensureColumn(db, 'warmup_steps', 'skip_rsvp', 'INTEGER NOT NULL DEFAULT 0');
     db.execute('''
       CREATE TABLE IF NOT EXISTS launch_dozhim (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

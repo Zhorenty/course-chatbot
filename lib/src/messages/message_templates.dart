@@ -48,25 +48,27 @@ final class MessageTemplates {
     'декабря',
   ];
 
-  static const String buttonGuide = 'Получить гайд "Язык цвета"';
+  static const String buttonGuide = 'Получить гайд';
   static const String guideDocumentMediaId = 'guide';
   static const String buttonEnroll = 'Курс "Цвет в интерьере. Основы и практика"';
-  static const String buttonRsvp = 'Хочу на Мастер-класс';
-  static const String buttonRsvpList = 'Попасть в список участников';
+  static const String buttonRsvp = 'Хочу на мастер-класс';
+  static const String buttonRsvpList = 'Хочу на мастер-класс';
   static const String buttonRsvpEnroll = 'Хочу на мастер-класс';
+  static const String buttonEnrollInline = 'Записаться на курс';
   static const String buttonJoinWebinar = 'Присоединиться';
   static const String buttonCourseStatus = buttonEnroll;
   static const String buttonHelp = 'Помощь';
   static const String buttonOptOut = 'Отписаться от рассылки';
-  static const String buttonPayFull = 'Оплатить';
+  static const String buttonPayFull = 'Оплатить курс целиком';
   static const String buttonPayFullPromo = 'Оплатить курс по специальной цене';
-  static const String buttonPayDeposit = 'Бронь места по предоплате';
-  static const String buttonPayRemainder = 'Внести остаток';
+  static const String buttonPayDeposit = 'Бронь места, предоплата';
+  static const String buttonPayRemainder = 'Внести остаток сейчас';
   static const String buttonPayRemainderNow = 'Внести остаток сейчас';
   static const String buttonGoToPay = 'Перейти к оплате';
   static const String buttonContinuePay = 'Продолжить оплату';
   static const String buttonOpenInvite = 'Открыть канал курса';
   static const String defaultCourseTitle = 'Цвет в интерьере. Основы и практика';
+  static const String courseShortTitle = 'Цвет в интерьере';
   static const String guideTitle = 'Язык цвета';
   static const String masterClassTitle =
       'Как начать работать с цветом смелее и не бояться ошибиться';
@@ -210,14 +212,12 @@ final class MessageTemplates {
   String startGuideOffer() {
     return '<b>Привет 🤍</b>\n\n'
         'На связи Анастасия Дубовскова — дизайнер и автор 80+ узнаваемых проектов, где цвет является частью характера пространства, преподаватель в Академии дизайна, член жюри Евразийской премии по хоумстейджингу 2026 и лауреат премий.\n\n'
-        'А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать управлять им осознанно.\n\n'
+        'А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать использовать его осознанно.\n\n'
         'Для начала у меня для тебя подарок — гайд «${MessageTemplates.guideTitle}». Забирай его по кнопке «Получить гайд» 🍂';
   }
 
   String startCourseCard({Launch? launch}) {
-    return '<b>Курс ${_quotedCourseTitle(launch)}</b>\n\n'
-        '${_courseDescriptionHtml(launch)}\n\n'
-        '${_courseFactsHtml(launch)}';
+    return _preSalesCourseCopy(launch);
   }
 
   String alreadyInFunnel() {
@@ -401,12 +401,14 @@ final class MessageTemplates {
   }
 
   String _warmupZero(Launch? launch, {required bool rsvp}) {
+    final when = _formatHumanDate(launch?.webinarAt) ?? 'Скоро';
     return '<b>Отлично, гайд у тебя — это уже первый шаг навстречу цвету🤍</b>\n\n'
-        '${_formatHumanDate(launch?.webinarAt) ?? 'Скоро'} я проведу живой мастер-класс — '
-        '«${MessageTemplates.masterClassTitle}» и приглашаю тебя!\n\n'
-        'Разберём, почему интерьерная колористика — это глубже, но при этом проще, чем привычные круг Иттена и схема 60-30-10. '
-        'Покажу на своих реальных объектах, как принимать решение по цвету за 3 простых ориентира — без калькулятора и без страха всё сломать.\n\n'
-        'Особенно жду тебя, если ты уже проходил интенсивы по колористике и стало только сложнее.\n\n'
+        'Готов(а) ли ты пойти дальше?\n'
+        '$when я проведу живой мастер-класс — «${MessageTemplates.masterClassTitle}» и приглашаю тебя!\n\n'
+        'Разберём, почему интерьерная колористика - это глубже, но при этом проще, чем привычный круг Иттена и схема 60-30-10. '
+        'Покажу на своих реальных объектах, как принимать решение по цвету с помощью 3-х простых инструментов.\n\n'
+        'Особенно жду тебя, если ты уже проходил интенсивы по колористике и всё стало только сложнее!\n'
+        'После этого материала ты начнешь работать с цветом в интерьерах легко и осознанно!\n\n'
         '${_webinarScheduleBlock(launch)}\n\n'
         '${_warmupRsvpCta(launch: launch, rsvp: rsvp)}';
   }
@@ -417,15 +419,15 @@ final class MessageTemplates {
     return '<b>Мастер-класс уже завтра!</b>\n\n'
         'Напоминаю, $when проведу мастер-класс '
         '«${MessageTemplates.masterClassTitle}»!\n\n'
-        'Это будет не стандартный набор формул и круг Иттена, о которых вы уже много раз слышали. '
-        'Именно после этого материала мои ученики-дизайнеры говорят «А что, так можно было?!» 🤭, '
-        'а их объекты обретают почерк.\n\n'
+        'Это будет не стандартный набор формул, о которых вы уже много раз слышали. '
+        'Именно после этого материала мои ученики-дизайнеры говорят "А что, так можно было?!" 🤭, '
+        'приходит уверенность и легкость в работе с цветом, а их объекты обретают авторский узнаваемый почерк.\n\n'
         '${_warmupRsvpCta(launch: launch, rsvp: rsvp, listed: 'Ты уже в списке. ${_webinarLinkFollowup(launch)}', unlisted: _joinSentences('Ссылка придет тем, кто отметился по кнопке внизу, нажимай скорее', _webinarLinkLaterIfMissing(launch)))}';
   }
 
   String _webinarTenMinutes(Launch? launch, {required bool rsvp}) {
     final time = _formatClock(launch?.webinarAt);
-    final when = time == null ? 'скоро' : 'ровно в $time';
+    final when = time == null ? 'скоро' : 'ровно в $time мск';
     final unlisted = _joinSentences(
       '🤫 По секрету между нами: нажимай на кнопку, даже если не получится быть онлайн — '
       'пришлю запись и специальное предложение на мой курс по интерьерной колористике.',
@@ -443,31 +445,25 @@ final class MessageTemplates {
 
   String _webinarLive(Launch? launch) {
     if (!(launch?.hasWebinarUrl ?? false)) {
-      return '<b>Мы начинаем!🔥</b>\n\n'
+      return '<b>Мы начинаем 🔥</b>\n\n'
           '${_webinarLinkLaterLine()} Ты в списке.';
     }
-    return '<b>Мы начинаем!🔥</b>\n\n'
+    return '<b>Мы начинаем 🔥</b>\n\n'
         'Мастер-класс «${MessageTemplates.masterClassTitle}» вот-вот стартует. '
         'Присоединяйся по кнопке ниже.';
   }
 
   String _webinarNextDay(Launch? launch) {
     final resolved = launch ?? _placeholderLaunch();
-    final until = _formatHumanDate(LaunchSales.promoEndsAt(resolved));
     final promo = formatRubSpaced(resolved.resolvedPricePromoKopecks, unit: 'руб.');
-    final regular = formatRubSpaced(resolved.resolvedPriceFullKopecks, unit: 'руб.');
-    final untilLine = until == null
-        ? 'Предложение действует 3 дня.'
-        : 'Предложение действует 3 дня. Далее цена повысится и зайти на программу по специальной цене будет нельзя.';
-    return '<b>Спеццена после мастер-класса</b>\n\n'
-        'Спасибо, что был(а) со мной сегодня 🤍\n\n'
+    final was = _compareAtRub(resolved);
+    return '<b>Спасибо, что был(а) со мной на Мастер-классе🤍</b>\n\n'
         'Если после эфира захотелось разобраться в цвете уже системно, а не по кусочкам, приглашаю тебя на следующий шаг — '
         'курс ${_quotedCourseTitle(resolved)}.\n\n'
-        'Здесь не будет попытки всё высчитать по схемам. Каждый урок построен на реальных инструментах именно интерьерной колористики, '
-        'не на абстрактных примерах, а на разборе моих объектов, которые уже получали премии и публиковались в журналах. Без пересказа одного и того же.\n\n'
+        '${_colorCoursePitchBody(forWebinarAlumni: true)}\n\n'
         '🎁 И только для тех, кто участвовал в Мастер-классе я даю специальные условия: стоимость всего курса для вас — '
-        '$promo <s>$regular</s>\n'
-        '⚡ $untilLine\n\n'
+        '$promo <s>$was</s>\n'
+        '⚡ Предложение действует 3 дня. Далее цена повысится и зайти на программу по специальной цене будет нельзя.\n\n'
         'Успевай сделать финальный шаг навстречу осознанной работе с цветом и узнаваемым объектам со вкусом!';
   }
 
@@ -484,73 +480,97 @@ final class MessageTemplates {
   }
 
   String _salesOpen(Launch? launch) {
-    return '<b>Двери курса открыты</b>\n\n'
-        'Можно присоединиться к курсу ${_quotedCourseTitle(launch)}.'
-        '${_startFact(launch)}\n\n'
-        'Курс — в меню внизу.';
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final startLine = start == null ? '' : 'Старт потока $start. Уроки в телеграм + общий чат.\n\n';
+    return '<b>Курс ${_quotedCourseTitle(launch)} открывает свои двери! 🎉</b>\n\n'
+        '${_colorCoursePitchBody(forWebinarAlumni: false)}\n\n'
+        'Я не буду грузить вас давно знакомыми формулами и абстрактными правилами. '
+        'Я дам вам систему, которая заменяет интуицию на повторяемый алгоритм принятия решений.\n\n'
+        '$startLine'
+        '🎨 Сделай свой финальный шаг навстречу цвету в интерьере. Жду тебя на курсе!';
   }
 
   String _salesRegular(Launch? launch) {
     final price = _marketingPrice(launch?.resolvedPriceFullKopecks);
+    final deposit = launch != null && launch.hasDepositOption
+        ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
+        : null;
     final priceLine = price == null
-        ? 'Специальная цена уже не действует.'
-        : 'Специальная цена уже не действует. Сейчас курс ${_quotedCourseTitle(launch)} стоит $price.';
-    return '<b>Двери курса еще открыты</b>\n\n'
+        ? 'Предложение о специальной цене истекло, но двери курса еще открыты! 🧡'
+        : deposit == null
+        ? 'Предложение о специальной цене истекло, но двери курса еще открыты! 🧡\n\n'
+              'Сейчас ты можешь приобрести программу за $price.'
+        : 'Предложение о специальной цене истекло, но двери курса еще открыты! 🧡\n\n'
+              'Сейчас ты можешь приобрести программу за $price или забронировать место по предоплате $deposit и внести остаток до старта курса.';
+    return '<b>Вы еще успеваете присоединиться</b>\n\n'
         '$priceLine'
         '${_startFact(launch)}\n\n'
-        'Присоединиться можно из меню внизу.';
+        'Ты с нами?';
   }
 
   String _dozhimCase(Launch? launch) {
-    return _dozhim(
-      launch,
-      headline: 'Когда объект обретает почерк',
-      body:
-          'Цвет в интерьере — часть характера пространства, а не модный оттенок на стене. '
-          'На курсе разбираем это на реальных объектах.',
-    );
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final startLine = start == null
+        ? 'Присоединяйтесь к ближайшему потоку.'
+        : 'Присоединяйтесь к ближайшему потоку, стартуем $start.';
+    return '<b>Забудьте про круг Иттена 🎨</b>\n\n'
+        'Просто посмотрите на этот проект.\n'
+        'Получилось бы его реализовать, если бы я использовала стандартные схемы? — Нет.\n'
+        'Мог бы он случиться, если бы я работала только по расчётам? — Тоже нет.\n'
+        'Взял ли этот проект премию, напечатали ли его в журналах? — ДА!\n\n'
+        'А сколько сердец покорил... 💔\n\n'
+        'Он построен на перекличке оттенков, а не на классических схемах. Здесь больше 5 активных цветов: розовый с красным, голубой с холодным жёлтым. Всё открытое, насыщенное. Максимум чистоты, минимум нюансов.\n\n'
+        'Неожиданные сочетания, акцент на чистоту и насыщенность цвета вместо привычных нюансных оттенков.\n\n'
+        'В курсе разберём инструменты за пределами привычных кругов и формул, потому что цвет это не математика.\n\n'
+        'Буду учить вас нарушать правила со вкусом 🤍\n'
+        '$startLine\n'
+        'Записаться по кнопке внизу';
   }
 
   String _dozhimFear(Launch? launch) {
-    return _dozhim(
-      launch,
-      headline: 'Если страшно всё сломать',
-      body:
-          'Круг Иттена и схема 60-30-10 есть, а решение по цвету всё равно пугает — знакомо. '
-          'На курсе как раз про ориентиры, с которыми можно работать без калькулятора и без страха.',
-    );
+    return '<b>Сколько курсов по цвету вы проходили?</b>\n\n'
+        'Изучено столько программ по колористике, в голове путаница и вроде бы знаешь, как правильно, но на деле интерьер не складывается.\n'
+        'После такого действительно начинаешь думать:\n'
+        '"Чувство цвета либо есть, либо нет. Мне не дано" 🤔\n\n'
+        'Спешу обрадовать: это не так.\n'
+        'Чувство цвета в интерьере легко развить.\n'
+        'Просто вас в очередной раз перегрузили абстрактными формулами вместо того, чтобы дать понятный ориентир.\n\n'
+        'Вам нужны не полсотни правил, а лишь 3 рабочих: перекличка, тепло-холодность, светлота. Их видно глазами на объекте.\n\n'
+        'Подробнее расскажу на курсе ${_quotedCourseTitle(launch)}\n'
+        '🔥 16 конкретных уроков именно по интерьерной колористике для тех, кто хочет создавать вкусные цветовые сочетания без сложных просчетов.\n\n'
+        'Не "очередной курс", а прицельная программа, которая закрывает страх работы с цветом и ставит точку в вопросе цветовых решений.\n\n'
+        'Вы с нами?';
   }
 
   String _dozhimBeforeAfter(Launch? launch) {
-    return _dozhim(
-      launch,
-      headline: 'До и после цвета',
-      body:
-          'После этого материала объекты учеников-дизайнеров начинают звучать иначе: '
-          'появляется почерк, а не «как у всех».',
-    );
+    return '<b>Ещё одно подтверждение, как цвет работает на преображение.</b>\n\n'
+        'Оцените «до / после» в этом проекте.\n'
+        'Исходный ремонт далеко не самый актуальный. Но, не трогая планировку и отделку, мы расставили цветовые акценты, которые сделали квартиру свежее и визуально дороже. При этом ни один элемент не выглядит чужим: цвет собрал пространство в единую историю, а не добавил в неё ещё один слой.\n\n'
+        '🪄 Работа с цветом самый сильный инструмент в руках дизайнера и хоумстейджера, будь то вторичка или ремонт от застройщика. Он позволяет менять восприятие пространства и преображать объекты, которые, казалось бы, уже не спасти.\n'
+        'Поэтому цвет — не враг, к которому боязно подступиться, а помощник, который работает на вас и позволяем вам творить чудеса на объектах.\n\n'
+        'Умение осознанно работать с цветом — это профессиональное преимущество, которое отличает вас от специалистов со «средней» услугой.\n\n'
+        'Если хотите чувствовать себя уверенно в работе с цветом, двери курса ${_quotedCourseTitle(launch)} ещё открыты.\n'
+        'Присоединяйтесь по кнопке внизу 👇';
   }
 
   String _dozhimReviews(Launch? launch) {
-    return _dozhim(
-      launch,
-      headline: '«А что, так можно было?»',
-      body: 'Именно это говорят дизайнеры, когда цвет становится решением, а не лотереей.',
-    );
-  }
-
-  String _dozhim(Launch? launch, {required String headline, required String body}) {
     final start = _formatHumanDate(launch?.courseStartAt);
-    final price = _marketingPrice(launch?.resolvedPriceFullKopecks);
-    final facts = <String>[
-      if (start != null) 'Старт потока $start.',
-      if (price != null) 'Стоимость $price.',
-    ];
-    final factsBlock = facts.isEmpty ? '' : '${facts.join(' ')}\n\n';
-    return '<b>$headline</b>\n\n'
-        '$body\n\n'
-        '$factsBlock'
-        'Курс — в меню внизу.';
+    final startLine = start == null
+        ? 'Вы еще успеваете присоединиться.'
+        : 'Вы еще успеваете присоединиться, стартуем $start.';
+    return '<b>"Зачем мне на курс, когда есть Pinterest?"</b>\n\n'
+        'Вы будете частично правы: своим ученикам, которые в начале пути, я говорю "пробуйте повторить".\n'
+        'Даже если скопируете, всё равно получится по-своему.\n\n'
+        'Но если вы хотите пользоваться цветом, как инструментом и осознанно им управлять, растить свой профессионализм и повышать не только насмотренность, но и чек за услуги, уметь пользоваться готовыми палитрами из интернета — недостаточно.\n\n'
+        'Мой курс — это не ещё один "список трендовых сочетаний 2026".\n'
+        'Он о том, как адаптировать любую палитру:\n'
+        '- под свою идею\n'
+        '- под сегодняшний день\n'
+        '- под конкретное пространство\n'
+        '- под конкретного заказчика\n\n'
+        '$startLine\n'
+        'Добавите уверенности и красок вашим объектам и сформируете авторский почерк!\n'
+        'Записаться по кнопке внизу 👇';
   }
 
   String _lastWagon(Launch? launch) {
@@ -568,11 +588,14 @@ final class MessageTemplates {
     final day = _formatHumanDate(launch.webinarAt);
     final time = _formatClock(launch.webinarAt);
     final when = day == null
-        ? 'Напомню ближе к мастер-классу.'
-        : 'Встречаемся $day${time == null ? '' : ' в $time'}.';
+        ? ''
+        : 'Бесплатный Мастер-класс «${MessageTemplates.masterClassTitle}» пройдет\n'
+              '📅 $day${time == null ? '' : ' в $time'}\n\n';
     return '<b>Поздравляю! Ты в списке участников!</b>\n\n'
-        '$when\n'
-        '${_webinarLinkFollowup(launch)} Жду встречи! 🤍';
+        '$when'
+        'Напомню ближе дате мастер-класса и пришлю ссылку.\n'
+        '${_webinarLinkFollowup(launch)}\n\n'
+        'Жду встречи! 🤍';
   }
 
   String _warmupDay1() {
@@ -670,13 +693,18 @@ final class MessageTemplates {
     final start = _formatHumanDate(launch.courseStartAt) ?? 'когда будет дата';
     final title = _quotedCourseTitle(launch);
     final promo = formatRubSpaced(quote.pricePromoKopecks, unit: 'руб.');
-    final regularRub = formatRubSpaced(quote.priceFullKopecks, unit: 'руб.');
+    final wasRub = _compareAtRub(launch);
     switch (quote.phase) {
       case SalesPhase.preSales:
-        return '<b>Курс $title</b>\n\n'
-            '${_courseDescriptionHtml(launch)}\n\n'
-            '${_courseFactsHtml(launch)}\n\n'
-            '${_preSalesMasterClassCta(launch: launch, rsvp: quote.rsvp, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted)}';
+        return _preSalesCourseCopy(
+          launch,
+          cta: _preSalesMasterClassCta(
+            launch: launch,
+            rsvp: quote.rsvp,
+            rsvpOpen: rsvpOpen,
+            webinarStarted: webinarStarted,
+          ),
+        );
       case SalesPhase.closed:
         return '<b>Запись закрыта</b>\n\n'
             'Продажи этого потока закончились. Старт $start. '
@@ -688,25 +716,23 @@ final class MessageTemplates {
               ? 'Предложение актуально 3 дня'
               : 'Предложение актуально до $until';
           return '<b>Специальная цена на курс $title</b>\n\n'
-              '🎁 Для тебя открыты специальные условия — стоимость курса составляет $promo вместо <s>$regularRub</s>. '
-              '$untilLine, далее цена сменится на обычную и приобрести программу по специальной стоимости уже не получится.\n\n'
-              'Старт потока $start. Оплатить можно по ссылке внизу. После полной оплаты придет ссылка на канал курса.';
+              '🎁 Для тебя открыты специальные условия - стоимость курса составляет $promo вместо <s>$wasRub</s>.\n'
+              '⚡$untilLine, далее цена сменится на обычную и приобрести программу по специальной стоимости уже не получится.\n\n'
+              'Старт потока $start.\n'
+              'Оплатить можно по ссылке внизу.\n'
+              'После полной оплаты придет ссылка на канал курса.';
         }
-        final deposit = launch.hasDepositOption
-            ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
-            : null;
-        final depositLine = deposit == null
-            ? ''
-            : ' или забронировать место по предоплате $deposit и внести остаток до старта курса';
-        return '<b>Вы еще успеваете присоединиться</b>\n\n'
-            'Предложение о специальной цене истекло, но двери курса еще открыты! 🧡\n'
-            'Сейчас ты можешь приобрести программу за $regularRub$depositLine. Старт потока $start\n'
-            'Ты с нами?';
+        return _regularEnrollCopy(
+          title: title,
+          start: start,
+          price: formatRubSpaced(quote.priceFullKopecks),
+        );
       case SalesPhase.regular:
-        return '<b>Запись на курс $title</b>\n\n'
-            'Стоимость: ${formatRubSpaced(quote.payableKopecks)}\n'
-            'Стартуем $start.\n'
-            'Ссылка в канал курса придет в этот чат после полной оплаты.';
+        return _regularEnrollCopy(
+          title: title,
+          start: start,
+          price: formatRubSpaced(quote.payableKopecks),
+        );
     }
   }
 
@@ -827,8 +853,8 @@ final class MessageTemplates {
     final start =
         _formatHumanDate(launch?.courseStartAt, withYear: true) ??
         _dueDateLabel(order.dueAt, fallback: 'старта курса');
-    return '<b>Предоплата дошла</b>\n\n'
-        'Остаток необходимо внести до старта курса — $start. '
+    return '<b>Предоплата прошла</b>\n\n'
+        'Остаток необходимо внести до старта курса - $start. '
         'Ссылку в канал курса и чат потока пришлю, когда закроется полная сумма.';
   }
 
@@ -843,7 +869,8 @@ final class MessageTemplates {
   }
 
   String abandonedFirst() {
-    return 'Оформление заказа началось, но оплата пока не проведена. Можно продолжить с того же места.';
+    return '<b>Кажется, вы кое-что забыли</b>\n\n'
+        'Оформление заказа началось, но оплата пока не проведена. Можно продолжить с того же места.';
   }
 
   String abandonedSecond() {
@@ -856,9 +883,10 @@ final class MessageTemplates {
 
   String remainderBeforeDue(CourseOrder order, {Launch? launch}) {
     final due = _formatDate(order.dueAt) ?? _formatDate(launch?.courseStartAt) ?? 'скоро';
-    return '<b>Напоминаю про внесение остатка за курс</b>\n\n'
+    return '<b>Напоминаю про внесение остатка за курс ⏰</b>\n\n'
+        'Ваше место на курсе забронировано!\n\n'
         'Уже внесена предоплата ${formatRubSpaced(order.amountPaidKopecks, unit: 'руб.')}, '
-        'остаток ${formatRubSpaced(order.amountDueKopecks, unit: 'руб.')}, срок до $due. '
+        'остаток - ${formatRubSpaced(order.amountDueKopecks, unit: 'руб.')}, срок внесения остатка до $due.\n\n'
         'После того, как будет внесена полная сумма, пришлю доступ к каналу курса и чату потока.';
   }
 
@@ -924,7 +952,7 @@ final class MessageTemplates {
         'Спеццена — 3 дня с эфира, только у отметившихся.\n\n'
         '<b>Продажи</b>\n'
         'До старта продаж «${MessageTemplates.buttonEnroll}» — карточка курса и «ждём кассу», без оплаты. '
-        'Старт продаж — поле в карточке курса (пусто — как дата эфира). '
+        'Старт продаж — поле в карточке курса (пусто — следующий день после эфира). '
         'В день старта продаж пишем тем, кто уже может оплатить. '
         'После окна спеццены — обычная цена и дожим. '
         'В последний день продаж — «последний вагон». Старт потока $startLine.\n\n'
@@ -1728,8 +1756,11 @@ final class MessageTemplates {
 
   String _courseTitle(Launch? launch) {
     final raw = launch?.title.trim();
-    if (raw == null || raw.isEmpty) {
-      return MessageTemplates.defaultCourseTitle;
+    if (raw == null ||
+        raw.isEmpty ||
+        raw == MessageTemplates.defaultCourseTitle ||
+        raw.startsWith(MessageTemplates.courseShortTitle)) {
+      return MessageTemplates.courseShortTitle;
     }
     return raw;
   }
@@ -1748,52 +1779,51 @@ final class MessageTemplates {
     return escapeHtml(_resolvedCourseDescription(launch));
   }
 
-  List<(String, String)> _courseFactsRows(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата';
-    final sales = _formatHumanDate(launch?.salesStartAt);
-    return <(String, String)>[
-      ('Старт потока', start),
-      ('Мастер-класс', _courseFactWebinar(launch)),
-      ('Ссылка', _courseFactLinkHtml(launch)),
-      if (sales != null) ('Продажи', sales),
-    ];
+  String _preSalesCourseCopy(Launch? launch, {String? cta}) {
+    final start = _formatHumanDate(launch?.courseStartAt);
+    final buf = StringBuffer()
+      ..writeln('<b>Курс ${_quotedCourseTitle(launch)} 🎨</b>')
+      ..writeln()
+      ..write(_courseDescriptionHtml(launch));
+    if (start != null) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write('Старт потока $start.');
+    }
+    buf
+      ..writeln()
+      ..writeln()
+      ..write(_preSalesMasterClassWhen(launch));
+    if (cta != null && cta.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(cta);
+    }
+    return buf.toString();
   }
 
-  String _courseFactsHtml(Launch? launch) {
-    return _courseFactsRows(
-      launch,
-    ).map(((String, String) row) => '${_courseFactEmoji(row.$1)} ${row.$1}: ${row.$2}').join('\n');
-  }
-
-  String _courseFactEmoji(String label) {
-    return switch (label) {
-      'Старт потока' => '📅',
-      'Мастер-класс' => '📺',
-      'Ссылка' => '🔗',
-      'Продажи' => '🛒',
-      _ => '•',
-    };
-  }
-
-  String _courseFactWebinar(Launch? launch) {
+  String _preSalesMasterClassWhen(Launch? launch) {
     final day = _formatHumanDate(launch?.webinarAt);
     final time = _formatClock(launch?.webinarAt);
     if (day != null && time != null) {
-      return '$day, $time по мск';
+      return '📅 Мастер-класс пройдет $day в $time мск';
     }
     if (day != null) {
-      return day;
+      return '📅 Мастер-класс пройдет $day';
     }
-    return 'дату и время пришлю отдельно';
+    if (time != null) {
+      return '📅 Мастер-класс пройдет в $time мск';
+    }
+    return '📅 Мастер-класс: дату и время пришлю отдельно.';
   }
 
-  String _courseFactLinkHtml(Launch? launch) {
-    final url = launch?.resolvedWebinarUrl;
-    if (url == null) {
-      return _webinarLinkLaterLine();
-    }
-    final safe = escapeHtml(url);
-    return '<a href="$safe">$safe</a>';
+  String _compareAtRub(Launch? launch) {
+    final kopecks = LaunchPrices.wasKopecks > 0
+        ? LaunchPrices.wasKopecks
+        : (launch?.resolvedPriceFullKopecks ?? 0);
+    return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
   String _webinarLinkLaterLine() {
@@ -1802,7 +1832,7 @@ final class MessageTemplates {
 
   String _webinarLinkFollowup(Launch? launch) {
     if (launch?.hasWebinarUrl ?? false) {
-      return 'Ссылка на Мастер-класс придет в этом боте.';
+      return 'Ссылка придет в этом боте.';
     }
     return _webinarLinkLaterLine();
   }
@@ -1882,10 +1912,32 @@ final class MessageTemplates {
     if (quote.promoPriceApplies) {
       return MessageTemplates.buttonPayFullPromo;
     }
-    return '${MessageTemplates.buttonPayFull} всю сумму ${formatRubSpaced(quote.payableKopecks)}';
+    return '${MessageTemplates.buttonPayFull} (${formatRubSpaced(quote.payableKopecks, unit: 'руб.')})';
   }
 
   String payDepositButtonLabel(int kopecks) {
-    return '${MessageTemplates.buttonPayDeposit} ${formatRubSpaced(kopecks)}';
+    return '${MessageTemplates.buttonPayDeposit} (${formatRubSpaced(kopecks, unit: 'руб.')})';
+  }
+
+  String _regularEnrollCopy({required String title, required String start, required String price}) {
+    return '<b>Запись на курс $title 🧡</b>\n\n'
+        '16 уроков + эфир. Уроки в телеграм, общий чат участников.\n\n'
+        'Стоимость: $price\n'
+        'Стартуем $start.\n'
+        'Ссылка в канал курса придет в этот чат после полной оплаты.';
+  }
+
+  String _colorCoursePitchBody({required bool forWebinarAlumni}) {
+    final who = forWebinarAlumni ? 'Курс для тех, кто:' : 'Для тех, кто:';
+    return '$who\n'
+        '- многократно проходил программы по колористике и только запутался\n'
+        '- считает, что работать с цветом либо дано, либо нет\n'
+        '- хочет работать с цветом осознанно и предсказуемо, без эффекта лотереи\n'
+        '- хочет усилить свои проекты и выйти на новый уровень стоимости\n\n'
+        '🧡 16 уроков, построенных на реальных инструментах именно интерьерной колористики, не на абстрактных примерах. Разборы объектов, которые уже получали премии и публиковались в журналах.\n\n'
+        'По итогам курса вы научитесь:\n'
+        '— Уверенно пользоваться цветом, как инструментом: регулировать стиль и настроение интерьера, а также его «дороговизну» и целевую аудиторию\n\n'
+        '— Осознанно нарушать классические цветовые схемы, а не бояться от них отступить: собирать сочетания на пять и больше активных цветов там, где раньше выбрали бы один безопасный акцент\n\n'
+        '— Защищать смелые цветовые решения перед заказчиком: знать, почему это сработает, до того как соберёте проект, и поднимать чек за счёт результата, который сразу виден';
   }
 }

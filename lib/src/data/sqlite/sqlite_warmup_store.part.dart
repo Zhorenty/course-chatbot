@@ -16,6 +16,7 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
             enabled: (row['enabled'] as int) == 1,
             ignoreQuietHours: (row['ignore_quiet_hours'] as int?) == 1,
             rsvpOnly: (row['rsvp_only'] as int?) == 1,
+            skipRsvp: (row['skip_rsvp'] as int?) == 1,
           ),
         )
         .toList(growable: false);
@@ -27,8 +28,8 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
       _db.execute(
         '''
         INSERT OR IGNORE INTO warmup_steps (
-          step_key, delay_seconds, sort_order, enabled, anchor, ignore_quiet_hours, rsvp_only
-        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          step_key, delay_seconds, sort_order, enabled, anchor, ignore_quiet_hours, rsvp_only, skip_rsvp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           step.stepKey,
@@ -38,6 +39,7 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
           step.anchor.storageValue,
           step.ignoreQuietHours ? 1 : 0,
           step.rsvpOnly ? 1 : 0,
+          step.skipRsvp ? 1 : 0,
         ],
       );
     }
@@ -48,13 +50,14 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
       _db.execute(
         '''
         UPDATE warmup_steps
-        SET anchor = ?, ignore_quiet_hours = ?, rsvp_only = ?, sort_order = ?
+        SET anchor = ?, ignore_quiet_hours = ?, rsvp_only = ?, skip_rsvp = ?, sort_order = ?
         WHERE step_key = ?;
         ''',
         <Object?>[
           step.anchor.storageValue,
           step.ignoreQuietHours ? 1 : 0,
           step.rsvpOnly ? 1 : 0,
+          step.skipRsvp ? 1 : 0,
           step.sortOrder,
           step.stepKey,
         ],

@@ -67,14 +67,7 @@ final class WarmupService {
           sameAnchor: WarmupAnchor.courseStart,
         ),
         WarmupAnchor.webinar => _webinarDue(step: step, steps: steps, now: now, launch: launch),
-        WarmupAnchor.webinarFollowup => _afterAnchorDue(
-          step: step,
-          steps: steps,
-          now: now,
-          anchor: launch?.webinarAt?.toUtc(),
-          sameAnchor: WarmupAnchor.webinarFollowup,
-          cap: launch == null ? null : LaunchSales.regularSalesAt(launch),
-        ),
+        WarmupAnchor.webinarFollowup => _webinarFollowupDue(now: now, launch: launch),
         WarmupAnchor.salesStart => _afterAnchorDue(
           step: step,
           steps: steps,
@@ -116,6 +109,9 @@ final class WarmupService {
         candidate.funnelPhase == FunnelPhase.magnetIssued ||
         candidate.funnelPhase == FunnelPhase.warming;
     if (step.rsvpOnly && !candidate.webinarRsvp) {
+      return false;
+    }
+    if (step.skipRsvp && candidate.webinarRsvp) {
       return false;
     }
     // Selling drip only while this person can actually pay.
@@ -166,7 +162,8 @@ final class WarmupService {
     }
     if (step.delay == Duration.zero) {
       final nowUtc = now.toUtc();
-      return !nowUtc.isBefore(webinar) && nowUtc.isBefore(webinar.add(LaunchSales.liveWindow));
+      final liveFrom = webinar.subtract(const Duration(minutes: 10));
+      return !nowUtc.isBefore(liveFrom) && nowUtc.isBefore(webinar.add(LaunchSales.liveWindow));
     }
     return _beforeAnchorDue(
       step: step,
@@ -175,6 +172,21 @@ final class WarmupService {
       anchor: webinar,
       sameAnchor: WarmupAnchor.webinar,
     );
+  }
+
+  bool _webinarFollowupDue({required DateTime now, required Launch? launch}) {
+    final webinar = launch?.webinarAt;
+    if (webinar == null) {
+      return false;
+    }
+    final windowStart = MoscowTime.nextCalendarDayAtHourUtc(webinar, hour: 12);
+    var windowEnd = windowStart.add(const Duration(days: 1));
+    final cap = launch == null ? null : LaunchSales.regularSalesAt(launch)?.toUtc();
+    if (cap != null && cap.isBefore(windowEnd)) {
+      windowEnd = cap;
+    }
+    final nowUtc = now.toUtc();
+    return !nowUtc.isBefore(windowStart) && nowUtc.isBefore(windowEnd);
   }
 
   bool _salesEndDue({required DateTime now, required DateTime? salesEnd}) {

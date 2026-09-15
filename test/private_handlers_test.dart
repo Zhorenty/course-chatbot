@@ -192,7 +192,6 @@ void main() {
     final card = extra.sender.messages.last;
     expect(card.text, contains('самой выгодной цене'));
     expect(card.text, contains('Нажимай на кнопку внизу'));
-    expect(card.text, contains('прикрепим позже'));
     expect(_inlineButtonTexts(card.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
   });
 

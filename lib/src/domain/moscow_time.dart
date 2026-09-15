@@ -17,6 +17,12 @@ abstract final class MoscowTime {
     return calendarDate(now).subtract(const Duration(hours: offsetHours));
   }
 
+  /// UTC instant of [hour]:00 Moscow on the next Moscow calendar day after [value].
+  static DateTime nextCalendarDayAtHourUtc(DateTime value, {required int hour}) {
+    final nextDay = calendarDate(value).add(const Duration(days: 1));
+    return nextDay.add(Duration(hours: hour - offsetHours));
+  }
+
   /// End of the Moscow calendar day [days] before [courseStartAt] (23:59:59 MSK).
   static DateTime? daysBeforeCourseStart(DateTime? courseStartAt, {int days = 7}) {
     if (courseStartAt == null) {

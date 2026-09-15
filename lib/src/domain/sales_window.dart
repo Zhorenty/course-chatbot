@@ -27,9 +27,18 @@ final class LaunchSales {
     );
   }
 
-  /// First moment checkout can open: explicit sales start, else the webinar.
+  /// First moment checkout can open: explicit sales start, else 00:00 Moscow
+  /// on the calendar day after the webinar.
   static DateTime? salesOpenAt(Launch launch) {
-    return launch.salesStartAt?.toUtc() ?? launch.webinarAt?.toUtc();
+    final explicit = launch.salesStartAt?.toUtc();
+    if (explicit != null) {
+      return explicit;
+    }
+    final webinar = launch.webinarAt;
+    if (webinar == null) {
+      return null;
+    }
+    return MoscowTime.dayStartUtc(webinar).add(const Duration(days: 1));
   }
 
   static SalesPhase phaseOf(Launch launch, DateTime now) {

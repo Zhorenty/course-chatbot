@@ -4,7 +4,7 @@ extension MessageTemplatesRich on MessageTemplates {
   String startGuideOfferRich() {
     return '${richH2('Привет 🤍')}'
         '${richP('На связи Анастасия Дубовскова — дизайнер и автор 80+ узнаваемых проектов, где цвет является частью характера пространства, преподаватель в Академии дизайна, член жюри Евразийской премии по хоумстейджингу 2026 и лауреат премий.')}'
-        '${richP('А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать управлять им осознанно.')}'
+        '${richP('А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать использовать его осознанно.')}'
         '${richP('Для начала у меня для тебя подарок — гайд «${MessageTemplates.guideTitle}». Забирай его по кнопке «Получить гайд» 🍂')}';
   }
 
@@ -14,9 +14,11 @@ extension MessageTemplatesRich on MessageTemplates {
   }
 
   String startCourseCardRich({Launch? launch}) {
-    return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)}')}'
+    final start = _formatHumanDate(launch?.courseStartAt);
+    return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)} 🎨')}'
         '${_courseDescriptionRich(launch)}'
-        '${richTable(_courseFactsRows(launch))}';
+        '${start == null ? '' : richP('Старт потока $start.')}'
+        '${richP(_preSalesMasterClassWhen(launch))}';
   }
 
   String _courseDescriptionRich(Launch? launch) {
@@ -98,7 +100,7 @@ extension MessageTemplatesRich on MessageTemplates {
     final webinarUrl = launch.webinarUrl?.trim();
     final channel = launch.channelId;
     return '${richH2(launch.title)}'
-        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'как дата эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('описание', launch.hasCustomDescription ? 'своё' : 'шаблон'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
+        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'следующий день после эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('описание', launch.hasCustomDescription ? 'своё' : 'шаблон'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
   }
 
   String adminCatalogDozhimListRich(Launch launch, List<LaunchDozhimMessage> messages) {
@@ -133,7 +135,7 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — экран про «Язык цвета»;', 'ссылка на курс — карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
         '${richDetails('Гайд', richP('Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.'))}'
         '${richDetails('Прогрев после гайда', richP('Сразу приглашение на мастер-класс и кнопка «${escapeHtml(MessageTemplates.buttonRsvp)}». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
-        '${richDetails('Продажи', richP('До старта продаж «${escapeHtml(MessageTemplates.buttonEnroll)}» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — как дата эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
+        '${richDetails('Продажи', richP('До старта продаж «${escapeHtml(MessageTemplates.buttonEnroll)}» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — следующий день после эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
         '${richDetails('Если гайд не забрали', richP('Напоминания на 1-й и на 3-й день после первого /start, пока не нажали «Записаться» и пока касса уже открыта для этого человека. После записи до старта продаж молчим про оплату. В день обычной цены и дожим до конца продаж — тоже, даже без гайда.'))}'
         '${richDetails('Запись и оплата', '${richP('«${escapeHtml(MessageTemplates.buttonEnroll)}» — пока нет успешной оплаты. Потом та же кнопка открывает статус оплаты, старт и канал.')}${richUl(<String>['полная оплата — ссылка в канал этого потока;', 'предоплата — канала нет, пока не доплатят.'])}')}'
         '${richDetails('Открыли оплату и не закончили', richP('Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.'))}'

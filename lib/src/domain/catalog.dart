@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 abstract final class LaunchPrices {
   static const int promoKopecks = 1500000;
   static const int fullKopecks = 1900000;
+  static const int wasKopecks = 2100000;
 }
 
 final class Product {
@@ -16,7 +17,7 @@ final class Product {
 final class Launch {
   static const String defaultDescription =
       'Скоро стартует мой курс по интерьерной колористике\n\n'
-      'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+      'Я сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
       'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.';
 
   const Launch({
