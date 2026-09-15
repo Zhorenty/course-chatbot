@@ -683,6 +683,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     switch (field) {
       case CatalogLaunchField.description:
         _course.setLaunchDescription(text, launchId: launch.id);
+        await _writeDozhimPresenceFlags();
         return _showCatalogCard(context, launch.id);
       case CatalogLaunchField.title:
         final error = LaunchCatalogAdminService.validateTitle(text);

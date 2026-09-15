@@ -672,9 +672,12 @@ final class GoogleSheetsCatalogSync {
     final leftover = layout.headerAt < layout.rows.length
         ? CoursesSheet.leftoverDozhimColumns(layout.rows[layout.headerAt])
         : 0;
-    final startCol = CoursesSheet.dozhimStartColumn;
+    final startCol = CoursesSheet.descriptionColumn;
     final letter = CoursesSheet.columnLetter(startCol);
-    final headerCells = <Object?>[CoursesSheet.dozhimHeader, for (var i = 0; i < leftover; i++) ''];
+    final headerCells = <Object?>[
+      ...CoursesSheet.presenceHeaders,
+      for (var i = 0; i < leftover; i++) '',
+    ];
     await _gateway
         .updateValues(
           a1Range: '${layout.quoted}!$letter${layout.headerAt + 1}',
@@ -693,8 +696,10 @@ final class GoogleSheetsCatalogSync {
         layout.headerIndex,
         CoursesSheet.launchCode,
       );
-      final count = code == null || code.isEmpty ? 0 : (counts[code] ?? 0);
+      final launch = code == null || code.isEmpty ? null : _catalog.launchByCode(code);
+      final count = launch == null ? 0 : (counts[launch.code] ?? 0);
       flags.add(<Object?>[
+        CoursesSheet.descriptionCell(launch?.hasCustomDescription ?? false),
         CoursesSheet.dozhimCell(count),
         for (var extra = 0; extra < leftover; extra++) '',
       ]);

@@ -40,11 +40,14 @@ void main() {
   });
 
   test('dozhim sheet column stays outside the spec', () {
+    expect(CoursesSheet.descriptionCell(false), 'Нет');
+    expect(CoursesSheet.descriptionCell(true), 'Да');
     expect(CoursesSheet.dozhimCell(0), 'Нет');
     expect(CoursesSheet.dozhimCell(3), 'Да · 3');
+    expect(CoursesSheet.isDescriptionHeader('Описание'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим 2'), isTrue);
-    final header = <Object?>[...CoursesSheet.displayHeaders, 'Дожим'];
+    final header = <Object?>[...CoursesSheet.displayHeaders, 'Описание', 'Дожим'];
     expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
     expect(CoursesSheet.leftoverDozhimColumns(<Object?>[...header, 'Дожим 2']), 1);
   });
@@ -271,8 +274,8 @@ void main() {
       expect(course.activeLaunch()?.priceFullKopecks, 1900000);
       expect(gateway.applyLookCount, 2);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(15));
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 15);
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(17));
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 17);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -487,7 +490,7 @@ void main() {
       expect(course.launchByCode('launch-2')?.channelId, isNull);
     });
 
-    test('sync writes one Дожим column as Нет or Да · N', () async {
+    test('sync writes Описание and Дожим as Нет or Да', () async {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
       final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
@@ -495,12 +498,18 @@ void main() {
       expect(first.ok, isTrue);
       final sheetAfterSync = gateway.valuesBySheetId[0]!;
       final headerAfterSync = sheetAfterSync[CoursesSheet.defaultHeaderRow];
+      expect(headerAfterSync[CoursesSheet.descriptionColumn], 'Описание');
       expect(headerAfterSync[CoursesSheet.dozhimStartColumn], 'Дожим');
+      expect(
+        sheetAfterSync[CoursesSheet.defaultHeaderRow + 1][CoursesSheet.descriptionColumn],
+        'Нет',
+      );
       expect(
         sheetAfterSync[CoursesSheet.defaultHeaderRow + 1][CoursesSheet.dozhimStartColumn],
         'Нет',
       );
       final launch = course.activeLaunch()!;
+      course.setLaunchDescription('Мой поток про цвет в квартирах.', launchId: launch.id);
       course.addLaunchDozhim(
         launchId: launch.id,
         sourceChatId: 1,
@@ -518,8 +527,10 @@ void main() {
       final sheet = gateway.valuesBySheetId[0]!;
       final header = sheet[CoursesSheet.defaultHeaderRow];
       expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
+      expect(header[CoursesSheet.descriptionColumn], 'Описание');
       expect(header[CoursesSheet.dozhimStartColumn], 'Дожим');
       final dataRow = sheet[CoursesSheet.defaultHeaderRow + 1];
+      expect(dataRow[CoursesSheet.descriptionColumn], 'Да');
       expect(dataRow[CoursesSheet.dozhimStartColumn], 'Да · 2');
       final parsed = CoursesSheetParser.parse(sheet);
       expect(parsed.rows, hasLength(1));

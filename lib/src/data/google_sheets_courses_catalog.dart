@@ -18,7 +18,7 @@ abstract final class GoogleSheetsCoursesCatalog {
     int headerRow = CoursesSheet.defaultHeaderRow,
     int dataRowCount = 8,
   }) {
-    final columnCount = CoursesSheet.columnCount;
+    final columnCount = CoursesSheet.canvasColumnCount;
     final dataStart = headerRow + 1;
     final dataEnd =
         dataStart +
@@ -238,6 +238,8 @@ abstract final class GoogleSheetsCoursesCatalog {
         130,
         140,
         280,
+        110,
+        110,
       ],
       frozenRowCount: headerRow + 1,
       hideGridlines: true,
@@ -246,6 +248,12 @@ abstract final class GoogleSheetsCoursesCatalog {
       notes: <GoogleSheetsNote>[
         for (var i = 0; i < CoursesSheet.headerNotes.length; i++)
           GoogleSheetsNote(row: headerRow, column: i, text: CoursesSheet.headerNotes[i]),
+        for (var i = 0; i < CoursesSheet.presenceNotes.length; i++)
+          GoogleSheetsNote(
+            row: headerRow,
+            column: CoursesSheet.descriptionColumn + i,
+            text: CoursesSheet.presenceNotes[i],
+          ),
       ],
       columnCount: columnCount,
       rowCount: canvasEnd,

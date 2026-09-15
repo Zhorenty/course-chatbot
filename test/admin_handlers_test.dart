@@ -963,8 +963,10 @@ void main() {
     expect(messages.last.dayIndex, 2);
     final sheet = sheets.sheetsGateway!.valuesBySheetId[CoursesSheet.sheetId]!;
     final header = sheet[CoursesSheet.defaultHeaderRow];
+    expect(header[CoursesSheet.descriptionColumn], 'Описание');
     expect(header[CoursesSheet.dozhimStartColumn], 'Дожим');
     final row = _coursesRowByCode(sheet, 'launch-1')!;
+    expect(row[CoursesSheet.descriptionColumn], 'Нет');
     expect(row[CoursesSheet.dozhimStartColumn], 'Да · 2');
   });
 
@@ -1269,6 +1271,9 @@ void main() {
     );
     expect(sheets.course.launchByCode('launch-1')?.description, 'Мой поток про цвет в квартирах.');
     expect(sheets.sender.messages.last.text, contains('своё'));
+    final sheet = sheets.sheetsGateway!.valuesBySheetId[CoursesSheet.sheetId]!;
+    final row = _coursesRowByCode(sheet, 'launch-1')!;
+    expect(row[CoursesSheet.descriptionColumn], 'Да');
   });
 
   test('admin catalog replaces the guide file for that launch', () async {

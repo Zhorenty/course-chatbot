@@ -12,9 +12,11 @@ abstract final class CoursesSheet {
   static const int defaultDepositDueDays = 7;
   static const int defaultTimezoneOffsetHours = 3;
   static const String valuesA1Range = 'A1:AZ';
+  static const String descriptionHeader = 'Описание';
   static const String dozhimHeader = 'Дожим';
   static const String dozhimYes = 'Да';
   static const String dozhimNo = 'Нет';
+  static const List<String> presenceHeaders = <String>[descriptionHeader, dozhimHeader];
 
   static const String productCode = 'product_code';
   static const String productTitle = 'product_title';
@@ -47,8 +49,8 @@ abstract final class CoursesSheet {
       'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
       'Доплата после предоплаты — за неделю до старта курса. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
-      'Дожим — только в карточке курса в боте: сколько угодно дней, текст/фото/файл. '
-      'Колонка «Дожим» — Нет или Да и число дней. Не правь её руками. '
+      'Дожим и описание — только в карточке курса в боте. '
+      'Колонки «Описание» и «Дожим» — Нет или Да (у дожима ещё число дней). Не правь их руками. '
       'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
   static const List<String> headers = <String>[
@@ -323,9 +325,19 @@ abstract final class CoursesSheet {
     return displayHeaders[index];
   }
 
-  static int get dozhimStartColumn => headers.length;
+  static int get descriptionColumn => headers.length;
+
+  static int get dozhimStartColumn => headers.length + 1;
+
+  static int get canvasColumnCount => headers.length + presenceHeaders.length;
+
+  static const List<String> presenceNotes = <String>[
+    'Свой текст карточки курса. Да — админ задал текст в боте. Нет — шаблон. Не правь руками.',
+    'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.',
+  ];
 
   static final RegExp _legacyDozhimHeader = RegExp(r'^дожим(?:\s+\d+)?$');
+  static final RegExp _legacyDescriptionHeader = RegExp(r'^описание$');
 
   static bool isDozhimHeader(Object? cell) {
     final text = cell?.toString().trim() ?? '';
@@ -336,17 +348,28 @@ abstract final class CoursesSheet {
     return _legacyDozhimHeader.hasMatch(normalized);
   }
 
-  /// Extra leftover «Дожим N» columns after the single «Дожим» field.
+  static bool isDescriptionHeader(Object? cell) {
+    final text = cell?.toString().trim() ?? '';
+    if (text.isEmpty) {
+      return false;
+    }
+    final normalized = text.toLowerCase().replaceAll('ё', 'е');
+    return _legacyDescriptionHeader.hasMatch(normalized);
+  }
+
+  /// Extra leftover «Дожим N» / duplicate presence columns after Описание + Дожим.
   static int leftoverDozhimColumns(List<Object?> headerRow) {
     var extra = 0;
-    for (var i = dozhimStartColumn + 1; i < headerRow.length; i++) {
-      if (!isDozhimHeader(headerRow[i])) {
+    for (var i = canvasColumnCount; i < headerRow.length; i++) {
+      if (!isDozhimHeader(headerRow[i]) && !isDescriptionHeader(headerRow[i])) {
         break;
       }
       extra += 1;
     }
     return extra;
   }
+
+  static String descriptionCell(bool custom) => custom ? dozhimYes : dozhimNo;
 
   static String dozhimCell(int count) {
     if (count <= 0) {
