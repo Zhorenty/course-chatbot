@@ -40,7 +40,6 @@ void main() {
     final templates = MessageTemplates();
     final rich = templates.guideReadyRich();
     expect(rich, contains('<tg-document src="tg://document?id=guide"></tg-document>'));
-    expect(rich, contains('Следующим сообщением пришлю приглашение'));
     expect(classicHtmlFromRich(rich), isNot(contains('tg-document')));
     expect(classicHtmlFromRich(rich), contains('Гайд «Язык цвета»'));
   });

@@ -12,7 +12,9 @@ abstract final class CoursesSheet {
   static const int defaultDepositDueDays = 7;
   static const int defaultTimezoneOffsetHours = 3;
   static const String valuesA1Range = 'A1:AZ';
-  static const String presentYes = 'ЕСТЬ';
+  static const String dozhimHeader = 'Дожим';
+  static const String dozhimYes = 'Да';
+  static const String dozhimNo = 'Нет';
 
   static const String productCode = 'product_code';
   static const String productTitle = 'product_title';
@@ -46,7 +48,7 @@ abstract final class CoursesSheet {
       'Доплата после предоплаты — за неделю до старта курса. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
       'Дожим — только в карточке курса в боте: сколько угодно дней, текст/фото/файл. '
-      'Здесь колонки «Дожим 1», «Дожим 2»… показывают ЕСТЬ, если день задан. '
+      'Колонка «Дожим» — Нет или Да и число дней. Не правь её руками. '
       'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
   static const List<String> headers = <String>[
@@ -323,32 +325,34 @@ abstract final class CoursesSheet {
 
   static int get dozhimStartColumn => headers.length;
 
-  static String dozhimDisplayHeader(int day) => 'Дожим $day';
+  static final RegExp _legacyDozhimHeader = RegExp(r'^дожим(?:\s+\d+)?$');
 
-  static final RegExp _dozhimHeader = RegExp(r'^дожим\s+(\d+)$');
-
-  static int? dozhimDayFromHeader(Object? cell) {
+  static bool isDozhimHeader(Object? cell) {
     final text = cell?.toString().trim() ?? '';
     if (text.isEmpty) {
-      return null;
+      return false;
     }
     final normalized = text.toLowerCase().replaceAll('ё', 'е');
-    final match = _dozhimHeader.firstMatch(normalized);
-    if (match == null) {
-      return null;
-    }
-    return int.tryParse(match.group(1)!);
+    return _legacyDozhimHeader.hasMatch(normalized);
   }
 
-  static int dozhimColumnCount(List<Object?> headerRow) {
-    var count = 0;
-    for (var i = dozhimStartColumn; i < headerRow.length; i++) {
-      if (dozhimDayFromHeader(headerRow[i]) == null) {
+  /// Extra leftover «Дожим N» columns after the single «Дожим» field.
+  static int leftoverDozhimColumns(List<Object?> headerRow) {
+    var extra = 0;
+    for (var i = dozhimStartColumn + 1; i < headerRow.length; i++) {
+      if (!isDozhimHeader(headerRow[i])) {
         break;
       }
-      count += 1;
+      extra += 1;
     }
-    return count;
+    return extra;
+  }
+
+  static String dozhimCell(int count) {
+    if (count <= 0) {
+      return dozhimNo;
+    }
+    return '$dozhimYes · $count';
   }
 
   static bool isPlaceholderTitle(String title) {

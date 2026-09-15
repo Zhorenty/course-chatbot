@@ -183,8 +183,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       final missing = await _dmUser(userId, _templates.inviteUnavailable());
       reached = reached && missing;
     }
-    final pinned = await _dmUser(userId, _templates.menuPinned());
-    return reached && pinned;
+    return reached;
   }
 
   Future<void> _notifyPaidWithInvite(PaymentApplyResult result) async {

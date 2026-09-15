@@ -963,12 +963,9 @@ void main() {
     expect(messages.last.dayIndex, 2);
     final sheet = sheets.sheetsGateway!.valuesBySheetId[CoursesSheet.sheetId]!;
     final header = sheet[CoursesSheet.defaultHeaderRow];
-    expect(header, contains('Дожим 1'));
-    expect(header, contains('Дожим 2'));
-    expect(header[CoursesSheet.dozhimStartColumn], 'Дожим 1');
+    expect(header[CoursesSheet.dozhimStartColumn], 'Дожим');
     final row = _coursesRowByCode(sheet, 'launch-1')!;
-    expect(row[CoursesSheet.dozhimStartColumn], CoursesSheet.presentYes);
-    expect(row[CoursesSheet.dozhimStartColumn + 1], CoursesSheet.presentYes);
+    expect(row[CoursesSheet.dozhimStartColumn], 'Да · 2');
   });
 
   test('admin catalog wizard skips channel on dash and does not dump to admin menu', () async {

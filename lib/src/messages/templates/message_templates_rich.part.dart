@@ -10,8 +10,7 @@ extension MessageTemplatesRich on MessageTemplates {
 
   String guideReadyRich() {
     return '${richH2('Гайд «${MessageTemplates.guideTitle}»')}'
-        '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}'
-        '${richFooter('Файл выше. Следующим сообщением пришлю приглашение.')}';
+        '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}';
   }
 
   String startCourseCardRich({Launch? launch}) {

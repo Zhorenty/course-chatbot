@@ -669,26 +669,12 @@ final class GoogleSheetsCatalogSync {
       for (final launch in _catalog.listLaunches())
         launch.code: _catalog.listLaunchDozhim(launch.id).length,
     };
-    var maxDays = 0;
-    for (final count in counts.values) {
-      if (count > maxDays) {
-        maxDays = count;
-      }
-    }
-    final existing = layout.headerAt < layout.rows.length
-        ? CoursesSheet.dozhimColumnCount(layout.rows[layout.headerAt])
+    final leftover = layout.headerAt < layout.rows.length
+        ? CoursesSheet.leftoverDozhimColumns(layout.rows[layout.headerAt])
         : 0;
-    if (maxDays < existing) {
-      maxDays = existing;
-    }
-    if (maxDays <= 0) {
-      return;
-    }
     final startCol = CoursesSheet.dozhimStartColumn;
     final letter = CoursesSheet.columnLetter(startCol);
-    final headerCells = <Object?>[
-      for (var day = 1; day <= maxDays; day++) CoursesSheet.dozhimDisplayHeader(day),
-    ];
+    final headerCells = <Object?>[CoursesSheet.dozhimHeader, for (var i = 0; i < leftover; i++) ''];
     await _gateway
         .updateValues(
           a1Range: '${layout.quoted}!$letter${layout.headerAt + 1}',
@@ -697,6 +683,9 @@ final class GoogleSheetsCatalogSync {
         )
         .timeout(requestTimeout);
 
+    if (layout.rows.length <= layout.headerAt + 1) {
+      return;
+    }
     final flags = <List<Object?>>[];
     for (var i = layout.headerAt + 1; i < layout.rows.length; i++) {
       final code = CoursesSheetParser.cellOf(
@@ -706,11 +695,9 @@ final class GoogleSheetsCatalogSync {
       );
       final count = code == null || code.isEmpty ? 0 : (counts[code] ?? 0);
       flags.add(<Object?>[
-        for (var day = 1; day <= maxDays; day++) day <= count ? CoursesSheet.presentYes : '',
+        CoursesSheet.dozhimCell(count),
+        for (var extra = 0; extra < leftover; extra++) '',
       ]);
-    }
-    if (flags.isEmpty) {
-      return;
     }
     await _gateway
         .updateValues(

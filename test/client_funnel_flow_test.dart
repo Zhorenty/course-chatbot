@@ -111,14 +111,7 @@ void main() {
     );
     expect(harness.channel.created, hasLength(1));
     expect(_phase(harness, 42), FunnelPhase.accessGranted);
-    final paidMenu = _replyButtonTexts(
-      harness.sender.messages
-          .lastWhere((m) => _replyButtonTexts(m.replyMarkup).isNotEmpty)
-          .replyMarkup,
-    );
-    expect(paidMenu, contains(MessageTemplates.buttonCourseStatus));
-    expect(paidMenu, contains(MessageTemplates.buttonGuide));
-    expect(paidMenu, contains(MessageTemplates.buttonHelp));
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
 
     final repeat = await harness.checkout.applyCallback(
       PaymentCallback(

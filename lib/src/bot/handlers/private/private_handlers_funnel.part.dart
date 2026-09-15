@@ -16,9 +16,8 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     } else if (url != null && url.isNotEmpty) {
       await _sendHtml(chatId, _templates.guideAsUrl(url), replyMarkup: menu);
     } else {
-      await _sendHtml(chatId, _templates.guideMissing());
+      await _sendHtml(chatId, _templates.guideMissing(), replyMarkup: menu);
       await _notifyGuideMissing(userId);
-      await _sendHtml(chatId, _templates.menuPinned(), replyMarkup: _homeKeyboard(userId));
       return true;
     }
     final firstIssue = !_guideAlreadyIssued(userId, launch);

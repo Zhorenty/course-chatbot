@@ -19,12 +19,10 @@ extension _PrivateHandlersStart on PrivateHandlers {
       }
     }
     if (phase.showsCourseStatus) {
-      await _showCourseStatus(context);
-      return _pinUserMenu(context);
+      return _showCourseStatus(context);
     }
     if (phase == FunnelPhase.checkout) {
-      await _showEnroll(context);
-      return _pinUserMenu(context);
+      return _showEnroll(context);
     }
     if (phase == FunnelPhase.magnetIssued || phase == FunnelPhase.warming) {
       return _send(
@@ -36,19 +34,19 @@ extension _PrivateHandlersStart on PrivateHandlers {
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
-      await _send(
+      return _send(
         context,
         _templates.startCourseCard(launch: _launch),
         richHtml: _templates.startCourseCardRich(launch: _launch),
+        replyMarkup: _homeKeyboard(user.userId),
       );
-      return _pinUserMenu(context);
     }
-    await _send(context, _templates.startGuideOffer(), richHtml: _templates.startGuideOfferRich());
-    return _pinUserMenu(context);
-  }
-
-  Future<bool> _pinUserMenu(PrivateMessageContext context) {
-    return _send(context, _templates.menuPinned(), replyMarkup: _homeKeyboard(context.userId!));
+    return _send(
+      context,
+      _templates.startGuideOffer(),
+      richHtml: _templates.startGuideOfferRich(),
+      replyMarkup: _homeKeyboard(user.userId),
+    );
   }
 
   Future<bool> _showHome(PrivateMessageContext context) async {

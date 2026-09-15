@@ -402,10 +402,7 @@ void main() {
       MessageTemplates.buttonCopyInvite,
     ]);
     expect(_inlineCallbackData(reminder.replyMarkup), isEmpty);
-    final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
-    expect(pin, contains(MessageTemplates.buttonCourseStatus));
-    expect(pin, contains(MessageTemplates.buttonGuide));
-    expect(pin, contains(MessageTemplates.buttonHelp));
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
   });
 
   test('course status button shows paid amount, start date and remainder CTA', () async {
@@ -439,8 +436,8 @@ void main() {
 
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    final pin = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
-    expect(pin, contains(MessageTemplates.buttonCourseStatus));
+    expect(harness.sender.messages.any((m) => m.text.contains('предоплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
   });
 
   test('full payment swaps enroll for course status in the reply menu', () async {
@@ -474,10 +471,7 @@ void main() {
     await harness.handlers.notifyPaymentResult(result);
 
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
-    final menu = harness.sender.messages.firstWhere(
-      (m) => _replyButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonCourseStatus),
-    );
-    expect(_replyButtonTexts(menu.replyMarkup), contains(MessageTemplates.buttonCourseStatus));
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
 
     harness.sender.messages.clear();
     await harness.handlers.handle(
@@ -619,14 +613,15 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
     );
-    expect(harness.sender.messages, hasLength(2));
-    final offer = harness.sender.messages.first;
+    expect(harness.sender.messages, hasLength(1));
+    final offer = harness.sender.messages.single;
     expect(offer.text, contains('Привет'));
     expect(offer.text, contains('Язык цвета'));
     expect(offer.text, isNot(contains('<b>Профиль</b>')));
     expect(offer.text, isNot(contains('<b>Меню</b>')));
+    expect(offer.text, isNot(contains('Меню внизу')));
     expect(_inlineButtonTexts(offer.replyMarkup), isEmpty);
-    final texts = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    final texts = _replyButtonTexts(offer.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonHelp));
