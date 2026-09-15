@@ -779,6 +779,11 @@ void main() {
     expect(harness.sender.storedSends.single.chatId, 42);
     expect(harness.sender.storedSends.single.content.media.single.fileId, 'photo-large');
     expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
+    expect(harness.sender.markupEdits, hasLength(1));
+    expect(
+      _inlineButtonTexts(harness.sender.markupEdits.single.replyMarkup),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
   });
 
   test('custom launch dozhim album is copied as a media group', () async {
@@ -845,7 +850,11 @@ void main() {
       harness.sender.storedSends.single.content.media.map((item) => item.fileId).toList(),
       <String>['p1', 'p2', 'v1'],
     );
-    expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
+    expect(harness.sender.markupEdits, hasLength(1));
+    expect(
+      _inlineButtonTexts(harness.sender.markupEdits.single.replyMarkup),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
     expect(custom.stepKey, isNotEmpty);
   });
 
@@ -915,4 +924,12 @@ void main() {
     await job.run();
     expect(harness.sender.messages.where((m) => m.text.contains('Успешная оплата')), hasLength(1));
   });
+}
+
+List<String> _inlineButtonTexts(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+  ];
 }

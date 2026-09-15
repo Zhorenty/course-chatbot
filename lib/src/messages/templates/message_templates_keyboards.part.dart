@@ -65,16 +65,16 @@ extension MessageTemplateKeyboards on MessageTemplates {
     required SalesQuote quote,
     bool rsvpOpen = true,
     bool webinarStarted = false,
+    int? continueOrderId,
   }) {
-    if (quote.phase == SalesPhase.preSales && !quote.rsvp && rsvpOpen) {
-      return inlineKeyboard(<List<Map<String, Object?>>>[
-        <Map<String, Object?>>[
-          <String, Object?>{
-            'text': MessageTemplates.buttonRsvpEnroll,
-            'callback_data': MessageTemplates.cbRsvp,
-            'style': 'success',
-          },
-        ],
+    final rows = <List<Map<String, Object?>>>[];
+    if (!quote.rsvp && rsvpOpen) {
+      rows.add(<Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonRsvpEnroll,
+          'callback_data': MessageTemplates.cbRsvp,
+          'style': 'success',
+        },
       ]);
     }
     if (!quote.checkoutOpen) {
@@ -82,17 +82,18 @@ extension MessageTemplateKeyboards on MessageTemplates {
       if (quote.rsvp && webinarStarted && liveUrl != null) {
         return webinarLinkKeyboard(liveUrl);
       }
-      return const <String, Object?>{};
+      if (continueOrderId != null) {
+        return continuePayKeyboard(continueOrderId);
+      }
+      return rows.isEmpty ? const <String, Object?>{} : inlineKeyboard(rows);
     }
-    final rows = <List<Map<String, Object?>>>[
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': payFullButtonLabel(quote),
-          'callback_data': MessageTemplates.cbPayFull,
-          'style': 'primary',
-        },
-      ],
-    ];
+    rows.add(<Map<String, Object?>>[
+      <String, Object?>{
+        'text': payFullButtonLabel(quote),
+        'callback_data': MessageTemplates.cbPayFull,
+        'style': 'primary',
+      },
+    ]);
     final showDeposit =
         !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks);
     if (showDeposit) {
@@ -111,6 +112,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     required Launch launch,
     required bool rsvp,
     bool rsvpOpen = true,
+    bool checkoutOpen = false,
   }) {
     if (stepKey == 'webinar_live') {
       final url = launch.resolvedWebinarUrl;
@@ -131,17 +133,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
         ],
       ]);
     }
-    const enrollSteps = <String>{
-      'webinar_next',
-      'sales_open',
-      'sales_regular',
-      'dozhim_d1',
-      'dozhim_d2',
-      'dozhim_d3',
-      'dozhim_d4',
-      'last_wagon',
-    };
-    if (enrollSteps.contains(stepKey)) {
+    final sellingEnroll =
+        stepKey == 'webinar_next' ||
+        stepKey == 'sales_open' ||
+        stepKey == 'sales_regular' ||
+        stepKey == 'enroll_d1' ||
+        stepKey == 'enroll_d3' ||
+        stepKey == WarmupStep.lastWagonKey ||
+        WarmupStep.isBuiltinDozhim(stepKey) ||
+        WarmupStep.isCustomDozhim(stepKey) ||
+        (rsvpSteps.contains(stepKey) && !rsvpOpen && checkoutOpen);
+    if (sellingEnroll) {
       return inlineKeyboard(<List<Map<String, Object?>>>[
         <Map<String, Object?>>[
           <String, Object?>{

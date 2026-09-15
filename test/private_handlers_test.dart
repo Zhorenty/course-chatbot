@@ -56,7 +56,18 @@ void main() {
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
     final courseOffer = harness.sender.messages.firstWhere((m) => m.text.contains('Запуск'));
-    expect(_inlineButtonTexts(courseOffer.replyMarkup), isEmpty);
+    expect(
+      _inlineButtonTexts(
+        courseOffer.replyMarkup,
+      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
+      isTrue,
+    );
+    expect(
+      harness.course
+          .getEnrollment(userId: 7, launchId: harness.course.activeLaunch()!.id)
+          ?.enrollIntentAt,
+      isNull,
+    );
     final courseMenu = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
     expect(courseMenu, contains(MessageTemplates.buttonEnroll));
     expect(courseMenu, contains(MessageTemplates.buttonGuide));

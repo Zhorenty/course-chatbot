@@ -388,8 +388,11 @@ void main() {
         privateMessageUpdate(chatId: 42, userId: 42, text: '/start ads_nov'),
       );
       final texts = harness.sender.messages.map((m) => m.text).join('\n');
-      expect(texts, contains('интерьерной колористике'));
-      expect(texts, isNot(contains('21000 ₽')));
+      expect(texts, contains('Запись на курс'));
+      expect(texts, contains('Запуск'));
+      expect(texts, contains('18 000'));
+      expect(texts, isNot(contains('Ноябрь')));
+      expect(texts, isNot(contains('21 000')));
       expect(harness.funnel.resolveLaunch('ads_nov')?.id, launch2.id);
     },
   );

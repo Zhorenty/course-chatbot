@@ -186,6 +186,11 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
             launch: launch,
             rsvp: enrollment.webinarRsvp,
             rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
+            checkoutOpen: LaunchSales.quote(
+              launch,
+              rsvp: enrollment.webinarRsvp,
+              now: _nowProvider(),
+            ).checkoutOpen,
           ),
         ),
       );
@@ -203,7 +208,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     );
   }
 
-  Future<bool> _showEnroll(PrivateMessageContext context) async {
+  Future<bool> _showEnroll(PrivateMessageContext context, {bool markIntent = true}) async {
     if (await _syncPaidCheckout(context)) {
       return true;
     }
@@ -216,12 +221,21 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (launch == null) {
       return _send(context, _templates.payManualFallback());
     }
-    _funnel.markEnrollIntent(userId, launchId: launch.id);
+    if (markIntent) {
+      _funnel.markEnrollIntent(userId, launchId: launch.id);
+    }
     final enrollment = _funnel.enrollmentFor(userId, launch: launch);
     final now = _nowProvider();
     final quote = LaunchSales.quote(launch, rsvp: enrollment?.webinarRsvp ?? false, now: now);
     final rsvpOpen = LaunchSales.rsvpOpen(launch, now);
     final webinarStarted = LaunchSales.webinarStarted(launch, now);
+    final openOrder = _course.latestOpenOrder(userId, launchId: launch.id);
+    final continueOrderId =
+        openOrder != null &&
+            (openOrder.status == OrderStatus.checkoutStarted ||
+                openOrder.status == OrderStatus.awaitingPayment)
+        ? openOrder.id
+        : null;
     return _send(
       context,
       _templates.enrollOptions(
@@ -229,18 +243,21 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
         quote: quote,
         rsvpOpen: rsvpOpen,
         webinarStarted: webinarStarted,
+        hasOpenCheckout: continueOrderId != null,
       ),
       richHtml: _templates.enrollOptionsRich(
         launch,
         quote: quote,
         rsvpOpen: rsvpOpen,
         webinarStarted: webinarStarted,
+        hasOpenCheckout: continueOrderId != null,
       ),
       replyMarkup: _templates.enrollKeyboard(
         launch,
         quote: quote,
         rsvpOpen: rsvpOpen,
         webinarStarted: webinarStarted,
+        continueOrderId: continueOrderId,
       ),
     );
   }
@@ -264,11 +281,17 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     await _answerCallback(context, text: 'Ты в списке участников!');
     final url = launch.resolvedWebinarUrl;
     final started = LaunchSales.webinarStarted(launch, now);
-    return _send(
+    final showLink = started && url != null;
+    await _send(
       context,
-      _templates.webinarRsvpConfirmed(launch, showLink: started && url != null),
-      replyMarkup: started && url != null ? _templates.webinarLinkKeyboard(url) : null,
+      _templates.webinarRsvpConfirmed(launch, showLink: showLink),
+      replyMarkup: showLink ? _templates.webinarLinkKeyboard(url) : null,
     );
+    final quote = LaunchSales.quote(launch, rsvp: true, now: now);
+    if (firstRsvp && !showLink && quote.checkoutOpen) {
+      return _showEnroll(context);
+    }
+    return true;
   }
 
   Future<bool> _showCourseStatus(PrivateMessageContext context) async {

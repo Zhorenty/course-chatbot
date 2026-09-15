@@ -154,6 +154,16 @@ void main() {
       _inlineButtonTexts(templates.warmupKeyboard('dozhim_d1', launch: launch, rsvp: false)!),
       contains(MessageTemplates.buttonEnrollInline),
     );
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard('enroll_d1', launch: launch, rsvp: false)!),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard('dozhim:12', launch: launch, rsvp: false)!),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
+    expect(templates.warmupStep('last_wagon', launch: launch), contains('кнопке ниже'));
+    expect(templates.warmupStep('last_wagon', launch: launch), isNot(contains('нижнем меню')));
   });
 
   test('enroll copy still points to the channel after full payment', () {
@@ -174,7 +184,8 @@ void main() {
       templates.enrollOptions(launch, quote: quote),
       contains('Ссылка в канал курса придет в этот чат после полной оплаты'),
     );
-    expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков + эфир'));
+    expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков'));
+    expect(templates.enrollOptions(launch, quote: quote), isNot(contains('16 уроков + эфир')));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
     expect(templates.warmupStep('sales_open', launch: launch), contains('открывает свои двери'));
     expect(templates.warmupStep('sales_open', launch: launch), contains('16 уроков'));
@@ -241,6 +252,62 @@ void main() {
         ),
       ),
       contains(MessageTemplates.buttonJoinWebinar),
+    );
+
+    final promoOpen = Launch(
+      id: 3,
+      productId: 1,
+      code: 'launch-3',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final promoQuote = LaunchSales.quote(
+      promoOpen,
+      rsvp: false,
+      now: DateTime.utc(2026, 10, 5, 17),
+    );
+    expect(promoQuote.checkoutOpen, isTrue);
+    expect(
+      templates.enrollOptions(promoOpen, quote: promoQuote, rsvpOpen: true),
+      contains('специальную цену'),
+    );
+    expect(
+      _inlineButtonTexts(templates.enrollKeyboard(promoOpen, quote: promoQuote, rsvpOpen: true)),
+      contains(MessageTemplates.buttonRsvpEnroll),
+    );
+    expect(
+      _inlineButtonTexts(
+        templates.enrollKeyboard(promoOpen, quote: promoQuote, rsvpOpen: true),
+      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
+      isTrue,
+    );
+    final closed = Launch(
+      id: 4,
+      productId: 1,
+      code: 'launch-4',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+      salesEndAt: DateTime.utc(2026, 10, 10),
+    );
+    expect(
+      _inlineButtonTexts(
+        templates.enrollKeyboard(
+          closed,
+          quote: LaunchSales.quote(closed, rsvp: false, now: DateTime.utc(2026, 10, 20)),
+          rsvpOpen: false,
+          continueOrderId: 9,
+        ),
+      ),
+      contains(MessageTemplates.buttonContinuePay),
     );
 
     expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('ХХ:ХХ')));

@@ -323,7 +323,12 @@ void main() {
     expect(harness.course.getUser(7)?.source, 'tg_announce');
     expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
-    expect(_inlineButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.first.replyMarkup),
+      contains(MessageTemplates.buttonRsvpEnroll),
+    );
+    expect(_payButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
+    expect(_enrollment(harness, 7)?.enrollIntentAt, isNull);
 
     harness.sender.messages.clear();
     await client.tap('/start');
@@ -354,6 +359,64 @@ void main() {
       isTrue,
     );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
+  });
+
+  test('F: course deep link after sales open shows checkout, not the pre-sales card', () async {
+    final clock = _Clock(DateTime.utc(2026, 10, 8, 12));
+    final harness = await _clientHarness(clock);
+    addTearDown(harness.dispose);
+    final client = _Client(harness, userId: 9);
+
+    await client.tap('/start tg_announce');
+    final card = harness.sender.messages.firstWhere((m) => m.text.contains('Запись на курс'));
+    expect(card.text, isNot(contains('самой выгодной цене')));
+    expect(_payButtonTexts(card.replyMarkup), isNotEmpty);
+    expect(
+      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonEnroll),
+    );
+    expect(_enrollment(harness, 9)?.enrollIntentAt, isNull);
+    expect(_phase(harness, 9), FunnelPhase.lead);
+  });
+
+  test('G: RSVP while sales are open opens the special-price card', () async {
+    final clock = _Clock(DateTime.utc(2026, 10, 5, 16, 30));
+    final harness = HandlerHarness();
+    await harness.init(
+      priceFullKopecks: LaunchPrices.fullKopecks,
+      pricePromoKopecks: LaunchPrices.promoKopecks,
+      depositKopecks: 500000,
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      nowProvider: clock.now,
+    );
+    addTearDown(harness.dispose);
+    final client = _Client(harness);
+
+    await client.tap('/start ig_reels_guide');
+    await client.tap(MessageTemplates.buttonGuide);
+    harness.sender.messages.clear();
+    await client.tap(MessageTemplates.buttonEnroll);
+    final beforeRsvp = harness.sender.messages.last;
+    expect(beforeRsvp.text, contains('специальную цену'));
+    expect(_inlineButtonTexts(beforeRsvp.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
+    expect(
+      _inlineButtonTexts(
+        beforeRsvp.replyMarkup,
+      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
+      isTrue,
+    );
+
+    harness.sender.messages.clear();
+    await client.press(MessageTemplates.cbRsvp);
+    expect(_enrollment(harness, 42)?.webinarRsvp, isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Ты в списке')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('специальн')), isTrue);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonPayFullPromo),
+    );
   });
 }
 

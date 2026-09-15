@@ -15,6 +15,7 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
+import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/keyboards/keyboard_builders.dart';
 import 'package:course_chatbot/src/messages/rich_html.dart';
@@ -577,7 +578,7 @@ final class MessageTemplates {
     return '<b>Любителям запрыгнуть в последний вагон</b>\n\n'
         'Сегодня последний день, когда можно присоединиться к курсу ${_quotedCourseTitle(launch)}! '
         'Старт потока ${_formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата'}.\n\n'
-        'Присоединиться по кнопке в нижнем меню.';
+        'Присоединиться по кнопке ниже.';
   }
 
   String webinarRsvpConfirmed(Launch launch, {required bool showLink}) {
@@ -689,6 +690,7 @@ final class MessageTemplates {
     required SalesQuote quote,
     bool rsvpOpen = true,
     bool webinarStarted = false,
+    bool hasOpenCheckout = false,
   }) {
     final start = _formatHumanDate(launch.courseStartAt) ?? 'когда будет дата';
     final title = _quotedCourseTitle(launch);
@@ -706,6 +708,11 @@ final class MessageTemplates {
           ),
         );
       case SalesPhase.closed:
+        if (hasOpenCheckout) {
+          return '<b>Запись закрыта</b>\n\n'
+              'Продажи этого потока закончились. Старт $start. '
+              'Оплату этого заказа ещё можно закрыть по кнопке ниже.';
+        }
         return '<b>Запись закрыта</b>\n\n'
             'Продажи этого потока закончились. Старт $start. '
             'Если оплата уже шла — напиши в «${MessageTemplates.buttonHelp}».';
@@ -722,17 +729,9 @@ final class MessageTemplates {
               'Оплатить можно по ссылке внизу.\n'
               'После полной оплаты придет ссылка на канал курса.';
         }
-        return _regularEnrollCopy(
-          title: title,
-          start: start,
-          price: formatRubSpaced(quote.priceFullKopecks),
-        );
+        return _regularEnrollCopy(launch: launch, quote: quote, start: start, rsvpOpen: rsvpOpen);
       case SalesPhase.regular:
-        return _regularEnrollCopy(
-          title: title,
-          start: start,
-          price: formatRubSpaced(quote.payableKopecks),
-        );
+        return _regularEnrollCopy(launch: launch, quote: quote, start: start);
     }
   }
 
@@ -1919,12 +1918,33 @@ final class MessageTemplates {
     return '${MessageTemplates.buttonPayDeposit} (${formatRubSpaced(kopecks, unit: 'руб.')})';
   }
 
-  String _regularEnrollCopy({required String title, required String start, required String price}) {
+  String _regularEnrollCopy({
+    required Launch launch,
+    required SalesQuote quote,
+    required String start,
+    bool rsvpOpen = false,
+  }) {
+    final title = _quotedCourseTitle(launch);
+    final price = formatRubSpaced(quote.payableKopecks);
+    final deposit = !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks)
+        ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
+        : null;
+    final depositLine = deposit == null
+        ? ''
+        : '\nМожно закрыть всю сумму или забронировать место предоплатой $deposit.';
+    final rsvpHint = rsvpOpen && !quote.rsvp
+        ? '\n\nЕщё можно попасть в список мастер-класса и взять специальную цену — кнопка ниже.'
+        : '';
     return '<b>Запись на курс $title 🧡</b>\n\n'
-        '16 уроков + эфир. Уроки в телеграм, общий чат участников.\n\n'
-        'Стоимость: $price\n'
+        '16 уроков. Уроки в телеграм, общий чат участников.\n\n'
+        'Стоимость: $price.$depositLine\n'
         'Стартуем $start.\n'
-        'Ссылка в канал курса придет в этот чат после полной оплаты.';
+        'Ссылка в канал курса придет в этот чат после полной оплаты.'
+        '$rsvpHint';
+  }
+
+  String dozhimEnrollCta() {
+    return 'Записаться на курс — по кнопке ниже.';
   }
 
   String _colorCoursePitchBody({required bool forWebinarAlumni}) {

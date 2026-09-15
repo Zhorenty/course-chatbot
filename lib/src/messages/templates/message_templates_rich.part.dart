@@ -55,9 +55,16 @@ extension MessageTemplatesRich on MessageTemplates {
     required SalesQuote quote,
     bool rsvpOpen = true,
     bool webinarStarted = false,
+    bool hasOpenCheckout = false,
   }) {
     return richHtmlFromClassic(
-      enrollOptions(launch, quote: quote, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted),
+      enrollOptions(
+        launch,
+        quote: quote,
+        rsvpOpen: rsvpOpen,
+        webinarStarted: webinarStarted,
+        hasOpenCheckout: hasOpenCheckout,
+      ),
     );
   }
 

@@ -100,25 +100,57 @@ final class WarmupNudgeJob {
     required List<LaunchDozhimMessage> custom,
     required DateTime now,
   }) async {
+    final checkoutOpen = launch == null
+        ? false
+        : LaunchSales.quote(launch, rsvp: candidate.webinarRsvp, now: now).checkoutOpen;
+    final keyboard = launch == null
+        ? null
+        : _templates.warmupKeyboard(
+            decision.stepKey,
+            launch: launch,
+            rsvp: candidate.webinarRsvp,
+            rsvpOpen: LaunchSales.rsvpOpen(launch, now),
+            checkoutOpen: checkoutOpen,
+          );
     for (final message in custom) {
       if (message.stepKey != decision.stepKey) {
         continue;
       }
-      await replayDozhimContent(sender: _sender, chatId: candidate.userId, message: message);
+      final ids = await replayDozhimContent(
+        sender: _sender,
+        chatId: candidate.userId,
+        message: message,
+      );
+      if (keyboard != null) {
+        await _attachInlineKeyboard(chatId: candidate.userId, messageIds: ids, keyboard: keyboard);
+      }
       return;
     }
     await sendPreferRich(
       _sender,
       candidate.userId,
       _templates.warmupStep(decision.stepKey, launch: launch, rsvp: candidate.webinarRsvp),
-      replyMarkup: launch == null
-          ? null
-          : _templates.warmupKeyboard(
-              decision.stepKey,
-              launch: launch,
-              rsvp: candidate.webinarRsvp,
-              rsvpOpen: LaunchSales.rsvpOpen(launch, now),
-            ),
+      replyMarkup: keyboard,
     );
+  }
+
+  Future<void> _attachInlineKeyboard({
+    required int chatId,
+    required List<int> messageIds,
+    required Map<String, Object?> keyboard,
+  }) async {
+    if (messageIds.isNotEmpty) {
+      try {
+        await _sender.editMessageReplyMarkup(
+          chatId,
+          messageId: messageIds.last,
+          replyMarkup: keyboard,
+        );
+        return;
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to attach enroll CTA to dozhim for $chatId: $error', stackTrace);
+      }
+    }
+    await sendPreferRich(_sender, chatId, _templates.dozhimEnrollCta(), replyMarkup: keyboard);
   }
 }

@@ -67,8 +67,9 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       if (created.applied != null || created.alreadySettled) {
         if (created.applied != null) {
           await _notifyPaymentResult(created.applied!);
+          return true;
         }
-        return true;
+        return _showCourseStatus(context);
       }
       final url = created.payment.confirmationUrl;
       if (url == null || url.isEmpty) {

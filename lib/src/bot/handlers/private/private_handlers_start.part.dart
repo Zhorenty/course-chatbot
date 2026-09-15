@@ -34,6 +34,10 @@ extension _PrivateHandlersStart on PrivateHandlers {
     }
     final destination = user.source ?? payload;
     if (_funnel.opensCourseCard(destination)) {
+      if (_launch != null) {
+        await _showEnroll(context, markIntent: false);
+        return _send(context, _templates.menuPinned(), replyMarkup: _homeKeyboard(user.userId));
+      }
       return _send(
         context,
         _templates.startCourseCard(launch: _launch),
