@@ -1,5 +1,6 @@
 enum CatalogLaunchField {
   title,
+  description,
   code,
   price,
   promo,
@@ -14,6 +15,7 @@ enum CatalogLaunchField {
 
   String get token => switch (this) {
     CatalogLaunchField.title => 't',
+    CatalogLaunchField.description => 'b',
     CatalogLaunchField.code => 'c',
     CatalogLaunchField.price => 'p',
     CatalogLaunchField.promo => 'r',
@@ -30,6 +32,7 @@ enum CatalogLaunchField {
   static CatalogLaunchField? fromToken(String raw) {
     return switch (raw) {
       't' => CatalogLaunchField.title,
+      'b' => CatalogLaunchField.description,
       'c' => CatalogLaunchField.code,
       'p' => CatalogLaunchField.price,
       'r' => CatalogLaunchField.promo,

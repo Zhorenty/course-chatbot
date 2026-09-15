@@ -59,6 +59,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     final channel = launch.channelId;
     buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
     buf.writeln(_catalogGuideLine(launch));
+    buf.writeln(_catalogDescriptionLine(launch));
     buf.writeln(_catalogDozhimLine(dozhimCount));
     buf.write(launch.isActive ? 'активен: да' : 'активен: нет');
     return buf.toString();
@@ -285,9 +286,13 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         '${escapeHtml(title)} (<code>${escapeHtml(code)}</code>) убрал из COURSES.';
   }
 
-  String adminCatalogAskField(CatalogLaunchField field) {
+  String adminCatalogAskField(CatalogLaunchField field, {Launch? launch}) {
     return switch (field) {
       CatalogLaunchField.title => 'Новое название запуска.',
+      CatalogLaunchField.description =>
+        'Текст описания курса. Дату старта, ссылку и время мастер-класса бот подставит сам — не пиши их сюда.\n\n'
+            'Пустое сообщение вернёт стандартный текст.\n\n'
+            'Сейчас:\n${escapeHtml((launch ?? _placeholderLaunch()).resolvedDescription)}',
       CatalogLaunchField.code =>
         'Новый код запуска: латиница, цифры, _ и -.\n\n'
             'Если сменишь код, диплинки на листе ССЫЛКИ с этим кодом поправь руками.',
@@ -370,6 +375,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String adminCatalogFieldLabel(CatalogLaunchField field) => switch (field) {
     CatalogLaunchField.title => '📝 Название',
+    CatalogLaunchField.description => '🖋 Описание',
     CatalogLaunchField.code => '🔖 Код',
     CatalogLaunchField.price => '💰 Цена',
     CatalogLaunchField.promo => '🎁 Спеццена',
@@ -391,6 +397,10 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
 
   String _catalogGuideLine(Launch launch) {
     return _catalogHasGuide(launch) ? 'гайд: есть' : 'гайд: нет';
+  }
+
+  String _catalogDescriptionLine(Launch launch) {
+    return launch.hasCustomDescription ? 'описание: своё' : 'описание: шаблон';
   }
 
   String _catalogDozhimLine(int count) {

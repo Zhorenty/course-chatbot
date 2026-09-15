@@ -42,8 +42,8 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         product_id, code, title, channel_id, price_full_kopecks, price_promo_kopecks,
         deposit_kopecks, deposit_due_days, deposit_due_at, course_start_at,
         webinar_at, webinar_url, sales_start_at, sales_end_at, offer_url,
-        lead_magnet_file_id, lead_magnet_url, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        lead_magnet_file_id, lead_magnet_url, description, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title,
         channel_id = COALESCE(excluded.channel_id, launches.channel_id),
@@ -79,6 +79,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         offerUrl,
         leadMagnetFileId,
         leadMagnetUrl,
+        Launch.defaultDescription,
       ],
     );
     if (activate) {
@@ -304,6 +305,15 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       return;
     }
     _db.execute('UPDATE launches SET lead_magnet_file_id = ? WHERE id = ?;', <Object?>[fileId, id]);
+  }
+
+  @override
+  void setLaunchDescription(String? text, {required int launchId}) {
+    final trimmed = text?.trim();
+    _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[
+      trimmed == null || trimmed.isEmpty ? null : trimmed,
+      launchId,
+    ]);
   }
 
   @override

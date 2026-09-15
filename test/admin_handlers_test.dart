@@ -1230,6 +1230,47 @@ void main() {
     expect(sheets.sheetsGateway!.valuesBySheetId[0]!.first.first, CoursesSheet.title);
   });
 
+  test('admin catalog edit description stores copy on the launch', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.catalogSync!.sync();
+    final launch = sheets.course.launchByCode('launch-1')!;
+
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogOpen}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'ce',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogEdit}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cf',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.description),
+      ),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Мой поток про цвет в квартирах.'),
+    );
+    expect(sheets.course.launchByCode('launch-1')?.description, 'Мой поток про цвет в квартирах.');
+    expect(sheets.sender.messages.last.text, contains('своё'));
+  });
+
   test('admin catalog replaces the guide file for that launch', () async {
     final sheets = HandlerHarness();
     await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);

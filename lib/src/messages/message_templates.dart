@@ -213,11 +213,8 @@ final class MessageTemplates {
 
   String startCourseCard({Launch? launch}) {
     return '<b>Курс ${_quotedCourseTitle(launch)}</b>\n\n'
-        'Скоро стартует мой курс по интерьерной колористике, после которого твои объекты обретут почерк, а вместо страха придет уверенная и осознанная работа с цветом!\n\n'
-        '16 уроков: от терминологии, физики и психологии цвета до практической работы с палитрами, деревом, металлом и цветовыми сценариями в интерьере. 🧡 '
-        'Старт потока ${_formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата'}. '
-        'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
-        'А пока что можно получить гайд-шпаргалку «${MessageTemplates.guideTitle}» и записаться на Мастер-класс «${MessageTemplates.masterClassTitle}» прямо в боте!';
+        '${_courseDescriptionHtml(launch)}\n\n'
+        '${_courseFactsHtml(launch)}';
   }
 
   String alreadyInFunnel() {
@@ -674,10 +671,8 @@ final class MessageTemplates {
     switch (quote.phase) {
       case SalesPhase.preSales:
         return '<b>Курс $title</b>\n\n'
-            'Скоро стартует мой курс по интерьерной колористике\n\n'
-            'Старт потока $start. Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
-            'А пока можно записаться на бесплатный Мастер-класс «${MessageTemplates.masterClassTitle}», '
-            'после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после. '
+            '${_courseDescriptionHtml(launch)}\n\n'
+            '${_courseFactsHtml(launch)}\n\n'
             '${_preSalesMasterClassCta(launch: launch, rsvp: quote.rsvp, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted)}';
       case SalesPhase.closed:
         return '<b>Запись закрыта</b>\n\n'
@@ -1735,6 +1730,62 @@ final class MessageTemplates {
     return '"$body"';
   }
 
+  String _resolvedCourseDescription(Launch? launch) {
+    return launch?.resolvedDescription ?? Launch.defaultDescription;
+  }
+
+  String _courseDescriptionHtml(Launch? launch) {
+    return escapeHtml(_resolvedCourseDescription(launch));
+  }
+
+  List<(String, String)> _courseFactsRows(Launch? launch) {
+    final start = _formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата';
+    final sales = _formatHumanDate(launch?.salesStartAt);
+    return <(String, String)>[
+      ('Старт потока', start),
+      ('Мастер-класс', _courseFactWebinar(launch)),
+      ('Ссылка', _courseFactLinkHtml(launch)),
+      if (sales != null) ('Продажи', sales),
+    ];
+  }
+
+  String _courseFactsHtml(Launch? launch) {
+    return _courseFactsRows(
+      launch,
+    ).map(((String, String) row) => '${_courseFactEmoji(row.$1)} ${row.$1}: ${row.$2}').join('\n');
+  }
+
+  String _courseFactEmoji(String label) {
+    return switch (label) {
+      'Старт потока' => '📅',
+      'Мастер-класс' => '📺',
+      'Ссылка' => '🔗',
+      'Продажи' => '🛒',
+      _ => '•',
+    };
+  }
+
+  String _courseFactWebinar(Launch? launch) {
+    final day = _formatHumanDate(launch?.webinarAt);
+    final time = _formatClock(launch?.webinarAt);
+    if (day != null && time != null) {
+      return '$day, $time по мск';
+    }
+    if (day != null) {
+      return day;
+    }
+    return 'дату и время пришлю отдельно';
+  }
+
+  String _courseFactLinkHtml(Launch? launch) {
+    final url = launch?.resolvedWebinarUrl;
+    if (url == null) {
+      return _webinarLinkLaterLine();
+    }
+    final safe = escapeHtml(url);
+    return '<a href="$safe">$safe</a>';
+  }
+
   String _webinarLinkLaterLine() {
     return 'Ссылку прикрепим позже и пришлём в этот чат.';
   }
@@ -1800,15 +1851,12 @@ final class MessageTemplates {
       if (webinarStarted && launch.hasWebinarUrl) {
         return 'Ты в списке. Мастер-класс уже идёт — кнопка со ссылкой ниже.';
       }
-      return 'Ты уже в списке участников. ${_webinarLinkFollowup(launch)}';
+      return 'Ты уже в списке участников.';
     }
     if (!rsvpOpen) {
-      return 'Запись в список уже закрыта. ${_webinarLinkFollowup(launch)}';
+      return 'Запись в список уже закрыта.';
     }
-    return _joinSentences(
-      'Нажимай на кнопку внизу, чтобы попасть в список участников за 1 клик.',
-      _webinarLinkLaterIfMissing(launch),
-    );
+    return 'Нажимай на кнопку внизу, чтобы попасть в список участников за 1 клик.';
   }
 
   String _dueDateLabel(DateTime? value, {required String fallback}) {

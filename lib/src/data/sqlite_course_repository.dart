@@ -56,6 +56,10 @@ final class SqliteCourseRepository extends _SqliteCourseStore
   void init() {
     _handle.ensureCourseSchema();
     seedDefaultWarmupSteps();
+    _db.execute(
+      'UPDATE launches SET description = ? WHERE description IS NULL OR trim(description) = \'\';',
+      <Object?>[Launch.defaultDescription],
+    );
   }
 
   @override
@@ -205,6 +209,7 @@ class _SqliteCourseStore {
       offerUrl: row['offer_url'] as String?,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
       leadMagnetUrl: row['lead_magnet_url'] as String?,
+      description: row['description'] as String?,
       isActive: (row['is_active'] as int?) == 1,
     );
   }

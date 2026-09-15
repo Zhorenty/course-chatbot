@@ -649,7 +649,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || field == null) {
       return false;
     }
-    if (_course.getLaunch(launchId) == null) {
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
       return _showCatalogList(context);
     }
     _setCatalogFlow(
@@ -659,7 +660,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     );
     return _presentCatalog(
       context,
-      _templates.adminCatalogAskField(field),
+      _templates.adminCatalogAskField(field, launch: launch),
       replyMarkup: field == CatalogLaunchField.channel
           ? _templates.adminCatalogSkipChannelKeyboard()
           : field == CatalogLaunchField.guide
@@ -680,6 +681,9 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final text = rawOverride ?? context.text?.trim() ?? '';
     var overlay = admin.draftFromLaunch(launch);
     switch (field) {
+      case CatalogLaunchField.description:
+        _course.setLaunchDescription(text, launchId: launch.id);
+        return _showCatalogCard(context, launch.id);
       case CatalogLaunchField.title:
         final error = LaunchCatalogAdminService.validateTitle(text);
         if (error != null) {

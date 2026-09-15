@@ -14,6 +14,11 @@ final class Product {
 }
 
 final class Launch {
+  static const String defaultDescription =
+      'Скоро стартует мой курс по интерьерной колористике\n\n'
+      'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+      'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.';
+
   const Launch({
     required this.id,
     required this.productId,
@@ -33,6 +38,7 @@ final class Launch {
     this.offerUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
+    this.description,
     this.isActive = false,
   });
 
@@ -54,7 +60,24 @@ final class Launch {
   final String? offerUrl;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
+  final String? description;
   final bool isActive;
+
+  String get resolvedDescription {
+    final text = description?.trim();
+    if (text == null || text.isEmpty) {
+      return defaultDescription;
+    }
+    return text;
+  }
+
+  bool get hasCustomDescription {
+    final text = description?.trim();
+    if (text == null || text.isEmpty) {
+      return false;
+    }
+    return text != defaultDescription;
+  }
 
   int get resolvedPriceFullKopecks =>
       priceFullKopecks > 0 ? priceFullKopecks : LaunchPrices.fullKopecks;

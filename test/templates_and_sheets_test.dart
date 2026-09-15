@@ -251,6 +251,48 @@ void main() {
     expect(templates.webinarRsvpConfirmed(launch, showLink: false), contains('прикрепим позже'));
   });
 
+  test('course card keeps general copy and prints launch facts as parameters', () {
+    final templates = MessageTemplates();
+    final launch = Launch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Цвет в интерьере. Основы и практика',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final quote = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 15, 12));
+    final card = templates.enrollOptions(launch, quote: quote);
+    expect(card, contains('Скоро стартует мой курс по интерьерной колористике'));
+    expect(card, contains('📅 Старт потока: 12 октября'));
+    expect(card, contains('📺 Мастер-класс: 5 октября, 19:00 по мск'));
+    expect(card, contains('🔗 Ссылка: Ссылку прикрепим позже и пришлём в этот чат.'));
+    expect(card, contains('Ты уже в списке участников.'));
+    expect(card, isNot(contains('Старт потока 12 октября. Сообщу')));
+    expect(templates.startCourseCard(launch: launch), contains('📅 Старт потока: 12 октября'));
+
+    final custom = Launch(
+      id: 2,
+      productId: 1,
+      code: 'launch-2',
+      title: 'Цвет в интерьере. Основы и практика',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarUrl: 'https://example.com/live',
+      description: 'Мой поток про цвет в квартирах.',
+    );
+    final customCard = templates.startCourseCard(launch: custom);
+    expect(customCard, contains('Мой поток про цвет в квартирах.'));
+    expect(customCard, isNot(contains('Скоро стартует мой курс')));
+    expect(customCard, contains('https://example.com/live'));
+  });
+
   test('ВОРОНКА dashboard has course steps not club quiz', () {
     final dashboard = GoogleSheetsFunnelDashboard.build(
       FunnelAnalytics(
@@ -495,7 +537,9 @@ void main() {
     expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
     expect(data, contains(MessageTemplates.cbCatalogSkipOptional));
     expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
+    expect(templates.adminCatalogCard(launch), contains('описание: шаблон'));
     expect(templates.adminCatalogCard(launch), contains('дожим: нет'));
+    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.description)));
     expect(templates.adminCatalogCard(launch, dozhimCount: 2), contains('дожим: 2 дня'));
     expect(data, contains('${MessageTemplates.cbCatalogDozhim}12'));
     expect(

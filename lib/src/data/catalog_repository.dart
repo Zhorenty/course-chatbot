@@ -69,6 +69,8 @@ abstract interface class CatalogRepository {
 
   void setLeadMagnetFileId(String fileId, {int? launchId});
 
+  void setLaunchDescription(String? text, {required int launchId});
+
   List<LaunchDozhimMessage> listLaunchDozhim(int launchId);
 
   LaunchDozhimMessage? getLaunchDozhim(int id);

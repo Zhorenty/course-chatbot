@@ -102,6 +102,7 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'launches', 'webinar_url', 'TEXT');
     _ensureColumn(db, 'launches', 'sales_start_at', 'TEXT');
     _ensureColumn(db, 'launches', 'sales_end_at', 'TEXT');
+    _ensureColumn(db, 'launches', 'description', 'TEXT');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (
         user_id INTEGER PRIMARY KEY,

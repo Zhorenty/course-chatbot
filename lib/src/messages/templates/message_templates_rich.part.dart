@@ -14,11 +14,16 @@ extension MessageTemplatesRich on MessageTemplates {
   }
 
   String startCourseCardRich({Launch? launch}) {
-    final start = _formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата';
     return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)}')}'
-        '${richP('Скоро стартует мой курс по интерьерной колористике, после которого твои объекты обретут почерк, а вместо страха придет уверенная и осознанная работа с цветом!')}'
-        '${richP('16 уроков: от терминологии, физики и психологии цвета до практической работы с палитрами, деревом, металлом и цветовыми сценариями в интерьере. 🧡 Старт потока $start. Сообщу тебе, когда откроются продажи по самой выгодной цене.')}'
-        '${richP('А пока что можно получить гайд-шпаргалку «${MessageTemplates.guideTitle}» и записаться на Мастер-класс «${MessageTemplates.masterClassTitle}» прямо в боте!')}';
+        '${_courseDescriptionRich(launch)}'
+        '${richTable(_courseFactsRows(launch))}';
+  }
+
+  String _courseDescriptionRich(Launch? launch) {
+    final parts = _resolvedCourseDescription(
+      launch,
+    ).split(RegExp(r'\n\s*\n')).map((part) => part.trim()).where((part) => part.isNotEmpty);
+    return [for (final part in parts) richP(escapeHtml(part))].join();
   }
 
   String alreadyInFunnelRich() {
@@ -93,7 +98,7 @@ extension MessageTemplatesRich on MessageTemplates {
     final webinarUrl = launch.webinarUrl?.trim();
     final channel = launch.channelId;
     return '${richH2(launch.title)}'
-        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'как дата эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
+        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.resolvedPricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? 'не указан'), ('эфир', _formatDateTime(launch.webinarAt) ?? 'не указан'), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? 'как дата эфира'), ('конец продаж', _formatDate(launch.salesEndAt) ?? 'не указан'), ('канал', channel == null ? 'не указан' : '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('описание', launch.hasCustomDescription ? 'своё' : 'шаблон'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
   }
 
   String adminCatalogDozhimListRich(Launch launch, List<LaunchDozhimMessage> messages) {
