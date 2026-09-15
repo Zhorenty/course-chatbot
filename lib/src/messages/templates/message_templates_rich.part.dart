@@ -22,10 +22,10 @@ extension MessageTemplatesRich on MessageTemplates {
   }
 
   String _courseDescriptionRich(Launch? launch) {
-    final parts = _resolvedCourseDescription(
+    final parts = _courseDescriptionHtml(
       launch,
     ).split(RegExp(r'\n\s*\n')).map((part) => part.trim()).where((part) => part.isNotEmpty);
-    return [for (final part in parts) richP(escapeHtml(part))].join();
+    return [for (final part in parts) richP(part.replaceAll('\n', '<br>'))].join();
   }
 
   String alreadyInFunnelRich() {
@@ -139,7 +139,7 @@ extension MessageTemplatesRich on MessageTemplates {
     return '${richH2('Как устроена воронка')}'
         '${richP('Человек заходит в бота → может забрать гайд и/или записаться на поток → бот сам напоминает, пока нет оплаты или отписки.')}'
         '${richDetails('Кто не получает прогрев', richP('Аккаунты админов. Карточка может появиться (админ тоже пишет боту), но продающие сообщения админу не шлём.'))}'
-        '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — экран про «Язык цвета»;', 'ссылка на курс — карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
+        '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — приветствие и гайд;', 'ссылка на курс — то же приветствие и сразу карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
         '${richDetails('Гайд', richP('Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.'))}'
         '${richDetails('Прогрев после гайда', richP('Сразу приглашение на мастер-класс и кнопка «${escapeHtml(MessageTemplates.buttonRsvp)}». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
         '${richDetails('Продажи', richP('До старта продаж «${escapeHtml(MessageTemplates.buttonEnroll)}» — карточка курса и «ждём кассу», без оплаты. Старт продаж — поле в карточке курса (пусто — следующий день после эфира). В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'

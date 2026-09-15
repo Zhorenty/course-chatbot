@@ -28,6 +28,27 @@ void main() {
     );
   });
 
+  test('telegram text message keeps bold, italic and line breaks', () {
+    expect(
+      telegramTextMessageToHtml(
+        privateMessageUpdate(
+              chatId: 1,
+              userId: 1,
+              text: 'Первый абзац\nвторой',
+              entities: <Map<String, dynamic>>[
+                <String, dynamic>{'type': 'bold', 'offset': 0, 'length': 12},
+                <String, dynamic>{'type': 'italic', 'offset': 13, 'length': 6},
+              ],
+            )['message']
+            as Map<String, dynamic>,
+      ),
+      '<b>Первый абзац</b>\n<i>второй</i>',
+    );
+    expect(telegramTextMessageToHtml(<String, dynamic>{'text': '   '}), isNull);
+    expect(storedTelegramTextToHtml('a < b'), 'a &lt; b');
+    expect(storedTelegramTextToHtml('<b>Цвет</b>\nи практика'), '<b>Цвет</b>\nи практика');
+  });
+
   test('snapshot keeps photo file_id so the original message can be deleted', () {
     final snapshot = snapshotTelegramMessage(
       privatePhotoUpdate(chatId: 1, userId: 1, caption: 'кейс')['message'] as Map<String, dynamic>,

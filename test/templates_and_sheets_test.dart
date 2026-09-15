@@ -370,6 +370,25 @@ void main() {
     expect(customCard, contains('Мой поток про цвет в квартирах.'));
     expect(customCard, isNot(contains('Скоро стартует мой курс')));
     expect(customCard, contains('дату и время пришлю отдельно'));
+
+    final marked = Launch(
+      id: 3,
+      productId: 1,
+      code: 'launch-3',
+      title: 'Цвет в интерьере. Основы и практика',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      description: '<b>Цвет</b>\nи практика\n\nвторой абзац',
+    );
+    final markedCard = templates.startCourseCard(launch: marked);
+    expect(markedCard, contains('<b>Цвет</b>'));
+    expect(markedCard, isNot(contains('&lt;b&gt;')));
+    expect(
+      templates.startCourseCardRich(launch: marked),
+      contains('<p><b>Цвет</b><br>и практика</p>'),
+    );
+    expect(templates.startCourseCardRich(launch: marked), contains('<p>второй абзац</p>'));
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {

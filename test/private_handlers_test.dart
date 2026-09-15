@@ -54,6 +54,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 7, userId: 7, text: '/start tg_announce'),
     );
+    expect(harness.sender.messages.first.text, contains('Анастасия Дубовскова'));
     expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
     final courseOffer = harness.sender.messages.firstWhere((m) => m.text.contains('Запуск'));
     expect(
@@ -68,7 +69,7 @@ void main() {
           ?.enrollIntentAt,
       isNull,
     );
-    final courseMenu = _replyButtonTexts(harness.sender.messages.last.replyMarkup);
+    final courseMenu = _replyButtonTexts(harness.sender.messages.first.replyMarkup);
     expect(courseMenu, contains(MessageTemplates.buttonEnroll));
     expect(courseMenu, contains(MessageTemplates.buttonGuide));
 
@@ -76,7 +77,9 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 8, userId: 8, text: '/start threads_guide'),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
+    expect(harness.sender.messages, hasLength(1));
+    expect(harness.sender.messages.single.text, contains('Анастасия Дубовскова'));
+    expect(harness.sender.messages.single.text, contains('Язык цвета'));
   });
 
   test('later bare /start keeps the course card when source was a course payload', () async {
@@ -637,6 +640,22 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonHelp));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
+  });
+
+  test('course /start sends Nastya then the course card', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 42, userId: 42, text: '/start tg_announce'),
+    );
+    expect(harness.sender.messages, hasLength(2));
+    expect(harness.sender.messages.first.text, contains('Привет'));
+    expect(harness.sender.messages.first.text, contains('Анастасия Дубовскова'));
+    expect(harness.sender.messages.last.text, contains('Запуск'));
+    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
+    expect(
+      _replyButtonTexts(harness.sender.messages.first.replyMarkup),
+      contains(MessageTemplates.buttonGuide),
+    );
+    expect(_inlineButtonTexts(harness.sender.messages.last.replyMarkup), isNotEmpty);
   });
 
   test('admin card button from incoming notice opens the person card', () async {

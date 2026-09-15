@@ -682,7 +682,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     var overlay = admin.draftFromLaunch(launch);
     switch (field) {
       case CatalogLaunchField.description:
-        _course.setLaunchDescription(text, launchId: launch.id);
+        final html = rawOverride == null
+            ? telegramTextMessageToHtml(context.message)
+            : (text.isEmpty ? null : telegramEntitiesToHtml(rawOverride, null));
+        _course.setLaunchDescription(html, launchId: launch.id);
         await _writeDozhimPresenceFlags();
         return _showCatalogCard(context, launch.id);
       case CatalogLaunchField.title:

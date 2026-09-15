@@ -295,8 +295,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.title => 'Новое название запуска.',
       CatalogLaunchField.description =>
         'Текст описания курса. Дату старта, ссылку и время мастер-класса бот подставит сам — не пиши их сюда.\n\n'
+            'Жирный, курсив и абзацы сохранятся, как в обычном сообщении Telegram.\n\n'
             'Пустое сообщение вернёт стандартный текст.\n\n'
-            'Сейчас:\n${escapeHtml((launch ?? _placeholderLaunch()).resolvedDescription)}',
+            'Сейчас:\n${_courseDescriptionHtml(launch ?? _placeholderLaunch())}',
       CatalogLaunchField.code =>
         'Новый код запуска: латиница, цифры, _ и -.\n\n'
             'Если сменишь код, диплинки на листе ССЫЛКИ с этим кодом поправь руками.',

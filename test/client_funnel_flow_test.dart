@@ -321,13 +321,12 @@ void main() {
 
     await client.tap('/start tg_announce');
     expect(harness.course.getUser(7)?.source, 'tg_announce');
+    expect(harness.sender.messages.first.text, contains('Анастасия Дубовскова'));
     expect(harness.sender.messages.any((m) => m.text.contains('Запуск')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
-    expect(
-      _inlineButtonTexts(harness.sender.messages.first.replyMarkup),
-      contains(MessageTemplates.buttonRsvpEnroll),
-    );
-    expect(_payButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
+    final courseCard = harness.sender.messages.firstWhere((m) => m.text.contains('Запуск'));
+    expect(_inlineButtonTexts(courseCard.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
+    expect(_payButtonTexts(courseCard.replyMarkup), isEmpty);
     expect(_enrollment(harness, 7)?.enrollIntentAt, isNull);
 
     harness.sender.messages.clear();
@@ -372,7 +371,7 @@ void main() {
     expect(card.text, isNot(contains('самой выгодной цене')));
     expect(_payButtonTexts(card.replyMarkup), isNotEmpty);
     expect(
-      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      _replyButtonTexts(harness.sender.messages.first.replyMarkup),
       contains(MessageTemplates.buttonEnroll),
     );
     expect(_enrollment(harness, 9)?.enrollIntentAt, isNull);

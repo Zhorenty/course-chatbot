@@ -1,5 +1,31 @@
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 
+final _telegramHtmlMarkup = RegExp(
+  r'</?(?:b|strong|i|em|u|s|a|code|pre|tg-spoiler|tg-emoji|br)\b|&(?:amp|lt|gt|quot|#39);',
+  caseSensitive: false,
+);
+
+/// HTML of a Telegram text or caption, or `null` if empty.
+String? telegramTextMessageToHtml(Map<String, dynamic>? message) {
+  if (message == null) {
+    return null;
+  }
+  final hasText = message['text'] != null;
+  final raw = (hasText ? message['text'] : message['caption'])?.toString();
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  return telegramEntitiesToHtml(raw, hasText ? message['entities'] : message['caption_entities']);
+}
+
+/// Legacy plain copy vs already-escaped Telegram HTML stored in SQLite.
+String storedTelegramTextToHtml(String raw) {
+  if (_telegramHtmlMarkup.hasMatch(raw)) {
+    return raw;
+  }
+  return escapeHtml(raw);
+}
+
 /// Convert Telegram `MessageEntity` offsets (UTF-16) into Bot API HTML.
 String telegramEntitiesToHtml(String text, Object? rawEntities) {
   final entities = _parsedEntities(text, rawEntities);

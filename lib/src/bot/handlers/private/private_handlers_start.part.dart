@@ -32,24 +32,23 @@ extension _PrivateHandlersStart on PrivateHandlers {
         replyMarkup: _homeKeyboard(user.userId),
       );
     }
-    final destination = user.source ?? payload;
-    if (_funnel.opensCourseCard(destination)) {
-      if (_launch != null) {
-        await _showEnroll(context, markIntent: false);
-        return _send(context, _templates.menuPinned(), replyMarkup: _homeKeyboard(user.userId));
-      }
-      return _send(
-        context,
-        _templates.startCourseCard(launch: _launch),
-        richHtml: _templates.startCourseCardRich(launch: _launch),
-        replyMarkup: _homeKeyboard(user.userId),
-      );
-    }
-    return _send(
+    await _send(
       context,
       _templates.startGuideOffer(),
       richHtml: _templates.startGuideOfferRich(),
       replyMarkup: _homeKeyboard(user.userId),
+    );
+    final destination = user.source ?? payload;
+    if (!_funnel.opensCourseCard(destination)) {
+      return true;
+    }
+    if (_launch != null) {
+      return _showEnroll(context, markIntent: false);
+    }
+    return _send(
+      context,
+      _templates.startCourseCard(launch: _launch),
+      richHtml: _templates.startCourseCardRich(launch: _launch),
     );
   }
 

@@ -19,6 +19,7 @@ import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 import 'package:course_chatbot/src/messages/keyboards/keyboard_builders.dart';
 import 'package:course_chatbot/src/messages/rich_html.dart';
+import 'package:course_chatbot/src/messages/telegram_html.dart';
 import 'package:intl/intl.dart';
 
 part 'templates/message_templates_keyboards.part.dart';
@@ -940,8 +941,8 @@ final class MessageTemplates {
         'Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. '
         'Повторный /start уже идущий сценарий не ломает.\n\n'
         'Две двери:\n'
-        '• ссылка на гайд — экран про «Язык цвета»;\n'
-        '• ссылка на курс — карточка потока.\n'
+        '• ссылка на гайд — приветствие и гайд;\n'
+        '• ссылка на курс — то же приветствие и сразу карточка потока.\n'
         'Дальше гайд и запись всегда в меню внизу.\n\n'
         '<b>Гайд</b>\n'
         'Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.\n\n'
@@ -1775,7 +1776,7 @@ final class MessageTemplates {
   }
 
   String _courseDescriptionHtml(Launch? launch) {
-    return escapeHtml(_resolvedCourseDescription(launch));
+    return storedTelegramTextToHtml(_resolvedCourseDescription(launch));
   }
 
   String _preSalesCourseCopy(Launch? launch, {String? cta}) {
