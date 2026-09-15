@@ -98,6 +98,8 @@ final class MessageTemplates {
   static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
   static const String buttonAdminBroadcastContinue = 'Далее';
+  static const String buttonAdminBroadcastSelectAll = 'Выбрать все';
+  static const String buttonAdminBroadcastClearAll = 'Снять все';
   static const String buttonAdminBroadcastOtherSegment = 'Изменить сегменты';
   static const String buttonAdminBroadcastCancel = '✖️ Отмена';
   static const String buttonAdminBroadcastSkipOptOut = 'Кроме «Не писать»';
@@ -159,6 +161,7 @@ final class MessageTemplates {
   static const String cbAdminStatusMenu = 'aq:';
   static const String cbAdminStatusSet = 'as:';
   static const String cbBroadcastSegment = 'bs:';
+  static const String cbBroadcastSelectAll = 'ba';
   static const String cbBroadcastSend = 'bp';
   static const String cbBroadcastSegmentsDone = 'bn';
   static const String cbBroadcastOtherSegment = 'br';
@@ -1088,7 +1091,7 @@ final class MessageTemplates {
   }
 
   String adminBroadcastEmptyRejected() {
-    return 'Пришли текст или файл.';
+    return 'Пришли текст, фото, файл, видео или голосовое.';
   }
 
   String adminBroadcastCopyFailed() {
@@ -1461,6 +1464,9 @@ final class MessageTemplates {
     if (ordered.isEmpty) {
       return 'не выбраны';
     }
+    if (BroadcastSegment.coversAll(ordered)) {
+      return 'все сегменты';
+    }
     return ordered.map(broadcastSegmentLabel).join(', ');
   }
 
@@ -1474,6 +1480,10 @@ final class MessageTemplates {
     BroadcastContentKind.animation => 'gif',
     BroadcastContentKind.sticker => 'стикер',
     BroadcastContentKind.videoNote => 'видеосообщение',
+    BroadcastContentKind.album => 'альбом',
+    BroadcastContentKind.location => 'геолокация',
+    BroadcastContentKind.contact => 'контакт',
+    BroadcastContentKind.other => 'другое',
   };
 
   String _clipBroadcastPreview(String text) {

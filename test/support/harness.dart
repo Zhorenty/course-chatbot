@@ -148,6 +148,7 @@ final class HandlerHarness {
   }
 
   void dispose() {
+    handlers.cancelPendingDozhimAlbums();
     db.dispose();
   }
 }

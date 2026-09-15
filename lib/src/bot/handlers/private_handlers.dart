@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:course_chatbot/src/application/access_service.dart';
@@ -29,6 +30,7 @@ import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
+import 'package:course_chatbot/src/telegram/copy_source_messages.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
@@ -64,6 +66,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     AdminAlertPort? adminAlerts,
     this.leadMagnetPath,
     this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
+    Duration albumCollectWindow = const Duration(milliseconds: 400),
   }) : _sender = sender,
        _templates = templates,
        _course = course,
@@ -79,7 +82,8 @@ final class PrivateHandlers implements PaymentResultNotifier {
        _linksAdmin = linksAdmin,
        _sheetsExportJob = sheetsExportJob,
        _adminAlerts = adminAlerts,
-       _nowProvider = nowProvider ?? DateTime.now;
+       _nowProvider = nowProvider ?? DateTime.now,
+       _albumCollectWindow = albumCollectWindow;
 
   final MessageSender _sender;
   final MessageTemplates _templates;
@@ -97,10 +101,17 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final AdminAlertPort? _adminAlerts;
   final DateTime Function() _nowProvider;
+  final Duration _albumCollectWindow;
   final String? leadMagnetPath;
   final String leadMagnetFilename;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  final Map<int, _PendingDozhimAlbum> _pendingDozhimAlbums = <int, _PendingDozhimAlbum>{};
+  final Map<int, Timer> _dozhimAlbumTimers = <int, Timer>{};
   DateTime? _lastGuideMissingAlertAt;
+
+  Future<void> flushPendingDozhimAlbums() => _flushPendingDozhimAlbums();
+
+  void cancelPendingDozhimAlbums() => _cancelAllPendingDozhimAlbums();
 
   Launch? get _launch => _course.activeLaunch();
 

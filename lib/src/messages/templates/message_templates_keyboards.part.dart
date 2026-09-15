@@ -346,7 +346,16 @@ extension MessageTemplateKeyboards on MessageTemplates {
     Map<BroadcastSegment, int> counts, {
     Set<BroadcastSegment> selected = const <BroadcastSegment>{},
   }) {
+    final allSelected = BroadcastSegment.coversAll(selected);
     final rows = <List<Map<String, Object?>>>[
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': allSelected
+              ? MessageTemplates.buttonAdminBroadcastClearAll
+              : MessageTemplates.buttonAdminBroadcastSelectAll,
+          'callback_data': MessageTemplates.cbBroadcastSelectAll,
+        },
+      ],
       for (final segment in BroadcastSegment.values)
         <Map<String, Object?>>[
           <String, Object?>{

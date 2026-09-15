@@ -340,6 +340,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required int sourceChatId,
     required int sourceMessageId,
     required BroadcastContentKind contentKind,
+    List<int>? sourceMessageIds,
     String? previewText,
   }) {
     final next =
@@ -350,13 +351,23 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
                 as int?) ??
             0) +
         1;
+    final ids = _dozhimMessageIds(sourceMessageId, sourceMessageIds);
     _db.execute(
       '''
       INSERT INTO launch_dozhim (
-        launch_id, day_index, source_chat_id, source_message_id, content_kind, preview_text
-      ) VALUES (?, ?, ?, ?, ?, ?);
+        launch_id, day_index, source_chat_id, source_message_id, source_message_ids,
+        content_kind, preview_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?);
       ''',
-      <Object?>[launchId, next, sourceChatId, sourceMessageId, contentKind.name, previewText],
+      <Object?>[
+        launchId,
+        next,
+        sourceChatId,
+        ids.first,
+        jsonEncode(ids),
+        contentKind.name,
+        previewText,
+      ],
     );
     final id = _db.lastInsertRowId;
     return getLaunchDozhim(id)!;
@@ -368,15 +379,18 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required int sourceChatId,
     required int sourceMessageId,
     required BroadcastContentKind contentKind,
+    List<int>? sourceMessageIds,
     String? previewText,
   }) {
+    final ids = _dozhimMessageIds(sourceMessageId, sourceMessageIds);
     _db.execute(
       '''
       UPDATE launch_dozhim
-      SET source_chat_id = ?, source_message_id = ?, content_kind = ?, preview_text = ?
+      SET source_chat_id = ?, source_message_id = ?, source_message_ids = ?,
+          content_kind = ?, preview_text = ?
       WHERE id = ?;
       ''',
-      <Object?>[sourceChatId, sourceMessageId, contentKind.name, previewText, id],
+      <Object?>[sourceChatId, ids.first, jsonEncode(ids), contentKind.name, previewText, id],
     );
     return getLaunchDozhim(id);
   }
@@ -408,15 +422,49 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   LaunchDozhimMessage mapDozhim(Row row) {
+    final sourceMessageId = row['source_message_id'] as int;
     return LaunchDozhimMessage(
       id: row['id'] as int,
       launchId: row['launch_id'] as int,
       dayIndex: row['day_index'] as int,
       sourceChatId: row['source_chat_id'] as int,
-      sourceMessageId: row['source_message_id'] as int,
+      sourceMessageId: sourceMessageId,
+      sourceMessageIds: _parseDozhimMessageIds(
+        row['source_message_ids'] as String?,
+        sourceMessageId,
+      ),
       contentKind: _dozhimKind(row['content_kind'] as String?),
       previewText: row['preview_text'] as String?,
     );
+  }
+
+  List<int> _dozhimMessageIds(int sourceMessageId, List<int>? sourceMessageIds) {
+    final ids = <int>{sourceMessageId, ...?sourceMessageIds}.where((id) => id > 0).toList()..sort();
+    if (ids.isEmpty) {
+      return <int>[sourceMessageId];
+    }
+    return ids;
+  }
+
+  List<int> _parseDozhimMessageIds(String? raw, int sourceMessageId) {
+    final encoded = raw?.trim();
+    if (encoded != null && encoded.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(encoded);
+        if (decoded is List) {
+          final ids = <int>[
+            for (final item in decoded)
+              if (item is int) item else if (item is num) item.toInt(),
+          ].where((id) => id > 0).toList()..sort();
+          if (ids.isNotEmpty) {
+            return ids;
+          }
+        }
+      } on Object {
+        // Fall back to the single source_message_id column.
+      }
+    }
+    return <int>[sourceMessageId];
   }
 
   BroadcastContentKind _dozhimKind(String? raw) {

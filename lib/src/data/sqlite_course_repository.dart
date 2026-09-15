@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:course_chatbot/src/data/access_repository.dart';
 import 'package:course_chatbot/src/data/attribution_repository.dart';
 import 'package:course_chatbot/src/data/catalog_repository.dart';

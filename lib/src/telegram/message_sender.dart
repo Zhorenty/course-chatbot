@@ -78,4 +78,12 @@ abstract interface class MessageSender {
     required int messageId,
     bool disableNotification = true,
   });
+
+  /// Copies 1–100 messages. A media group stays an album when all its ids are passed.
+  Future<List<int>> copyMessages({
+    required int chatId,
+    required int fromChatId,
+    required List<int> messageIds,
+    bool disableNotification = true,
+  });
 }

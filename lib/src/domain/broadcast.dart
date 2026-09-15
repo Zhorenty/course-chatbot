@@ -41,6 +41,10 @@ enum BroadcastSegment {
         if (set.contains(segment)) segment,
     ];
   }
+
+  static bool coversAll(Iterable<BroadcastSegment> selected) {
+    return selected.toSet().containsAll(values);
+  }
 }
 
 enum BroadcastContentKind {
@@ -53,4 +57,8 @@ enum BroadcastContentKind {
   animation,
   sticker,
   videoNote,
+  album,
+  location,
+  contact,
+  other,
 }

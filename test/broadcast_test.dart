@@ -86,10 +86,13 @@ void main() {
     expect(buttons, contains('Гайд есть, без записи (1)'));
     expect(buttons, contains('Оплатили / доступ (1)'));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastCancel));
+    expect(buttons, contains(MessageTemplates.buttonAdminBroadcastSelectAll));
     expect(buttons, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
+    expect(buttons, isNot(contains(MessageTemplates.buttonAdminBroadcastClearAll)));
     final data = _inlineCallbackData(picker.replyMarkup);
     expect(data, contains('${MessageTemplates.cbBroadcastSegment}g'));
     expect(data, contains('${MessageTemplates.cbBroadcastSegment}a'));
+    expect(data, contains(MessageTemplates.cbBroadcastSelectAll));
     expect(data, isNot(contains('bg')));
   });
 
@@ -269,7 +272,7 @@ void main() {
     await _openBroadcast(harness);
     await _pickSegment(harness, BroadcastSegment.allStarted);
     await harness.handlers.handle(privateEmptyMessageUpdate(chatId: 1, userId: 1));
-    expect(harness.sender.messages.last.text, contains('Пришли текст или файл'));
+    expect(harness.sender.messages.last.text, contains('Пришли текст, фото, файл'));
     expect(harness.sender.copies, isEmpty);
   });
 
@@ -353,6 +356,48 @@ void main() {
     expect(harness.sender.copies.where((c) => c.chatId == 10), hasLength(1));
   });
 
+  test('select all marks every segment and can be cleared', () async {
+    _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
+    _seed(harness, 11, phase: FunnelPhase.accessGranted);
+    await _openBroadcast(harness);
+    await _toggleAllSegments(harness);
+
+    final afterAll = harness.sender.messages.last;
+    expect(afterAll.text, contains('Выбрано: все сегменты'));
+    expect(afterAll.text, contains('✓ Гайд есть, без записи — 1'));
+    expect(afterAll.text, contains('✓ Оплатили / доступ — 1'));
+    expect(afterAll.text, contains('Получателей: 3'));
+    final afterAllButtons = _inlineButtonTexts(afterAll.replyMarkup);
+    expect(afterAllButtons, contains(MessageTemplates.buttonAdminBroadcastClearAll));
+    expect(afterAllButtons, contains(MessageTemplates.buttonAdminBroadcastContinue));
+    expect(afterAllButtons, contains('✓ Гайд есть, без записи (1)'));
+    expect(afterAllButtons, contains('✓ Оплатили / доступ (1)'));
+
+    await _toggleAllSegments(harness);
+    final afterClear = harness.sender.messages.last;
+    expect(afterClear.text, isNot(contains('Выбрано:')));
+    expect(
+      _inlineButtonTexts(afterClear.replyMarkup),
+      contains(MessageTemplates.buttonAdminBroadcastSelectAll),
+    );
+    expect(
+      _inlineButtonTexts(afterClear.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)),
+    );
+
+    await _toggleAllSegments(harness);
+    await _confirmSegments(harness);
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Всем сегментам', messageId: 91),
+    );
+    expect(harness.sender.messages.last.text, contains('все сегменты'));
+    await _confirmBroadcast(harness);
+    expect(
+      harness.sender.copies.where((c) => c.chatId == 10 || c.chatId == 11).map((c) => c.chatId),
+      unorderedEquals(<int>[10, 11]),
+    );
+  });
+
   test('overlapping segments are copied once', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _openBroadcast(harness);
@@ -390,6 +435,17 @@ void _seed(
 Future<void> _openBroadcast(HandlerHarness harness) {
   return harness.handlers.handle(
     privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminBroadcast),
+  );
+}
+
+Future<void> _toggleAllSegments(HandlerHarness harness) {
+  return harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'ba',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastSelectAll,
+    ),
   );
 }
 

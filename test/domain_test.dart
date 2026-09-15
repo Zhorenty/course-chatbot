@@ -94,6 +94,8 @@ void main() {
       BroadcastSegment.ordered({BroadcastSegment.paidAccess, BroadcastSegment.guideNotPaid}),
       <BroadcastSegment>[BroadcastSegment.guideNotPaid, BroadcastSegment.paidAccess],
     );
+    expect(BroadcastSegment.coversAll(BroadcastSegment.values), isTrue);
+    expect(BroadcastSegment.coversAll({BroadcastSegment.paidAccess}), isFalse);
   });
 
   test('funnel phases do not move backwards except cancel/admin override', () {

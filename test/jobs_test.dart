@@ -617,6 +617,62 @@ void main() {
     expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
   });
 
+  test('custom launch dozhim album is copied as a media group', () async {
+    harness.course.upsertActiveLaunch(
+      productCode: 'course',
+      productTitle: 'Курс',
+      launchCode: 'launch-1',
+      launchTitle: 'Запуск',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 1, 8, 16),
+      salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      channelId: -1001,
+      leadMagnetFileId: 'file-guide',
+    );
+    final launch = harness.course.activeLaunch()!;
+    final custom = harness.course.addLaunchDozhim(
+      launchId: launch.id,
+      sourceChatId: 1,
+      sourceMessageId: 77,
+      sourceMessageIds: const <int>[77, 78, 79],
+      contentKind: BroadcastContentKind.album,
+      previewText: 'альбом',
+    );
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+    );
+    for (final key in <String>['warmup_0', 'sales_open', 'sales_regular']) {
+      harness.course.recordWarmupSent(userId: 42, stepKey: key, sentAt: DateTime.utc(2026, 1, 12));
+    }
+
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: warmup,
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+    );
+    harness.sender.messages.clear();
+    harness.sender.copies.clear();
+    await job.run();
+    expect(harness.sender.copiedBatches, hasLength(1));
+    expect(harness.sender.copiedBatches.single.chatId, 42);
+    expect(harness.sender.copiedBatches.single.fromChatId, 1);
+    expect(harness.sender.copiedBatches.single.messageIds, <int>[77, 78, 79]);
+    expect(harness.sender.messages.where((m) => m.text.contains('почерк')), isEmpty);
+    expect(custom.stepKey, isNotEmpty);
+  });
+
   test('unjoined invite job sends one reminder when 24h and prestart overlap', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
     harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.accessGranted);

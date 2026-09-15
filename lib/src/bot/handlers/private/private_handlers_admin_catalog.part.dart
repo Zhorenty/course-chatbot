@@ -977,6 +977,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (launch == null) {
       return _showCatalogList(context);
     }
+    final userId = context.userId;
+    if (userId != null) {
+      await _commitPendingDozhimAlbum(userId);
+    }
     final messages = _course.listLaunchDozhim(launchId);
     _setCatalogFlow(
       context.userId!,
@@ -1002,6 +1006,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final launch = _course.getLaunch(launchId);
     if (launch == null) {
       return _showCatalogList(context);
+    }
+    final userId = context.userId;
+    if (userId != null) {
+      _cancelPendingDozhimAlbum(userId);
     }
     var dayIndex = _course.listLaunchDozhim(launchId).length + 1;
     if (replaceId != null) {
@@ -1043,10 +1051,10 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final chatId = context.chatId;
     if (chatId != null) {
       try {
-        await _sender.copyMessage(
+        await _sender.copySourceMessages(
           chatId: chatId,
           fromChatId: message.sourceChatId,
-          messageId: message.sourceMessageId,
+          messageIds: message.sourceMessageIds,
         );
       } on Object catch (error, stackTrace) {
         l.w('Dozhim preview copy failed: $error', stackTrace);
@@ -1087,8 +1095,12 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (message == null) {
       return false;
     }
+    if (_pendingDozhimAlbums.containsKey(userId) && !isTelegramAlbum(message)) {
+      await _completePendingDozhimAlbum(userId);
+      return true;
+    }
     if (isTelegramAlbum(message)) {
-      return _presentCatalog(context, _templates.adminBroadcastAlbumRejected());
+      return _bufferCatalogDozhimAlbum(context);
     }
     final kind = broadcastContentKindOf(message);
     final messageId = asTelegramInt(message['message_id']);
@@ -1096,36 +1108,176 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (kind == null || messageId == null || chatId == null) {
       return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
     }
+    return _saveCatalogDozhim(
+      context,
+      sourceChatId: chatId,
+      sourceMessageIds: <int>[messageId],
+      kind: kind,
+      preview: _dozhimPreviewText(context.text),
+    );
+  }
+
+  Future<bool> _bufferCatalogDozhimAlbum(PrivateMessageContext context) async {
+    final userId = context.userId!;
+    final message = context.message;
+    final groupId = telegramMediaGroupId(message);
+    final messageId = asTelegramInt(message?['message_id']);
+    final chatId = context.chatId;
+    if (groupId == null || messageId == null || chatId == null) {
+      return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
+    }
     final draft = _flowByUserId[userId]?.catalogDraft;
     final launchId = draft?.editLaunchId;
     if (launchId == null || _course.getLaunch(launchId) == null) {
       return _showCatalogList(context);
     }
+    final existing = _pendingDozhimAlbums[userId];
+    if (existing != null && existing.mediaGroupId != groupId) {
+      await _completePendingDozhimAlbum(userId);
+    }
+    final pending = _pendingDozhimAlbums.putIfAbsent(
+      userId,
+      () => _PendingDozhimAlbum(
+        mediaGroupId: groupId,
+        chatId: chatId,
+        launchId: launchId,
+        replaceId: draft?.dozhimReplaceId,
+        messageIds: <int>[],
+      ),
+    );
+    if (!pending.messageIds.contains(messageId)) {
+      pending.messageIds.add(messageId);
+      pending.messageIds.sort();
+    }
     final preview = _dozhimPreviewText(context.text);
-    final replaceId = draft?.dozhimReplaceId;
+    if (preview != null) {
+      pending.previewText ??= preview;
+    }
+    _dozhimAlbumTimers.remove(userId)?.cancel();
+    _dozhimAlbumTimers[userId] = Timer(_albumCollectWindow, () {
+      unawaited(_completePendingDozhimAlbum(userId));
+    });
+    return true;
+  }
+
+  Future<void> _completePendingDozhimAlbum(int userId) async {
+    final pending = _pendingDozhimAlbums[userId];
+    if (pending == null) {
+      return;
+    }
+    final context = _adminContext(userId: userId, chatId: pending.chatId);
+    await _commitPendingDozhimAlbum(userId);
+    if (_flowByUserId[userId]?.step != PrivateFlowStep.adminCatalogDozhimCompose) {
+      return;
+    }
+    await _showCatalogDozhim(context, pending.launchId);
+  }
+
+  Future<void> _flushPendingDozhimAlbums() async {
+    final userIds = _pendingDozhimAlbums.keys.toList();
+    for (final userId in userIds) {
+      await _completePendingDozhimAlbum(userId);
+    }
+  }
+
+  void _cancelAllPendingDozhimAlbums() {
+    for (final timer in _dozhimAlbumTimers.values) {
+      timer.cancel();
+    }
+    _dozhimAlbumTimers.clear();
+    _pendingDozhimAlbums.clear();
+  }
+
+  void _cancelPendingDozhimAlbum(int userId) {
+    _dozhimAlbumTimers.remove(userId)?.cancel();
+    _pendingDozhimAlbums.remove(userId);
+  }
+
+  Future<void> _commitPendingDozhimAlbum(int userId) async {
+    _dozhimAlbumTimers.remove(userId)?.cancel();
+    final pending = _pendingDozhimAlbums.remove(userId);
+    if (pending == null || pending.messageIds.isEmpty) {
+      return;
+    }
+    if (_flowByUserId[userId]?.step != PrivateFlowStep.adminCatalogDozhimCompose) {
+      return;
+    }
+    _writeLaunchDozhim(
+      launchId: pending.launchId,
+      sourceChatId: pending.chatId,
+      sourceMessageIds: pending.messageIds,
+      kind: BroadcastContentKind.album,
+      preview: pending.previewText,
+      replaceId: pending.replaceId,
+    );
+    await _writeDozhimPresenceFlags();
+  }
+
+  Future<bool> _saveCatalogDozhim(
+    PrivateMessageContext context, {
+    required int sourceChatId,
+    required List<int> sourceMessageIds,
+    required BroadcastContentKind kind,
+    String? preview,
+  }) async {
+    final draft = _flowByUserId[context.userId!]?.catalogDraft;
+    final launchId = draft?.editLaunchId;
+    if (launchId == null || _course.getLaunch(launchId) == null) {
+      return _showCatalogList(context);
+    }
+    _writeLaunchDozhim(
+      launchId: launchId,
+      sourceChatId: sourceChatId,
+      sourceMessageIds: sourceMessageIds,
+      kind: kind,
+      preview: preview,
+      replaceId: draft?.dozhimReplaceId,
+    );
+    await _writeDozhimPresenceFlags();
+    return _showCatalogDozhim(context, launchId);
+  }
+
+  void _writeLaunchDozhim({
+    required int launchId,
+    required int sourceChatId,
+    required List<int> sourceMessageIds,
+    required BroadcastContentKind kind,
+    String? preview,
+    int? replaceId,
+  }) {
     if (replaceId != null) {
       final existing = _course.getLaunchDozhim(replaceId);
       if (existing == null || existing.launchId != launchId) {
-        return _showCatalogDozhim(context, launchId);
+        return;
       }
       _course.replaceLaunchDozhim(
         id: replaceId,
-        sourceChatId: chatId,
-        sourceMessageId: messageId,
+        sourceChatId: sourceChatId,
+        sourceMessageId: sourceMessageIds.first,
+        sourceMessageIds: sourceMessageIds,
         contentKind: kind,
         previewText: preview,
       );
-    } else {
-      _course.addLaunchDozhim(
-        launchId: launchId,
-        sourceChatId: chatId,
-        sourceMessageId: messageId,
-        contentKind: kind,
-        previewText: preview,
-      );
+      return;
     }
-    await _writeDozhimPresenceFlags();
-    return _showCatalogDozhim(context, launchId);
+    _course.addLaunchDozhim(
+      launchId: launchId,
+      sourceChatId: sourceChatId,
+      sourceMessageId: sourceMessageIds.first,
+      sourceMessageIds: sourceMessageIds,
+      contentKind: kind,
+      previewText: preview,
+    );
+  }
+
+  PrivateMessageContext _adminContext({required int userId, required int chatId}) {
+    return PrivateMessageContext(
+      chat: <String, dynamic>{'id': chatId},
+      from: <String, dynamic>{'id': userId},
+      text: null,
+      message: null,
+      callbackQueryId: null,
+    );
   }
 
   String? _dozhimPreviewText(String? raw) {
@@ -1211,6 +1363,9 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
   Future<void> _dismissCatalogUi(PrivateMessageContext context) async {
     final chatId = context.chatId;
     final userId = context.userId;
+    if (userId != null) {
+      _cancelPendingDozhimAlbum(userId);
+    }
     if (chatId == null || userId == null) {
       return;
     }
@@ -1313,4 +1468,21 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       leadMagnetFileId: draft?.guideFileId,
     );
   }
+}
+
+final class _PendingDozhimAlbum {
+  _PendingDozhimAlbum({
+    required this.mediaGroupId,
+    required this.chatId,
+    required this.launchId,
+    required this.messageIds,
+    this.replaceId,
+  });
+
+  final String mediaGroupId;
+  final int chatId;
+  final int launchId;
+  final List<int> messageIds;
+  final int? replaceId;
+  String? previewText;
 }

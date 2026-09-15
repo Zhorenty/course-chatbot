@@ -681,6 +681,36 @@ final class TelegramClient implements MessageSender, ChannelApi {
     return result['message_id'] as int;
   }
 
+  @override
+  Future<List<int>> copyMessages({
+    required int chatId,
+    required int fromChatId,
+    required List<int> messageIds,
+    bool disableNotification = true,
+  }) async {
+    final payload = await _post(
+      'copyMessages',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'from_chat_id': fromChatId,
+        'message_ids': messageIds,
+        'disable_notification': disableNotification,
+      },
+    );
+    final result = payload['result'];
+    if (result is! List) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    final copied = <int>[
+      for (final item in result)
+        if (item is Map && item['message_id'] is int) item['message_id'] as int,
+    ];
+    if (copied.isEmpty) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    return copied;
+  }
+
   void close() {
     _httpClient.close();
   }

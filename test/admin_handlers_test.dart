@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
+import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
@@ -968,6 +969,101 @@ void main() {
     final row = _coursesRowByCode(sheet, 'launch-1')!;
     expect(row[CoursesSheet.descriptionColumn], 'Нет');
     expect(row[CoursesSheet.dozhimStartColumn], 'Да · 2');
+  });
+
+  test('admin catalog dozhim stores an album as one day and copies the group', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cz',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhim}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'cza',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhimAdd}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privatePhotoUpdate(chatId: 1, userId: 1, messageId: 41, mediaGroupId: 'grp-dozhim'),
+    );
+    expect(sheets.course.listLaunchDozhim(launch.id), isEmpty);
+    await sheets.handlers.handle(
+      privatePhotoUpdate(
+        chatId: 1,
+        userId: 1,
+        messageId: 42,
+        mediaGroupId: 'grp-dozhim',
+        caption: 'до/после',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateVideoUpdate(chatId: 1, userId: 1, messageId: 43, mediaGroupId: 'grp-dozhim'),
+    );
+    await sheets.handlers.flushPendingDozhimAlbums();
+    final messages = sheets.course.listLaunchDozhim(launch.id);
+    expect(messages, hasLength(1));
+    expect(messages.single.contentKind, BroadcastContentKind.album);
+    expect(messages.single.sourceMessageIds, <int>[41, 42, 43]);
+    expect(messages.single.previewText, 'до/после');
+    expect(sheets.sender.messages.last.text, contains('альбом'));
+
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'czo',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.catalogDozhimItemData(
+          MessageTemplates.cbCatalogDozhimOpen,
+          launch.id,
+          messages.single.id,
+        ),
+      ),
+    );
+    expect(sheets.sender.copiedBatches, hasLength(1));
+    expect(sheets.sender.copiedBatches.single.messageIds, <int>[41, 42, 43]);
+  });
+
+  test('admin catalog dozhim accepts location as a copyable day', () async {
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
+    );
+    final launch = sheets.course.launchByCode('launch-1')!;
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'czl',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhim}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'czal',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbCatalogDozhimAdd}${launch.id}',
+      ),
+    );
+    await sheets.handlers.handle(privateLocationUpdate(chatId: 1, userId: 1, messageId: 55));
+    final messages = sheets.course.listLaunchDozhim(launch.id);
+    expect(messages, hasLength(1));
+    expect(messages.single.contentKind, BroadcastContentKind.location);
+    expect(messages.single.sourceMessageId, 55);
   });
 
   test('admin catalog wizard skips channel on dash and does not dump to admin menu', () async {

@@ -121,6 +121,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _send(context, _templates.inviteAskAdmin());
       case MessageTemplates.cbBroadcastSend:
         return _confirmBroadcast(context);
+      case MessageTemplates.cbBroadcastSelectAll:
+        return _toggleAllBroadcastSegments(context);
       case MessageTemplates.cbBroadcastSegmentsDone:
         return _confirmBroadcastSegments(context);
       case MessageTemplates.cbBroadcastOtherSegment:

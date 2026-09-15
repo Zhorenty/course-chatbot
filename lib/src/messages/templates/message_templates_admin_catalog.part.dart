@@ -430,7 +430,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       ..writeln();
     if (messages.isEmpty) {
       buf.writeln(
-        'Пока пусто. Добавь день — текст, фото или файл, с форматированием. '
+        'Пока пусто. Добавь день — текст, фото, альбом или файл, с форматированием. '
         'Без своих сообщений уйдёт встроенный дожим.',
       );
     } else {
@@ -456,7 +456,8 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
   String adminCatalogDozhimAsk({required int dayIndex, required bool replace}) {
     final action = replace ? 'Замени' : 'Пришли';
     return '<b>Дожим · день $dayIndex</b>\n\n'
-        '$action сообщение: текст, фото или файл. Жирное и ссылки сохранятся.\n\n'
+        '$action сообщение: текст, фото, альбом, файл, видео или голосовое. '
+        'Жирное и ссылки сохранятся.\n\n'
         'Не удаляй его в этом чате — бот будет копировать ученикам.';
   }
 

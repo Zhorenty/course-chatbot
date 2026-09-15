@@ -777,6 +777,23 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _presentBroadcastPicker(context);
   }
 
+  Future<bool> _toggleAllBroadcastSegments(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final previous =
+        _flowByUserId[context.userId!] ??
+        const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
+    final next = BroadcastSegment.coversAll(previous.broadcastSegments)
+        ? <BroadcastSegment>{}
+        : BroadcastSegment.values.toSet();
+    _flowByUserId[context.userId!] = previous.copyWith(
+      step: PrivateFlowStep.adminBroadcastSegment,
+      broadcastSegments: next,
+    );
+    return _presentBroadcastPicker(context);
+  }
+
   Future<bool> _confirmBroadcastSegments(PrivateMessageContext context) async {
     if (!_adminGate.isConfiguredAdmin(context.userId)) {
       return false;

@@ -80,6 +80,7 @@ abstract interface class CatalogRepository {
     required int sourceChatId,
     required int sourceMessageId,
     required BroadcastContentKind contentKind,
+    List<int>? sourceMessageIds,
     String? previewText,
   });
 
@@ -88,6 +89,7 @@ abstract interface class CatalogRepository {
     required int sourceChatId,
     required int sourceMessageId,
     required BroadcastContentKind contentKind,
+    List<int>? sourceMessageIds,
     String? previewText,
   });
 

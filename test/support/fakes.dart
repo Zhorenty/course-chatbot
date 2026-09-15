@@ -229,6 +229,40 @@ final class FakeMessageSender implements MessageSender {
     );
     return 2000 + copies.length;
   }
+
+  final List<CopiedMessages> copiedBatches = <CopiedMessages>[];
+
+  @override
+  Future<List<int>> copyMessages({
+    required int chatId,
+    required int fromChatId,
+    required List<int> messageIds,
+    bool disableNotification = true,
+  }) async {
+    final error = throwOnCopy;
+    if (error != null) {
+      throw error;
+    }
+    copiedBatches.add(
+      CopiedMessages(
+        chatId: chatId,
+        fromChatId: fromChatId,
+        messageIds: List<int>.from(messageIds),
+        disableNotification: disableNotification,
+      ),
+    );
+    for (final messageId in messageIds) {
+      copies.add(
+        CopiedMessage(
+          chatId: chatId,
+          fromChatId: fromChatId,
+          messageId: messageId,
+          disableNotification: disableNotification,
+        ),
+      );
+    }
+    return <int>[for (var i = 0; i < messageIds.length; i++) 3000 + copiedBatches.length * 10 + i];
+  }
 }
 
 final class CallbackAnswer {
@@ -299,6 +333,20 @@ final class CopiedMessage {
   final int chatId;
   final int fromChatId;
   final int messageId;
+  final bool disableNotification;
+}
+
+final class CopiedMessages {
+  const CopiedMessages({
+    required this.chatId,
+    required this.fromChatId,
+    required this.messageIds,
+    this.disableNotification = true,
+  });
+
+  final int chatId;
+  final int fromChatId;
+  final List<int> messageIds;
   final bool disableNotification;
 }
 
@@ -851,6 +899,7 @@ Map<String, dynamic> privateVideoUpdate({
   String? caption,
   String? username,
   int messageId = 13,
+  String? mediaGroupId,
 }) {
   return <String, dynamic>{
     'update_id': 1,
@@ -864,6 +913,28 @@ Map<String, dynamic> privateVideoUpdate({
       },
       'video': <String, dynamic>{'file_id': 'vid-1'},
       if (caption != null) 'caption': caption,
+      if (mediaGroupId != null) 'media_group_id': mediaGroupId,
+    },
+  };
+}
+
+Map<String, dynamic> privateLocationUpdate({
+  required int chatId,
+  required int userId,
+  String? username,
+  int messageId = 15,
+}) {
+  return <String, dynamic>{
+    'update_id': 1,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+        'first_name': 'Test',
+      },
+      'location': <String, dynamic>{'latitude': 55.75, 'longitude': 37.62},
     },
   };
 }

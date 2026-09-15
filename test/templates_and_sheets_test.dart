@@ -549,6 +549,9 @@ void main() {
       ),
       contains('${MessageTemplates.cbCatalogDozhimAdd}12'),
     );
+    expect(templates.adminCatalogDozhimAsk(dayIndex: 1, replace: false), contains('альбом'));
+    expect(templates.broadcastContentKindLabel(BroadcastContentKind.album), 'альбом');
+    expect(templates.broadcastContentKindLabel(BroadcastContentKind.location), 'геолокация');
     expect(
       templates.adminCatalogGuideButton(launch),
       MessageTemplates.buttonAdminCatalogAttachGuide,
@@ -698,6 +701,7 @@ void main() {
       for (final row in empty['inline_keyboard'] as List<dynamic>)
         for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
     ];
+    expect(emptyTexts, contains(MessageTemplates.buttonAdminBroadcastSelectAll));
     expect(emptyTexts, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
     expect(emptyTexts.join(), isNot(contains('✓')));
 
@@ -714,7 +718,20 @@ void main() {
       contains('✓ ${templates.broadcastSegmentButton(BroadcastSegment.guideNotPaid, 0)}'),
     );
     expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastContinue));
+    expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastSelectAll));
     expect(templates.adminBroadcastPickSegment(counts), contains('Можно несколько сегментов'));
+
+    final all = templates.broadcastSegmentKeyboard(
+      counts,
+      selected: BroadcastSegment.values.toSet(),
+    );
+    final allTexts = <String>[
+      for (final row in all['inline_keyboard'] as List<dynamic>)
+        for (final cell in row as List<dynamic>) (cell as Map)['text'] as String,
+    ];
+    expect(allTexts, contains(MessageTemplates.buttonAdminBroadcastClearAll));
+    expect(allTexts, isNot(contains(MessageTemplates.buttonAdminBroadcastSelectAll)));
+    expect(templates.broadcastSegmentsLabel(BroadcastSegment.values), 'все сегменты');
   });
 
   test('admin card is a declarative snapshot, not a pupil address', () {

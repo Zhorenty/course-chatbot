@@ -104,7 +104,7 @@ extension MessageTemplatesRich on MessageTemplates {
   String adminCatalogDozhimListRich(Launch launch, List<LaunchDozhimMessage> messages) {
     final items = messages.isEmpty
         ? <String>[
-            'Пока пусто. Добавь день — текст, фото или файл.',
+            'Пока пусто. Добавь день — текст, фото, альбом или файл.',
             'Без своих сообщений уйдёт встроенный дожим.',
           ]
         : <String>[

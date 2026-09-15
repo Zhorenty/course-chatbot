@@ -164,13 +164,24 @@ String? extractDocumentFileId(Map<String, dynamic>? message) {
 }
 
 bool isTelegramAlbum(Map<String, dynamic>? message) {
-  final raw = message?['media_group_id']?.toString().trim();
+  final raw = telegramMediaGroupId(message);
   return raw != null && raw.isNotEmpty;
+}
+
+String? telegramMediaGroupId(Map<String, dynamic>? message) {
+  final raw = message?['media_group_id']?.toString().trim();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+  return raw;
 }
 
 BroadcastContentKind? broadcastContentKindOf(Map<String, dynamic>? message) {
   if (message == null) {
     return null;
+  }
+  if (isTelegramAlbum(message)) {
+    return BroadcastContentKind.album;
   }
   if (message['photo'] != null) {
     return BroadcastContentKind.photo;
@@ -196,8 +207,20 @@ BroadcastContentKind? broadcastContentKindOf(Map<String, dynamic>? message) {
   if (message['sticker'] != null) {
     return BroadcastContentKind.sticker;
   }
+  if (message['location'] != null || message['venue'] != null) {
+    return BroadcastContentKind.location;
+  }
+  if (message['contact'] != null) {
+    return BroadcastContentKind.contact;
+  }
   if (_trimmedMessageText(message) != null) {
     return BroadcastContentKind.text;
+  }
+  if (message['dice'] != null ||
+      message['poll'] != null ||
+      message['game'] != null ||
+      message['story'] != null) {
+    return BroadcastContentKind.other;
   }
   return null;
 }

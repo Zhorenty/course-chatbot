@@ -8,6 +8,7 @@ import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
+import 'package:course_chatbot/src/telegram/copy_source_messages.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
 import 'package:course_chatbot/src/telegram/telegram_errors.dart';
@@ -103,10 +104,10 @@ final class WarmupNudgeJob {
       if (message.stepKey != decision.stepKey) {
         continue;
       }
-      await _sender.copyMessage(
+      await _sender.copySourceMessages(
         chatId: candidate.userId,
         fromChatId: message.sourceChatId,
-        messageId: message.sourceMessageId,
+        messageIds: message.sourceMessageIds,
       );
       return;
     }
