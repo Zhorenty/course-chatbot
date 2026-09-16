@@ -140,6 +140,11 @@ void main() {
     expect(templates.warmupStep('dozhim_d1', launch: launch), contains('12 октября'));
     expect(templates.warmupStep('dozhim_d1', launch: launch), contains('Иттена'));
     expect(templates.warmupStep('dozhim_d2', launch: launch), contains('Чувство цвета'));
+    expect(
+      templates.warmupStep('dozhim_d2', launch: launch),
+      contains('Большая авторская программа'),
+    );
+    expect(templates.warmupStep('dozhim_d2', launch: launch), isNot(contains('очередной курс')));
     expect(templates.warmupStep('dozhim_d4', launch: launch), contains('Pinterest'));
     expect(templates.warmupStep('warmup_d1'), contains('объект'));
     for (final key in keys) {
@@ -186,6 +191,7 @@ void main() {
     );
     expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков'));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('16 уроков + эфир')));
+    expect(templates.enrollOptions(launch, quote: quote), contains('<s>23 000 ₽</s>'));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
     expect(templates.warmupStep('sales_open', launch: launch), contains('открывает свои двери'));
     expect(templates.warmupStep('sales_open', launch: launch), contains('16 уроков'));

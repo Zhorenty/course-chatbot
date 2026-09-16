@@ -4,6 +4,7 @@ abstract final class LaunchPrices {
   static const int promoKopecks = 1500000;
   static const int fullKopecks = 1900000;
   static const int wasKopecks = 2100000;
+  static const int wasRegularKopecks = 2300000;
 }
 
 final class Product {

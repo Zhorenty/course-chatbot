@@ -540,7 +540,7 @@ final class MessageTemplates {
         'Вам нужны не полсотни правил, а лишь 3 рабочих: перекличка, тепло-холодность, светлота. Их видно глазами на объекте.\n\n'
         'Подробнее расскажу на курсе ${_quotedCourseTitle(launch)}\n'
         '🔥 16 конкретных уроков именно по интерьерной колористике для тех, кто хочет создавать вкусные цветовые сочетания без сложных просчетов.\n\n'
-        'Не "очередной курс", а прицельная программа, которая закрывает страх работы с цветом и ставит точку в вопросе цветовых решений.\n\n'
+        'Большая авторская программа, которая закрывает страх работы с цветом и ставит точку в вопросе цветовых решений.\n\n'
         'Вы с нами?';
   }
 
@@ -1826,6 +1826,13 @@ final class MessageTemplates {
     return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
+  String? _regularCompareAtRub(int payableKopecks) {
+    if (LaunchPrices.wasRegularKopecks <= payableKopecks) {
+      return null;
+    }
+    return formatRubSpaced(LaunchPrices.wasRegularKopecks);
+  }
+
   String _webinarLinkLaterLine() {
     return 'Ссылку прикрепим позже и пришлём в этот чат.';
   }
@@ -1927,6 +1934,8 @@ final class MessageTemplates {
   }) {
     final title = _quotedCourseTitle(launch);
     final price = formatRubSpaced(quote.payableKopecks);
+    final was = _regularCompareAtRub(quote.payableKopecks);
+    final priceLine = was == null ? price : '$price <s>$was</s>';
     final deposit = !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks)
         ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
         : null;
@@ -1938,7 +1947,7 @@ final class MessageTemplates {
         : '';
     return '<b>Запись на курс $title 🧡</b>\n\n'
         '16 уроков. Уроки в телеграм, общий чат участников.\n\n'
-        'Стоимость: $price.$depositLine\n'
+        'Стоимость: $priceLine.$depositLine\n'
         'Стартуем $start.\n'
         'Ссылка в канал курса придет в этот чат после полной оплаты.'
         '$rsvpHint';
