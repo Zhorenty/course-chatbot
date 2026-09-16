@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/messages/html_escaper.dart';
+import 'package:course_chatbot/src/messages/telegram_html.dart';
 
 /// Builders for Bot API 10.1+ rich HTML. Values that already contain tags
 /// (`<code>`, `<a>`) must be escaped by the caller first, then wrapped here.
@@ -66,6 +67,27 @@ final _kvLine = RegExp(r'^([^:\n]{1,40}):\s+(.+)$');
 final _bulletLine = RegExp(r'^[•·]\s+');
 
 bool looksLikeRichHtml(String html) => _richBlockTag.hasMatch(html);
+
+final _blankLine = RegExp(r'\n[ \t]*\n');
+final _wrappingNewlines = RegExp(r'^\n+|\n+$');
+
+/// Stored Telegram HTML (`<b>`, newlines, tabs) → rich `<p>` / `<br>` / `&nbsp;`.
+String richParagraphsFromTelegramHtml(String html) {
+  final prepared = preserveTelegramHtmlLayout(html);
+  final parts = prepared
+      .split(_blankLine)
+      .map((part) => part.replaceAll(_wrappingNewlines, ''))
+      .where((part) => part.isNotEmpty);
+  final buf = StringBuffer();
+  for (final part in parts) {
+    if (looksLikeRichHtml(part)) {
+      buf.write(part);
+    } else {
+      buf.write(richP(part.replaceAll('\n', '<br>')));
+    }
+  }
+  return buf.toString();
+}
 
 /// Turn classic `parse_mode=HTML` copy into Rich HTML (`h2`/`p`/`ul`/`table`).
 /// Already-rich markup is returned unchanged.
@@ -153,6 +175,8 @@ String classicHtmlFromRich(String richHtml) {
   text = text.replaceAllMapped(RegExp(r'<p>(.*?)</p>', dotAll: true), (match) {
     return '${match.group(1)}\n\n';
   });
+  text = text.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+  text = text.replaceAll('&nbsp;', ' ');
   text = text.replaceAllMapped(
     RegExp(r'<details[^>]*>\s*<summary>(.*?)</summary>(.*?)</details>', dotAll: true),
     (match) {

@@ -311,7 +311,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   void setLaunchDescription(String? text, {required int launchId}) {
     final trimmed = text?.trim();
     _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[
-      trimmed == null || trimmed.isEmpty ? null : trimmed,
+      trimmed == null || trimmed.isEmpty ? null : text,
       launchId,
     ]);
   }

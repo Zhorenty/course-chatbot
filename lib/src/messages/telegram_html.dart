@@ -1,9 +1,16 @@
 import 'package:course_chatbot/src/messages/html_escaper.dart';
 
+const int _telegramTabWidth = 4;
+const String _telegramNbsp = '&nbsp;';
+
 final _telegramHtmlMarkup = RegExp(
-  r'</?(?:b|strong|i|em|u|s|a|code|pre|tg-spoiler|tg-emoji|br)\b|&(?:amp|lt|gt|quot|#39);',
+  r'</?(?:b|strong|i|em|u|s|a|code|pre|blockquote|tg-spoiler|tg-emoji|br)\b|'
+  r'&(?:amp|lt|gt|quot|#39|nbsp|#160);',
   caseSensitive: false,
 );
+
+final _preOpen = RegExp(r'^<pre\b', caseSensitive: false);
+final _preClose = RegExp(r'^</pre>', caseSensitive: false);
 
 /// HTML of a Telegram text or caption, or `null` if empty.
 String? telegramTextMessageToHtml(Map<String, dynamic>? message) {
@@ -20,10 +27,71 @@ String? telegramTextMessageToHtml(Map<String, dynamic>? message) {
 
 /// Legacy plain copy vs already-escaped Telegram HTML stored in SQLite.
 String storedTelegramTextToHtml(String raw) {
-  if (_telegramHtmlMarkup.hasMatch(raw)) {
-    return raw;
+  final html = _telegramHtmlMarkup.hasMatch(raw) ? raw : escapeHtml(raw);
+  return preserveTelegramHtmlLayout(html);
+}
+
+/// Keep tabs, indents and extra spaces that HTML would otherwise collapse.
+String preserveTelegramHtmlLayout(String html, {int tabWidth = _telegramTabWidth}) {
+  final tab = _telegramNbsp * tabWidth;
+  final buf = StringBuffer();
+  var inTag = false;
+  var inPre = false;
+  var atLineStart = true;
+  var lastWasSpace = false;
+  for (var i = 0; i < html.length; i++) {
+    final ch = html[i];
+    if (!inTag && ch == '<') {
+      inTag = true;
+      final rest = html.substring(i);
+      if (_preOpen.hasMatch(rest)) {
+        inPre = true;
+      } else if (_preClose.hasMatch(rest)) {
+        inPre = false;
+      }
+      buf.write(ch);
+      lastWasSpace = false;
+      continue;
+    }
+    if (inTag) {
+      if (ch == '>') {
+        inTag = false;
+      }
+      buf.write(ch);
+      continue;
+    }
+    if (inPre) {
+      buf.write(ch);
+      atLineStart = ch == '\n';
+      lastWasSpace = false;
+      continue;
+    }
+    if (ch == '\r') {
+      continue;
+    }
+    if (ch == '\n') {
+      buf.write(ch);
+      atLineStart = true;
+      lastWasSpace = false;
+      continue;
+    }
+    if (ch == '\t') {
+      buf.write(tab);
+      atLineStart = false;
+      lastWasSpace = true;
+      continue;
+    }
+    if (ch == ' ' || ch == '\u00A0') {
+      buf.write(atLineStart || lastWasSpace ? _telegramNbsp : ' ');
+      atLineStart = false;
+      lastWasSpace = true;
+      continue;
+    }
+    buf.write(ch);
+    atLineStart = false;
+    lastWasSpace = false;
   }
-  return escapeHtml(raw);
+  return buf.toString();
 }
 
 /// Convert Telegram `MessageEntity` offsets (UTF-16) into Bot API HTML.

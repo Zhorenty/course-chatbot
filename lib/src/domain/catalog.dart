@@ -65,19 +65,19 @@ final class Launch {
   final bool isActive;
 
   String get resolvedDescription {
-    final text = description?.trim();
-    if (text == null || text.isEmpty) {
+    final text = description;
+    if (text == null || text.trim().isEmpty) {
       return defaultDescription;
     }
     return text;
   }
 
   bool get hasCustomDescription {
-    final text = description?.trim();
-    if (text == null || text.isEmpty) {
+    final text = description;
+    if (text == null || text.trim().isEmpty) {
       return false;
     }
-    return text != defaultDescription;
+    return text.trim() != defaultDescription;
   }
 
   int get resolvedPriceFullKopecks =>

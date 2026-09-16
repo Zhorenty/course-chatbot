@@ -389,6 +389,31 @@ void main() {
       contains('<p><b>Цвет</b><br>и практика</p>'),
     );
     expect(templates.startCourseCardRich(launch: marked), contains('<p>второй абзац</p>'));
+
+    final laidOut = Launch(
+      id: 4,
+      productId: 1,
+      code: 'launch-4',
+      title: 'Цвет в интерьере. Основы и практика',
+      priceFullKopecks: 1900000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      description: 'Первый абзац\n\n\tвторой  с отступом',
+    );
+    expect(
+      templates.startCourseCard(launch: laidOut),
+      contains('\n&nbsp;&nbsp;&nbsp;&nbsp;второй'),
+    );
+    expect(templates.startCourseCard(launch: laidOut), contains('второй &nbsp;с отступом'));
+    final laidOutRich = templates.startCourseCardRich(launch: laidOut);
+    expect(laidOutRich, contains('<p>Первый абзац</p>'));
+    expect(laidOutRich, contains('<p>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом</p>'));
+    final laidOutQuote = LaunchSales.quote(laidOut, rsvp: false, now: DateTime.utc(2026, 9, 15));
+    expect(laidOutQuote.phase, SalesPhase.preSales);
+    expect(
+      templates.enrollOptionsRich(laidOut, quote: laidOutQuote),
+      contains('<p>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом</p>'),
+    );
   });
 
   test('ВОРОНКА dashboard has course steps not club quiz', () {

@@ -22,10 +22,7 @@ extension MessageTemplatesRich on MessageTemplates {
   }
 
   String _courseDescriptionRich(Launch? launch) {
-    final parts = _courseDescriptionHtml(
-      launch,
-    ).split(RegExp(r'\n\s*\n')).map((part) => part.trim()).where((part) => part.isNotEmpty);
-    return [for (final part in parts) richP(part.replaceAll('\n', '<br>'))].join();
+    return richParagraphsFromTelegramHtml(_courseDescriptionHtml(launch));
   }
 
   String alreadyInFunnelRich() {
@@ -57,6 +54,10 @@ extension MessageTemplatesRich on MessageTemplates {
     bool webinarStarted = false,
     bool hasOpenCheckout = false,
   }) {
+    if (quote.phase == SalesPhase.preSales) {
+      return '${startCourseCardRich(launch: launch)}'
+          '${richP(_preSalesMasterClassCta(launch: launch, rsvp: quote.rsvp, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted))}';
+    }
     return richHtmlFromClassic(
       enrollOptions(
         launch,

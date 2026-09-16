@@ -47,6 +47,14 @@ void main() {
     expect(telegramTextMessageToHtml(<String, dynamic>{'text': '   '}), isNull);
     expect(storedTelegramTextToHtml('a < b'), 'a &lt; b');
     expect(storedTelegramTextToHtml('<b>Цвет</b>\nи практика'), '<b>Цвет</b>\nи практика');
+    expect(
+      storedTelegramTextToHtml('абзац\n\tпункт  1'),
+      'абзац\n&nbsp;&nbsp;&nbsp;&nbsp;пункт &nbsp;1',
+    );
+    expect(
+      storedTelegramTextToHtml('<blockquote>цитата</blockquote>'),
+      '<blockquote>цитата</blockquote>',
+    );
   });
 
   test('snapshot keeps photo file_id so the original message can be deleted', () {
