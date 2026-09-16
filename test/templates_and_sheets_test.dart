@@ -16,6 +16,7 @@ import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
+import 'package:course_chatbot/src/messages/funnel_media.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/messages/rich_html.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
@@ -83,6 +84,34 @@ void main() {
     );
     final media = (local.toJson()['media'] as List<dynamic>).first as Map<String, Object?>;
     expect((media['media'] as Map<String, Object?>)['media'], 'attach://rich_guide');
+  });
+
+  test('bundled Drive photos map onto sheet steps', () {
+    expect(FunnelMedia.pathsFor('start'), hasLength(1));
+    expect(FunnelMedia.pathsFor('warmup_0'), hasLength(1));
+    expect(FunnelMedia.pathsFor('webinar_24h'), FunnelMedia.pathsFor('warmup_0'));
+    expect(FunnelMedia.pathsFor('webinar_next'), hasLength(2));
+    expect(FunnelMedia.pathsFor('sales_open'), FunnelMedia.pathsFor('webinar_next'));
+    expect(FunnelMedia.pathsFor('paid'), hasLength(1));
+    expect(FunnelMedia.pathsFor('dozhim_d1'), hasLength(9));
+    expect(FunnelMedia.pathsFor('dozhim_d2'), hasLength(1));
+    expect(FunnelMedia.pathsFor('dozhim_d3'), hasLength(5));
+    expect(FunnelMedia.pathsFor('dozhim_d4'), hasLength(1));
+    expect(FunnelMedia.pathsFor('enroll_d1'), isEmpty);
+    expect(FunnelMedia.pathsFor('start', root: '/tmp/missing-funnel-media'), isEmpty);
+    expect(richPhotoBlock(const <String>['p0']), '<img src="tg://photo?id=p0">');
+    expect(
+      richPhotoBlock(const <String>['p0', 'p1']),
+      '<tg-slideshow><img src="tg://photo?id=p0"><img src="tg://photo?id=p1"></tg-slideshow>',
+    );
+    final photo = InputRichMessageMedia.photo(
+      id: 'p0',
+      document: InputRichDocument.file(localPath: 'assets/funnel/welcome.jpg'),
+    );
+    expect(photo.toJson()['media'], <String, Object?>{
+      'type': 'photo',
+      'media': 'attach://rich_p0',
+    });
   });
 
   test('enroll day-1 and day-3 warmup copy is not identical', () {

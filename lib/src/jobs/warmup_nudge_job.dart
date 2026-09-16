@@ -7,6 +7,7 @@ import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
+import 'package:course_chatbot/src/messages/funnel_media.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
@@ -130,6 +131,7 @@ final class WarmupNudgeJob {
       _sender,
       candidate.userId,
       _templates.warmupStep(decision.stepKey, launch: launch, rsvp: candidate.webinarRsvp),
+      media: FunnelMedia.richMedia(decision.stepKey),
       replyMarkup: keyboard,
     );
   }

@@ -88,7 +88,15 @@ abstract interface class MessageSender {
     bool disableNotification = true,
   });
 
-  /// Resend a stored snapshot (HTML + file_id). Survives deletion of the original.
+  /// Send one photo or an album. [photos] are `file_id`s, or local paths when
+  /// [fromFile] is true. Empty list is a no-op.
+  Future<List<int>> sendPhotos(
+    int chatId,
+    List<String> photos, {
+    bool fromFile = false,
+    bool disableNotification = true,
+  });
+
   Future<List<int>> sendStoredMessage(
     int chatId,
     StoredTelegramMessage content, {

@@ -32,6 +32,8 @@ void main() {
 
     expect(handled, isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
+    expect(harness.sender.messages.first.text, contains('<img src="tg://photo?id=p0">'));
+    expect(harness.sender.documents, contains('assets/funnel/welcome.jpg'));
     expect(harness.course.getUser(42)?.source, isNull);
   });
 
@@ -484,6 +486,11 @@ void main() {
     await harness.handlers.notifyPaymentResult(result);
 
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
+    expect(
+      harness.sender.messages.firstWhere((m) => m.text.contains('Успешная оплата')).text,
+      contains('<img src="tg://photo?id=p0">'),
+    );
+    expect(harness.sender.documents, contains('assets/funnel/paid.jpg'));
     expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
 
     harness.sender.messages.clear();

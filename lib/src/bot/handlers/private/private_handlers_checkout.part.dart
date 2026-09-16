@@ -177,6 +177,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       userId,
       _templates.paymentSucceeded(launch: launch),
       replyMarkup: link != null && link.isNotEmpty ? _templates.unjoinedInviteKeyboard(link) : null,
+      media: FunnelMedia.richMedia(FunnelMedia.paid),
     );
     if (link != null && link.isNotEmpty) {
       await _notifyPaidWithInvite(result);

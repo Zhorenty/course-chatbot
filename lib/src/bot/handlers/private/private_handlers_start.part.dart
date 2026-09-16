@@ -36,6 +36,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
       context,
       _templates.startGuideOffer(),
       richHtml: _templates.startGuideOfferRich(),
+      media: FunnelMedia.richMedia(FunnelMedia.start),
       replyMarkup: _homeKeyboard(user.userId),
     );
     final destination = user.source ?? payload;

@@ -15,7 +15,7 @@ final class InputRichMessage {
   /// Skip autolink detection so leftover URLs in copy stay as written.
   final bool skipEntityDetection;
 
-  /// Files referenced from HTML via `tg://document?id=` (Bot API 10.2+).
+  /// Files referenced from HTML via `tg://document?id=` / `tg://photo?id=`.
   final List<InputRichMessageMedia> media;
 
   bool get hasLocalFiles => media.any((item) => item.isLocal);
@@ -32,13 +32,18 @@ final class InputRichMessage {
 
 /// One entry in `InputRichMessage.media` (`InputRichMessageMedia` in the Bot API).
 final class InputRichMessageMedia {
-  const InputRichMessageMedia.document({required this.id, required this.document});
+  const InputRichMessageMedia.document({required this.id, required this.document})
+    : type = 'document';
+
+  const InputRichMessageMedia.photo({required this.id, required this.document}) : type = 'photo';
 
   /// 1–64 characters: `A–Z`, `a–z`, `0–9`, `_`, `-`.
   final String id;
+  final String type;
   final InputRichDocument document;
 
   bool get isLocal => document.isLocal;
+  bool get isPhoto => type == 'photo';
 
   /// Multipart field name for `attach://` uploads.
   String get attachName => 'rich_$id';
@@ -46,7 +51,7 @@ final class InputRichMessageMedia {
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'id': id,
-      'media': document.toJson(attachName: isLocal ? attachName : null),
+      'media': document.toJson(type: type, attachName: isLocal ? attachName : null),
     };
   }
 }
@@ -66,9 +71,9 @@ final class InputRichDocument {
   /// `file_id` or local path — used by tests and conversation-log previews.
   String get ref => localPath ?? fileId ?? '';
 
-  Map<String, Object?> toJson({String? attachName}) {
+  Map<String, Object?> toJson({String type = 'document', String? attachName}) {
     return <String, Object?>{
-      'type': 'document',
+      'type': type,
       'media': attachName != null ? 'attach://$attachName' : fileId!,
     };
   }

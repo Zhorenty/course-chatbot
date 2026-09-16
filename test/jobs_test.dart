@@ -152,6 +152,8 @@ void main() {
     await job.run();
     expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
     final warmup = harness.sender.messages.where((m) => m.text.contains('мастер-класс')).single;
+    expect(warmup.text, contains('<img src="tg://photo?id=p0">'));
+    expect(harness.sender.documents, contains('assets/funnel/masterclass.jpg'));
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
   });

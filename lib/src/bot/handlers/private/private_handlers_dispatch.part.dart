@@ -449,6 +449,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     String text, {
     Map<String, Object?>? replyMarkup,
     String? richHtml,
+    List<InputRichMessageMedia> media = const <InputRichMessageMedia>[],
     bool disableNotification = true,
   }) async {
     final chatId = context.chatId;
@@ -460,6 +461,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       text,
       replyMarkup: replyMarkup,
       richHtml: richHtml,
+      media: media,
       disableNotification: disableNotification,
     );
     return true;
@@ -470,6 +472,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     String text, {
     Map<String, Object?>? replyMarkup,
     String? richHtml,
+    List<InputRichMessageMedia> media = const <InputRichMessageMedia>[],
     bool disableNotification = true,
     bool disableWebPagePreview = true,
   }) {
@@ -478,6 +481,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       chatId,
       text,
       richHtml: richHtml,
+      media: media,
       replyMarkup: replyMarkup,
       disableNotification: disableNotification,
       disableWebPagePreview: disableWebPagePreview,

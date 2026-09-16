@@ -239,7 +239,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
           }
           final path = item.document.localPath!;
           if (!File(path).existsSync()) {
-            throw TelegramApiException('Lead magnet file is missing: $path');
+            throw TelegramApiException('Media file is missing: $path');
           }
           files.add(
             await http.MultipartFile.fromPath(
@@ -711,6 +711,129 @@ final class TelegramClient implements MessageSender, ChannelApi {
       throw const TelegramApiException('Telegram did not return message ids');
     }
     return copied;
+  }
+
+  @override
+  Future<List<int>> sendPhotos(
+    int chatId,
+    List<String> photos, {
+    bool fromFile = false,
+    bool disableNotification = true,
+  }) async {
+    if (photos.isEmpty) {
+      return const <int>[];
+    }
+    if (photos.length == 1) {
+      return <int>[
+        await _sendOnePhoto(
+          chatId: chatId,
+          photo: photos.first,
+          fromFile: fromFile,
+          disableNotification: disableNotification,
+        ),
+      ];
+    }
+    return _sendPhotoAlbum(
+      chatId: chatId,
+      photos: photos,
+      fromFile: fromFile,
+      disableNotification: disableNotification,
+    );
+  }
+
+  Future<int> _sendOnePhoto({
+    required int chatId,
+    required String photo,
+    required bool fromFile,
+    required bool disableNotification,
+  }) async {
+    if (!fromFile) {
+      final payload = await _post(
+        'sendPhoto',
+        body: <String, Object?>{
+          'chat_id': chatId,
+          'photo': photo,
+          'disable_notification': disableNotification,
+        },
+      );
+      return _messageIdFromPayload(payload);
+    }
+    if (!File(photo).existsSync()) {
+      throw TelegramApiException('Photo file is missing: $photo');
+    }
+    final payload = await _postMultipart(
+      'sendPhoto',
+      fields: <String, String>{
+        'chat_id': '$chatId',
+        'disable_notification': '$disableNotification',
+      },
+      files: () async {
+        return <http.MultipartFile>[
+          await http.MultipartFile.fromPath('photo', photo, filename: _basename(photo)),
+        ];
+      },
+    );
+    return _messageIdFromPayload(payload);
+  }
+
+  Future<List<int>> _sendPhotoAlbum({
+    required int chatId,
+    required List<String> photos,
+    required bool fromFile,
+    required bool disableNotification,
+  }) async {
+    final sliced = photos.take(10).toList();
+    final media = <Map<String, Object?>>[
+      for (var i = 0; i < sliced.length; i++)
+        <String, Object?>{'type': 'photo', 'media': fromFile ? 'attach://photo$i' : sliced[i]},
+    ];
+    late final Map<String, dynamic> payload;
+    if (fromFile) {
+      for (final path in sliced) {
+        if (!File(path).existsSync()) {
+          throw TelegramApiException('Photo file is missing: $path');
+        }
+      }
+      payload = await _postMultipart(
+        'sendMediaGroup',
+        fields: <String, String>{
+          'chat_id': '$chatId',
+          'media': jsonEncode(media),
+          'disable_notification': '$disableNotification',
+        },
+        files: () async {
+          return <http.MultipartFile>[
+            for (var i = 0; i < sliced.length; i++)
+              await http.MultipartFile.fromPath(
+                'photo$i',
+                sliced[i],
+                filename: _basename(sliced[i]),
+              ),
+          ];
+        },
+      );
+    } else {
+      payload = await _post(
+        'sendMediaGroup',
+        body: <String, Object?>{
+          'chat_id': chatId,
+          'media': media,
+          'disable_notification': disableNotification,
+        },
+      );
+    }
+    final result = payload['result'];
+    if (result is! List) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    final ids = <int>[
+      for (final item in result)
+        if (item is Map && item['message_id'] is int) item['message_id'] as int,
+    ];
+    if (ids.isEmpty) {
+      throw const TelegramApiException('Telegram did not return message ids');
+    }
+    return ids;
   }
 
   @override

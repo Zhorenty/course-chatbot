@@ -267,6 +267,36 @@ final class FakeMessageSender implements MessageSender {
 
   final List<StoredSend> storedSends = <StoredSend>[];
 
+  final List<List<String>> photoBatches = <List<String>>[];
+
+  @override
+  Future<List<int>> sendPhotos(
+    int chatId,
+    List<String> photos, {
+    bool fromFile = false,
+    bool disableNotification = true,
+  }) async {
+    final error = throwOnSend;
+    if (error != null) {
+      throw error;
+    }
+    photoBatches.add(List<String>.from(photos));
+    final ids = <int>[];
+    for (final photo in photos) {
+      _nextMessageId += 1;
+      ids.add(_nextMessageId);
+      messages.add(
+        SentMessage(
+          chatId: chatId,
+          messageId: _nextMessageId,
+          text: 'photo $photo',
+          disableNotification: disableNotification,
+        ),
+      );
+    }
+    return ids;
+  }
+
   @override
   Future<List<int>> sendStoredMessage(
     int chatId,

@@ -54,15 +54,23 @@ final class LoggingMessageSender implements MessageSender {
       disableNotification: disableNotification,
       replyMarkup: replyMarkup,
     );
-    final document = richMessage.media.isEmpty ? null : richMessage.media.first.document;
+    final media = richMessage.media;
+    final photosOnly = media.isNotEmpty && media.every((item) => item.isPhoto);
+    final document = media.isEmpty ? null : media.first.document;
     await _safeAppend(
       chatId: chatId,
       telegramMessageId: sent.messageId,
       contentType: document == null
           ? ConversationContentType.text
+          : photosOnly
+          ? ConversationContentType.photo
           : ConversationContentType.document,
       textPreview: document == null
           ? richMessage.html
+          : photosOnly
+          ? (media.length == 1
+                ? 'photo ${document.filename ?? document.ref}'
+                : 'album ${media.length}')
           : 'document ${document.filename ?? document.ref}',
     );
     return sent;
@@ -204,6 +212,30 @@ final class LoggingMessageSender implements MessageSender {
       textPreview: 'copy $fromChatId:${messageIds.join(',')}',
     );
     return copied;
+  }
+
+  @override
+  Future<List<int>> sendPhotos(
+    int chatId,
+    List<String> photos, {
+    bool fromFile = false,
+    bool disableNotification = true,
+  }) async {
+    final ids = await _inner.sendPhotos(
+      chatId,
+      photos,
+      fromFile: fromFile,
+      disableNotification: disableNotification,
+    );
+    if (ids.isNotEmpty) {
+      await _safeAppend(
+        chatId: chatId,
+        telegramMessageId: ids.last,
+        contentType: ConversationContentType.photo,
+        textPreview: photos.length == 1 ? 'photo ${photos.first}' : 'album ${photos.length}',
+      );
+    }
+    return ids;
   }
 
   @override

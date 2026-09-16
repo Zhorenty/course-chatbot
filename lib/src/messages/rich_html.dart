@@ -58,8 +58,28 @@ String richDocument({required String mediaId, String? caption}) {
   return '<figure>$tag<figcaption>${escapeHtml(captionText)}</figcaption></figure>';
 }
 
+String richPhoto({required String mediaId}) {
+  return '<img src="tg://photo?id=${escapeHtml(mediaId)}">';
+}
+
+/// One photo, or a swipeable slideshow when there are several.
+String richPhotoBlock(List<String> mediaIds) {
+  if (mediaIds.isEmpty) {
+    return '';
+  }
+  if (mediaIds.length == 1) {
+    return richPhoto(mediaId: mediaIds.first);
+  }
+  final buf = StringBuffer('<tg-slideshow>');
+  for (final id in mediaIds) {
+    buf.write(richPhoto(mediaId: id));
+  }
+  buf.write('</tg-slideshow>');
+  return buf.toString();
+}
+
 final _richBlockTag = RegExp(
-  r'<(h[1-6]|p|table|details|ul|ol|footer|blockquote|tg-document|figure)\b',
+  r'<(h[1-6]|p|table|details|ul|ol|footer|blockquote|tg-document|figure|img|tg-collage|tg-slideshow)\b',
   caseSensitive: false,
 );
 final _boldOnly = RegExp(r'^<b>(.*?)</b>$', dotAll: true);
@@ -227,5 +247,8 @@ String classicHtmlFromRich(String richHtml) {
   text = text.replaceAll(RegExp(r'<tg-document[\s\S]*?</tg-document>', caseSensitive: false), '');
   text = text.replaceAll(RegExp(r'<tg-document[^>]*/?>', caseSensitive: false), '');
   text = text.replaceAll(RegExp(r'</?figure>', caseSensitive: false), '');
+  text = text.replaceAll(RegExp(r'</?tg-slideshow>', caseSensitive: false), '');
+  text = text.replaceAll(RegExp(r'</?tg-collage>', caseSensitive: false), '');
+  text = text.replaceAll(RegExp(r'<img\b[^>]*>', caseSensitive: false), '');
   return text.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
 }

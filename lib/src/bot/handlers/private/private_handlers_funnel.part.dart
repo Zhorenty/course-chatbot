@@ -181,6 +181,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
             launch: launch,
             rsvp: enrollment.webinarRsvp,
           ),
+          media: FunnelMedia.richMedia(WarmupService.firstStepKey),
           replyMarkup: _templates.warmupKeyboard(
             WarmupService.firstStepKey,
             launch: launch,
