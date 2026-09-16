@@ -107,6 +107,9 @@ String richParagraphsFromTelegramHtml(String html) {
 
 /// Turn classic `parse_mode=HTML` copy into Rich HTML (`h2`/`p`/`ul`/`table`).
 /// Already-rich markup is returned unchanged.
+///
+/// Blank lines (`\n\n`) stay as `<br><br>` so Telegram Rich does not collapse
+/// adjacent `<p>` into a single line break.
 String richHtmlFromClassic(String html) {
   final trimmed = html.trim();
   if (trimmed.isEmpty) {
@@ -115,37 +118,32 @@ String richHtmlFromClassic(String html) {
   if (looksLikeRichHtml(trimmed)) {
     return trimmed;
   }
-  final buf = StringBuffer();
-  var usedH2 = false;
-  for (final raw in trimmed.split(RegExp(r'\n{2,}'))) {
-    final block = raw.trim();
-    if (block.isEmpty) {
-      continue;
-    }
-    buf.write(_classicBlockToRich(block, useH2: !usedH2, onHeading: () => usedH2 = true));
-  }
-  return buf.toString();
-}
-
-String _classicBlockToRich(
-  String block, {
-  required bool useH2,
-  required void Function() onHeading,
-}) {
-  final lines = block.split('\n');
+  final lines = trimmed.split('\n');
   final first = lines.first.trim();
   final bold = _boldOnly.firstMatch(first);
   if (bold != null) {
-    onHeading();
-    final tag = useH2 ? 'h2' : 'h3';
-    final heading = '<$tag>${bold.group(1)}</$tag>';
-    final rest = lines.skip(1).join('\n').trim();
+    final rest = lines.skip(1).join('\n').replaceFirst(RegExp(r'^\n+'), '');
+    final heading = '<h2>${bold.group(1)}</h2>';
     if (rest.isEmpty) {
       return heading;
     }
-    return '$heading${_classicPlainBlock(rest)}';
+    return '$heading${_classicBodyToRich(rest)}';
   }
-  return _classicPlainBlock(block);
+  return _classicBodyToRich(trimmed);
+}
+
+String _classicBodyToRich(String body) {
+  final lines = [
+    for (final line in body.split('\n'))
+      if (line.trim().isNotEmpty) line,
+  ];
+  if (lines.length >= 2 && lines.every(_isBulletLine)) {
+    return richUl(<String>[for (final line in lines) line.replaceFirst(_bulletLine, '')]);
+  }
+  if (lines.length >= 2 && lines.every(_isKvLine)) {
+    return _classicPlainBlock(lines.join('\n'));
+  }
+  return richParagraphsFromTelegramHtml(body);
 }
 
 String _classicPlainBlock(String block) {

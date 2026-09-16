@@ -59,14 +59,20 @@ final class SqliteCourseRepository extends _SqliteCourseStore
   void init() {
     _handle.ensureCourseSchema();
     seedDefaultWarmupSteps();
-    const previousDefaultDescription =
-        'Скоро стартует мой курс по интерьерной колористике\n\n'
-        'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
-        'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.';
-    _db.execute('UPDATE launches SET description = ? WHERE description = ?;', <Object?>[
-      Launch.defaultDescription,
-      previousDefaultDescription,
-    ]);
+    const previousDefaultDescriptions = <String>[
+      'Скоро стартует мой курс по интерьерной колористике\n\n'
+          'Сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+          'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.',
+      'Скоро стартует мой курс по интерьерной колористике\n\n'
+          'Я сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
+          'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.',
+    ];
+    for (final previous in previousDefaultDescriptions) {
+      _db.execute('UPDATE launches SET description = ? WHERE description = ?;', <Object?>[
+        Launch.defaultDescription,
+        previous,
+      ]);
+    }
     _db.execute(
       'UPDATE launches SET description = ? WHERE description IS NULL OR trim(description) = \'\';',
       <Object?>[Launch.defaultDescription],

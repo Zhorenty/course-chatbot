@@ -34,6 +34,10 @@ void main() {
       '<table><tr><td>код</td><td><code>a</code></td></tr><tr><td>цена</td><td>1000 ₽</td></tr></table>',
     );
     expect(richHtmlFromClassic('Ссылка на оплату готова.'), '<p>Ссылка на оплату готова.</p>');
+    expect(
+      richHtmlFromClassic('Первый абзац\n\nВторой абзац'),
+      '<p>Первый абзац<br><br>Второй абзац</p>',
+    );
   });
 
   test('telegram blank lines become visible rich breaks not adjacent paragraphs', () {
@@ -103,6 +107,12 @@ void main() {
     expect(MessageTemplates.buttonEnroll, MessageTemplates.buttonCourseStatus);
     expect(MessageTemplates.buttonEnroll, contains('Цвет в интерьере'));
     expect(templates.startGuideOffer(), contains('Привет'));
+    expect(templates.startGuideOffer(), isNot(contains('<b>Привет')));
+    expect(
+      templates.startGuideOffer(),
+      contains('<b>Для начала у меня для тебя подарок — гайд «Язык цвета».</b>'),
+    );
+    expect(templates.startGuideOfferRich(), contains('<br><br>А это мой бот-помощник'));
     expect(templates.startGuideOffer(), contains('Анастасия Дубовскова'));
     expect(templates.startGuideOffer(), isNot(contains('без имени, почты')));
     expect(templates.warmupStep('warmup_0'), contains('мастер-класс'));
@@ -148,6 +158,19 @@ void main() {
     }
     expect(templates.warmupStep('sales_regular', launch: launch), contains('19 000 руб.'));
     expect(templates.warmupStep('webinar_next', launch: launch), contains('21 000 руб.'));
+    expect(
+      templates.warmupStep('webinar_next', launch: launch),
+      contains('<b>специальные условия</b>'),
+    );
+    expect(
+      templates.warmupStep('webinar_next', launch: launch),
+      contains('<i>Запись мастер-класса:</i>'),
+    );
+    expect(templates.warmupStep('warmup_0', launch: launch), contains('<u>Особенно жду тебя'));
+    expect(
+      templates.warmupStep('warmup_0', launch: launch),
+      contains('<b>«Как начать работать с цветом смелее и не бояться ошибиться»</b>'),
+    );
     expect(templates.warmupStep('dozhim_d1', launch: launch), contains('12 октября'));
     expect(templates.warmupStep('dozhim_d1', launch: launch), contains('Иттена'));
     expect(templates.warmupStep('dozhim_d2', launch: launch), contains('Чувство цвета'));
@@ -200,8 +223,7 @@ void main() {
       templates.enrollOptions(launch, quote: quote),
       contains('Ссылка в канал курса придет в этот чат после полной оплаты'),
     );
-    expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков'));
-    expect(templates.enrollOptions(launch, quote: quote), isNot(contains('16 уроков + эфир')));
+    expect(templates.enrollOptions(launch, quote: quote), contains('16 уроков + эфир'));
     expect(templates.enrollOptions(launch, quote: quote), contains('<s>23 000 ₽</s>'));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
     expect(templates.warmupStep('sales_open', launch: launch), contains('открывает свои двери'));
@@ -366,6 +388,8 @@ void main() {
     final card = templates.enrollOptions(launch, quote: quote);
     expect(card, contains('Скоро стартует мой курс по интерьерной колористике'));
     expect(card, contains('Старт потока 12 октября'));
+    expect(card, contains('<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>'));
+    expect(card, contains('<b>бесплатный Мастер-класс'));
     expect(card, contains('📅 Мастер-класс пройдет 5 октября в 19:00 мск'));
     expect(card, contains('Ты уже в списке участников.'));
     expect(card, isNot(contains('Ссылку прикрепим позже')));
@@ -403,13 +427,15 @@ void main() {
     expect(markedCard, isNot(contains('&lt;b&gt;')));
     expect(
       templates.startCourseCardRich(launch: marked),
-      contains('<p><b>Цвет</b><br>и практика<br><br>второй абзац<br><br>'),
+      contains('<b>Цвет</b><br>и практика<br><br>второй абзац<br><br>'),
     );
     expect(
       templates.startCourseCardRich(launch: launch),
       contains(
-        '<p>Скоро стартует мой курс по интерьерной колористике<br><br>'
-        'Я сообщу тебе, когда откроются продажи по самой выгодной цене.<br><br>',
+        '<p>Курс "Цвет в интерьере" 🎨<br><br>'
+        'Скоро стартует мой курс по интерьерной колористике<br>'
+        'Старт потока 12 октября. '
+        '<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u><br><br>',
       ),
     );
 
@@ -431,13 +457,13 @@ void main() {
     final laidOutRich = templates.startCourseCardRich(launch: laidOut);
     expect(
       laidOutRich,
-      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом<br><br>'),
+      contains('Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом<br><br>'),
     );
     final laidOutQuote = LaunchSales.quote(laidOut, rsvp: false, now: DateTime.utc(2026, 9, 15));
     expect(laidOutQuote.phase, SalesPhase.preSales);
     expect(
       templates.enrollOptionsRich(laidOut, quote: laidOutQuote),
-      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом'),
+      contains('Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом'),
     );
   });
 

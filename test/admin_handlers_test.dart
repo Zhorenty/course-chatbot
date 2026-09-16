@@ -1479,7 +1479,7 @@ void main() {
     );
     expect(
       card,
-      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;пункт<br><br>'),
+      contains('Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;пункт<br><br>'),
     );
   });
 

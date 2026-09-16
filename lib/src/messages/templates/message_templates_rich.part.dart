@@ -2,10 +2,7 @@ part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplatesRich on MessageTemplates {
   String startGuideOfferRich() {
-    return '${richH2('Привет 🤍')}'
-        '${richP('На связи Анастасия Дубовскова — дизайнер и автор 80+ узнаваемых проектов, где цвет является частью характера пространства, преподаватель в Академии дизайна, член жюри Евразийской премии по хоумстейджингу 2026 и лауреат премий.')}'
-        '${richP('А это мой бот-помощник! Здесь будут материалы, разборы и анонсы — в первую очередь про то, как перестать бояться цвета и начать использовать его осознанно.')}'
-        '${richP('Для начала у меня для тебя подарок — гайд «${MessageTemplates.guideTitle}». Забирай его по кнопке «Получить гайд» 🍂')}';
+    return richParagraphsFromTelegramHtml(startGuideOffer());
   }
 
   String guideReadyRich() {
@@ -14,15 +11,7 @@ extension MessageTemplatesRich on MessageTemplates {
   }
 
   String startCourseCardRich({Launch? launch, String? cta}) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    final body = <String>[
-      _courseDescriptionHtml(launch),
-      if (start != null) 'Старт потока $start.',
-      _preSalesMasterClassWhen(launch),
-      if (cta != null && cta.isNotEmpty) cta,
-    ];
-    return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)} 🎨')}'
-        '${richParagraphsFromTelegramHtml(body.join('\n\n'))}';
+    return richParagraphsFromTelegramHtml(_preSalesCourseCopy(launch, cta: cta));
   }
 
   String alreadyInFunnelRich() {
@@ -65,7 +54,7 @@ extension MessageTemplatesRich on MessageTemplates {
         ),
       );
     }
-    return richHtmlFromClassic(
+    return richParagraphsFromTelegramHtml(
       enrollOptions(
         launch,
         quote: quote,
