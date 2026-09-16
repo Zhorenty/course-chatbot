@@ -13,16 +13,16 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}';
   }
 
-  String startCourseCardRich({Launch? launch}) {
+  String startCourseCardRich({Launch? launch, String? cta}) {
     final start = _formatHumanDate(launch?.courseStartAt);
+    final body = <String>[
+      _courseDescriptionHtml(launch),
+      if (start != null) 'Старт потока $start.',
+      _preSalesMasterClassWhen(launch),
+      if (cta != null && cta.isNotEmpty) cta,
+    ];
     return '${richH2('Курс ${_quotedCourseTitle(launch, escape: false)} 🎨')}'
-        '${_courseDescriptionRich(launch)}'
-        '${start == null ? '' : richP('Старт потока $start.')}'
-        '${richP(_preSalesMasterClassWhen(launch))}';
-  }
-
-  String _courseDescriptionRich(Launch? launch) {
-    return richParagraphsFromTelegramHtml(_courseDescriptionHtml(launch));
+        '${richParagraphsFromTelegramHtml(body.join('\n\n'))}';
   }
 
   String alreadyInFunnelRich() {
@@ -55,8 +55,15 @@ extension MessageTemplatesRich on MessageTemplates {
     bool hasOpenCheckout = false,
   }) {
     if (quote.phase == SalesPhase.preSales) {
-      return '${startCourseCardRich(launch: launch)}'
-          '${richP(_preSalesMasterClassCta(launch: launch, rsvp: quote.rsvp, rsvpOpen: rsvpOpen, webinarStarted: webinarStarted))}';
+      return startCourseCardRich(
+        launch: launch,
+        cta: _preSalesMasterClassCta(
+          launch: launch,
+          rsvp: quote.rsvp,
+          rsvpOpen: rsvpOpen,
+          webinarStarted: webinarStarted,
+        ),
+      );
     }
     return richHtmlFromClassic(
       enrollOptions(

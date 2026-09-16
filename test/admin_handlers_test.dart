@@ -1477,8 +1477,10 @@ void main() {
     final card = MessageTemplates().startCourseCardRich(
       launch: sheets.course.launchByCode('launch-1'),
     );
-    expect(card, contains('<p>Первый абзац</p>'));
-    expect(card, contains('<p>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;пункт</p>'));
+    expect(
+      card,
+      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;пункт<br><br>'),
+    );
   });
 
   test('admin catalog replaces the guide file for that launch', () async {

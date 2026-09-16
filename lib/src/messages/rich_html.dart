@@ -72,20 +72,36 @@ final _blankLine = RegExp(r'\n[ \t]*\n');
 final _wrappingNewlines = RegExp(r'^\n+|\n+$');
 
 /// Stored Telegram HTML (`<b>`, newlines, tabs) → rich `<p>` / `<br>` / `&nbsp;`.
+///
+/// Adjacent `<p>` blocks render as a single line break in `sendRichMessage`.
+/// A Telegram blank line (`\n\n`) must become `<br><br>` to stay visible.
 String richParagraphsFromTelegramHtml(String html) {
   final prepared = preserveTelegramHtmlLayout(html);
-  final parts = prepared
-      .split(_blankLine)
-      .map((part) => part.replaceAll(_wrappingNewlines, ''))
-      .where((part) => part.isNotEmpty);
+  final parts = [
+    for (final part in prepared.split(_blankLine)) part.replaceAll(_wrappingNewlines, ''),
+  ].where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) {
+    return '';
+  }
   final buf = StringBuffer();
+  final pending = <String>[];
+  void flushPending() {
+    if (pending.isEmpty) {
+      return;
+    }
+    buf.write(richP(pending.join('<br><br>')));
+    pending.clear();
+  }
+
   for (final part in parts) {
     if (looksLikeRichHtml(part)) {
+      flushPending();
       buf.write(part);
-    } else {
-      buf.write(richP(part.replaceAll('\n', '<br>')));
+      continue;
     }
+    pending.add(part.replaceAll('\n', '<br>'));
   }
+  flushPending();
   return buf.toString();
 }
 

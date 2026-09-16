@@ -36,6 +36,17 @@ void main() {
     expect(richHtmlFromClassic('Ссылка на оплату готова.'), '<p>Ссылка на оплату готова.</p>');
   });
 
+  test('telegram blank lines become visible rich breaks not adjacent paragraphs', () {
+    expect(
+      richParagraphsFromTelegramHtml(
+        'Скоро стартует мой курс по интерьерной колористике\n\n'
+        'Я сообщу тебе, когда откроются продажи.',
+      ),
+      '<p>Скоро стартует мой курс по интерьерной колористике<br><br>'
+      'Я сообщу тебе, когда откроются продажи.</p>',
+    );
+  });
+
   test('guide ready rich embeds the PDF and strips it for classic HTML', () {
     final templates = MessageTemplates();
     final rich = templates.guideReadyRich();
@@ -392,9 +403,15 @@ void main() {
     expect(markedCard, isNot(contains('&lt;b&gt;')));
     expect(
       templates.startCourseCardRich(launch: marked),
-      contains('<p><b>Цвет</b><br>и практика</p>'),
+      contains('<p><b>Цвет</b><br>и практика<br><br>второй абзац<br><br>'),
     );
-    expect(templates.startCourseCardRich(launch: marked), contains('<p>второй абзац</p>'));
+    expect(
+      templates.startCourseCardRich(launch: launch),
+      contains(
+        '<p>Скоро стартует мой курс по интерьерной колористике<br><br>'
+        'Я сообщу тебе, когда откроются продажи по самой выгодной цене.<br><br>',
+      ),
+    );
 
     final laidOut = Launch(
       id: 4,
@@ -412,13 +429,15 @@ void main() {
     );
     expect(templates.startCourseCard(launch: laidOut), contains('второй &nbsp;с отступом'));
     final laidOutRich = templates.startCourseCardRich(launch: laidOut);
-    expect(laidOutRich, contains('<p>Первый абзац</p>'));
-    expect(laidOutRich, contains('<p>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом</p>'));
+    expect(
+      laidOutRich,
+      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом<br><br>'),
+    );
     final laidOutQuote = LaunchSales.quote(laidOut, rsvp: false, now: DateTime.utc(2026, 9, 15));
     expect(laidOutQuote.phase, SalesPhase.preSales);
     expect(
       templates.enrollOptionsRich(laidOut, quote: laidOutQuote),
-      contains('<p>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом</p>'),
+      contains('<p>Первый абзац<br><br>&nbsp;&nbsp;&nbsp;&nbsp;второй &nbsp;с отступом'),
     );
   });
 
