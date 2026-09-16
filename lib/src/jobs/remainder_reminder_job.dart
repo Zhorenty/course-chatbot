@@ -41,20 +41,6 @@ final class RemainderReminderJob {
       textOf: (order) =>
           _templates.remainderBeforeDue(order, launch: _course.getLaunch(order.launchId)),
     );
-    await _sendWave(
-      now: now,
-      wave: RemainderWave.onDueDay,
-      suffix: 'due',
-      textOf: (order) =>
-          _templates.remainderReminder(order, launch: _course.getLaunch(order.launchId)),
-    );
-    await _sendWave(
-      now: now,
-      wave: RemainderWave.overdue,
-      suffix: 'overdue',
-      textOf: (order) =>
-          _templates.remainderReminder(order, launch: _course.getLaunch(order.launchId)),
-    );
   }
 
   Future<void> _sendWave({

@@ -32,7 +32,7 @@ void main() {
 
     expect(handled, isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
-    expect(harness.sender.messages.first.text, contains('<img src="tg://photo?id=p0">'));
+    expect(harness.sender.messages.first.text, contains('<img src="tg://photo?id=p0"/>'));
     expect(harness.sender.documents, contains('assets/funnel/welcome.jpg'));
     expect(harness.course.getUser(42)?.source, isNull);
   });
@@ -228,8 +228,8 @@ void main() {
     final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonEnroll));
-    expect(texts, contains(MessageTemplates.buttonHelp));
-    expect(harness.sender.messages.single.text, contains('Продолжаем с того же места'));
+    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+    expect(harness.sender.messages, isEmpty);
   });
 
   test('help callback opens help and does not escalate', () async {
@@ -243,7 +243,7 @@ void main() {
         data: MessageTemplates.cbHelp,
       ),
     );
-    expect(harness.sender.messages.single.text, contains('напиши сюда'));
+    expect(harness.sender.messages, isEmpty);
     expect(harness.sender.forwards, isEmpty);
     expect(
       _inlineButtonTexts(harness.sender.messages.single.replyMarkup),
@@ -357,7 +357,7 @@ void main() {
     );
 
     expect(harness.sender.documents, contains('file-guide'));
-    expect(harness.sender.messages.any((m) => m.text.contains('файл выше')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('файл выше')), isFalse);
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
   });
 
@@ -488,7 +488,7 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
     expect(
       harness.sender.messages.firstWhere((m) => m.text.contains('Успешная оплата')).text,
-      contains('<img src="tg://photo?id=p0">'),
+      contains('<img src="tg://photo?id=p0"/>'),
     );
     expect(harness.sender.documents, contains('assets/funnel/paid.jpg'));
     expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
@@ -497,8 +497,8 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
     );
-    expect(harness.sender.messages.single.text, contains('закрыта'));
-    expect(harness.sender.messages.single.text, isNot(contains('Запись на курс')));
+    expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Запись на курс')), isFalse);
   });
 
   test('pay button opens checkout without an offer checkbox', () async {
@@ -537,10 +537,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(
-      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
-      isTrue,
-    );
+    expect(harness.sender.messages, isEmpty);
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
@@ -609,7 +606,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonHelp),
     );
-    expect(harness.sender.messages.any((m) => m.text.contains('напиши сюда')), isTrue);
+    expect(harness.sender.messages, isEmpty);
     expect(harness.sender.forwards, isEmpty);
     expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
     expect(
@@ -644,7 +641,7 @@ void main() {
     final texts = _replyButtonTexts(offer.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
   });

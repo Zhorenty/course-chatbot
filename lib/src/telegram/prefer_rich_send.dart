@@ -4,9 +4,14 @@ import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
 
+const int _maxPhotoCaptionLength = 1024;
+
 /// Send [text] as `sendRichMessage` (dedicated [richHtml] or classic→rich).
-/// On 400 / unknown rich errors, fall back to `sendMessage` + parse_mode=HTML.
-/// Local photos from [media] go in the rich payload; classic fallback sends them first.
+/// On 400 / unknown rich errors, fall back to classic HTML.
+///
+/// Photos stay in the same message: Rich HTML uses a media block
+/// (`<img src="tg://photo?id=…"/>` + `InputRichMessage.media`). If that fails,
+/// classic `sendPhoto` / album carries the copy as a caption.
 Future<int> sendPreferRich(
   MessageSender sender,
   int chatId,
@@ -28,10 +33,20 @@ Future<int> sendPreferRich(
       );
       return sent.messageId;
     } on Object catch (error, stackTrace) {
-      l.w('sendRichMessage failed, falling back to sendMessage: $error', stackTrace);
+      l.w('sendRichMessage failed, falling back to classic: $error', stackTrace);
     }
   }
-  await _sendFallbackPhotos(sender, chatId, media, disableNotification: disableNotification);
+  final photoIds = await _sendClassicPhotosWithCaption(
+    sender,
+    chatId,
+    text: text,
+    media: media,
+    disableNotification: disableNotification,
+    replyMarkup: replyMarkup,
+  );
+  if (photoIds != null && photoIds.isNotEmpty) {
+    return photoIds.last;
+  }
   return sender.sendMessage(
     chatId,
     text,
@@ -97,27 +112,56 @@ String _withPhotos(String html, List<InputRichMessageMedia> media) {
   return '${richPhotoBlock(photos)}$html';
 }
 
-Future<void> _sendFallbackPhotos(
+Future<List<int>?> _sendClassicPhotosWithCaption(
   MessageSender sender,
-  int chatId,
-  List<InputRichMessageMedia> media, {
+  int chatId, {
+  required String text,
+  required List<InputRichMessageMedia> media,
   required bool disableNotification,
+  required Map<String, Object?>? replyMarkup,
 }) async {
-  final paths = <String>[
+  final local = <String>[
     for (final item in media)
       if (item.isPhoto && item.isLocal) item.document.localPath!,
   ];
-  if (paths.isEmpty) {
-    return;
+  final remote = <String>[
+    for (final item in media)
+      if (item.isPhoto && !item.isLocal && (item.document.fileId?.isNotEmpty ?? false))
+        item.document.fileId!,
+  ];
+  final fromFile = local.isNotEmpty;
+  final refs = fromFile ? local : remote;
+  if (refs.isEmpty) {
+    return null;
   }
   try {
-    await sender.sendPhotos(
+    return await sender.sendPhotos(
       chatId,
-      paths,
-      fromFile: true,
+      refs,
+      fromFile: fromFile,
       disableNotification: disableNotification,
+      caption: _captionForPhotos(text),
+      parseMode: 'HTML',
+      replyMarkup: refs.length == 1 ? replyMarkup : null,
     );
   } on Object catch (error, stackTrace) {
-    l.w('Fallback sendPhotos failed: $error', stackTrace);
+    l.w('Classic sendPhotos with caption failed: $error', stackTrace);
+    return null;
   }
+}
+
+String? _captionForPhotos(String text) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) {
+    return null;
+  }
+  if (trimmed.length <= _maxPhotoCaptionLength) {
+    return trimmed;
+  }
+  final cut = trimmed.substring(0, _maxPhotoCaptionLength);
+  final breakAt = cut.lastIndexOf('\n');
+  if (breakAt >= _maxPhotoCaptionLength ~/ 2) {
+    return cut.substring(0, breakAt).trimRight();
+  }
+  return cut;
 }

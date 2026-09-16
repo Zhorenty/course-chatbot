@@ -59,7 +59,7 @@ String richDocument({required String mediaId, String? caption}) {
 }
 
 String richPhoto({required String mediaId}) {
-  return '<img src="tg://photo?id=${escapeHtml(mediaId)}">';
+  return '<img src="tg://photo?id=${escapeHtml(mediaId)}"/>';
 }
 
 /// One photo, or a swipeable slideshow when there are several.

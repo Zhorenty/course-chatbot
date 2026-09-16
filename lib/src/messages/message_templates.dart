@@ -585,7 +585,7 @@ final class MessageTemplates {
         'Присоединиться по кнопке ниже.';
   }
 
-  String webinarRsvpConfirmed(Launch launch, {required bool showLink}) {
+  String webinarRsvpConfirmed(Launch launch, {bool showLink = false}) {
     if (showLink) {
       return 'Поздравляю! Ты в списке участников!\n\n'
           'Мастер-класс уже идёт — кнопка со ссылкой ниже.';

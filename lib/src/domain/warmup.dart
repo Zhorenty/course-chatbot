@@ -62,6 +62,9 @@ final class WarmupStep {
     'warmup_start_d7',
     'warmup_start_d3',
     'warmup_start_d1',
+    'enroll_d1',
+    'enroll_d3',
+    'last_wagon',
   };
 
   static const String lastWagonKey = 'last_wagon';
@@ -84,12 +87,14 @@ final class WarmupStep {
       delay: Duration(days: 1),
       sortOrder: 10,
       anchor: WarmupAnchor.firstStart,
+      enabled: false,
     ),
     WarmupStep(
       stepKey: 'enroll_d3',
       delay: Duration(days: 3),
       sortOrder: 11,
       anchor: WarmupAnchor.firstStart,
+      enabled: false,
     ),
     WarmupStep(
       stepKey: 'webinar_24h',
@@ -164,6 +169,7 @@ final class WarmupStep {
       delay: Duration.zero,
       sortOrder: 40,
       anchor: WarmupAnchor.salesEnd,
+      enabled: false,
     ),
     WarmupStep(
       stepKey: 'warmup_start_d7',

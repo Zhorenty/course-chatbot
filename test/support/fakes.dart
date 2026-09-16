@@ -275,6 +275,9 @@ final class FakeMessageSender implements MessageSender {
     List<String> photos, {
     bool fromFile = false,
     bool disableNotification = true,
+    String? caption,
+    String? parseMode,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final error = throwOnSend;
     if (error != null) {
@@ -282,14 +285,16 @@ final class FakeMessageSender implements MessageSender {
     }
     photoBatches.add(List<String>.from(photos));
     final ids = <int>[];
-    for (final photo in photos) {
+    for (var i = 0; i < photos.length; i++) {
       _nextMessageId += 1;
       ids.add(_nextMessageId);
       messages.add(
         SentMessage(
           chatId: chatId,
           messageId: _nextMessageId,
-          text: 'photo $photo',
+          text: i == 0 && caption != null && caption.isNotEmpty ? caption : 'photo ${photos[i]}',
+          parseMode: i == 0 ? parseMode : null,
+          replyMarkup: i == 0 ? replyMarkup : null,
           disableNotification: disableNotification,
         ),
       );

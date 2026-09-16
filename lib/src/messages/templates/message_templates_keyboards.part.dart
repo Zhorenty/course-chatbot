@@ -10,10 +10,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
         else
           <String, Object?>{'text': MessageTemplates.buttonEnroll},
       ],
-      <Map<String, Object?>>[
-        <String, Object?>{'text': MessageTemplates.buttonHelp},
-      ],
-    ], inputFieldPlaceholder: 'Если застрял — напиши сюда');
+    ]);
   }
 
   Map<String, Object?> adminMenuKeyboard() {
@@ -112,7 +109,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
     required Launch launch,
     required bool rsvp,
     bool rsvpOpen = true,
-    bool checkoutOpen = false,
   }) {
     if (stepKey == 'webinar_live') {
       final url = launch.resolvedWebinarUrl;
@@ -137,12 +133,8 @@ extension MessageTemplateKeyboards on MessageTemplates {
         stepKey == 'webinar_next' ||
         stepKey == 'sales_open' ||
         stepKey == 'sales_regular' ||
-        stepKey == 'enroll_d1' ||
-        stepKey == 'enroll_d3' ||
-        stepKey == WarmupStep.lastWagonKey ||
         WarmupStep.isBuiltinDozhim(stepKey) ||
-        WarmupStep.isCustomDozhim(stepKey) ||
-        (rsvpSteps.contains(stepKey) && !rsvpOpen && checkoutOpen);
+        WarmupStep.isCustomDozhim(stepKey);
     if (sellingEnroll) {
       return inlineKeyboard(<List<Map<String, Object?>>>[
         <Map<String, Object?>>[
@@ -210,12 +202,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
           'text': MessageTemplates.buttonOpenInvite,
           'url': link,
           'style': 'primary',
-        },
-      ],
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': MessageTemplates.buttonCopyInvite,
-          'copy_text': <String, String>{'text': link},
         },
       ],
     ]);

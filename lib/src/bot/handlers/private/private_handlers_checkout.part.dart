@@ -69,7 +69,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
           await _notifyPaymentResult(created.applied!);
           return true;
         }
-        return _showCourseStatus(context);
+        return _showPaidSheetCopy(context);
       }
       final url = created.payment.confirmationUrl;
       if (url == null || url.isEmpty) {
@@ -78,7 +78,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       return _send(context, _templates.payButton(url), replyMarkup: _templates.payUrlKeyboard(url));
     } on CheckoutBlockedException catch (error) {
       if (error.reason == CheckoutBlockReason.alreadyPaid) {
-        return _showCourseStatus(context);
+        return _showPaidSheetCopy(context);
       }
       if (error.reason == CheckoutBlockReason.salesNotOpen ||
           error.reason == CheckoutBlockReason.salesClosed) {
@@ -130,7 +130,7 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       }
       if (result.alreadyApplied && !result.repairedInvite) {
         if (result.grantedAccess || result.depositOnly || result.order.status.isFullyPaid) {
-          return _showCourseStatus(context);
+          return _showPaidSheetCopy(context);
         }
         return false;
       }
@@ -160,20 +160,18 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
       );
     }
     if (result.depositOnly) {
-      final reached = await _dmUser(
+      return _dmUser(
         userId,
         _templates.depositSucceeded(result.order, launch: _course.getLaunch(result.order.launchId)),
         replyMarkup: _templates.remainderKeyboard(result.order.id, immediate: true),
       );
-      final pinned = await _dmUser(userId, _templates.courseMenuPinned());
-      return reached && pinned;
     }
     if (!result.grantedAccess) {
       return true;
     }
     final launch = _course.getLaunch(result.order.launchId) ?? _launch;
     final link = result.inviteLink;
-    var reached = await _dmUser(
+    final reached = await _dmUser(
       userId,
       _templates.paymentSucceeded(launch: launch),
       replyMarkup: link != null && link.isNotEmpty ? _templates.unjoinedInviteKeyboard(link) : null,
@@ -181,9 +179,6 @@ extension _PrivateHandlersCheckout on PrivateHandlers {
     );
     if (link != null && link.isNotEmpty) {
       await _notifyPaidWithInvite(result);
-    } else {
-      final missing = await _dmUser(userId, _templates.inviteUnavailable());
-      reached = reached && missing;
     }
     return reached;
   }

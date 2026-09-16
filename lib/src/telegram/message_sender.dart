@@ -90,11 +90,17 @@ abstract interface class MessageSender {
 
   /// Send one photo or an album. [photos] are `file_id`s, or local paths when
   /// [fromFile] is true. Empty list is a no-op.
+  ///
+  /// [caption] / [parseMode] / [replyMarkup] apply to a single photo. For an
+  /// album the caption sits on the first item; Telegram has no album keyboard.
   Future<List<int>> sendPhotos(
     int chatId,
     List<String> photos, {
     bool fromFile = false,
     bool disableNotification = true,
+    String? caption,
+    String? parseMode,
+    Map<String, Object?>? replyMarkup,
   });
 
   Future<List<int>> sendStoredMessage(

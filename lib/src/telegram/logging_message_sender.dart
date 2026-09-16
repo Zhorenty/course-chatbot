@@ -220,12 +220,18 @@ final class LoggingMessageSender implements MessageSender {
     List<String> photos, {
     bool fromFile = false,
     bool disableNotification = true,
+    String? caption,
+    String? parseMode,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final ids = await _inner.sendPhotos(
       chatId,
       photos,
       fromFile: fromFile,
       disableNotification: disableNotification,
+      caption: caption,
+      parseMode: parseMode,
+      replyMarkup: replyMarkup,
     );
     if (ids.isNotEmpty) {
       await _safeAppend(

@@ -87,7 +87,6 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       );
       _cacheLeadMagnetFileId(sent.fileId);
     }
-    await _sendHtml(chatId, _templates.guideReady(), replyMarkup: menu);
   }
 
   void _cacheLeadMagnetFileId(String? fileId) {
@@ -187,11 +186,6 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
             launch: launch,
             rsvp: enrollment.webinarRsvp,
             rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
-            checkoutOpen: LaunchSales.quote(
-              launch,
-              rsvp: enrollment.webinarRsvp,
-              now: _nowProvider(),
-            ).checkoutOpen,
           ),
         ),
       );
@@ -215,7 +209,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     }
     final user = _course.getUser(context.userId!);
     if (user != null && _funnel.phaseOf(user).showsCourseStatus) {
-      return _showCourseStatus(context);
+      return _showPaidSheetCopy(context);
     }
     final launch = _launch;
     final userId = context.userId!;
@@ -237,15 +231,26 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
                 openOrder.status == OrderStatus.awaitingPayment)
         ? openOrder.id
         : null;
+    final text = _templates.enrollOptions(
+      launch,
+      quote: quote,
+      rsvpOpen: rsvpOpen,
+      webinarStarted: webinarStarted,
+      hasOpenCheckout: continueOrderId != null,
+    );
+    final markup = _templates.enrollKeyboard(
+      launch,
+      quote: quote,
+      rsvpOpen: rsvpOpen,
+      webinarStarted: webinarStarted,
+      continueOrderId: continueOrderId,
+    );
+    if (text.trim().isEmpty && markup.isEmpty) {
+      return true;
+    }
     return _send(
       context,
-      _templates.enrollOptions(
-        launch,
-        quote: quote,
-        rsvpOpen: rsvpOpen,
-        webinarStarted: webinarStarted,
-        hasOpenCheckout: continueOrderId != null,
-      ),
+      text,
       richHtml: _templates.enrollOptionsRich(
         launch,
         quote: quote,
@@ -253,13 +258,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
         webinarStarted: webinarStarted,
         hasOpenCheckout: continueOrderId != null,
       ),
-      replyMarkup: _templates.enrollKeyboard(
-        launch,
-        quote: quote,
-        rsvpOpen: rsvpOpen,
-        webinarStarted: webinarStarted,
-        continueOrderId: continueOrderId,
-      ),
+      replyMarkup: markup,
     );
   }
 
@@ -280,42 +279,35 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _notifyWebinarRsvp(userId, launch);
     }
     await _answerCallback(context, text: 'Ты в списке участников!');
-    final url = launch.resolvedWebinarUrl;
-    final started = LaunchSales.webinarStarted(launch, now);
-    final showLink = started && url != null;
-    await _send(
-      context,
-      _templates.webinarRsvpConfirmed(launch, showLink: showLink),
-      replyMarkup: showLink ? _templates.webinarLinkKeyboard(url) : null,
-    );
-    final quote = LaunchSales.quote(launch, rsvp: true, now: now);
-    if (firstRsvp && !showLink && quote.checkoutOpen) {
-      return _showEnroll(context);
-    }
-    return true;
+    return _send(context, _templates.webinarRsvpConfirmed(launch));
   }
 
-  Future<bool> _showCourseStatus(PrivateMessageContext context) async {
+  Future<bool> _showPaidSheetCopy(PrivateMessageContext context) async {
     final userId = context.userId!;
-    final user = _course.getUser(userId);
-    if (user == null || !_funnel.phaseOf(user).showsCourseStatus) {
-      return _showEnroll(context);
-    }
     final launch = _launch;
     final order = launch == null
         ? _course.latestOrder(userId)
         : _course.latestOrder(userId, launchId: launch.id);
     final access = launch == null ? null : _course.accessFor(userId: userId, launchId: launch.id);
+    if (order != null && order.hasRemainder) {
+      return _send(
+        context,
+        _templates.depositSucceeded(order, launch: launch),
+        replyMarkup: _templates.remainderKeyboard(order.id),
+      );
+    }
+    final link = access?.inviteLink?.trim();
+    final unjoined =
+        access != null &&
+        access.revokedAt == null &&
+        !access.hasJoined &&
+        link != null &&
+        link.isNotEmpty;
     return _send(
       context,
-      _templates.courseStatus(launch: launch, order: order, access: access, now: _nowProvider()),
-      richHtml: _templates.courseStatusRich(
-        launch: launch,
-        order: order,
-        access: access,
-        now: _nowProvider(),
-      ),
-      replyMarkup: _templates.courseStatusKeyboard(order: order, access: access),
+      _templates.paymentSucceeded(launch: launch),
+      media: FunnelMedia.richMedia(FunnelMedia.paid),
+      replyMarkup: unjoined ? _templates.unjoinedInviteKeyboard(link) : null,
     );
   }
 }

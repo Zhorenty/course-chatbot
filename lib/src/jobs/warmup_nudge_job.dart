@@ -101,9 +101,6 @@ final class WarmupNudgeJob {
     required List<LaunchDozhimMessage> custom,
     required DateTime now,
   }) async {
-    final checkoutOpen = launch == null
-        ? false
-        : LaunchSales.quote(launch, rsvp: candidate.webinarRsvp, now: now).checkoutOpen;
     final keyboard = launch == null
         ? null
         : _templates.warmupKeyboard(
@@ -111,7 +108,6 @@ final class WarmupNudgeJob {
             launch: launch,
             rsvp: candidate.webinarRsvp,
             rsvpOpen: LaunchSales.rsvpOpen(launch, now),
-            checkoutOpen: checkoutOpen,
           );
     for (final message in custom) {
       if (message.stepKey != decision.stepKey) {
@@ -153,6 +149,5 @@ final class WarmupNudgeJob {
         l.w('Failed to attach enroll CTA to dozhim for $chatId: $error', stackTrace);
       }
     }
-    await sendPreferRich(_sender, chatId, _templates.dozhimEnrollCta(), replyMarkup: keyboard);
   }
 }

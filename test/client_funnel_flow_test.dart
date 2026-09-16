@@ -34,7 +34,6 @@ void main() {
       containsAll(<String>[
         MessageTemplates.buttonGuide,
         MessageTemplates.buttonEnroll,
-        MessageTemplates.buttonHelp,
       ]),
     );
 
@@ -147,7 +146,7 @@ void main() {
     await client.tap('/start');
     expect(harness.course.getUser(42)?.source, 'ig_reels_guide');
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
-    expect(harness.sender.messages.any((m) => m.text.contains('уже внутри')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
     expect(harness.channel.created, hasLength(1));
     expect(harness.channel.revoked, isEmpty);
 
@@ -161,13 +160,12 @@ void main() {
     await client.press(MessageTemplates.cbNewInvite);
     expect(harness.channel.created, hasLength(1));
     expect(harness.channel.revoked, isEmpty);
-    expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
+    expect(harness.sender.messages, isEmpty);
 
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonCourseStatus);
     final status = harness.sender.messages.single;
-    expect(status.text, contains('закрыта'));
+    expect(status.text, contains('Успешная оплата'));
     expect(status.text, contains('15 000 ₽'));
     expect(status.text, contains('12.10.2026'));
     expect(status.text, contains('уже внутри'));
@@ -211,7 +209,6 @@ void main() {
     expect(status.text, contains('10 000 ₽'));
     expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
 
-    await client.tap(MessageTemplates.buttonHelp);
     await client.press(MessageTemplates.cbOptOut);
     expect(harness.course.getUser(42)?.warmupOptOut, isTrue);
     expect(_enrollment(harness, 42)?.warmupOptOut, isTrue);
@@ -267,7 +264,6 @@ void main() {
       templates: templates,
       quietHours: quietHours,
       firstDelay: const Duration(hours: 1),
-      secondDelay: const Duration(hours: 24),
       nowProvider: () => DateTime.utc(2026, 10, 6, 6),
     ).run();
     expect(harness.sender.messages, isEmpty);
@@ -279,7 +275,6 @@ void main() {
       templates: templates,
       quietHours: quietHours,
       firstDelay: const Duration(hours: 1),
-      secondDelay: const Duration(hours: 24),
       nowProvider: () => DateTime.utc(2026, 10, 6, 12),
     );
     await dayJob.run();
@@ -353,10 +348,7 @@ void main() {
     harness.sender.messages.clear();
     await client.tap('/start');
     expect(harness.course.getUser(7)?.source, 'tg_announce');
-    expect(
-      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
-      isTrue,
-    );
+    expect(harness.sender.messages, isEmpty);
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
@@ -398,7 +390,7 @@ void main() {
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonEnroll);
     final beforeRsvp = harness.sender.messages.last;
-    expect(beforeRsvp.text, contains('специальную цену'));
+    expect(beforeRsvp.text, contains('Запись на курс'));
     expect(_inlineButtonTexts(beforeRsvp.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
     expect(
       _inlineButtonTexts(

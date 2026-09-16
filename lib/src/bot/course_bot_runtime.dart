@@ -216,7 +216,6 @@ final class CourseBotRuntime {
         templates: templates,
         quietHours: quietHours,
         firstDelay: Duration(hours: config.abandonFirstDelayHours),
-        secondDelay: Duration(hours: config.abandonSecondDelayHours),
       ),
       pendingPaymentSyncJob: PendingPaymentSyncJob(checkout: checkout, notifier: handlers),
       remainderReminderJob: RemainderReminderJob(

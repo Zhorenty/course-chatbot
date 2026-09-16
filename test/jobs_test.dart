@@ -58,7 +58,6 @@ void main() {
       templates: templates,
       quietHours: quietHours,
       firstDelay: const Duration(hours: 1),
-      secondDelay: const Duration(hours: 24),
       nowProvider: () => DateTime.utc(2026, 1, 1, 6),
     );
     await job.run();
@@ -71,7 +70,6 @@ void main() {
       templates: templates,
       quietHours: quietHours,
       firstDelay: const Duration(hours: 1),
-      secondDelay: const Duration(hours: 24),
       nowProvider: () => DateTime.utc(2026, 1, 1, 12),
     );
     await dayJob.run();
@@ -152,7 +150,7 @@ void main() {
     await job.run();
     expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
     final warmup = harness.sender.messages.where((m) => m.text.contains('мастер-класс')).single;
-    expect(warmup.text, contains('<img src="tg://photo?id=p0">'));
+    expect(warmup.text, contains('<img src="tg://photo?id=p0"/>'));
     expect(harness.sender.documents, contains('assets/funnel/masterclass.jpg'));
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
@@ -208,10 +206,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(
-      harness.sender.messages.any((m) => m.chatId == 7 && m.text.contains('Подарок всё ещё здесь')),
-      isTrue,
-    );
+    expect(harness.sender.messages.where((m) => m.chatId == 7), isEmpty);
   });
 
   test('warmup job does not start pay drip after enroll before webinar', () async {
@@ -252,10 +247,7 @@ void main() {
     );
     harness.sender.messages.clear();
     await job.run();
-    expect(
-      harness.sender.messages.any((m) => m.chatId == 8 && m.text.contains('Подарок всё ещё здесь')),
-      isTrue,
-    );
+    expect(harness.sender.messages.where((m) => m.chatId == 8), isEmpty);
   });
 
   test('warmup job skips configured admins', () async {
@@ -276,10 +268,7 @@ void main() {
     harness.sender.messages.clear();
     await job.run();
     expect(harness.sender.messages.where((m) => m.chatId == 1), isEmpty);
-    expect(
-      harness.sender.messages.any((m) => m.chatId == 8 && m.text.contains('Подарок всё ещё здесь')),
-      isTrue,
-    );
+    expect(harness.sender.messages.where((m) => m.chatId == 8), isEmpty);
   });
 
   test('remainder job reminds before the due date', () async {
@@ -554,12 +543,12 @@ void main() {
       warmup
           .nextFor(
             waitingLead,
-            DateTime.utc(2026, 1, 3, 12),
+            DateTime.utc(2026, 1, 2, 12),
             steps: WarmupStep.defaults,
             launch: open,
           )
           ?.stepKey,
-      'enroll_d1',
+      'sales_open',
     );
     final afterGuide = WarmupCandidate(
       userId: 3,

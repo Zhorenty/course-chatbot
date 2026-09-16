@@ -719,6 +719,9 @@ final class TelegramClient implements MessageSender, ChannelApi {
     List<String> photos, {
     bool fromFile = false,
     bool disableNotification = true,
+    String? caption,
+    String? parseMode,
+    Map<String, Object?>? replyMarkup,
   }) async {
     if (photos.isEmpty) {
       return const <int>[];
@@ -730,6 +733,9 @@ final class TelegramClient implements MessageSender, ChannelApi {
           photo: photos.first,
           fromFile: fromFile,
           disableNotification: disableNotification,
+          caption: caption,
+          parseMode: parseMode,
+          replyMarkup: replyMarkup,
         ),
       ];
     }
@@ -738,6 +744,8 @@ final class TelegramClient implements MessageSender, ChannelApi {
       photos: photos,
       fromFile: fromFile,
       disableNotification: disableNotification,
+      caption: caption,
+      parseMode: parseMode,
     );
   }
 
@@ -746,27 +754,37 @@ final class TelegramClient implements MessageSender, ChannelApi {
     required String photo,
     required bool fromFile,
     required bool disableNotification,
+    String? caption,
+    String? parseMode,
+    Map<String, Object?>? replyMarkup,
   }) async {
     if (!fromFile) {
-      final payload = await _post(
-        'sendPhoto',
-        body: <String, Object?>{
-          'chat_id': chatId,
-          'photo': photo,
-          'disable_notification': disableNotification,
-        },
-      );
+      final body = <String, Object?>{
+        'chat_id': chatId,
+        'photo': photo,
+        'disable_notification': disableNotification,
+        ..._captionFields(caption, parseMode),
+      };
+      if (replyMarkup != null) {
+        body['reply_markup'] = replyMarkup;
+      }
+      final payload = await _post('sendPhoto', body: body);
       return _messageIdFromPayload(payload);
     }
     if (!File(photo).existsSync()) {
       throw TelegramApiException('Photo file is missing: $photo');
     }
+    final fields = <String, String>{
+      'chat_id': '$chatId',
+      'disable_notification': '$disableNotification',
+      ..._captionFields(caption, parseMode),
+    };
+    if (replyMarkup != null) {
+      fields['reply_markup'] = jsonEncode(replyMarkup);
+    }
     final payload = await _postMultipart(
       'sendPhoto',
-      fields: <String, String>{
-        'chat_id': '$chatId',
-        'disable_notification': '$disableNotification',
-      },
+      fields: fields,
       files: () async {
         return <http.MultipartFile>[
           await http.MultipartFile.fromPath('photo', photo, filename: _basename(photo)),
@@ -781,11 +799,19 @@ final class TelegramClient implements MessageSender, ChannelApi {
     required List<String> photos,
     required bool fromFile,
     required bool disableNotification,
+    String? caption,
+    String? parseMode,
   }) async {
     final sliced = photos.take(10).toList();
     final media = <Map<String, Object?>>[
       for (var i = 0; i < sliced.length; i++)
-        <String, Object?>{'type': 'photo', 'media': fromFile ? 'attach://photo$i' : sliced[i]},
+        <String, Object?>{
+          'type': 'photo',
+          'media': fromFile ? 'attach://photo$i' : sliced[i],
+          if (i == 0 && caption != null && caption.isNotEmpty) 'caption': caption,
+          if (i == 0 && caption != null && caption.isNotEmpty && parseMode != null)
+            'parse_mode': parseMode,
+        },
     ];
     late final Map<String, dynamic> payload;
     if (fromFile) {
@@ -834,6 +860,13 @@ final class TelegramClient implements MessageSender, ChannelApi {
       throw const TelegramApiException('Telegram did not return message ids');
     }
     return ids;
+  }
+
+  Map<String, String> _captionFields(String? caption, String? parseMode) {
+    if (caption == null || caption.isEmpty) {
+      return const <String, String>{};
+    }
+    return <String, String>{'caption': caption, if (parseMode != null) 'parse_mode': parseMode};
   }
 
   @override

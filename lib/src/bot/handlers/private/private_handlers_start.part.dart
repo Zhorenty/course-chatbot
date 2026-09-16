@@ -19,18 +19,13 @@ extension _PrivateHandlersStart on PrivateHandlers {
       }
     }
     if (phase.showsCourseStatus) {
-      return _showCourseStatus(context);
+      return _showPaidSheetCopy(context);
     }
     if (phase == FunnelPhase.checkout) {
       return _showEnroll(context);
     }
     if (phase == FunnelPhase.magnetIssued || phase == FunnelPhase.warming) {
-      return _send(
-        context,
-        _templates.alreadyInFunnel(),
-        richHtml: _templates.alreadyInFunnelRich(),
-        replyMarkup: _homeKeyboard(user.userId),
-      );
+      return true;
     }
     await _send(
       context,
