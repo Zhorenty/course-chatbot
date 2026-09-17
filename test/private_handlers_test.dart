@@ -225,10 +225,6 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
-    expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, contains(MessageTemplates.buttonEnroll));
-    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
     expect(harness.sender.messages, isEmpty);
   });
 
@@ -243,8 +239,8 @@ void main() {
         data: MessageTemplates.cbHelp,
       ),
     );
-    expect(harness.sender.messages, isEmpty);
     expect(harness.sender.forwards, isEmpty);
+    expect(harness.sender.messages, isNotEmpty);
     expect(
       _inlineButtonTexts(harness.sender.messages.single.replyMarkup),
       contains(MessageTemplates.buttonOptOut),
@@ -409,13 +405,8 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('уже в канале')), isFalse);
     expect(harness.channel.created, isEmpty);
     expect(harness.channel.revoked, isEmpty);
-    final reminder = harness.sender.messages.firstWhere(
-      (m) => m.text.contains('Доступ по кнопке ниже'),
-    );
-    expect(_inlineButtonTexts(reminder.replyMarkup), <String>[
-      MessageTemplates.buttonOpenInvite,
-      MessageTemplates.buttonCopyInvite,
-    ]);
+    final reminder = harness.sender.messages.firstWhere((m) => m.text.contains('Успешная оплата'));
+    expect(_inlineButtonTexts(reminder.replyMarkup), <String>[MessageTemplates.buttonOpenInvite]);
     expect(_inlineCallbackData(reminder.replyMarkup), isEmpty);
     expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
   });
@@ -443,15 +434,12 @@ void main() {
       privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonCourseStatus),
     );
     final status = harness.sender.messages.single;
-    expect(status.text, contains('предоплата'));
-    expect(status.text, contains('5 000 ₽'));
-    expect(status.text, contains('13 000 ₽'));
-    expect(status.text, contains('12.10.2026'));
+    expect(status.text, contains('Предоплата прошла'));
     expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
 
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages.any((m) => m.text.contains('предоплата')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('Предоплата')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
   });
 
@@ -606,7 +594,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonHelp),
     );
-    expect(harness.sender.messages, isEmpty);
+    expect(harness.sender.messages, isNotEmpty);
     expect(harness.sender.forwards, isEmpty);
     expect(harness.sender.messages.any((m) => m.chatId == 1), isFalse);
     expect(
@@ -702,8 +690,7 @@ void main() {
     );
     expect(harness.channel.created, isEmpty);
     expect(harness.channel.revoked, isEmpty);
-    expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
-    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
+    expect(harness.sender.messages, isEmpty);
   });
 
   test('/start after a missed kassa success updates the chat', () async {

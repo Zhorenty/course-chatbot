@@ -159,7 +159,7 @@ void main() {
     expect(text, contains('Как устроена воронка'));
     expect(text, contains('Аккаунты админов'));
     expect(text, contains(MessageTemplates.buttonRsvp));
-    expect(text, contains('таблицы текстов'));
+    expect(text, contains('карточке курса'));
     expect(text, contains('10:00'));
     expect(text, contains('12.10.2026'));
     expect(

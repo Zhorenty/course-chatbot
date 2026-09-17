@@ -114,7 +114,7 @@ void main() {
     );
 
     final due = harness.course.getOrder(order.id)!;
-    harness.course.updateOrder(due.copyWith(dueAt: DateTime.utc(2026, 1, 2)));
+    harness.course.updateOrder(due.copyWith(dueAt: DateTime.utc(2026, 1, 5)));
 
     final job = RemainderReminderJob(
       course: harness.course,

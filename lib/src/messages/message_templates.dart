@@ -375,6 +375,9 @@ final class MessageTemplates {
   }
 
   String warmupStep(String stepKey, {Launch? launch, bool rsvp = false}) {
+    if (WarmupStep.retiredKeys.contains(stepKey)) {
+      return '';
+    }
     return switch (stepKey) {
       'warmup_0' => _warmupZero(launch, rsvp: rsvp),
       'warmup_d1' => _warmupDay1(),
@@ -585,7 +588,7 @@ final class MessageTemplates {
         'Присоединиться по кнопке ниже.';
   }
 
-  String webinarRsvpConfirmed(Launch launch, {bool showLink = false}) {
+  String webinarRsvpConfirmed(Launch launch, {required bool showLink}) {
     if (showLink) {
       return 'Поздравляю! Ты в списке участников!\n\n'
           'Мастер-класс уже идёт — кнопка со ссылкой ниже.';

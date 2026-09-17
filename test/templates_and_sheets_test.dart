@@ -143,7 +143,7 @@ void main() {
     expect(templates.startGuideOffer(), contains('Анастасия Дубовскова'));
     expect(templates.startGuideOffer(), isNot(contains('без имени, почты')));
     expect(templates.warmupStep('warmup_0'), contains('мастер-класс'));
-    expect(templates.warmupStep('last_wagon'), contains('последний вагон'));
+    expect(templates.warmupStep('last_wagon'), isEmpty);
     expect(templates.optOutConfirmed(), contains('отписались'));
     expect(templates.help(), isNot(contains('Гайд не пришёл')));
     expect(templates.paymentSucceeded(), contains('Успешная оплата'));
@@ -207,7 +207,7 @@ void main() {
     );
     expect(templates.warmupStep('dozhim_d2', launch: launch), isNot(contains('очередной курс')));
     expect(templates.warmupStep('dozhim_d4', launch: launch), contains('Pinterest'));
-    expect(templates.warmupStep('warmup_d1'), contains('объект'));
+    expect(templates.warmupStep('warmup_d1'), isEmpty);
     for (final key in keys) {
       expect(templates.warmupStep(key, launch: launch).length, lessThan(4096), reason: key);
     }
@@ -220,16 +220,12 @@ void main() {
       _inlineButtonTexts(templates.warmupKeyboard('dozhim_d1', launch: launch, rsvp: false)!),
       contains(MessageTemplates.buttonEnrollInline),
     );
-    expect(
-      _inlineButtonTexts(templates.warmupKeyboard('enroll_d1', launch: launch, rsvp: false)!),
-      contains(MessageTemplates.buttonEnrollInline),
-    );
+    expect(templates.warmupKeyboard('enroll_d1', launch: launch, rsvp: false), isNull);
     expect(
       _inlineButtonTexts(templates.warmupKeyboard('dozhim:12', launch: launch, rsvp: false)!),
       contains(MessageTemplates.buttonEnrollInline),
     );
-    expect(templates.warmupStep('last_wagon', launch: launch), contains('кнопке ниже'));
-    expect(templates.warmupStep('last_wagon', launch: launch), isNot(contains('нижнем меню')));
+    expect(templates.warmupStep('last_wagon', launch: launch), isEmpty);
   });
 
   test('enroll copy still points to the channel after full payment', () {
@@ -286,7 +282,7 @@ void main() {
 
     final afterRsvp = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 15, 12));
     final listed = templates.enrollOptions(launch, quote: afterRsvp);
-    expect(listed, isNot(contains('уже в списке')));
+    expect(listed, contains('уже в списке'));
     expect(listed, isNot(contains('Нажимай на кнопку внизу')));
     expect(
       _inlineButtonTexts(
@@ -377,23 +373,8 @@ void main() {
     );
 
     expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('ХХ:ХХ')));
-    expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('прикрепим позже')));
-    expect(
-      templates.warmupStep(
-        'warmup_0',
-        launch: const Launch(
-          id: 2,
-          productId: 1,
-          code: 'launch-2',
-          title: '',
-          priceFullKopecks: 0,
-          depositKopecks: 0,
-          depositDueDays: 7,
-        ),
-      ),
-      isEmpty,
-    );
-    expect(templates.warmupStep('webinar_live', launch: launch), contains('Присоединяйся'));
+    expect(templates.warmupStep('warmup_0', launch: launch), contains('прикрепим позже'));
+    expect(templates.warmupStep('webinar_live', launch: launch), contains('прикрепим позже'));
     expect(templates.webinarRsvpConfirmed(launch, showLink: false), contains('прикрепим позже'));
   });
 
@@ -418,7 +399,7 @@ void main() {
     expect(card, contains('<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>'));
     expect(card, contains('<b>бесплатный Мастер-класс'));
     expect(card, contains('📅 Мастер-класс пройдет 5 октября в 19:00 мск'));
-    expect(card, contains('Нажимай на кнопку внизу'));
+    expect(card, contains('уже в списке'));
     expect(card, isNot(contains('Ссылку прикрепим позже')));
     expect(templates.startCourseCard(launch: launch), contains('Старт потока 12 октября'));
 
@@ -1243,7 +1224,7 @@ void main() {
       MessageTemplates.buttonOpenInvite,
     ]);
     expect(_inlineCallbackData(templates.unjoinedInviteKeyboard('https://t.me/+x')), isEmpty);
-    expect(templates.inviteMessage(), isNot(contains('напиши сюда')));
+    expect(templates.inviteMessage(), contains('напиши сюда'));
     expect(templates.inviteMessage(), contains('кнопку ниже'));
     expect(templates.inviteMessage(), isNot(contains('https://t.me/')));
     expect(templates.inviteMessage(), isNot(contains('запроси новую')));

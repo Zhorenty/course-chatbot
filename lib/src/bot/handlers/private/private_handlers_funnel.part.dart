@@ -279,7 +279,19 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       await _notifyWebinarRsvp(userId, launch);
     }
     await _answerCallback(context, text: 'Ты в списке участников!');
-    return _send(context, _templates.webinarRsvpConfirmed(launch));
+    final url = launch.resolvedWebinarUrl;
+    final started = LaunchSales.webinarStarted(launch, now);
+    final showLink = started && url != null;
+    await _send(
+      context,
+      _templates.webinarRsvpConfirmed(launch, showLink: showLink),
+      replyMarkup: showLink ? _templates.webinarLinkKeyboard(url) : null,
+    );
+    final quote = LaunchSales.quote(launch, rsvp: true, now: now);
+    if (firstRsvp && !showLink && quote.checkoutOpen) {
+      return _showEnroll(context);
+    }
+    return true;
   }
 
   Future<bool> _showPaidSheetCopy(PrivateMessageContext context) async {

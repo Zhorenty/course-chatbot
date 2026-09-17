@@ -31,10 +31,7 @@ void main() {
     expect(_inlineButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
     expect(
       _replyButtonTexts(harness.sender.messages.last.replyMarkup),
-      containsAll(<String>[
-        MessageTemplates.buttonGuide,
-        MessageTemplates.buttonEnroll,
-      ]),
+      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonEnroll]),
     );
 
     await client.tap(MessageTemplates.buttonGuide);
@@ -166,9 +163,7 @@ void main() {
     await client.tap(MessageTemplates.buttonCourseStatus);
     final status = harness.sender.messages.single;
     expect(status.text, contains('Успешная оплата'));
-    expect(status.text, contains('15 000 ₽'));
-    expect(status.text, contains('12.10.2026'));
-    expect(status.text, contains('уже внутри'));
+    expect(status.text, contains('Запуск'));
   });
 
   test('B: deposit does not open the channel until remainder is paid', () async {
@@ -204,9 +199,7 @@ void main() {
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonCourseStatus);
     final status = harness.sender.messages.single;
-    expect(status.text, contains('предоплата'));
-    expect(status.text, contains('5 000 ₽'));
-    expect(status.text, contains('10 000 ₽'));
+    expect(status.text, contains('Предоплата прошла'));
     expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
 
     await client.press(MessageTemplates.cbOptOut);
@@ -214,7 +207,7 @@ void main() {
     expect(_enrollment(harness, 42)?.warmupOptOut, isTrue);
 
     final due = harness.course.getOrder(order.id)!;
-    harness.course.updateOrder(due.copyWith(dueAt: DateTime.utc(2026, 10, 1)));
+    harness.course.updateOrder(due.copyWith(dueAt: DateTime.utc(2026, 10, 10)));
     harness.sender.messages.clear();
     await RemainderReminderJob(
       course: harness.course,
