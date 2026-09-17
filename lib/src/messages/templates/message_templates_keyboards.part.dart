@@ -10,6 +10,9 @@ extension MessageTemplateKeyboards on MessageTemplates {
         else
           <String, Object?>{'text': MessageTemplates.buttonEnroll},
       ],
+      <Map<String, Object?>>[
+        <String, Object?>{'text': MessageTemplates.buttonHelp},
+      ],
     ]);
   }
 

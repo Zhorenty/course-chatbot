@@ -1147,7 +1147,7 @@ void main() {
     final texts = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: false));
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+    expect(texts, contains(MessageTemplates.buttonHelp));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
@@ -1164,7 +1164,7 @@ void main() {
     final paid = _replyButtonTexts(templates.userMenuKeyboard(showCourseStatus: true));
     expect(paid, contains(MessageTemplates.buttonCourseStatus));
     expect(paid, contains(MessageTemplates.buttonGuide));
-    expect(paid, isNot(contains(MessageTemplates.buttonHelp)));
+    expect(paid, contains(MessageTemplates.buttonHelp));
     expect(paid, isNot(contains('👤 Профиль')));
   });
 

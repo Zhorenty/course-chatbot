@@ -635,7 +635,7 @@ void main() {
     final texts = _replyButtonTexts(offer.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonEnroll));
     expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, isNot(contains(MessageTemplates.buttonHelp)));
+    expect(texts, contains(MessageTemplates.buttonHelp));
     expect(texts, isNot(contains('👤 Профиль')));
     expect(texts, isNot(contains('📋 Меню')));
   });
