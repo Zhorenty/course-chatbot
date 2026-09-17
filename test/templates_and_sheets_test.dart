@@ -14,6 +14,7 @@ import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/participant_list.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/funnel_media.dart';
@@ -129,11 +130,81 @@ void main() {
     expect(templates.warmupStep('last_wagon'), isEmpty);
   });
 
-  test('admin funnel logic stays under Telegram message limit', () {
-    final text = MessageTemplates().adminFunnelLogic();
-    expect(text.length, lessThan(4096));
-    expect(text, contains('Как устроена воронка'));
-    expect(text, contains('Аккаунты админов'));
+  test('admin people list stays under Telegram message limit', () {
+    final templates = MessageTemplates();
+    final counts = <ParticipantListSegment, int>{
+      for (final segment in ParticipantListSegment.values) segment: 12,
+    };
+    final launch = testLaunch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1800000,
+      depositKopecks: 0,
+      depositDueDays: 7,
+      isActive: true,
+    );
+    final hub = templates.adminPeopleHub(launch: launch, counts: counts);
+    expect(hub.length, lessThan(4096));
+    expect(hub, contains('Список участников'));
+    expect(hub, contains('Мастер-класс — 12'));
+    expect(hub, contains('Оплатили курс — 12'));
+    final people = <UserProfile>[
+      for (var i = 0; i < MessageTemplates.adminPeoplePageSize; i++)
+        UserProfile(
+          userId: 100 + i,
+          username: 'user$i',
+          firstName: 'Имя $i',
+          funnelPhase: FunnelPhase.warming,
+          firstStartedAt: DateTime.utc(2026, 1, 1),
+          lastSeenAt: DateTime.utc(2026, 1, 1),
+        ),
+    ];
+    final list = templates.adminPeopleList(
+      segment: ParticipantListSegment.webinarRsvp,
+      people: people,
+      total: 40,
+      page: 0,
+      launch: launch,
+    );
+    expect(list.length, lessThan(4096));
+    expect(list, contains('Мастер-класс'));
+    expect(list, contains('Показаны 1–8 из 40'));
+  });
+
+  test('admin people list callbacks stay short', () {
+    final templates = MessageTemplates();
+    final counts = <ParticipantListSegment, int>{
+      for (final segment in ParticipantListSegment.values) segment: 3,
+    };
+    final user = UserProfile(
+      userId: 42,
+      username: 'lead',
+      funnelPhase: FunnelPhase.warming,
+      firstStartedAt: DateTime.utc(2026, 1, 1),
+      lastSeenAt: DateTime.utc(2026, 1, 1),
+    );
+    final data = <String>[
+      ..._inlineCallbackData(templates.adminPeopleHubKeyboard(counts)),
+      ..._inlineCallbackData(
+        templates.adminPeopleListKeyboard(
+          segment: ParticipantListSegment.webinarRsvp,
+          people: <UserProfile>[user],
+          total: 20,
+          page: 1,
+        ),
+      ),
+    ];
+    expect(data, isNotEmpty);
+    expect(data.every((item) => item.length <= 64), isTrue);
+    expect(data, contains(MessageTemplates.cbAdminPeopleHub));
+    expect(data, contains(MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp)));
+    expect(
+      data,
+      contains(MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp, page: 2)),
+    );
+    expect(data, contains('${MessageTemplates.cbAdminCard}42'));
   });
 
   test('customer copy uses the interior color voice and new CTAs', () {
@@ -155,6 +226,12 @@ void main() {
     expect(templates.optOutConfirmed(), contains('отписались'));
     expect(templates.help(), isNot(contains('Гайд не пришёл')));
     expect(templates.paymentSucceeded(), contains('Успешная оплата'));
+    expect(
+      templates.payManualFallback(),
+      contains('<a href="tg://user?id=${MessageTemplates.supportContactUserId}">Напиши сюда</a>'),
+    );
+    expect(templates.payManualFallback(), isNot(contains('@zhorenty')));
+    expect(templates.payManualFallback(), isNot(contains('@Zhorenty')));
   });
 
   test('selling drip uses interior voice not wardrobe stubs', () {
@@ -668,7 +745,7 @@ void main() {
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
       MessageTemplates.buttonAdminSheetsHub,
-      MessageTemplates.buttonAdminFunnelLogic,
+      MessageTemplates.buttonAdminPeople,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
@@ -686,7 +763,7 @@ void main() {
       ],
       <List<String>>[
         <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminSheetsHub],
-        <String>[MessageTemplates.buttonAdminFunnelLogic, MessageTemplates.buttonAdminBroadcast],
+        <String>[MessageTemplates.buttonAdminPeople, MessageTemplates.buttonAdminBroadcast],
         <String>[MessageTemplates.buttonAdminClearFunnel],
       ],
     );

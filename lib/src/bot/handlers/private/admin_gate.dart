@@ -6,6 +6,8 @@ final class AdminGate {
 
   bool isConfiguredAdmin(int? userId) => userId != null && _adminUserIds.contains(userId);
 
+  Set<int> get configuredAdminIds => _adminUserIds;
+
   /// Chats that should see user help messages: `ADMIN_CHAT_ID` plus every admin.
   Set<int> notificationChatIds(int? adminChatId) {
     final ids = Set<int>.of(_adminUserIds);

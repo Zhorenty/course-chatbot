@@ -13,6 +13,7 @@ import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/participant_list.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
@@ -79,8 +80,11 @@ final class MessageTemplates {
   static const String buttonAdminAddUser = '➕ Добавить на курс';
   static const String buttonAdminSheetsHub = '📊 Google Sheets';
   static const String buttonAdminCatalog = '📚 Управление курсами';
-  static const String buttonAdminFunnelLogic = 'ℹ️ Логика воронки';
+  static const String buttonAdminPeople = '👥 Список участников';
   static const String buttonAdminBroadcast = '📣 Рассылка';
+  static const String buttonAdminPeopleBack = '↩️ К списку';
+  static const String buttonAdminPeoplePrev = '←';
+  static const String buttonAdminPeopleNext = '→';
   static const String buttonAdminLinks = '🔗 Управление диплинками';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminBack = '↩️ Назад';
@@ -174,6 +178,9 @@ final class MessageTemplates {
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
   static const String cbAdminCard = 'ak:';
+  static const String cbAdminPeopleHub = 'ph';
+  static const String cbAdminPeopleSeg = 'ps:';
+  static const int adminPeoplePageSize = 8;
   static const String cbCatalogMenu = 'cm';
   static const String cbCatalogNew = 'cn';
   static const String cbCatalogOpen = 'cl:';
@@ -666,11 +673,11 @@ final class MessageTemplates {
         'Если ты вносишь предоплату, то ссылка в канал курса придет тебе после внесения остатка.';
   }
 
-  // TODO(launch): replace the hardcoded @zhorenty support username below with
-  //  the real support contact once it's confirmed.
+  static const int supportContactUserId = 344365814;
+
   String payManualFallback() {
     return 'Сейчас онлайн-оплата недоступна, запись временно оформляется через администратора.\n\n'
-        'Напиши сюда: @zhorenty — подскажем, как закрыть оплату.';
+        '<a href="tg://user?id=$supportContactUserId">Напиши сюда</a> — подскажем, как закрыть оплату.';
   }
 
   String adminPaymentGatewayDown({
@@ -843,62 +850,87 @@ final class MessageTemplates {
   String adminMenu() {
     return '<b>Админка</b>\n\n'
         'Поиск — карточка, статус, письмо. Нет карточки — создай из поиска. '
-        'Как бот пишет людям — «${MessageTemplates.buttonAdminFunnelLogic}». '
+        'Кто на мастер-классе, кто оплатил и остальные группы — «${MessageTemplates.buttonAdminPeople}». '
         'Курсы, диплинки (метки входа t.me) и срез воронки — «${MessageTemplates.buttonAdminSheetsHub}». '
         // TODO(mvp-reset): drop this sentence with the clear-funnel button.
         'Временно: «${MessageTemplates.buttonAdminClearFunnel}» сотрёт людей из бота.';
   }
 
-  String adminFunnelLogic({Launch? launch}) {
-    final start = _formatDate(launch?.courseStartAt);
-    final startLine = start ?? 'дата старта из карточки курса';
-    return '<b>Как устроена воронка</b>\n\n'
-        'Человек заходит в бота → может забрать гайд и/или записаться на поток → '
-        'бот сам напоминает, пока нет оплаты или отписки.\n\n'
-        '<b>Кто не получает прогрев</b>\n'
-        'Аккаунты админов. Карточка может появиться (админ тоже пишет боту), '
-        'но продающие сообщения админу не шлём.\n\n'
-        '<b>Вход</b>\n'
-        'Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. '
-        'Повторный /start уже идущий сценарий не ломает.\n\n'
-        'Две двери:\n'
-        '• ссылка на гайд — приветствие и гайд;\n'
-        '• ссылка на курс — то же приветствие и сразу карточка потока.\n'
-        'Дальше гайд и запись всегда в меню внизу.\n\n'
-        '<b>Гайд</b>\n'
-        'Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.\n\n'
-        '<b>Прогрев после гайда</b>\n'
-        'Сразу приглашение на мастер-класс и кнопка «${MessageTemplates.buttonRsvp}». '
-        'Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. '
-        'Спеццена — 3 дня с эфира, только у отметившихся.\n\n'
-        '<b>Продажи</b>\n'
-        'До старта продаж «${MessageTemplates.buttonEnroll}» — карточка курса и «ждём кассу», без оплаты. '
-        'Старт и конец продаж — поля в карточке курса. '
-        'В день старта продаж пишем тем, кто уже может оплатить. '
-        'После окна спеццены — обычная цена и дожим. '
-        'В последний день продаж — «последний вагон». Старт потока $startLine.\n\n'
-        '<b>Если гайд не забрали</b>\n'
-        'Напоминания на 1-й и на 3-й день после первого /start, пока не нажали «Записаться» '
-        'и пока касса уже открыта для этого человека. '
-        'После записи до старта продаж молчим про оплату. '
-        'В день обычной цены и дожим до конца продаж — тоже, даже без гайда.\n\n'
-        '<b>Запись и оплата</b>\n'
-        '«${MessageTemplates.buttonEnroll}» — пока нет успешной оплаты. Потом та же кнопка открывает статус оплаты, старт и канал.\n'
-        '• полная оплата — ссылка в канал этого потока;\n'
-        '• предоплата — канала нет, пока не доплатят.\n\n'
-        '<b>Открыли оплату и не закончили</b>\n'
-        'Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.\n\n'
-        '<b>Внесли предоплату</b>\n'
-        'Напоминание за 1–3 дня до срока, в день срока и один раз после просрочки. '
-        'Отписка от рассылки это не глушит.\n\n'
-        '<b>Отписка</b>\n'
-        '«${MessageTemplates.buttonOptOut}» в «${MessageTemplates.buttonHelp}». '
-        'Гайд и запись остаются. Напоминания про начатую оплату и доплату тоже.\n\n'
-        '<b>Ночью не пишем</b>\n'
-        'Автосообщения только с 10:00 до 21:00 по Москве. '
-        'Напоминание за 10 минут до эфира уходит и ночью.\n\n'
-        '<b>Канал</b>\n'
-        'Одноразовая ссылка после полной оплаты. Новую выдаёшь только ты из карточки человека.';
+  String adminPeopleHub({Launch? launch, required Map<ParticipantListSegment, int> counts}) {
+    if (launch == null) {
+      return '<b>Список участников</b>\n\n'
+          'Нет активного потока. Сначала заведи курс в «${MessageTemplates.buttonAdminSheetsHub}».';
+    }
+    final buf = StringBuffer()
+      ..writeln('<b>Список участников</b>')
+      ..writeln()
+      ..writeln('Поток: ${escapeHtml(launch.title)}')
+      ..writeln()
+      ..writeln('Нажми группу — открою имена. Из списка можно открыть карточку.');
+    for (final segment in ParticipantListSegment.values) {
+      buf.writeln('• ${participantListLabel(segment)} — ${counts[segment] ?? 0}');
+    }
+    return buf.toString();
+  }
+
+  String adminPeopleList({
+    required ParticipantListSegment segment,
+    required List<UserProfile> people,
+    required int total,
+    required int page,
+    Launch? launch,
+  }) {
+    final buf = StringBuffer()
+      ..writeln('<b>${escapeHtml(participantListLabel(segment))}</b>')
+      ..writeln();
+    if (launch != null) {
+      buf.writeln('Поток: ${escapeHtml(launch.title)}');
+    }
+    buf.writeln(_adminPeopleCountLine(total));
+    if (people.isEmpty) {
+      buf
+        ..writeln()
+        ..writeln('Пока никого.');
+      return buf.toString();
+    }
+    buf.writeln();
+    for (final user in people) {
+      buf.writeln(_adminPeopleLine(user));
+    }
+    final from = page * MessageTemplates.adminPeoplePageSize + 1;
+    final to = from + people.length - 1;
+    if (total > MessageTemplates.adminPeoplePageSize) {
+      buf
+        ..writeln()
+        ..writeln('Показаны $from–$to из $total.');
+    }
+    return buf.toString();
+  }
+
+  String _adminPeopleCountLine(int total) {
+    if (total == 0) {
+      return '0 человек';
+    }
+    if (total % 10 == 1 && total % 100 != 11) {
+      return '$total человек';
+    }
+    if (total % 10 >= 2 && total % 10 <= 4 && (total % 100 < 10 || total % 100 >= 20)) {
+      return '$total человека';
+    }
+    return '$total человек';
+  }
+
+  String _adminPeopleLine(UserProfile user) {
+    final name = user.firstName?.trim();
+    final handle = user.username?.trim();
+    final parts = <String>[
+      if (name != null && name.isNotEmpty) escapeHtml(name),
+      if (handle != null && handle.isNotEmpty) '@${escapeHtml(handle)}',
+      '<code>${user.userId}</code>',
+      escapeHtml(_adminPhaseLabel(user.funnelPhase)),
+      if (user.botBlocked) 'бот заблокирован',
+    ];
+    return parts.join(' · ');
   }
 
   String adminAskSearch() {
@@ -1382,6 +1414,46 @@ final class MessageTemplates {
       return null;
     }
     return (status: status, userId: userId);
+  }
+
+  static ({ParticipantListSegment segment, int page})? peopleSegmentFromCallback(String data) {
+    if (!data.startsWith(cbAdminPeopleSeg)) {
+      return null;
+    }
+    final rest = data.substring(cbAdminPeopleSeg.length);
+    if (rest.isEmpty) {
+      return null;
+    }
+    final sep = rest.indexOf(':');
+    final code = sep < 0 ? rest : rest.substring(0, sep);
+    final segment = ParticipantListSegment.fromCode(code);
+    if (segment == null) {
+      return null;
+    }
+    final page = sep < 0 ? 0 : int.tryParse(rest.substring(sep + 1)) ?? 0;
+    return (segment: segment, page: page < 0 ? 0 : page);
+  }
+
+  static String peopleSegmentData(ParticipantListSegment segment, {int page = 0}) {
+    if (page <= 0) {
+      return '$cbAdminPeopleSeg${segment.code}';
+    }
+    return '$cbAdminPeopleSeg${segment.code}:$page';
+  }
+
+  String participantListLabel(ParticipantListSegment segment) => switch (segment) {
+    ParticipantListSegment.webinarRsvp => 'Мастер-класс',
+    ParticipantListSegment.paid => 'Оплатили курс',
+    ParticipantListSegment.deposit => 'Предоплата',
+    ParticipantListSegment.checkout => 'Начали оплату',
+    ParticipantListSegment.enrollIntent => 'Запись на курс',
+    ParticipantListSegment.magnet => 'Получили гайд',
+    ParticipantListSegment.started => 'Все в потоке',
+    ParticipantListSegment.cancelled => 'Отмена',
+  };
+
+  String participantListButton(ParticipantListSegment segment, int count) {
+    return '${participantListLabel(segment)} ($count)';
   }
 
   static BroadcastSegment? segmentFromCallback(String data) {

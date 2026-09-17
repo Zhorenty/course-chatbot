@@ -23,7 +23,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, Object?>{'text': MessageTemplates.buttonAdminSheetsHub},
       ],
       <Map<String, Object?>>[
-        <String, Object?>{'text': MessageTemplates.buttonAdminFunnelLogic},
+        <String, Object?>{'text': MessageTemplates.buttonAdminPeople},
         <String, Object?>{'text': MessageTemplates.buttonAdminBroadcast},
       ],
       // TODO(mvp-reset): remove this row after the first live launch.
@@ -338,6 +338,56 @@ extension MessageTemplateKeyboards on MessageTemplates {
       return name;
     }
     return '${user.userId}';
+  }
+
+  Map<String, Object?> adminPeopleHubKeyboard(Map<ParticipantListSegment, int> counts) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final segment in ParticipantListSegment.values)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': participantListButton(segment, counts[segment] ?? 0),
+            'callback_data': MessageTemplates.peopleSegmentData(segment),
+          },
+        ],
+    ]);
+  }
+
+  Map<String, Object?> adminPeopleListKeyboard({
+    required ParticipantListSegment segment,
+    required List<UserProfile> people,
+    required int total,
+    required int page,
+  }) {
+    final pageSize = MessageTemplates.adminPeoplePageSize;
+    final rows = <List<Map<String, Object?>>>[
+      for (final user in people)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': _searchMatchLabel(user),
+            'callback_data': '${MessageTemplates.cbAdminCard}${user.userId}',
+          },
+        ],
+    ];
+    final nav = <Map<String, Object?>>[
+      <String, Object?>{
+        'text': MessageTemplates.buttonAdminPeopleBack,
+        'callback_data': MessageTemplates.cbAdminPeopleHub,
+      },
+    ];
+    if (page > 0) {
+      nav.add(<String, Object?>{
+        'text': MessageTemplates.buttonAdminPeoplePrev,
+        'callback_data': MessageTemplates.peopleSegmentData(segment, page: page - 1),
+      });
+    }
+    if ((page + 1) * pageSize < total) {
+      nav.add(<String, Object?>{
+        'text': MessageTemplates.buttonAdminPeopleNext,
+        'callback_data': MessageTemplates.peopleSegmentData(segment, page: page + 1),
+      });
+    }
+    rows.add(nav);
+    return inlineKeyboard(rows);
   }
 
   Map<String, Object?> adminCreateUserKeyboard(int userId) {

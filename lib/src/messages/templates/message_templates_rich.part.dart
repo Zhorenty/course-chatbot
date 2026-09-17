@@ -131,22 +131,47 @@ extension MessageTemplatesRich on MessageTemplates {
         '${preview == null || preview.isEmpty ? '' : richQuote(escapeHtml(_clipBroadcastPreview(preview)))}';
   }
 
-  String adminFunnelLogicRich({Launch? launch}) {
-    final start = _formatDate(launch?.courseStartAt) ?? 'дата старта из карточки курса';
-    return '${richH2('Как устроена воронка')}'
-        '${richP('Человек заходит в бота → может забрать гайд и/или записаться на поток → бот сам напоминает, пока нет оплаты или отписки.')}'
-        '${richDetails('Кто не получает прогрев', richP('Аккаунты админов. Карточка может появиться (админ тоже пишет боту), но продающие сообщения админу не шлём.'))}'
-        '${richDetails('Вход', '${richP('Ссылка с меткой (Reels, Threads, пост и т.д.). Первый переход запоминаем. Повторный /start уже идущий сценарий не ломает.')}${richUl(<String>['ссылка на гайд — приветствие и гайд;', 'ссылка на курс — то же приветствие и сразу карточка потока.', 'Дальше гайд и запись всегда в меню внизу.'])}')}'
-        '${richDetails('Гайд', richP('Без имени, почты и телефона. Сразу после файла — первое сообщение прогрева.'))}'
-        '${richDetails('Прогрев после гайда', richP('Сразу приглашение на мастер-класс и кнопка «${escapeHtml(MessageTemplates.buttonRsvp)}». Напоминания за сутки и за 10 минут, ссылка в день эфира тем, кто отметился. Спеццена — 3 дня с эфира, только у отметившихся.'))}'
-        '${richDetails('Продажи', richP('До старта продаж «${escapeHtml(MessageTemplates.buttonEnroll)}» — карточка курса и «ждём кассу», без оплаты. Старт и конец продаж — поля в карточке курса. В день старта продаж пишем тем, кто уже может оплатить. После окна спеццены — обычная цена и дожим. В последний день продаж — «последний вагон». Старт потока $start.'))}'
-        '${richDetails('Если гайд не забрали', richP('Напоминания на 1-й и на 3-й день после первого /start, пока не нажали «Записаться» и пока касса уже открыта для этого человека. После записи до старта продаж молчим про оплату. В день обычной цены и дожим до конца продаж — тоже, даже без гайда.'))}'
-        '${richDetails('Запись и оплата', '${richP('«${escapeHtml(MessageTemplates.buttonEnroll)}» — пока нет успешной оплаты. Потом та же кнопка открывает статус оплаты, старт и канал.')}${richUl(<String>['полная оплата — ссылка в канал этого потока;', 'предоплата — канала нет, пока не доплатят.'])}')}'
-        '${richDetails('Открыли оплату и не закончили', richP('Напоминание через ~6 часов и через сутки. За 3 дня до старта — одно касание вместо двух.'))}'
-        '${richDetails('Внесли предоплату', richP('Напоминание за 1–3 дня до срока, в день срока и один раз после просрочки. Отписка от рассылки это не глушит.'))}'
-        '${richDetails('Отписка', richP('«${escapeHtml(MessageTemplates.buttonOptOut)}» в «${escapeHtml(MessageTemplates.buttonHelp)}». Гайд и запись остаются. Напоминания про начатую оплату и доплату тоже.'))}'
-        '${richDetails('Ночью не пишем', richP('Автосообщения только с 10:00 до 21:00 по Москве. Напоминание за 10 минут до эфира уходит и ночью.'))}'
-        '${richDetails('Канал', richP('Одноразовая ссылка после полной оплаты. Новую выдаёшь только ты из карточки человека.'))}';
+  String adminPeopleHubRich({Launch? launch, required Map<ParticipantListSegment, int> counts}) {
+    if (launch == null) {
+      return '${richH2('Список участников')}'
+          '${richP('Нет активного потока. Сначала заведи курс в «${escapeHtml(MessageTemplates.buttonAdminSheetsHub)}».')}';
+    }
+    final items = <String>[
+      for (final segment in ParticipantListSegment.values)
+        '${escapeHtml(participantListLabel(segment))} — ${counts[segment] ?? 0}',
+    ];
+    return '${richH2('Список участников')}'
+        '${richP('Поток: ${escapeHtml(launch.title)}')}'
+        '${richP('Нажми группу — открою имена. Из списка можно открыть карточку.')}'
+        '${richUl(items)}';
+  }
+
+  String adminPeopleListRich({
+    required ParticipantListSegment segment,
+    required List<UserProfile> people,
+    required int total,
+    required int page,
+    Launch? launch,
+  }) {
+    final title = participantListLabel(segment);
+    final launchLine = launch == null ? '' : richP('Поток: ${escapeHtml(launch.title)}');
+    if (people.isEmpty) {
+      return '${richH2(title)}'
+          '$launchLine'
+          '${richP(escapeHtml(_adminPeopleCountLine(total)))}'
+          '${richP('Пока никого.')}';
+    }
+    final items = <String>[for (final user in people) _adminPeopleLine(user)];
+    final from = page * MessageTemplates.adminPeoplePageSize + 1;
+    final to = from + people.length - 1;
+    final range = total > MessageTemplates.adminPeoplePageSize
+        ? richP('Показаны $from–$to из $total.')
+        : '';
+    return '${richH2(title)}'
+        '$launchLine'
+        '${richP(escapeHtml(_adminPeopleCountLine(total)))}'
+        '${richUl(items)}'
+        '$range';
   }
 
   String adminBroadcastPickSegmentRich(

@@ -378,6 +378,103 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
     };
   }
 
+  @override
+  List<UserProfile> listParticipants({
+    required ParticipantListSegment segment,
+    int? launchId,
+    int limit = 8,
+    int offset = 0,
+    Set<int> excludeUserIds = const <int>{},
+  }) {
+    final resolved = resolveEnrollmentLaunchId(launchId);
+    if (resolved == null) {
+      return const <UserProfile>[];
+    }
+    final params = <Object?>[resolved];
+    final where = _participantsWhere(segment, excludeUserIds: excludeUserIds, params: params);
+    params
+      ..add(limit)
+      ..add(offset);
+    final rows = _db.select('''
+      SELECT
+        u.user_id,
+        u.username,
+        u.first_name,
+        u.source,
+        e.funnel_phase,
+        e.warmup_opt_out,
+        u.bot_blocked,
+        e.magnet_issued_at,
+        u.first_started_at,
+        u.last_seen_at
+      FROM telegram_users u
+      JOIN user_enrollments e ON e.user_id = u.user_id AND e.launch_id = ?
+      WHERE $where
+      ORDER BY ${_participantsOrder(segment)}
+      LIMIT ? OFFSET ?;
+      ''', params);
+    return rows.map(mapUser).toList(growable: false);
+  }
+
+  @override
+  int countParticipants({
+    required ParticipantListSegment segment,
+    int? launchId,
+    Set<int> excludeUserIds = const <int>{},
+  }) {
+    final resolved = resolveEnrollmentLaunchId(launchId);
+    if (resolved == null) {
+      return 0;
+    }
+    final params = <Object?>[resolved];
+    final where = _participantsWhere(segment, excludeUserIds: excludeUserIds, params: params);
+    final rows = _db.select('''
+      SELECT COUNT(*) AS c
+      FROM telegram_users u
+      JOIN user_enrollments e ON e.user_id = u.user_id AND e.launch_id = ?
+      WHERE $where;
+      ''', params);
+    return rows.first['c'] as int;
+  }
+
+  String _participantsWhere(
+    ParticipantListSegment segment, {
+    required Set<int> excludeUserIds,
+    required List<Object?> params,
+  }) {
+    final filter = switch (segment) {
+      ParticipantListSegment.webinarRsvp => 'e.webinar_rsvp = 1',
+      ParticipantListSegment.paid => "e.funnel_phase IN ('paid', 'access_granted')",
+      ParticipantListSegment.deposit => "e.funnel_phase = 'deposit_paid'",
+      ParticipantListSegment.checkout => "e.funnel_phase = 'checkout'",
+      ParticipantListSegment.enrollIntent => 'e.enroll_intent_at IS NOT NULL',
+      ParticipantListSegment.magnet => 'e.magnet_issued_at IS NOT NULL',
+      ParticipantListSegment.started => '1=1',
+      ParticipantListSegment.cancelled => "e.funnel_phase = 'cancelled'",
+    };
+    if (excludeUserIds.isEmpty) {
+      return filter;
+    }
+    final placeholders = List<String>.filled(excludeUserIds.length, '?').join(', ');
+    params.addAll(excludeUserIds);
+    return '$filter AND u.user_id NOT IN ($placeholders)';
+  }
+
+  String _participantsOrder(ParticipantListSegment segment) {
+    return switch (segment) {
+      ParticipantListSegment.webinarRsvp =>
+        'COALESCE(e.webinar_rsvp_at, e.updated_at) DESC, u.user_id DESC',
+      ParticipantListSegment.enrollIntent =>
+        'COALESCE(e.enroll_intent_at, e.updated_at) DESC, u.user_id DESC',
+      ParticipantListSegment.paid ||
+      ParticipantListSegment.deposit ||
+      ParticipantListSegment.checkout ||
+      ParticipantListSegment.magnet ||
+      ParticipantListSegment.started ||
+      ParticipantListSegment.cancelled => 'e.updated_at DESC, u.user_id DESC',
+    };
+  }
+
   String _courseLeadWhere({
     required ({
       String user,

@@ -119,6 +119,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _showHome(context);
       case MessageTemplates.cbNewInvite:
         return _send(context, _templates.inviteAskAdmin());
+      case MessageTemplates.cbAdminPeopleHub:
+        return _presentPeopleHub(context);
       case MessageTemplates.cbBroadcastSend:
         return _confirmBroadcast(context);
       case MessageTemplates.cbBroadcastSelectAll:
@@ -148,6 +150,13 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
           return false;
         }
         return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
+    }
+    if (data.startsWith(MessageTemplates.cbAdminPeopleSeg)) {
+      final parsed = MessageTemplates.peopleSegmentFromCallback(data);
+      if (parsed == null) {
+        return false;
+      }
+      return _presentPeopleSegment(context, parsed.segment, page: parsed.page);
     }
     if (data.startsWith(MessageTemplates.cbBroadcastSegment)) {
       return _toggleBroadcastSegment(context, MessageTemplates.segmentFromCallback(data));

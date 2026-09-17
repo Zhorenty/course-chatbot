@@ -1,6 +1,5 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
 import 'package:course_chatbot/src/domain/admin_payment_status.dart';
-import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
@@ -103,7 +102,7 @@ void main() {
     expect(texts, <String>[
       MessageTemplates.buttonAdminSearch,
       MessageTemplates.buttonAdminSheetsHub,
-      MessageTemplates.buttonAdminFunnelLogic,
+      MessageTemplates.buttonAdminPeople,
       MessageTemplates.buttonAdminBroadcast,
       MessageTemplates.buttonAdminClearFunnel,
     ]);
@@ -152,20 +151,142 @@ void main() {
     expect(harness.sender.deletedMessages, isEmpty);
   });
 
-  test('admin funnel-logic button explains the drip in plain language', () async {
+  test('admin people list groups webinar RSVP and paid students', () async {
+    final launch = harness.course.activeLaunch()!;
     await harness.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminFunnelLogic),
+      privateMessageUpdate(
+        chatId: 99,
+        userId: 99,
+        text: '/start ig_reels_guide',
+        username: 'mklead',
+      ),
     );
-    final text = harness.sender.messages.last.text;
-    expect(text, contains('Как устроена воронка'));
-    expect(text, contains('Аккаунты админов'));
-    expect(text, contains(MessageTemplates.buttonRsvp));
-    expect(text, contains('карточке курса'));
-    expect(text, contains('10:00'));
-    expect(text, contains('12.10.2026'));
+    harness.course.setWebinarRsvp(userId: 99, launchId: launch.id, now: DateTime.utc(2026, 9, 1));
+    await harness.handlers.handle(
+      privateMessageUpdate(
+        chatId: 98,
+        userId: 98,
+        text: '/start direct_course',
+        username: 'paidlead',
+      ),
+    );
+    harness.course.setFunnelPhase(userId: 98, phase: FunnelPhase.paid);
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminPeople),
+    );
+    final hub = harness.sender.messages.last;
+    expect(hub.text, contains('Список участников'));
+    expect(hub.text, contains('Мастер-класс — 1'));
+    expect(hub.text, contains('Все в потоке — 2'));
     expect(
-      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
-      contains(MessageTemplates.buttonAdminFunnelLogic),
+      _inlineButtonTexts(hub.replyMarkup),
+      contains(MessageTemplates().participantListButton(ParticipantListSegment.webinarRsvp, 1)),
+    );
+    expect(_replyButtonTexts(hub.replyMarkup), isEmpty);
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'mk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp),
+      ),
+    );
+    final mk = harness.sender.messages.last;
+    expect(mk.text, contains('Мастер-класс'));
+    expect(mk.text, contains('mklead'));
+    expect(mk.text, contains('99'));
+    expect(mk.text, isNot(contains('paidlead')));
+    expect(_inlineButtonTexts(mk.replyMarkup), contains('@mklead'));
+    expect(_inlineButtonTexts(mk.replyMarkup), contains(MessageTemplates.buttonAdminPeopleBack));
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'card',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminCard}99',
+      ),
+    );
+    expect(harness.sender.messages.last.text, contains('Карточка'));
+    expect(harness.sender.messages.last.text, contains('99'));
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'paid',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.peopleSegmentData(ParticipantListSegment.paid),
+      ),
+    );
+    final paid = harness.sender.messages.last;
+    expect(paid.text, contains('Оплатили курс'));
+    expect(paid.text, contains('paidlead'));
+    expect(paid.text, contains('98'));
+    expect(paid.text, isNot(contains('mklead')));
+  });
+
+  test('admin people list paginates a long webinar RSVP group', () async {
+    final launch = harness.course.activeLaunch()!;
+    for (var i = 0; i < 9; i++) {
+      final id = 200 + i;
+      await harness.handlers.handle(
+        privateMessageUpdate(
+          chatId: id,
+          userId: id,
+          text: '/start ig_reels_guide',
+          username: 'mk$i',
+        ),
+      );
+      harness.course.setWebinarRsvp(
+        userId: id,
+        launchId: launch.id,
+        now: DateTime.utc(2026, 9, 1, 0, i),
+      );
+    }
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminPeople),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'mk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp),
+      ),
+    );
+    final first = harness.sender.messages.last;
+    expect(first.text, contains('9 человек'));
+    expect(first.text, contains('Показаны 1–8 из 9'));
+    expect(_inlineButtonTexts(first.replyMarkup), contains(MessageTemplates.buttonAdminPeopleNext));
+    expect(
+      _inlineButtonTexts(first.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminPeoplePrev)),
+    );
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'next',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp, page: 1),
+      ),
+    );
+    final second = harness.sender.messages.last;
+    expect(second.text, contains('Показаны 9–9 из 9'));
+    expect(
+      _inlineButtonTexts(second.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminPeopleNext)),
+    );
+    expect(
+      _inlineButtonTexts(second.replyMarkup),
+      contains(MessageTemplates.buttonAdminPeoplePrev),
+    );
+    expect(
+      _inlineButtonTexts(second.replyMarkup),
+      contains(MessageTemplates.buttonAdminPeopleBack),
     );
   });
 

@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/participant_list.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -98,6 +99,25 @@ void main() {
     );
     expect(BroadcastSegment.coversAll(BroadcastSegment.values), isTrue);
     expect(BroadcastSegment.coversAll({BroadcastSegment.paidAccess}), isFalse);
+  });
+
+  test('participant list segment codes are short and parse back', () {
+    expect(ParticipantListSegment.webinarRsvp.code, 'w');
+    expect(ParticipantListSegment.fromCode('p'), ParticipantListSegment.paid);
+    expect(ParticipantListSegment.fromCode('nope'), isNull);
+    expect(MessageTemplates.peopleSegmentFromCallback('ps:w'), (
+      segment: ParticipantListSegment.webinarRsvp,
+      page: 0,
+    ));
+    expect(MessageTemplates.peopleSegmentFromCallback('ps:p:2'), (
+      segment: ParticipantListSegment.paid,
+      page: 2,
+    ));
+    expect(MessageTemplates.peopleSegmentData(ParticipantListSegment.paid, page: 2), 'ps:p:2');
+    expect(
+      MessageTemplates.peopleSegmentData(ParticipantListSegment.webinarRsvp).length,
+      lessThanOrEqualTo(64),
+    );
   });
 
   test('funnel phases do not move backwards except cancel/admin override', () {

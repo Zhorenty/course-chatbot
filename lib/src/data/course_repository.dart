@@ -9,6 +9,7 @@ import 'package:course_chatbot/src/data/warmup_repository.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
 
 export 'package:course_chatbot/src/domain/broadcast.dart';
+export 'package:course_chatbot/src/domain/participant_list.dart';
 
 abstract interface class CourseRepository
     implements

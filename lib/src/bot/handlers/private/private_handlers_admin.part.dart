@@ -41,13 +41,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         replyMarkup: _templates.adminMenuKeyboard(),
       );
     }
-    if (text == MessageTemplates.buttonAdminFunnelLogic) {
-      return _send(
-        context,
-        _templates.adminFunnelLogic(launch: _launch),
-        richHtml: _templates.adminFunnelLogicRich(launch: _launch),
-        replyMarkup: _templates.adminMenuKeyboard(),
-      );
+    if (text == MessageTemplates.buttonAdminPeople) {
+      _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.idle);
+      return _presentPeopleHub(context);
     }
     if (text == MessageTemplates.buttonAdminBroadcast) {
       _flowByUserId[userId] = const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
@@ -136,6 +132,105 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
 
   bool _isSheetsSection(PrivateFlowStep? step) {
     return step == PrivateFlowStep.adminSheetsHub || _isCatalogStep(step) || _isLinksStep(step);
+  }
+
+  Map<ParticipantListSegment, int> _peopleCounts() {
+    final exclude = _adminGate.configuredAdminIds;
+    return <ParticipantListSegment, int>{
+      for (final segment in ParticipantListSegment.values)
+        segment: _course.countParticipants(segment: segment, excludeUserIds: exclude),
+    };
+  }
+
+  Future<bool> _presentPeopleHub(PrivateMessageContext context) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final launch = _launch;
+    final counts = launch == null ? const <ParticipantListSegment, int>{} : _peopleCounts();
+    return _presentPeopleScreen(
+      context,
+      _templates.adminPeopleHub(launch: launch, counts: counts),
+      richHtml: _templates.adminPeopleHubRich(launch: launch, counts: counts),
+      replyMarkup: launch == null ? null : _templates.adminPeopleHubKeyboard(counts),
+    );
+  }
+
+  Future<bool> _presentPeopleSegment(
+    PrivateMessageContext context,
+    ParticipantListSegment segment, {
+    int page = 0,
+  }) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final exclude = _adminGate.configuredAdminIds;
+    final total = _course.countParticipants(segment: segment, excludeUserIds: exclude);
+    final pageSize = MessageTemplates.adminPeoplePageSize;
+    final lastPage = total == 0 ? 0 : (total - 1) ~/ pageSize;
+    final safePage = page.clamp(0, lastPage);
+    final people = _course.listParticipants(
+      segment: segment,
+      limit: pageSize,
+      offset: safePage * pageSize,
+      excludeUserIds: exclude,
+    );
+    return _presentPeopleScreen(
+      context,
+      _templates.adminPeopleList(
+        segment: segment,
+        people: people,
+        total: total,
+        page: safePage,
+        launch: _launch,
+      ),
+      richHtml: _templates.adminPeopleListRich(
+        segment: segment,
+        people: people,
+        total: total,
+        page: safePage,
+        launch: _launch,
+      ),
+      replyMarkup: _templates.adminPeopleListKeyboard(
+        segment: segment,
+        people: people,
+        total: total,
+        page: safePage,
+      ),
+    );
+  }
+
+  Future<bool> _presentPeopleScreen(
+    PrivateMessageContext context,
+    String text, {
+    String? richHtml,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final chatId = context.chatId;
+    if (chatId == null) {
+      return false;
+    }
+    final messageId = asTelegramInt(context.callbackMessage?['message_id']);
+    if (messageId != null) {
+      try {
+        await _editHtml(
+          chatId,
+          messageId: messageId,
+          text: text,
+          richHtml: richHtml,
+          replyMarkup: replyMarkup,
+        );
+        return true;
+      } on TelegramApiException catch (error, stackTrace) {
+        if (error.message.toLowerCase().contains('not modified')) {
+          return true;
+        }
+        l.w('Admin people list edit failed: $error', stackTrace);
+      } on Object catch (error, stackTrace) {
+        l.w('Admin people list edit failed: $error', stackTrace);
+      }
+    }
+    return _send(context, text, richHtml: richHtml, replyMarkup: replyMarkup);
   }
 
   Future<bool> _adminRefreshSheets(PrivateMessageContext context, {bool keepHub = false}) async {
