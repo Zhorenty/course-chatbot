@@ -23,11 +23,19 @@ abstract final class MoscowTime {
     return nextDay.add(Duration(hours: hour - offsetHours));
   }
 
+  /// End of the Moscow calendar day of [value] (23:59:59 MSK).
+  static DateTime endOfMoscowDay(DateTime value) {
+    final moscow = toMoscow(value);
+    return DateTime.utc(moscow.year, moscow.month, moscow.day, 20, 59, 59);
+  }
+
+  /// UTC instant of 00:00 Moscow on the next calendar day after [value].
+  static DateTime nextMoscowDayStart(DateTime value) {
+    return dayStartUtc(value).add(const Duration(days: 1));
+  }
+
   /// End of the Moscow calendar day [days] before [courseStartAt] (23:59:59 MSK).
-  static DateTime? daysBeforeCourseStart(DateTime? courseStartAt, {int days = 7}) {
-    if (courseStartAt == null) {
-      return null;
-    }
+  static DateTime daysBeforeCourseStart(DateTime courseStartAt, {int days = 7}) {
     final moscow = toMoscow(courseStartAt);
     final dueDay = DateTime.utc(
       moscow.year,

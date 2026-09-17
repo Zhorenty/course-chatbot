@@ -18,6 +18,7 @@ import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
 import 'support/harness.dart';
+import 'support/launch_fixture.dart';
 
 void main() {
   late HandlerHarness harness;
@@ -218,7 +219,10 @@ void main() {
 
   test('warmup job does not start pay drip after enroll before webinar', () async {
     final extra = HandlerHarness();
-    await extra.init(webinarAt: null);
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 6, 1, 16),
+      salesStartAt: DateTime.utc(2026, 6, 2),
+    );
     addTearDown(extra.dispose);
     extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     extra.funnel.markEnrollIntent(42, launchId: extra.course.activeLaunch()!.id);
@@ -329,7 +333,7 @@ void main() {
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
     );
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -387,7 +391,7 @@ void main() {
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
     );
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -452,7 +456,7 @@ void main() {
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
     );
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -494,7 +498,7 @@ void main() {
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
     );
-    const closed = Launch(
+    final closed = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -536,7 +540,7 @@ void main() {
       ),
       isNull,
     );
-    final open = Launch(
+    final open = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -601,7 +605,7 @@ void main() {
         sentKeys: const <String>{'warmup_0'},
         webinarRsvp: true,
       );
-      final beforeOpen = Launch(
+      final beforeOpen = testLaunch(
         id: 1,
         productId: 1,
         code: 'launch-1',
@@ -640,7 +644,7 @@ void main() {
         ),
         isNull,
       );
-      final noWebinar = Launch(
+      final noWebinar = testLaunch(
         id: 1,
         productId: 1,
         code: 'launch-1',
@@ -668,7 +672,7 @@ void main() {
         ),
         isNull,
       );
-      final withPromo = Launch(
+      final withPromo = testLaunch(
         id: 1,
         productId: 1,
         code: 'launch-1',
@@ -712,10 +716,13 @@ void main() {
       launchCode: 'launch-1',
       launchTitle: 'Запуск',
       priceFullKopecks: 1900000,
+      pricePromoKopecks: LaunchPrices.promoKopecks,
       depositKopecks: 500000,
       depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
       webinarAt: DateTime.utc(2026, 1, 8, 16),
       salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
       channelId: -1001,
       leadMagnetFileId: 'file-guide',
     );
@@ -791,10 +798,13 @@ void main() {
       launchCode: 'launch-1',
       launchTitle: 'Запуск',
       priceFullKopecks: 1900000,
+      pricePromoKopecks: LaunchPrices.promoKopecks,
       depositKopecks: 500000,
       depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
       webinarAt: DateTime.utc(2026, 1, 8, 16),
       salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
       channelId: -1001,
       leadMagnetFileId: 'file-guide',
     );

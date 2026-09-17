@@ -88,9 +88,7 @@ final class CourseBotRuntime {
           botUsername: botUsername,
           timezoneOffsetHours: config.timezoneOffsetHours,
           fallbackChannelId: config.courseChannelId,
-          fallbackOfferUrl: config.offerUrl,
           fallbackLeadMagnetFileId: config.leadMagnetFileId,
-          fallbackLeadMagnetUrl: config.leadMagnetUrl,
         );
         l.i('Google Sheets write enabled. spreadsheetId=${config.googleSheetsSpreadsheetId}');
         final syncResult = await catalogSync.sync();

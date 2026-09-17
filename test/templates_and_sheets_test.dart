@@ -22,6 +22,8 @@ import 'package:course_chatbot/src/messages/rich_html.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:test/test.dart';
 
+import 'support/launch_fixture.dart';
+
 void main() {
   test('classic HTML converts to rich headings paragraphs lists and tables', () {
     expect(richHtmlFromClassic('<h2>Already</h2><p>rich</p>'), '<h2>Already</h2><p>rich</p>');
@@ -157,7 +159,7 @@ void main() {
 
   test('selling drip uses interior voice not wardrobe stubs', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -236,7 +238,7 @@ void main() {
 
   test('enroll copy still points to the channel after full payment', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -265,7 +267,7 @@ void main() {
 
   test('empty launch fields keep CTAs honest and do not hide RSVP', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -297,7 +299,7 @@ void main() {
       isEmpty,
     );
 
-    final live = Launch(
+    final live = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -322,7 +324,7 @@ void main() {
       contains(MessageTemplates.buttonJoinWebinar),
     );
 
-    final promoOpen = Launch(
+    final promoOpen = testLaunch(
       id: 3,
       productId: 1,
       code: 'launch-3',
@@ -354,7 +356,7 @@ void main() {
       ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
       isTrue,
     );
-    final closed = Launch(
+    final closed = testLaunch(
       id: 4,
       productId: 1,
       code: 'launch-4',
@@ -386,7 +388,7 @@ void main() {
 
   test('course card keeps general copy and prints launch facts as parameters', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -409,7 +411,7 @@ void main() {
     expect(card, isNot(contains('Ссылку прикрепим позже')));
     expect(templates.startCourseCard(launch: launch), contains('Старт потока 12 октября'));
 
-    final custom = Launch(
+    final custom = testLaunch(
       id: 2,
       productId: 1,
       code: 'launch-2',
@@ -424,9 +426,9 @@ void main() {
     final customCard = templates.startCourseCard(launch: custom);
     expect(customCard, contains('Мой поток про цвет в квартирах.'));
     expect(customCard, isNot(contains('Скоро стартует мой курс')));
-    expect(customCard, contains('дату и время пришлю отдельно'));
+    expect(customCard, contains('📅 Мастер-класс пройдет 29 сентября в 19:00 мск'));
 
-    final marked = Launch(
+    final marked = testLaunch(
       id: 3,
       productId: 1,
       code: 'launch-3',
@@ -453,7 +455,7 @@ void main() {
       ),
     );
 
-    final laidOut = Launch(
+    final laidOut = testLaunch(
       id: 4,
       productId: 1,
       code: 'launch-4',
@@ -606,7 +608,7 @@ void main() {
   });
 
   test('admin sheets refresh result is a structured card', () {
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -694,7 +696,7 @@ void main() {
   });
 
   test('admin catalog inline callbacks stay short', () {
-    const launch = Launch(
+    final launch = testLaunch(
       id: 12,
       productId: 1,
       code: 'launch-1',
@@ -723,7 +725,6 @@ void main() {
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.salesStart)));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide)));
     expect(data, contains(MessageTemplates.cbCatalogKeepCode));
-    expect(data, contains(MessageTemplates.cbCatalogSkipChannel));
     expect(data, contains(MessageTemplates.cbCatalogSkipOptional));
     expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
     expect(templates.adminCatalogCard(launch), contains('описание: шаблон'));
@@ -749,7 +750,7 @@ void main() {
       templates.adminCatalogGuideButton(launch),
       MessageTemplates.buttonAdminCatalogAttachGuide,
     );
-    const withGuide = Launch(
+    final withGuide = testLaunch(
       id: 12,
       productId: 1,
       code: 'launch-1',
@@ -768,17 +769,19 @@ void main() {
     expect(templates.adminCatalogAskField(CatalogLaunchField.guide), contains('PDF'));
   });
 
-  test('admin catalog channel prompt does not ask for an empty Telegram message', () {
+  test('admin catalog channel prompt requires a Telegram id', () {
     final templates = MessageTemplates();
+    expect(templates.adminCatalogAskChannel(), contains('Обязательно'));
     expect(
       templates.adminCatalogAskChannel(),
-      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+      isNot(contains(MessageTemplates.buttonAdminCatalogSkipChannel)),
     );
     expect(templates.adminCatalogAskChannel(), isNot(contains('Пусто')));
     expect(templates.adminCatalogAskField(CatalogLaunchField.channel), isNot(contains('Пусто')));
+    expect(templates.adminCatalogAskField(CatalogLaunchField.channel), contains('Обязательно'));
     expect(
       templates.adminCatalogFieldError(CatalogFieldError.badChannel),
-      contains(MessageTemplates.buttonAdminCatalogSkipChannel),
+      isNot(contains(MessageTemplates.buttonAdminCatalogSkipChannel)),
     );
   });
 
@@ -789,7 +792,7 @@ void main() {
     expect(templates.adminCatalogAskProductTitle('Курс'), contains('Шаг 2 из 15'));
     expect(templates.adminCatalogAskActive(), contains('Шаг 15 из 15'));
     final preview = templates.adminCatalogPreview(
-      CatalogLaunchDraft(
+      testDraft(
         productCode: 'color',
         productTitle: 'Колористика',
         launchCode: 'nov-26',
@@ -797,8 +800,6 @@ void main() {
         isActive: false,
         priceFullKopecks: 2000000,
         depositKopecks: 0,
-        depositDueDays: 7,
-        courseStartAt: DateTime.utc(2026, 11, 1),
       ),
     );
     expect(preview, contains('код продукта'));
@@ -828,7 +829,7 @@ void main() {
       destination: AcquisitionDestination.guide,
       payload: 'ig_reels_guide',
     );
-    const launch = Launch(
+    final launch = testLaunch(
       id: 12,
       productId: 1,
       code: 'launch-1',
@@ -846,7 +847,7 @@ void main() {
       ..._inlineCallbackData(templates.adminLinksCardKeyboard(0, canWrite: true)),
       ..._inlineCallbackData(templates.adminLinksFieldsKeyboard(0)),
       ..._inlineCallbackData(templates.adminLinksDestinationKeyboard()),
-      ..._inlineCallbackData(templates.adminLinksLaunchKeyboard(const <Launch>[launch])),
+      ..._inlineCallbackData(templates.adminLinksLaunchKeyboard(<Launch>[launch])),
     ];
     expect(data, isNotEmpty);
     expect(data.every((item) => item.length <= 64), isTrue);
@@ -1030,7 +1031,7 @@ void main() {
       firstStartedAt: DateTime.utc(2026, 9, 1),
       lastSeenAt: DateTime.utc(2026, 9, 1),
     );
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -1172,7 +1173,7 @@ void main() {
 
   test('paid and deposit copy match the sheet', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',
@@ -1208,7 +1209,7 @@ void main() {
 
   test('funnel inline keyboards do not repeat the reply menu', () {
     final templates = MessageTemplates();
-    final launch = Launch(
+    final launch = testLaunch(
       id: 1,
       productId: 1,
       code: 'launch-1',

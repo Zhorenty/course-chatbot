@@ -5,16 +5,20 @@ import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
 import 'support/fakes.dart';
+import 'support/launch_fixture.dart';
+
+const int _seedChannelId = -1001;
 
 void main() {
   test('seed row parses to 19000/15000/5000 rub and October 2026 dates', () {
-    final parsed = CoursesSheetParser.parse(CoursesSheet.seedRows());
+    final parsed = CoursesSheetParser.parse(CoursesSheet.seedRows(channelId: _seedChannelId));
     expect(parsed.rows, hasLength(1));
     final draft = parsed.active!;
     expect(draft.launchCode, 'launch-1');
@@ -24,7 +28,11 @@ void main() {
     expect(draft.depositKopecks, 500000);
     expect(draft.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(draft.courseStartAt, DateTime.utc(2026, 10, 12));
-    expect(draft.salesStartAt, isNull);
+    expect(draft.webinarAt, DateTime.utc(2026, 9, 29, 16));
+    expect(draft.salesStartAt, DateTime.utc(2026, 9, 29, 21));
+    expect(draft.salesEndAt, DateTime.utc(2026, 10, 12, 20, 59, 59));
+    expect(draft.channelId, _seedChannelId);
+    expect(draft.webinarUrl, isNull);
     expect(draft.isActive, isTrue);
   });
 
@@ -32,7 +40,7 @@ void main() {
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.headers,
       <Object?>[],
-      CoursesSheet.seedDataRow(),
+      CoursesSheet.seedDataRow(channelId: _seedChannelId),
       <Object?>['course', 'Курс', '', 'Nope', '1', 1, 0],
     ]);
     expect(parsed.rows, hasLength(1));
@@ -59,12 +67,12 @@ void main() {
   });
 
   test('multiple is_active flags pick the first row and stay valid', () {
-    final second = List<Object?>.from(CoursesSheet.seedDataRow())
+    final second = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
       ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-2'
       ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 20000;
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.headers,
-      CoursesSheet.seedDataRow(),
+      CoursesSheet.seedDataRow(channelId: _seedChannelId),
       second,
     ]);
     expect(parsed.multipleActive, isTrue);
@@ -72,9 +80,9 @@ void main() {
   });
 
   test('invalid price or date skips the row', () {
-    final badPrice = List<Object?>.from(CoursesSheet.seedDataRow())
+    final badPrice = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
       ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 0;
-    final badDate = List<Object?>.from(CoursesSheet.seedDataRow())
+    final badDate = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
       ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-bad'
       ..[CoursesSheet.headers.indexOf(CoursesSheet.courseStartDate)] = 'нет';
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
@@ -86,12 +94,30 @@ void main() {
     expect(parsed.skippedInvalidCount, 2);
   });
 
-  test('parser keeps a row whose channel cell is a dash skip token', () {
+  test('parser skips a row without webinar, sales window or channel', () {
+    final noWebinar = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.webinarAt)] = '';
+    final noSalesStart = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-sales'
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.salesStartAt)] = '';
+    final noChannel = List<Object?>.from(CoursesSheet.seedDataRow())
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-channel';
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[
+      CoursesSheet.headers,
+      noWebinar,
+      noSalesStart,
+      noChannel,
+    ]);
+    expect(parsed.rows, isEmpty);
+    expect(parsed.skippedInvalidCount, 3);
+  });
+
+  test('parser skips a row whose channel cell is a dash skip token', () {
     final row = List<Object?>.from(CoursesSheet.seedDataRow())
       ..[CoursesSheet.headers.indexOf(CoursesSheet.channelId)] = '-';
     final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
-    expect(parsed.rows, hasLength(1));
-    expect(parsed.active!.channelId, isNull);
+    expect(parsed.rows, isEmpty);
+    expect(parsed.skippedInvalidCount, 1);
   });
 
   test('parseChannelId treats dash variants as omitted and parses unicode minus ids', () {
@@ -105,7 +131,7 @@ void main() {
   });
 
   test('parser keeps a full-price row without deposit due date', () {
-    final row = List<Object?>.from(CoursesSheet.seedDataRow())
+    final row = List<Object?>.from(CoursesSheet.seedDataRow(channelId: _seedChannelId))
       ..[CoursesSheet.headers.indexOf(CoursesSheet.depositRub)] = '';
     final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.headers, row]);
     expect(parsed.rows, hasLength(1));
@@ -116,7 +142,7 @@ void main() {
   test('parser infers deposit due a week before course start', () {
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.headers,
-      CoursesSheet.seedDataRow(),
+      CoursesSheet.seedDataRow(channelId: _seedChannelId),
     ]);
     expect(parsed.rows, hasLength(1));
     expect(parsed.active!.depositKopecks, 500000);
@@ -126,12 +152,28 @@ void main() {
   test('Russian headers and dotted dates parse', () {
     final parsed = CoursesSheetParser.parse(<List<Object?>>[
       CoursesSheet.displayHeaders,
-      <Object?>['course', 'Курс', 'launch-1', 'Запуск', 'да', 18000, 15000, 5000, '12.10.2026'],
+      <Object?>[
+        'course',
+        'Курс',
+        'launch-1',
+        'Запуск',
+        'да',
+        18000,
+        15000,
+        5000,
+        '12.10.2026',
+        '29.09.2026 19:00',
+        '',
+        '30.09.2026 00:00',
+        '12.10.2026',
+        '$_seedChannelId',
+      ],
     ]);
     expect(parsed.rows, hasLength(1));
     expect(parsed.active!.isActive, isTrue);
     expect(parsed.active!.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(parsed.active!.courseStartAt, DateTime.utc(2026, 10, 12));
+    expect(parsed.active!.channelId, _seedChannelId);
   });
 
   test('webinar datetime parses Moscow wall time and date-only 19:00', () {
@@ -151,6 +193,9 @@ void main() {
         'Предоплата, ₽',
         'Доплата до',
         'Старт курса',
+        'Эфир',
+        'Старт продаж',
+        'Конец продаж',
         'ID канала',
         'Оферта',
         'Файл гайда',
@@ -167,7 +212,10 @@ void main() {
         5000,
         '05.10.2026',
         '12.10.2026',
-        '',
+        '29.09.2026 19:00',
+        '30.09.2026 00:00',
+        '12.10.2026',
+        '$_seedChannelId',
         'https://offer.example',
         'file-1',
         'https://guide.example',
@@ -175,13 +223,12 @@ void main() {
       ],
     ]);
     expect(parsed.rows, hasLength(1));
-    expect(parsed.active!.offerUrl, 'https://offer.example');
     expect(parsed.active!.leadMagnetFileId, 'file-1');
     expect(parsed.active!.leadMagnetUrl, 'https://guide.example');
   });
 
   test('pretty seed layout has chrome, Russian headers, status and parses', () {
-    final rows = CoursesSheet.seedRows();
+    final rows = CoursesSheet.seedRows(channelId: _seedChannelId);
     expect(rows[0].first, CoursesSheet.title);
     expect(rows[1].first, contains('текущий набор'));
     expect(rows[1].first, isNot(contains('FUNNEL')));
@@ -193,6 +240,37 @@ void main() {
     expect(parsed.active!.priceFullKopecks, 1900000);
   });
 
+  test('fillImpliedCells writes promo, sales window and channel once', () {
+    final rows = CoursesSheet.withChrome(
+      dataRows: <List<Object?>>[
+        CoursesSheet.padded(<Object?>[
+          CoursesSheet.seedProductCode,
+          CoursesSheet.seedProductTitle,
+          'launch-1',
+          CoursesSheet.seedLaunchTitle,
+          CoursesSheet.activeYes,
+          CoursesSheet.seedPriceFullRub,
+          '',
+          CoursesSheet.seedDepositRub,
+          CoursesSheet.seedCourseStartDate,
+          CoursesSheet.seedWebinarAt,
+          '',
+          '',
+          '',
+          '',
+        ]),
+      ],
+    );
+    final filled = CoursesSheetParser.fillImpliedCells(rows, fallbackChannelId: _seedChannelId);
+    expect(filled.changed, isTrue);
+    final parsed = CoursesSheetParser.parse(filled.rows);
+    expect(parsed.rows, hasLength(1));
+    expect(parsed.active!.pricePromoKopecks, 1500000);
+    expect(parsed.active!.salesStartAt, DateTime.utc(2026, 9, 29, 21));
+    expect(parsed.active!.salesEndAt, DateTime.utc(2026, 10, 12, 20, 59, 59));
+    expect(parsed.active!.channelId, _seedChannelId);
+  });
+
   test('status formula names missing fields and готов', () {
     final formula = CoursesSheet.statusFormula(row: 5);
     expect(formula, startsWith('='));
@@ -202,7 +280,10 @@ void main() {
     expect(formula, contains('нет кода запуска'));
     expect(formula, contains('нет цены'));
     expect(formula, contains('нет даты старта'));
-    expect(formula, isNot(contains('нет даты доплаты')));
+    expect(formula, contains('нет даты эфира'));
+    expect(formula, contains('нет старта продаж'));
+    expect(formula, contains('нет конца продаж'));
+    expect(formula, contains('нет канала'));
     expect(formula, isNot(contains('.env')));
     expect(CoursesSheet.headerNotes[8], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
@@ -253,7 +334,11 @@ void main() {
         ),
       ];
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(gateway.unmerged, hasLength(1));
@@ -266,14 +351,22 @@ void main() {
         'Invalid requests[18].unmergeCells: You must select all cells '
         'in a merged range to merge or unmerge them.',
       );
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.code, CoursesSheet.seedLaunchCode);
     });
 
     test('empty gid=0 is seeded once and upserted', () async {
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final first = await sync.sync();
       expect(first.ok, isTrue);
       expect(first.seeded, isTrue);
@@ -309,13 +402,23 @@ void main() {
         launchCode: 'launch-1',
         launchTitle: 'Запуск',
         priceFullKopecks: 1800000,
+        pricePromoKopecks: LaunchPrices.promoKopecks,
         depositKopecks: 500000,
         depositDueDays: 7,
+        courseStartAt: DateTime.utc(2026, 10, 12),
+        webinarAt: DateTime.utc(2026, 9, 29, 16),
+        salesStartAt: Launch.impliedSalesStartAt(DateTime.utc(2026, 9, 29, 16)),
+        salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
+        channelId: _seedChannelId,
         leadMagnetFileId: 'cached-file',
       );
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
@@ -328,14 +431,24 @@ void main() {
         launchCode: 'launch-1',
         launchTitle: 'Запуск',
         priceFullKopecks: 1800000,
+        pricePromoKopecks: LaunchPrices.promoKopecks,
         depositKopecks: 500000,
         depositDueDays: 7,
+        courseStartAt: DateTime.utc(2026, 10, 12),
+        webinarAt: DateTime.utc(2026, 9, 29, 16),
+        salesStartAt: Launch.impliedSalesStartAt(DateTime.utc(2026, 9, 29, 16)),
+        salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
+        channelId: _seedChannelId,
       );
       final broken = List<Object?>.from(CoursesSheet.seedDataRow())
         ..[CoursesSheet.headers.indexOf(CoursesSheet.priceFullRub)] = 0;
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = <List<Object?>>[CoursesSheet.headers, broken];
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isFalse);
       expect(course.activeLaunch()?.priceFullKopecks, 1800000);
@@ -350,9 +463,28 @@ void main() {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = <List<Object?>>[
         List<Object?>.from(CoursesSheet.headers),
-        <Object?>['course', 'Курс', 'launch-1', 'Запуск', '1', 18000, 15000, 5000, '2026-10-12'],
+        <Object?>[
+          'course',
+          'Курс',
+          'launch-1',
+          'Запуск',
+          '1',
+          18000,
+          15000,
+          5000,
+          '2026-10-12',
+          '29.09.2026 19:00',
+          '',
+          '30.09.2026 00:00',
+          '12.10.2026',
+          _seedChannelId,
+        ],
       ];
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
@@ -383,6 +515,9 @@ void main() {
             'Предоплата, ₽',
             'Доплата до',
             'Старт курса',
+            'Эфир',
+            'Старт продаж',
+            'Конец продаж',
             'ID канала',
             'Оферта',
             'Файл гайда',
@@ -399,6 +534,9 @@ void main() {
             5000,
             '05.10.2026',
             '12.10.2026',
+            '29.09.2026 19:00',
+            '30.09.2026 00:00',
+            '12.10.2026',
             '',
             'https://offer.example',
             'cached-file',
@@ -406,7 +544,11 @@ void main() {
             '',
           ],
         ];
-        final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+        final sync = GoogleSheetsCatalogSync(
+          gateway: gateway,
+          catalog: course,
+          fallbackChannelId: _seedChannelId,
+        );
         final result = await sync.sync();
         expect(result.ok, isTrue);
         final sheet = gateway.valuesBySheetId[0]!;
@@ -420,7 +562,6 @@ void main() {
         expect(header.last, 'статус');
         expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
         expect(course.activeLaunch()?.leadMagnetFileId, 'cached-file');
-        expect(course.activeLaunch()?.offerUrl, isNull);
         expect(course.activeLaunch()?.leadMagnetUrl, isNull);
         expect(course.activeLaunch()?.code, 'launch-1');
       },
@@ -428,7 +569,11 @@ void main() {
 
     test('renames Sheet1 and FUNNEL on gid=0 to COURSES', () async {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'FUNNEL', sheetId: 0)];
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(gateway.sheets.any((sheet) => sheet.title == CoursesSheet.tabTitle), isTrue);
@@ -447,7 +592,11 @@ void main() {
       gateway.valuesBySheetId[0] = CoursesSheet.withChrome(
         dataRows: <List<Object?>>[CoursesSheet.seedDataRow(), second],
       );
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.code, 'launch-1');
@@ -462,12 +611,22 @@ void main() {
         launchCode: 'old-stream',
         launchTitle: 'Старый поток',
         priceFullKopecks: 1800000,
+        pricePromoKopecks: LaunchPrices.promoKopecks,
         depositKopecks: 0,
         depositDueDays: 7,
+        courseStartAt: DateTime.utc(2026, 10, 12),
+        webinarAt: DateTime.utc(2026, 9, 29, 16),
+        salesStartAt: Launch.impliedSalesStartAt(DateTime.utc(2026, 9, 29, 16)),
+        salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
+        channelId: _seedChannelId,
       );
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(course.launchByCode('old-stream'), isNull);
@@ -475,7 +634,7 @@ void main() {
       expect(sync.sheetLaunchCodes.contains('old-stream'), isFalse);
     });
 
-    test('env channel fallback applies only to the active COURSES row', () async {
+    test('env channel fallback fills empty channel cells on COURSES rows', () async {
       final second = List<Object?>.from(CoursesSheet.seedDataRow())
         ..[CoursesSheet.headers.indexOf(CoursesSheet.launchCode)] = 'launch-2'
         ..[CoursesSheet.headers.indexOf(CoursesSheet.launchTitle)] = 'Ноябрь'
@@ -493,13 +652,17 @@ void main() {
       final result = await sync.sync();
       expect(result.ok, isTrue);
       expect(course.activeLaunch()?.channelId, -1001);
-      expect(course.launchByCode('launch-2')?.channelId, isNull);
+      expect(course.launchByCode('launch-2')?.channelId, -1001);
     });
 
     test('sync writes Описание and Дожим as Нет or Да', () async {
       gateway.sheets = const [GoogleSheetsSheetInfo(title: 'COURSES', sheetId: 0)];
       gateway.valuesBySheetId[0] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       final first = await sync.sync();
       expect(first.ok, isTrue);
       final sheetAfterSync = gateway.valuesBySheetId[0]!;
@@ -567,6 +730,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       final result = await sync.sync();
       expect(result.ok, isTrue);
@@ -595,6 +759,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.sync();
       final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
@@ -626,6 +791,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.sync();
       expect(links.entries.map((row) => row.payload), isNot(contains('bad payload!')));
@@ -654,6 +820,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.sync();
       final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
@@ -669,12 +836,15 @@ void main() {
       gateway.sheets = <GoogleSheetsSheetInfo>[
         const GoogleSheetsSheetInfo(title: 'КУРСЫ', sheetId: CoursesSheet.sheetId),
       ];
-      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows(
+        channelId: _seedChannelId,
+      );
       final sync = GoogleSheetsCatalogSync(
         gateway: gateway,
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.syncLinks();
       final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
@@ -693,6 +863,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.syncLinks();
       expect(course.activeLaunch(), isNull);
@@ -708,10 +879,14 @@ void main() {
 
     test('upsertCourseRow appends a spec row without wiping chrome', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.sync();
       await sync.upsertCourseRow(
-        draft: CatalogLaunchDraft(
+        draft: testDraft(
           productCode: CoursesSheet.seedProductCode,
           productTitle: CoursesSheet.seedProductTitle,
           launchCode: 'nov-26',
@@ -740,7 +915,11 @@ void main() {
 
     test('upsertCourseRow reuses a vacant in-table row instead of appending below', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.sync();
       final headerAt = CoursesSheet.defaultHeaderRow;
       final headerIndex = CoursesSheetParser.headerIndexMap(gateway.valuesBySheetId[0]![headerAt]);
@@ -762,7 +941,7 @@ void main() {
       gateway.valuesBySheetId[0] = sheetAfterSync;
 
       await sync.upsertCourseRow(
-        draft: CatalogLaunchDraft(
+        draft: testDraft(
           productCode: 'color',
           productTitle: 'Колористика',
           launchCode: 'nov-26',
@@ -842,9 +1021,13 @@ void main() {
           '',
         ],
       ];
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.upsertCourseRow(
-        draft: CatalogLaunchDraft(
+        draft: testDraft(
           productCode: CoursesSheet.seedProductCode,
           productTitle: CoursesSheet.seedProductTitle,
           launchCode: 'nov-26',
@@ -866,12 +1049,16 @@ void main() {
 
     test('insertOnly upsert refuses a launch_code already on COURSES', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.sync();
       await expectLater(
         sync.upsertCourseRow(
           insertOnly: true,
-          draft: CatalogLaunchDraft(
+          draft: testDraft(
             productCode: CoursesSheet.seedProductCode,
             productTitle: CoursesSheet.seedProductTitle,
             launchCode: 'launch-1',
@@ -895,9 +1082,13 @@ void main() {
 
     test('deleteCourseRow removes one data row and keeps gid=0', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.upsertCourseRow(
-        draft: CatalogLaunchDraft(
+        draft: testDraft(
           productCode: CoursesSheet.seedProductCode,
           productTitle: CoursesSheet.seedProductTitle,
           launchCode: 'nov-26',
@@ -919,7 +1110,11 @@ void main() {
 
     test('deleteCourseRow is a no-op when the launch_code is already gone', () async {
       gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
-      final sync = GoogleSheetsCatalogSync(gateway: gateway, catalog: course);
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
       await sync.deleteCourseRow(launchCode: 'ghost-26');
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       expect(gateway.deletedDimensions, isEmpty);
@@ -933,6 +1128,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.syncLinks();
       await sync.upsertLinkRow(
@@ -959,6 +1155,7 @@ void main() {
         catalog: course,
         links: links,
         botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
       );
       await sync.syncLinks();
       await sync.upsertLinkRow(

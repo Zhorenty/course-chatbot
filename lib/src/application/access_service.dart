@@ -26,7 +26,7 @@ final class AccessService {
     bool reissue = false,
   }) async {
     final channelId = launch.channelId;
-    if (channelId == null) {
+    if (channelId >= 0) {
       l.w('Cannot issue invite: COURSE_CHANNEL_ID is not set.');
       return null;
     }
@@ -64,7 +64,7 @@ final class AccessService {
   Future<void> revoke({required int userId, required Launch launch}) async {
     final channelId = launch.channelId;
     final existing = _course.accessFor(userId: userId, launchId: launch.id);
-    if (channelId != null) {
+    if (channelId < 0) {
       if (existing?.inviteLink != null) {
         try {
           await _telegram.revokeChatInviteLink(

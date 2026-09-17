@@ -88,7 +88,6 @@ final class SqliteDatabaseHandle {
         deposit_due_days INTEGER NOT NULL DEFAULT 7,
         deposit_due_at TEXT,
         course_start_at TEXT,
-        offer_url TEXT,
         lead_magnet_file_id TEXT,
         lead_magnet_url TEXT,
         is_active INTEGER NOT NULL DEFAULT 0
@@ -103,6 +102,7 @@ final class SqliteDatabaseHandle {
     _ensureColumn(db, 'launches', 'sales_start_at', 'TEXT');
     _ensureColumn(db, 'launches', 'sales_end_at', 'TEXT');
     _ensureColumn(db, 'launches', 'description', 'TEXT');
+    _dropColumn(db, 'launches', 'offer_url');
     db.execute('''
       CREATE TABLE IF NOT EXISTS telegram_users (
         user_id INTEGER PRIMARY KEY,
@@ -355,6 +355,19 @@ final class SqliteDatabaseHandle {
       return;
     }
     db.execute('ALTER TABLE $table ADD COLUMN $column $spec;');
+  }
+
+  void _dropColumn(Database db, String table, String column) {
+    final info = db.select('PRAGMA table_info($table);');
+    final exists = info.any((row) => row['name'] == column);
+    if (!exists) {
+      return;
+    }
+    try {
+      db.execute('ALTER TABLE $table DROP COLUMN $column;');
+    } on Object {
+      // Older SQLite cannot DROP COLUMN; leftover cells are unused.
+    }
   }
 
   T transaction<T>(T Function() action) {

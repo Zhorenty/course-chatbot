@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 
@@ -35,7 +36,6 @@ abstract final class CoursesSheet {
   static const String channelId = 'channel_id';
   static const String description = 'description';
   static const String dozhim = 'dozhim';
-  static const String offerUrl = 'offer_url';
   static const String leadMagnetFileId = 'lead_magnet_file_id';
   static const String leadMagnetUrl = 'lead_magnet_url';
   static const String status = 'status';
@@ -47,9 +47,10 @@ abstract final class CoursesSheet {
 
   static const String hint =
       'Флажок «Активен» — ровно в одной строке, это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
-      'Старт продаж — когда открывается касса и продающий прогрев. Пусто — следующий день после эфира. '
-      'Эфир — дата и время, как 05.10.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
+      'Старт продаж — когда открывается касса и продающий прогрев. '
+      'Эфир — дата и время, как 29.09.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
       'Доплата после предоплаты — за неделю до старта курса. '
+      'Пустая только ссылка на эфир: её можно дописать позже. Остальные поля обязательны. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
       'Дожим и описание — только в карточке курса в боте. '
       'Колонки «Описание» и «Дожим» — Нет или Да (у дожима ещё число дней). Не правь их руками. '
@@ -103,16 +104,15 @@ abstract final class CoursesSheet {
     'Флажок: ДА — текущий набор. ДА должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
     'Обычная цена в рублях. Пиши число: 19000 или 19 000. Для тех, кто не отмечался на эфир.',
     'Спеццена эфира в рублях. 15000. Для тех, кто нажал «Хочу на Мастер-класс». Действует 3 дня с даты эфира. '
-        'Пусто — подставим 15000.',
-    'Сумма предоплаты в рублях. Пусто или 0 — сразу полная оплата, без предоплаты. '
+        'Пусто при синке запишем 15000.',
+    'Сумма предоплаты в рублях. 0 — сразу полная оплата, без предоплаты. '
         'Срок доплаты бот ставит сам: за неделю до старта курса.',
-    'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение.',
-    'Дата и время эфира по Москве. Формат 05.10.2026 19:00. Без времени возьмём 19:00.',
-    'Ссылка на эфир. Бот пришлёт её отметившимся в день эфира. Можно дописать позже.',
-    'Когда открывается касса и продающий прогрев. Дата и время по Москве, как 05.10.2026 19:00. '
-        'Пусто — следующий день после эфира. Без эфира и без этой даты продажи закрыты.',
-    'Последний день продаж, как 11.10.2026. Пусто — продажи не закрываем по календарю.',
-    'Номер закрытого канала этого потока. Число вида −100…. Если не знаешь — оставь пустым, канал уже подключен.',
+    'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение. Обязательно.',
+    'Дата и время эфира по Москве. Формат 29.09.2026 19:00. Без времени возьмём 19:00. Обязательно.',
+    'Ссылка на эфир. Бот пришлёт её отметившимся в день эфира. Единственное поле, которое можно дописать позже.',
+    'Когда открывается касса и продающий прогрев. Дата и время по Москве, как 30.09.2026 00:00. Обязательно.',
+    'Последний день продаж, как 12.10.2026. Обязательно.',
+    'Номер закрытого канала этого потока. Число вида −100…. Обязательно.',
     'Свой текст карточки курса. Да — админ задал текст в боте. Нет — шаблон. Не правь руками.',
     'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
@@ -126,9 +126,12 @@ abstract final class CoursesSheet {
   static const int seedPricePromoRub = 15000;
   static const int seedDepositRub = 5000;
   static const String seedCourseStartDate = '12.10.2026';
+  static const String seedWebinarAt = '29.09.2026 19:00';
+  static const String seedSalesStartAt = '30.09.2026 00:00';
+  static const String seedSalesEndDate = '12.10.2026';
 
-  static List<List<Object?>> seedRows() {
-    return withChrome(dataRows: <List<Object?>>[seedDataRow()]);
+  static List<List<Object?>> seedRows({int? channelId}) {
+    return withChrome(dataRows: <List<Object?>>[seedDataRow(channelId: channelId)]);
   }
 
   static List<List<Object?>> withChrome({
@@ -152,7 +155,7 @@ abstract final class CoursesSheet {
 
   static List<Object?> hintRow() => padded(<Object?>[hint]);
 
-  static List<Object?> seedDataRow() {
+  static List<Object?> seedDataRow({int? channelId}) {
     return padded(<Object?>[
       seedProductCode,
       seedProductTitle,
@@ -163,11 +166,11 @@ abstract final class CoursesSheet {
       seedPricePromoRub,
       seedDepositRub,
       seedCourseStartDate,
+      seedWebinarAt,
       '',
-      '',
-      '',
-      '',
-      '',
+      seedSalesStartAt,
+      seedSalesEndDate,
+      channelId ?? '',
       '',
       '',
       statusFormula(row: defaultHeaderRow + 2),
@@ -201,11 +204,19 @@ abstract final class CoursesSheet {
       '${cell(launchCode)}<>""',
       '${cell(priceFullRub)}<>""',
       '${cell(courseStartDate)}<>""',
+      '${cell(webinarAt)}<>""',
+      '${cell(salesStartAt)}<>""',
+      '${cell(salesEndDate)}<>""',
+      '${cell(channelId)}<>""',
     ].join('$formulaSep ');
     final missing = <String>[
       'IF(${cell(launchCode)}="";"нет кода запуска";"")',
       'IF(${cell(priceFullRub)}="";"нет цены";"")',
       'IF(${cell(courseStartDate)}="";"нет даты старта";"")',
+      'IF(${cell(webinarAt)}="";"нет даты эфира";"")',
+      'IF(${cell(salesStartAt)}="";"нет старта продаж";"")',
+      'IF(${cell(salesEndDate)}="";"нет конца продаж";"")',
+      'IF(${cell(channelId)}="";"нет канала";"")',
     ].join('$formulaSep ');
     return '=IF(SUMPRODUCT(LEN($dataRange))=0;"";IF(AND($allRequired);"готово";'
         'TEXTJOIN("; "$formulaSep TRUE$formulaSep $missing)))';
@@ -274,14 +285,14 @@ abstract final class CoursesSheet {
       draft.launchTitle,
       activeCell(draft.isActive),
       priceCell(draft.priceFullKopecks),
-      draft.pricePromoKopecks > 0 ? priceCell(draft.pricePromoKopecks) : '',
-      draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : '',
-      draft.courseStartAt == null ? '' : formatDottedDate(draft.courseStartAt!),
-      draft.webinarAt == null ? '' : formatDottedDateTime(draft.webinarAt!),
+      priceCell(draft.pricePromoKopecks),
+      draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : 0,
+      formatDottedDate(draft.courseStartAt),
+      formatDottedDateTime(draft.webinarAt),
       draft.webinarUrl ?? '',
-      draft.salesStartAt == null ? '' : formatDottedDateTime(draft.salesStartAt!),
-      draft.salesEndAt == null ? '' : formatDottedDate(draft.salesEndAt!),
-      draft.channelId ?? '',
+      formatDottedDateTime(draft.salesStartAt),
+      formatDottedDate(draft.salesEndAt),
+      draft.channelId,
       '',
       '',
       statusFormula(row: rowNumber),
@@ -414,17 +425,16 @@ final class CatalogLaunchDraft {
     required this.launchTitle,
     required this.isActive,
     required this.priceFullKopecks,
+    required this.pricePromoKopecks,
     required this.depositKopecks,
     required this.depositDueDays,
-    this.pricePromoKopecks = 0,
+    required this.courseStartAt,
+    required this.webinarAt,
+    required this.salesStartAt,
+    required this.salesEndAt,
+    required this.channelId,
     this.depositDueAt,
-    this.courseStartAt,
-    this.webinarAt,
     this.webinarUrl,
-    this.salesStartAt,
-    this.salesEndAt,
-    this.channelId,
-    this.offerUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
   });
@@ -439,22 +449,16 @@ final class CatalogLaunchDraft {
   final int depositKopecks;
   final int depositDueDays;
   final DateTime? depositDueAt;
-  final DateTime? courseStartAt;
-  final DateTime? webinarAt;
+  final DateTime courseStartAt;
+  final DateTime webinarAt;
   final String? webinarUrl;
-  final DateTime? salesStartAt;
-  final DateTime? salesEndAt;
-  final int? channelId;
-  final String? offerUrl;
+  final DateTime salesStartAt;
+  final DateTime salesEndAt;
+  final int channelId;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
 
-  CatalogLaunchDraft withFallbacks({
-    int? channelId,
-    String? offerUrl,
-    String? leadMagnetFileId,
-    String? leadMagnetUrl,
-  }) {
+  CatalogLaunchDraft withFallbacks({String? leadMagnetFileId}) {
     return CatalogLaunchDraft(
       productCode: productCode,
       productTitle: productTitle,
@@ -471,10 +475,9 @@ final class CatalogLaunchDraft {
       webinarUrl: webinarUrl,
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
-      channelId: this.channelId ?? channelId,
-      offerUrl: this.offerUrl ?? offerUrl,
+      channelId: channelId,
       leadMagnetFileId: this.leadMagnetFileId ?? leadMagnetFileId,
-      leadMagnetUrl: this.leadMagnetUrl ?? leadMagnetUrl,
+      leadMagnetUrl: leadMagnetUrl,
     );
   }
 
@@ -489,13 +492,12 @@ final class CatalogLaunchDraft {
     int? depositKopecks,
     int? depositDueDays,
     Object? depositDueAt = _catalogDraftUnset,
-    Object? courseStartAt = _catalogDraftUnset,
-    Object? webinarAt = _catalogDraftUnset,
+    DateTime? courseStartAt,
+    DateTime? webinarAt,
     Object? webinarUrl = _catalogDraftUnset,
-    Object? salesStartAt = _catalogDraftUnset,
-    Object? salesEndAt = _catalogDraftUnset,
-    Object? channelId = _catalogDraftUnset,
-    Object? offerUrl = _catalogDraftUnset,
+    DateTime? salesStartAt,
+    DateTime? salesEndAt,
+    int? channelId,
     Object? leadMagnetFileId = _catalogDraftUnset,
     Object? leadMagnetUrl = _catalogDraftUnset,
   }) {
@@ -512,21 +514,14 @@ final class CatalogLaunchDraft {
       depositDueAt: identical(depositDueAt, _catalogDraftUnset)
           ? this.depositDueAt
           : depositDueAt as DateTime?,
-      courseStartAt: identical(courseStartAt, _catalogDraftUnset)
-          ? this.courseStartAt
-          : courseStartAt as DateTime?,
-      webinarAt: identical(webinarAt, _catalogDraftUnset) ? this.webinarAt : webinarAt as DateTime?,
+      courseStartAt: courseStartAt ?? this.courseStartAt,
+      webinarAt: webinarAt ?? this.webinarAt,
       webinarUrl: identical(webinarUrl, _catalogDraftUnset)
           ? this.webinarUrl
           : webinarUrl as String?,
-      salesStartAt: identical(salesStartAt, _catalogDraftUnset)
-          ? this.salesStartAt
-          : salesStartAt as DateTime?,
-      salesEndAt: identical(salesEndAt, _catalogDraftUnset)
-          ? this.salesEndAt
-          : salesEndAt as DateTime?,
-      channelId: identical(channelId, _catalogDraftUnset) ? this.channelId : channelId as int?,
-      offerUrl: identical(offerUrl, _catalogDraftUnset) ? this.offerUrl : offerUrl as String?,
+      salesStartAt: salesStartAt ?? this.salesStartAt,
+      salesEndAt: salesEndAt ?? this.salesEndAt,
+      channelId: channelId ?? this.channelId,
       leadMagnetFileId: identical(leadMagnetFileId, _catalogDraftUnset)
           ? this.leadMagnetFileId
           : leadMagnetFileId as String?,
@@ -617,8 +612,6 @@ abstract final class CoursesSheetParser {
     'описание': CoursesSheet.description,
     CoursesSheet.dozhim: CoursesSheet.dozhim,
     'дожим': CoursesSheet.dozhim,
-    CoursesSheet.offerUrl: CoursesSheet.offerUrl,
-    'оферта': CoursesSheet.offerUrl,
     CoursesSheet.leadMagnetFileId: CoursesSheet.leadMagnetFileId,
     'file_id гайда': CoursesSheet.leadMagnetFileId,
     'file id гайда': CoursesSheet.leadMagnetFileId,
@@ -899,6 +892,83 @@ abstract final class CoursesSheetParser {
         .trim();
   }
 
+  /// Fills promo / sales start / sales end / channel once so the next parse is strict.
+  /// Does not invent webinar or course start dates.
+  static ({List<List<Object?>> rows, bool changed}) fillImpliedCells(
+    List<List<Object?>> rows, {
+    int? fallbackChannelId,
+    int timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
+  }) {
+    final headerAt = headerRowIndex(rows);
+    if (headerAt == null) {
+      return (rows: rows, changed: false);
+    }
+    final headerIndex = _headerIndex(rows[headerAt]);
+    var changed = false;
+    final next = <List<Object?>>[for (var i = 0; i < rows.length; i++) List<Object?>.from(rows[i])];
+    void write(int row, String column, Object? value) {
+      final col = headerIndex[column];
+      if (col == null) {
+        return;
+      }
+      while (next[row].length <= col) {
+        next[row].add('');
+      }
+      final current = _cellString(next[row][col]) ?? '';
+      final text = value == null ? '' : value.toString();
+      if (current == text) {
+        return;
+      }
+      next[row][col] = value;
+      changed = true;
+    }
+
+    for (var i = headerAt + 1; i < next.length; i++) {
+      final raw = next[i];
+      final code = _cell(raw, headerIndex, CoursesSheet.launchCode);
+      if (code == null || code.isEmpty) {
+        continue;
+      }
+      if (_priceKopecks(raw, headerIndex, CoursesSheet.pricePromoRub) == null) {
+        write(i, CoursesSheet.pricePromoRub, CoursesSheet.seedPricePromoRub);
+      }
+      final startRaw = _cell(raw, headerIndex, CoursesSheet.courseStartDate);
+      final courseStart = startRaw == null || startRaw.isEmpty ? null : _parseIsoDate(startRaw);
+      final webinarRaw = _cell(raw, headerIndex, CoursesSheet.webinarAt);
+      final webinar = webinarRaw == null || webinarRaw.isEmpty
+          ? null
+          : _parseDateTime(webinarRaw, timezoneOffsetHours: timezoneOffsetHours);
+      final salesStartRaw = _cell(raw, headerIndex, CoursesSheet.salesStartAt);
+      if ((salesStartRaw == null || salesStartRaw.isEmpty) && webinar != null) {
+        write(
+          i,
+          CoursesSheet.salesStartAt,
+          CoursesSheet.formatDottedDateTime(
+            Launch.impliedSalesStartAt(webinar),
+            timezoneOffsetHours: timezoneOffsetHours,
+          ),
+        );
+      }
+      final salesEndRaw = _cell(raw, headerIndex, CoursesSheet.salesEndDate);
+      if ((salesEndRaw == null || salesEndRaw.isEmpty) && courseStart != null) {
+        write(
+          i,
+          CoursesSheet.salesEndDate,
+          CoursesSheet.formatDottedDate(
+            Launch.impliedSalesEndAt(courseStart),
+            timezoneOffsetHours: timezoneOffsetHours,
+          ),
+        );
+      }
+      final channelRaw = _cell(raw, headerIndex, CoursesSheet.channelId);
+      if ((channelRaw == null || channelRaw.isEmpty || isOmittedChannelId(channelRaw)) &&
+          fallbackChannelId != null) {
+        write(i, CoursesSheet.channelId, fallbackChannelId);
+      }
+    }
+    return (rows: next, changed: changed);
+  }
+
   static CatalogLaunchDraft? _parseRow(
     List<Object?> raw,
     Map<String, int> headerIndex, {
@@ -913,38 +983,39 @@ abstract final class CoursesSheetParser {
       return null;
     }
     final startRaw = _cell(raw, headerIndex, CoursesSheet.courseStartDate);
-    DateTime? courseStartAt;
-    if (startRaw != null && startRaw.isNotEmpty) {
-      courseStartAt = _parseIsoDate(startRaw);
-      if (courseStartAt == null) {
-        return null;
-      }
+    if (startRaw == null || startRaw.isEmpty) {
+      return null;
+    }
+    final courseStartAt = _parseIsoDate(startRaw);
+    if (courseStartAt == null) {
+      return null;
     }
     final webinarRaw = _cell(raw, headerIndex, CoursesSheet.webinarAt);
-    DateTime? webinarAt;
-    if (webinarRaw != null && webinarRaw.isNotEmpty) {
-      webinarAt = _parseDateTime(webinarRaw, timezoneOffsetHours: timezoneOffsetHours);
-      if (webinarAt == null) {
-        return null;
-      }
+    if (webinarRaw == null || webinarRaw.isEmpty) {
+      return null;
+    }
+    final webinarAt = _parseDateTime(webinarRaw, timezoneOffsetHours: timezoneOffsetHours);
+    if (webinarAt == null) {
+      return null;
     }
     final salesStartRaw = _cell(raw, headerIndex, CoursesSheet.salesStartAt);
-    DateTime? salesStartAt;
-    if (salesStartRaw != null && salesStartRaw.isNotEmpty) {
-      salesStartAt = _parseDateTime(salesStartRaw, timezoneOffsetHours: timezoneOffsetHours);
-      if (salesStartAt == null) {
-        return null;
-      }
+    if (salesStartRaw == null || salesStartRaw.isEmpty) {
+      return null;
+    }
+    final salesStartAt = _parseDateTime(salesStartRaw, timezoneOffsetHours: timezoneOffsetHours);
+    if (salesStartAt == null) {
+      return null;
     }
     final salesEndRaw = _cell(raw, headerIndex, CoursesSheet.salesEndDate);
-    DateTime? salesEndAt;
-    if (salesEndRaw != null && salesEndRaw.isNotEmpty) {
-      salesEndAt = _parseIsoDateEndOfDay(salesEndRaw, timezoneOffsetHours: timezoneOffsetHours);
-      if (salesEndAt == null) {
-        return null;
-      }
+    if (salesEndRaw == null || salesEndRaw.isEmpty) {
+      return null;
     }
-    final promoKopecks = _priceKopecks(raw, headerIndex, CoursesSheet.pricePromoRub) ?? 1500000;
+    final salesEndAt = _parseIsoDateEndOfDay(salesEndRaw, timezoneOffsetHours: timezoneOffsetHours);
+    if (salesEndAt == null) {
+      return null;
+    }
+    final promoKopecks =
+        _priceKopecks(raw, headerIndex, CoursesSheet.pricePromoRub) ?? LaunchPrices.promoKopecks;
     final depositKopecks = _priceKopecks(raw, headerIndex, CoursesSheet.depositRub) ?? 0;
     if (depositKopecks < 0) {
       return null;
@@ -953,12 +1024,12 @@ abstract final class CoursesSheetParser {
         ? MoscowTime.daysBeforeCourseStart(courseStartAt, days: CoursesSheet.defaultDepositDueDays)
         : null;
     final channelRaw = _cell(raw, headerIndex, CoursesSheet.channelId);
-    int? channelId;
-    if (channelRaw != null && channelRaw.isNotEmpty && !isOmittedChannelId(channelRaw)) {
-      channelId = parseChannelId(channelRaw);
-      if (channelId == null) {
-        return null;
-      }
+    if (channelRaw == null || channelRaw.isEmpty || isOmittedChannelId(channelRaw)) {
+      return null;
+    }
+    final channelId = parseChannelId(channelRaw);
+    if (channelId == null || channelId >= 0) {
+      return null;
     }
     return CatalogLaunchDraft(
       productCode: CoursesSheet.resolvedProductCode(
@@ -981,7 +1052,6 @@ abstract final class CoursesSheetParser {
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
-      offerUrl: _cell(raw, headerIndex, CoursesSheet.offerUrl),
       leadMagnetFileId: _cell(raw, headerIndex, CoursesSheet.leadMagnetFileId),
       leadMagnetUrl: _cell(raw, headerIndex, CoursesSheet.leadMagnetUrl),
     );

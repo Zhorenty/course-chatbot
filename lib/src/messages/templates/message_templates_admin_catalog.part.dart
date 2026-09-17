@@ -27,7 +27,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     final title = escapeHtml(launch.title);
     final code = escapeHtml(launch.code);
     final price = formatRubFromKopecks(launch.priceFullKopecks);
-    final start = _formatDate(launch.courseStartAt) ?? 'без даты старта';
+    final start = _formatDate(launch.courseStartAt);
     final active = launch.isActive ? ' · активен' : '';
     return '$title ($code) · $price · $start$active';
   }
@@ -38,7 +38,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       ..writeln()
       ..writeln('код: <code>${escapeHtml(launch.code)}</code>')
       ..writeln('цена: ${formatRubFromKopecks(launch.priceFullKopecks)}')
-      ..writeln('спеццена: ${formatRubFromKopecks(launch.resolvedPricePromoKopecks)}');
+      ..writeln('спеццена: ${formatRubFromKopecks(launch.pricePromoKopecks)}');
     if (launch.depositKopecks > 0) {
       buf.writeln('предоплата: ${formatRubFromKopecks(launch.depositKopecks)}');
       final due = _formatDate(launch.depositDueAt ?? launch.impliedDepositDueAt);
@@ -48,18 +48,16 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     } else {
       buf.writeln('предоплата: нет');
     }
-    buf.writeln('старт: ${_formatDate(launch.courseStartAt) ?? 'не указан'}');
-    buf.writeln('эфир: ${_formatDateTime(launch.webinarAt) ?? 'не указан'}');
+    buf.writeln('старт: ${_formatDate(launch.courseStartAt)}');
+    buf.writeln('эфир: ${_formatDateTime(launch.webinarAt)}');
     final webinarUrl = launch.webinarUrl?.trim();
     buf.writeln(
       webinarUrl == null || webinarUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
-    buf.writeln(
-      'старт продаж: ${_formatDateTime(launch.salesStartAt) ?? 'следующий день после эфира'}',
-    );
-    buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt) ?? 'не указан'}');
+    buf.writeln('старт продаж: ${_formatDateTime(launch.salesStartAt)}');
+    buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt)}');
     final channel = launch.channelId;
-    buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
+    buf.writeln('канал: <code>$channel</code>');
     buf.writeln(_catalogGuideLine(launch));
     buf.writeln(_catalogDescriptionLine(launch));
     buf.writeln(_catalogDozhimLine(dozhimCount));
@@ -123,8 +121,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       9,
       'Эфир',
       'Дата и время эфира по Москве.',
-      example: '05.10.2026 19:00',
-      skipHint: '«Пропустить» — заполнить позже.',
+      example: '29.09.2026 19:00',
     );
   }
 
@@ -142,21 +139,13 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return _catalogWizardStep(
       11,
       'Старт продаж',
-      'Когда открывается касса и продающий прогрев. Дата и время по Москве. '
-          'Без эфира и без этой даты продажи закрыты.',
-      example: '05.10.2026 19:00',
-      skipHint: '«Пропустить» — следующий день после эфира.',
+      'Когда открывается касса и продающий прогрев. Дата и время по Москве.',
+      example: '30.09.2026 00:00',
     );
   }
 
   String adminCatalogAskSalesEnd() {
-    return _catalogWizardStep(
-      12,
-      'Конец продаж',
-      'Последний день продаж.',
-      example: '11.10.2026',
-      skipHint: '«Пропустить» — не закрывать по календарю.',
-    );
+    return _catalogWizardStep(12, 'Конец продаж', 'Последний день продаж.', example: '12.10.2026');
   }
 
   String adminCatalogAskDeposit() {
@@ -177,9 +166,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return _catalogWizardStep(
       13,
       'Канал',
-      'ID канала этого потока (число вида −100…).',
-      skipHint:
-          '«${MessageTemplates.buttonAdminCatalogSkipChannel}» — возьмётся запасной при синке.',
+      'ID канала этого потока (число вида −100…). Обязательно.',
     );
   }
 
@@ -251,18 +238,15 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     } else {
       buf.writeln('предоплата: нет');
     }
-    buf.writeln('старт: ${_formatDate(draft.courseStartAt) ?? 'не указан'}');
-    buf.writeln('эфир: ${_formatDateTime(draft.webinarAt) ?? 'не указан'}');
+    buf.writeln('старт: ${_formatDate(draft.courseStartAt)}');
+    buf.writeln('эфир: ${_formatDateTime(draft.webinarAt)}');
     final previewUrl = draft.webinarUrl?.trim();
     buf.writeln(
       previewUrl == null || previewUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
-    buf.writeln(
-      'старт продаж: ${_formatDateTime(draft.salesStartAt) ?? 'следующий день после эфира'}',
-    );
-    buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt) ?? 'не указан'}');
-    final channel = draft.channelId;
-    buf.writeln(channel == null ? 'канал: не указан' : 'канал: <code>$channel</code>');
+    buf.writeln('старт продаж: ${_formatDateTime(draft.salesStartAt)}');
+    buf.writeln('конец продаж: ${_formatDate(draft.salesEndAt)}');
+    buf.writeln('канал: <code>${draft.channelId}</code>');
     final guideId = draft.leadMagnetFileId?.trim();
     buf.writeln(guideId == null || guideId.isEmpty ? 'гайд: нет' : 'гайд: есть');
     buf
@@ -305,17 +289,12 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.promo => 'Спеццена эфира в рублях. Число, как 15000. Пусто — 15000.',
       CatalogLaunchField.deposit => 'Новая предоплата в рублях. Пусто или 0 — без предоплаты.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
-      CatalogLaunchField.webinar =>
-        'Дата и время эфира по Москве, как 05.10.2026 19:00. Пусто или «-» — сбросить.',
+      CatalogLaunchField.webinar => 'Дата и время эфира по Москве, как 29.09.2026 19:00.',
       CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
       CatalogLaunchField.salesStart =>
-        'Когда открывается касса. Дата и время по Москве, как 05.10.2026 19:00. '
-            'Пусто или «-» — следующий день после эфира.',
-      CatalogLaunchField.salesEnd =>
-        'Последний день продаж, как 11.10.2026. Пусто или «-» — не закрывать по календарю.',
-      CatalogLaunchField.channel =>
-        'Новый ID канала (число вида −100…).\n\n'
-            'Сбросить свой канал — кнопка «${MessageTemplates.buttonAdminCatalogSkipChannel}».',
+        'Когда открывается касса. Дата и время по Москве, как 30.09.2026 00:00.',
+      CatalogLaunchField.salesEnd => 'Последний день продаж, как 12.10.2026.',
+      CatalogLaunchField.channel => 'Новый ID канала (число вида −100…). Обязательно.',
       CatalogLaunchField.guide => 'Пришли PDF гайда в этот чат. Старый файл этого потока заменю.',
     };
   }
@@ -338,9 +317,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogFieldError.badDeposit =>
         'Предоплата — число меньше полной цены. Пусто или 0, если предоплаты нет.',
       CatalogFieldError.badDate => 'Дата не разобралась. Формат 19.08.2026.',
-      CatalogFieldError.badChannel =>
-        'ID канала — отрицательное число вида −100…. '
-            'Или «-» / «${MessageTemplates.buttonAdminCatalogSkipChannel}», чтобы без своего канала.',
+      CatalogFieldError.badChannel => 'ID канала — отрицательное число вида −100….',
       CatalogFieldError.needGuideFile => 'Нужен файл. Пришли PDF гайда, не текст.',
     };
   }

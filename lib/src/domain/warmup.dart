@@ -67,8 +67,6 @@ final class WarmupStep {
     'last_wagon',
   };
 
-  static const String lastWagonKey = 'last_wagon';
-
   static bool isBuiltinDozhim(String stepKey) => stepKey.startsWith('dozhim_d');
 
   static String customDozhimKey(int id) => 'dozhim:$id';

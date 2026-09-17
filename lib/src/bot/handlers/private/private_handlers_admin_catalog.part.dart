@@ -237,24 +237,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateWebinar,
           catalogDraft: draft.copyWith(courseStartAt: CoursesSheetParser.parseDate(text)),
         );
-        return _presentCatalog(
-          context,
-          _templates.adminCatalogAskWebinar(),
-          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
-        );
+        return _presentCatalog(context, _templates.adminCatalogAskWebinar());
       case PrivateFlowStep.adminCatalogCreateWebinar:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          _setCatalogFlow(
-            context.userId!,
-            PrivateFlowStep.adminCatalogCreateWebinarUrl,
-            catalogDraft: draft.copyWith(webinarAt: null),
-          );
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskWebinarUrl(),
-            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
-          );
-        }
         final webinar = CoursesSheetParser.parseDateTime(text);
         if (webinar == null) {
           return _presentCatalog(
@@ -263,7 +247,6 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskWebinar(),
             ),
-            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -283,24 +266,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateSalesStart,
           catalogDraft: draft.copyWith(webinarUrl: skippedUrl ? null : text),
         );
-        return _presentCatalog(
-          context,
-          _templates.adminCatalogAskSalesStart(),
-          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
-        );
+        return _presentCatalog(context, _templates.adminCatalogAskSalesStart());
       case PrivateFlowStep.adminCatalogCreateSalesStart:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          _setCatalogFlow(
-            context.userId!,
-            PrivateFlowStep.adminCatalogCreateSalesEnd,
-            catalogDraft: draft.copyWith(salesStartAt: null),
-          );
-          return _presentCatalog(
-            context,
-            _templates.adminCatalogAskSalesEnd(),
-            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
-          );
-        }
         final salesStart = CoursesSheetParser.parseDateTime(text);
         if (salesStart == null) {
           return _presentCatalog(
@@ -309,7 +276,6 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskSalesStart(),
             ),
-            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -317,20 +283,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           PrivateFlowStep.adminCatalogCreateSalesEnd,
           catalogDraft: draft.copyWith(salesStartAt: salesStart),
         );
-        return _presentCatalog(
-          context,
-          _templates.adminCatalogAskSalesEnd(),
-          replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
-        );
+        return _presentCatalog(context, _templates.adminCatalogAskSalesEnd());
       case PrivateFlowStep.adminCatalogCreateSalesEnd:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          _setCatalogFlow(
-            context.userId!,
-            PrivateFlowStep.adminCatalogCreateChannel,
-            catalogDraft: draft.copyWith(salesEndAt: null),
-          );
-          return _presentCatalogAskChannel(context);
-        }
         final salesEnd = CoursesSheetParser.parseDateEndOfDay(text);
         if (salesEnd == null) {
           return _presentCatalog(
@@ -339,7 +293,6 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
               CatalogFieldError.badDate,
               _templates.adminCatalogAskSalesEnd(),
             ),
-            replyMarkup: _templates.adminCatalogSkipOptionalKeyboard(),
           );
         }
         _setCatalogFlow(
@@ -363,7 +316,6 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return _presentCatalog(
       context,
       error == null ? ask : _templates.adminCatalogAskWithError(error, ask),
-      replyMarkup: _templates.adminCatalogSkipChannelKeyboard(),
     );
   }
 
@@ -407,15 +359,15 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     if (error != null) {
       return _presentCatalogAskChannel(context, error: error);
     }
-    final skipped = CoursesSheetParser.isOmittedChannelId(raw);
+    final channelId = CoursesSheetParser.parseChannelId(raw);
+    if (channelId == null) {
+      return _presentCatalogAskChannel(context, error: CatalogFieldError.badChannel);
+    }
     final draft = _flowByUserId[context.userId!]?.catalogDraft ?? const CatalogWizardDraft();
     _setCatalogFlow(
       context.userId!,
       PrivateFlowStep.adminCatalogCreateGuide,
-      catalogDraft: draft.copyWith(
-        channelId: skipped ? null : CoursesSheetParser.parseChannelId(raw),
-        channelSkipped: skipped,
-      ),
+      catalogDraft: draft.copyWith(channelId: channelId, channelSkipped: false),
     );
     return _presentCatalogAskGuide(context);
   }
@@ -428,10 +380,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     const skippable = <PrivateFlowStep>{
       PrivateFlowStep.adminCatalogCreatePromo,
       PrivateFlowStep.adminCatalogCreateDeposit,
-      PrivateFlowStep.adminCatalogCreateWebinar,
       PrivateFlowStep.adminCatalogCreateWebinarUrl,
-      PrivateFlowStep.adminCatalogCreateSalesStart,
-      PrivateFlowStep.adminCatalogCreateSalesEnd,
       PrivateFlowStep.adminCatalogCreateGuide,
     };
     if (step == null || !skippable.contains(step)) {
@@ -446,11 +395,17 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     final flow = _flowByUserId[context.userId!];
     if (flow?.step == PrivateFlowStep.adminCatalogCreateChannel) {
-      return _acceptCatalogCreateChannel(context, '-');
+      return _presentCatalogAskChannel(context, error: CatalogFieldError.badChannel);
     }
     if (flow?.step == PrivateFlowStep.adminCatalogEditValue &&
         flow?.catalogDraft?.editField == CatalogLaunchField.channel) {
-      return _captureCatalogEdit(context, rawOverride: '-');
+      return _presentCatalog(
+        context,
+        _templates.adminCatalogAskWithError(
+          CatalogFieldError.badChannel,
+          _templates.adminCatalogAskField(CatalogLaunchField.channel),
+        ),
+      );
     }
     return true;
   }
@@ -661,9 +616,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     return _presentCatalog(
       context,
       _templates.adminCatalogAskField(field, launch: launch),
-      replyMarkup: field == CatalogLaunchField.channel
-          ? _templates.adminCatalogSkipChannelKeyboard()
-          : field == CatalogLaunchField.guide
+      replyMarkup: field == CatalogLaunchField.guide
           ? _templates.adminCatalogBackToCardKeyboard(launchId)
           : null,
     );
@@ -685,7 +638,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         final html = rawOverride == null
             ? telegramTextMessageToHtml(context.message)
             : (text.isEmpty ? null : telegramEntitiesToHtml(rawOverride, null));
-        _course.setLaunchDescription(html, launchId: launch.id);
+        _course.setLaunchDescription(html ?? '', launchId: launch.id);
         await _writeDozhimPresenceFlags();
         return _showCatalogCard(context, launch.id);
       case CatalogLaunchField.title:
@@ -745,10 +698,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
             _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
           );
         }
+        final start = CoursesSheetParser.parseDate(text);
         overlay = overlay.copyWith(
-          courseStartAt: CoursesSheetParser.parseDate(text),
-          depositDueAt: overlay.depositKopecks > 0
-              ? MoscowTime.daysBeforeCourseStart(CoursesSheetParser.parseDate(text))
+          courseStartAt: start,
+          depositDueAt: overlay.depositKopecks > 0 && start != null
+              ? MoscowTime.daysBeforeCourseStart(start)
               : null,
         );
       case CatalogLaunchField.promo:
@@ -765,68 +719,52 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
           overlay = overlay.copyWith(pricePromoKopecks: CoursesSheetParser.parsePriceKopecks(text));
         }
       case CatalogLaunchField.webinar:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          overlay = overlay.copyWith(webinarAt: null);
-        } else {
-          final parsed = CoursesSheetParser.parseDateTime(text);
-          if (parsed == null) {
-            return _presentCatalog(
-              context,
-              _templates.adminCatalogAskWithError(
-                CatalogFieldError.badDate,
-                _templates.adminCatalogAskField(field),
-              ),
-            );
-          }
-          overlay = overlay.copyWith(webinarAt: parsed);
+        final parsed = CoursesSheetParser.parseDateTime(text);
+        if (parsed == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskField(field),
+            ),
+          );
         }
+        overlay = overlay.copyWith(webinarAt: parsed);
       case CatalogLaunchField.webinarUrl:
         overlay = overlay.copyWith(webinarUrl: text.isEmpty ? null : text);
       case CatalogLaunchField.salesStart:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          overlay = overlay.copyWith(salesStartAt: null);
-        } else {
-          final parsed = CoursesSheetParser.parseDateTime(text);
-          if (parsed == null) {
-            return _presentCatalog(
-              context,
-              _templates.adminCatalogAskWithError(
-                CatalogFieldError.badDate,
-                _templates.adminCatalogAskField(field),
-              ),
-            );
-          }
-          overlay = overlay.copyWith(salesStartAt: parsed);
+        final parsed = CoursesSheetParser.parseDateTime(text);
+        if (parsed == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskField(field),
+            ),
+          );
         }
+        overlay = overlay.copyWith(salesStartAt: parsed);
       case CatalogLaunchField.salesEnd:
-        if (text.isEmpty || CoursesSheetParser.isOmittedChannelId(text)) {
-          overlay = overlay.copyWith(salesEndAt: null);
-        } else {
-          final parsed = CoursesSheetParser.parseDateEndOfDay(text);
-          if (parsed == null) {
-            return _presentCatalog(
-              context,
-              _templates.adminCatalogAskWithError(
-                CatalogFieldError.badDate,
-                _templates.adminCatalogAskField(field),
-              ),
-            );
-          }
-          overlay = overlay.copyWith(salesEndAt: parsed);
+        final parsed = CoursesSheetParser.parseDateEndOfDay(text);
+        if (parsed == null) {
+          return _presentCatalog(
+            context,
+            _templates.adminCatalogAskWithError(
+              CatalogFieldError.badDate,
+              _templates.adminCatalogAskField(field),
+            ),
+          );
         }
+        overlay = overlay.copyWith(salesEndAt: parsed);
       case CatalogLaunchField.channel:
         final error = LaunchCatalogAdminService.validateChannel(text);
         if (error != null) {
           return _presentCatalog(
             context,
             _templates.adminCatalogAskWithError(error, _templates.adminCatalogAskField(field)),
-            replyMarkup: _templates.adminCatalogSkipChannelKeyboard(),
           );
         }
-        final skipped = CoursesSheetParser.isOmittedChannelId(text);
-        overlay = overlay.copyWith(
-          channelId: skipped ? null : CoursesSheetParser.parseChannelId(text),
-        );
+        overlay = overlay.copyWith(channelId: CoursesSheetParser.parseChannelId(text));
       case CatalogLaunchField.guide:
         final fileId = extractDocumentFileId(context.message);
         if (fileId == null || fileId.isEmpty) {
@@ -1454,12 +1392,20 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final code = draft?.code?.trim();
     final price = draft?.priceKopecks;
     final start = draft?.courseStartAt;
+    final channelId = draft?.channelId;
+    final webinar = draft?.webinarAt;
+    final salesStart = draft?.salesStartAt;
+    final salesEnd = draft?.salesEndAt;
     if (title == null ||
         title.isEmpty ||
         code == null ||
         code.isEmpty ||
         price == null ||
-        start == null) {
+        start == null ||
+        webinar == null ||
+        salesStart == null ||
+        salesEnd == null ||
+        channelId == null) {
       return null;
     }
     final deposit = draft?.depositKopecks ?? 0;
@@ -1470,16 +1416,16 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       launchTitle: title,
       isActive: draft?.isActive ?? false,
       priceFullKopecks: price,
+      pricePromoKopecks: draft?.pricePromoKopecks ?? LaunchPrices.promoKopecks,
       depositKopecks: deposit,
       depositDueDays: CoursesSheet.defaultDepositDueDays,
       depositDueAt: deposit > 0 ? MoscowTime.daysBeforeCourseStart(start) : null,
       courseStartAt: start,
-      webinarAt: draft?.webinarAt,
+      webinarAt: webinar,
       webinarUrl: draft?.webinarUrl,
-      salesStartAt: draft?.salesStartAt,
-      salesEndAt: draft?.salesEndAt,
-      pricePromoKopecks: draft?.pricePromoKopecks ?? LaunchPrices.promoKopecks,
-      channelId: draft?.channelSkipped == true ? null : draft?.channelId,
+      salesStartAt: salesStart,
+      salesEndAt: salesEnd,
+      channelId: channelId,
       leadMagnetFileId: draft?.guideFileId,
     );
   }

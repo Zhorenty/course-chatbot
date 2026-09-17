@@ -77,6 +77,7 @@ final class SqliteCourseRepository extends _SqliteCourseStore
       'UPDATE launches SET description = ? WHERE description IS NULL OR trim(description) = \'\';',
       <Object?>[Launch.defaultDescription],
     );
+    backfillLaunchDefaults();
   }
 
   @override
@@ -207,26 +208,44 @@ class _SqliteCourseStore {
   }
 
   Launch mapLaunch(Row row) {
+    return tryMapLaunch(row)!;
+  }
+
+  Launch? tryMapLaunch(Row row) {
+    final courseStartAt = parseTime(row['course_start_at'] as String?);
+    final webinarAt = parseTime(row['webinar_at'] as String?);
+    var salesStartAt = parseTime(row['sales_start_at'] as String?);
+    var salesEndAt = parseTime(row['sales_end_at'] as String?);
+    final channelId = row['channel_id'] as int?;
+    if (courseStartAt == null || webinarAt == null || channelId == null || channelId >= 0) {
+      return null;
+    }
+    salesStartAt ??= Launch.impliedSalesStartAt(webinarAt);
+    salesEndAt ??= Launch.impliedSalesEndAt(courseStartAt);
+    final descriptionRaw = row['description'] as String?;
+    final description = descriptionRaw == null || descriptionRaw.trim().isEmpty
+        ? Launch.defaultDescription
+        : descriptionRaw;
+    final promo = row['price_promo_kopecks'] as int?;
     return Launch(
       id: row['id'] as int,
       productId: row['product_id'] as int,
       code: row['code'] as String,
       title: row['title'] as String,
-      channelId: row['channel_id'] as int?,
+      channelId: channelId,
       priceFullKopecks: row['price_full_kopecks'] as int,
-      pricePromoKopecks: (row['price_promo_kopecks'] as int?) ?? 0,
+      pricePromoKopecks: promo == null || promo <= 0 ? LaunchPrices.promoKopecks : promo,
       depositKopecks: row['deposit_kopecks'] as int,
       depositDueDays: row['deposit_due_days'] as int,
       depositDueAt: parseTime(row['deposit_due_at'] as String?),
-      courseStartAt: parseTime(row['course_start_at'] as String?),
-      webinarAt: parseTime(row['webinar_at'] as String?),
+      courseStartAt: courseStartAt,
+      webinarAt: webinarAt,
       webinarUrl: row['webinar_url'] as String?,
-      salesStartAt: parseTime(row['sales_start_at'] as String?),
-      salesEndAt: parseTime(row['sales_end_at'] as String?),
-      offerUrl: row['offer_url'] as String?,
+      salesStartAt: salesStartAt,
+      salesEndAt: salesEndAt,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
       leadMagnetUrl: row['lead_magnet_url'] as String?,
-      description: row['description'] as String?,
+      description: description,
       isActive: (row['is_active'] as int?) == 1,
     );
   }

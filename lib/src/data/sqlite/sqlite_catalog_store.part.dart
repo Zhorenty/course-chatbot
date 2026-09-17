@@ -8,19 +8,19 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required String launchCode,
     required String launchTitle,
     required int priceFullKopecks,
+    required int pricePromoKopecks,
     required int depositKopecks,
     required int depositDueDays,
-    int pricePromoKopecks = 0,
+    required DateTime courseStartAt,
+    required DateTime webinarAt,
+    required DateTime salesStartAt,
+    required DateTime salesEndAt,
+    required int channelId,
     DateTime? depositDueAt,
-    DateTime? courseStartAt,
-    DateTime? webinarAt,
     String? webinarUrl,
-    DateTime? salesStartAt,
-    DateTime? salesEndAt,
-    int? channelId,
-    String? offerUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
+    String? description,
     bool activate = false,
   }) {
     _db.execute(
@@ -36,17 +36,21 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     final due = depositKopecks > 0
         ? (depositDueAt ?? MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays))
         : null;
+    final promo = pricePromoKopecks > 0 ? pricePromoKopecks : LaunchPrices.promoKopecks;
+    final body = (description == null || description.trim().isEmpty)
+        ? Launch.defaultDescription
+        : description;
     _db.execute(
       '''
       INSERT INTO launches (
         product_id, code, title, channel_id, price_full_kopecks, price_promo_kopecks,
         deposit_kopecks, deposit_due_days, deposit_due_at, course_start_at,
-        webinar_at, webinar_url, sales_start_at, sales_end_at, offer_url,
+        webinar_at, webinar_url, sales_start_at, sales_end_at,
         lead_magnet_file_id, lead_magnet_url, description, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title,
-        channel_id = COALESCE(excluded.channel_id, launches.channel_id),
+        channel_id = excluded.channel_id,
         price_full_kopecks = excluded.price_full_kopecks,
         price_promo_kopecks = excluded.price_promo_kopecks,
         deposit_kopecks = excluded.deposit_kopecks,
@@ -57,9 +61,9 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         webinar_url = excluded.webinar_url,
         sales_start_at = excluded.sales_start_at,
         sales_end_at = excluded.sales_end_at,
-        offer_url = COALESCE(excluded.offer_url, launches.offer_url),
         lead_magnet_file_id = COALESCE(excluded.lead_magnet_file_id, launches.lead_magnet_file_id),
-        lead_magnet_url = COALESCE(excluded.lead_magnet_url, launches.lead_magnet_url);
+        lead_magnet_url = COALESCE(excluded.lead_magnet_url, launches.lead_magnet_url),
+        description = COALESCE(excluded.description, launches.description);
       ''',
       <Object?>[
         productId,
@@ -67,19 +71,18 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         launchTitle,
         channelId,
         priceFullKopecks,
-        pricePromoKopecks > 0 ? pricePromoKopecks : LaunchPrices.promoKopecks,
+        promo,
         depositKopecks,
         depositDueDays,
         due?.toUtc().toIso8601String(),
-        courseStartAt?.toUtc().toIso8601String(),
-        webinarAt?.toUtc().toIso8601String(),
+        courseStartAt.toUtc().toIso8601String(),
+        webinarAt.toUtc().toIso8601String(),
         webinarUrl,
-        salesStartAt?.toUtc().toIso8601String(),
-        salesEndAt?.toUtc().toIso8601String(),
-        offerUrl,
+        salesStartAt.toUtc().toIso8601String(),
+        salesEndAt.toUtc().toIso8601String(),
         leadMagnetFileId,
         leadMagnetUrl,
-        Launch.defaultDescription,
+        body,
       ],
     );
     if (activate) {
@@ -95,19 +98,19 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required String launchCode,
     required String launchTitle,
     required int priceFullKopecks,
+    required int pricePromoKopecks,
     required int depositKopecks,
     required int depositDueDays,
-    int pricePromoKopecks = 0,
+    required DateTime courseStartAt,
+    required DateTime webinarAt,
+    required DateTime salesStartAt,
+    required DateTime salesEndAt,
+    required int channelId,
     DateTime? depositDueAt,
-    DateTime? courseStartAt,
-    DateTime? webinarAt,
     String? webinarUrl,
-    DateTime? salesStartAt,
-    DateTime? salesEndAt,
-    int? channelId,
-    String? offerUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
+    String? description,
   }) {
     return upsertLaunch(
       productCode: productCode,
@@ -125,9 +128,9 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
-      offerUrl: offerUrl,
       leadMagnetFileId: leadMagnetFileId,
       leadMagnetUrl: leadMagnetUrl,
+      description: description,
       activate: true,
     );
   }
@@ -181,13 +184,16 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       'SELECT * FROM launches WHERE is_active = 1 ORDER BY id DESC LIMIT 1;',
     );
     if (active.isNotEmpty) {
-      return mapLaunch(active.first);
+      final mapped = tryMapLaunch(active.first);
+      if (mapped != null) {
+        return mapped;
+      }
     }
     final rows = _db.select('SELECT * FROM launches ORDER BY id DESC LIMIT 1;');
     if (rows.isEmpty) {
       return null;
     }
-    return mapLaunch(rows.first);
+    return tryMapLaunch(rows.first);
   }
 
   @override
@@ -196,7 +202,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (rows.isEmpty) {
       return null;
     }
-    return mapLaunch(rows.first);
+    return tryMapLaunch(rows.first);
   }
 
   @override
@@ -209,7 +215,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (rows.isEmpty) {
       return null;
     }
-    return mapLaunch(rows.first);
+    return tryMapLaunch(rows.first);
   }
 
   @override
@@ -230,7 +236,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (rows.isEmpty) {
       return null;
     }
-    return mapLaunch(rows.first);
+    return tryMapLaunch(rows.first);
   }
 
   @override
@@ -247,13 +253,66 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (rows.isEmpty) {
       return null;
     }
-    return mapLaunch(rows.first);
+    return tryMapLaunch(rows.first);
+  }
+
+  @override
+  void backfillLaunchDefaults({int? fallbackChannelId}) {
+    final rows = _db.select('SELECT * FROM launches;');
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final courseStartAt = parseTime(row['course_start_at'] as String?);
+      final webinarAt = parseTime(row['webinar_at'] as String?);
+      var salesStartAt = parseTime(row['sales_start_at'] as String?);
+      var salesEndAt = parseTime(row['sales_end_at'] as String?);
+      var channelId = row['channel_id'] as int?;
+      var promo = row['price_promo_kopecks'] as int?;
+      final descriptionRaw = row['description'] as String?;
+      if (promo == null || promo <= 0) {
+        promo = LaunchPrices.promoKopecks;
+        _db.execute('UPDATE launches SET price_promo_kopecks = ? WHERE id = ?;', <Object?>[
+          promo,
+          id,
+        ]);
+      }
+      if (descriptionRaw == null || descriptionRaw.trim().isEmpty) {
+        _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[
+          Launch.defaultDescription,
+          id,
+        ]);
+      }
+      if (salesStartAt == null && webinarAt != null) {
+        salesStartAt = Launch.impliedSalesStartAt(webinarAt);
+        _db.execute('UPDATE launches SET sales_start_at = ? WHERE id = ?;', <Object?>[
+          salesStartAt.toUtc().toIso8601String(),
+          id,
+        ]);
+      }
+      if (salesEndAt == null && courseStartAt != null) {
+        salesEndAt = Launch.impliedSalesEndAt(courseStartAt);
+        _db.execute('UPDATE launches SET sales_end_at = ? WHERE id = ?;', <Object?>[
+          salesEndAt.toUtc().toIso8601String(),
+          id,
+        ]);
+      }
+      if ((channelId == null || channelId >= 0) &&
+          fallbackChannelId != null &&
+          fallbackChannelId < 0) {
+        _db.execute('UPDATE launches SET channel_id = ? WHERE id = ?;', <Object?>[
+          fallbackChannelId,
+          id,
+        ]);
+      }
+    }
   }
 
   @override
   List<Launch> listLaunches() {
     final rows = _db.select('SELECT * FROM launches ORDER BY is_active DESC, id ASC;');
-    return <Launch>[for (final row in rows) mapLaunch(row)];
+    return <Launch>[
+      for (final row in rows)
+        if (tryMapLaunch(row) case final Launch mapped) mapped,
+    ];
   }
 
   @override
@@ -308,10 +367,10 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   @override
-  void setLaunchDescription(String? text, {required int launchId}) {
-    final trimmed = text?.trim();
+  void setLaunchDescription(String text, {required int launchId}) {
+    final trimmed = text.trim();
     _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[
-      trimmed == null || trimmed.isEmpty ? null : text,
+      trimmed.isEmpty ? Launch.defaultDescription : text,
       launchId,
     ]);
   }

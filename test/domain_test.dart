@@ -10,6 +10,8 @@ import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
+import 'support/launch_fixture.dart';
+
 void main() {
   test('quiet hours 10-21 Moscow skip 09 and 21', () {
     const hours = QuietHours(timezoneOffsetHours: 3, fromHour: 10, toHour: 21);
@@ -109,16 +111,11 @@ void main() {
   });
 
   test('promo price is 15000 for RSVP during three days after webinar', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
+    final launch = testLaunch(
       priceFullKopecks: 1900000,
       pricePromoKopecks: 1500000,
-      depositKopecks: 0,
-      depositDueDays: 7,
       webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
     );
     final during = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 6, 12));
     expect(during.phase, SalesPhase.promo);
@@ -133,50 +130,19 @@ void main() {
     expect(regular.checkoutOpen, isTrue);
   });
 
-  test('sales stay closed when webinar and sales start are empty', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 0,
-      depositDueDays: 7,
+  test('sales stay closed until the stored sales start', () {
+    final launch = testLaunch(
+      webinarAt: DateTime.utc(2026, 9, 1, 16),
+      salesStartAt: DateTime.utc(2026, 10, 1, 16),
     );
     final quote = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 9, 8));
     expect(quote.phase, SalesPhase.preSales);
     expect(quote.checkoutOpen, isFalse);
   });
 
-  test('sales open at sales start even without a webinar', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 0,
-      depositDueDays: 7,
-      salesStartAt: DateTime.utc(2026, 9, 1, 16),
-    );
-    final before = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 8, 31));
-    expect(before.phase, SalesPhase.preSales);
-    expect(before.checkoutOpen, isFalse);
-    final after = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 9, 2));
-    expect(after.phase, SalesPhase.regular);
-    expect(after.checkoutOpen, isTrue);
-  });
-
   test('checkout stays closed until sales start even after the webinar', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
+    final launch = testLaunch(
       pricePromoKopecks: 1500000,
-      depositKopecks: 0,
-      depositDueDays: 7,
       webinarAt: DateTime.utc(2026, 9, 1, 16),
       salesStartAt: DateTime.utc(2026, 10, 1, 16),
     );
@@ -188,44 +154,20 @@ void main() {
     expect(atSales.checkoutOpen, isTrue);
   });
 
-  test('RSVP stays open without a webinar date and live starts only after it', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 0,
-      depositDueDays: 7,
-    );
-    final now = DateTime.utc(2026, 9, 15, 12);
-    expect(LaunchSales.rsvpOpen(launch, now), isTrue);
-    expect(LaunchSales.webinarStarted(launch, now), isFalse);
-    final dated = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
-      depositKopecks: 0,
-      depositDueDays: 7,
-      webinarAt: DateTime.utc(2026, 10, 5, 16),
-    );
-    expect(LaunchSales.webinarStarted(dated, DateTime.utc(2026, 10, 5, 15)), isFalse);
-    expect(LaunchSales.webinarStarted(dated, DateTime.utc(2026, 10, 5, 16)), isTrue);
+  test('RSVP stays open until the webinar plus grace, live starts at webinar', () {
+    final launch = testLaunch(webinarAt: DateTime.utc(2026, 10, 5, 16));
+    expect(LaunchSales.webinarStarted(launch, DateTime.utc(2026, 10, 5, 15)), isFalse);
+    expect(LaunchSales.webinarStarted(launch, DateTime.utc(2026, 10, 5, 16)), isTrue);
+    expect(LaunchSales.rsvpOpen(launch, DateTime.utc(2026, 10, 5, 19)), isTrue);
+    expect(LaunchSales.rsvpOpen(launch, DateTime.utc(2026, 10, 5, 21)), isFalse);
   });
 
-  test('empty sales start opens checkout the next Moscow day after the webinar', () {
-    final launch = Launch(
-      id: 1,
-      productId: 1,
-      code: 'launch-1',
-      title: 'Запуск',
-      priceFullKopecks: 1900000,
+  test('implied sales start is the next Moscow day after the webinar', () {
+    final webinar = DateTime.utc(2026, 10, 5, 16);
+    final launch = testLaunch(
       pricePromoKopecks: 1500000,
-      depositKopecks: 0,
-      depositDueDays: 7,
-      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      webinarAt: webinar,
+      salesStartAt: Launch.impliedSalesStartAt(webinar),
     );
     final duringLive = LaunchSales.quote(
       launch,

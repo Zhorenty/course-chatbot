@@ -16,8 +16,8 @@ final class LaunchSales {
     return SalesQuote(
       phase: phaseOf(launch, now),
       rsvp: rsvp,
-      priceFullKopecks: launch.resolvedPriceFullKopecks,
-      pricePromoKopecks: launch.resolvedPricePromoKopecks,
+      priceFullKopecks: launch.priceFullKopecks,
+      pricePromoKopecks: launch.pricePromoKopecks,
       webinarAt: launch.webinarAt,
       salesStartAt: launch.salesStartAt,
       promoEndsAt: promoEndsAt(launch),
@@ -27,74 +27,43 @@ final class LaunchSales {
     );
   }
 
-  /// First moment checkout can open: explicit sales start, else 00:00 Moscow
-  /// on the calendar day after the webinar.
-  static DateTime? salesOpenAt(Launch launch) {
-    final explicit = launch.salesStartAt?.toUtc();
-    if (explicit != null) {
-      return explicit;
-    }
-    final webinar = launch.webinarAt;
-    if (webinar == null) {
-      return null;
-    }
-    return MoscowTime.dayStartUtc(webinar).add(const Duration(days: 1));
-  }
+  static DateTime salesOpenAt(Launch launch) => launch.salesStartAt.toUtc();
 
   static SalesPhase phaseOf(Launch launch, DateTime now) {
     final open = salesOpenAt(launch);
-    if (open == null) {
-      return SalesPhase.preSales;
-    }
     final nowUtc = now.toUtc();
     if (nowUtc.isBefore(open)) {
       return SalesPhase.preSales;
     }
-    final end = launch.salesEndAt?.toUtc();
-    if (end != null && !nowUtc.isBefore(end)) {
+    if (!nowUtc.isBefore(launch.salesEndAt.toUtc())) {
       return SalesPhase.closed;
     }
-    final webinar = launch.webinarAt?.toUtc();
-    if (webinar != null) {
-      final promoEnd = webinar.add(promoDuration);
-      if (!nowUtc.isBefore(webinar) && nowUtc.isBefore(promoEnd)) {
-        return SalesPhase.promo;
-      }
+    final promoEnd = promoEndsAt(launch);
+    if (!nowUtc.isBefore(launch.webinarAt.toUtc()) && nowUtc.isBefore(promoEnd)) {
+      return SalesPhase.promo;
     }
     return SalesPhase.regular;
   }
 
-  static DateTime? promoEndsAt(Launch launch) {
-    final webinar = launch.webinarAt?.toUtc();
-    return webinar?.add(promoDuration);
+  static DateTime promoEndsAt(Launch launch) {
+    return launch.webinarAt.toUtc().add(promoDuration);
   }
 
-  static DateTime? regularSalesAt(Launch launch) {
+  static DateTime regularSalesAt(Launch launch) {
     final open = salesOpenAt(launch);
     final promoEnd = promoEndsAt(launch);
-    if (open == null) {
-      return null;
-    }
-    if (promoEnd == null || open.isAfter(promoEnd)) {
+    if (open.isAfter(promoEnd)) {
       return open;
     }
     return promoEnd;
   }
 
   static bool rsvpOpen(Launch launch, DateTime now) {
-    final webinar = launch.webinarAt?.toUtc();
-    if (webinar == null) {
-      return true;
-    }
-    return now.toUtc().isBefore(webinar.add(rsvpGrace));
+    return now.toUtc().isBefore(launch.webinarAt.toUtc().add(rsvpGrace));
   }
 
   static bool webinarStarted(Launch launch, DateTime now) {
-    final webinar = launch.webinarAt?.toUtc();
-    if (webinar == null) {
-      return false;
-    }
-    return !now.toUtc().isBefore(webinar);
+    return !now.toUtc().isBefore(launch.webinarAt.toUtc());
   }
 }
 
@@ -104,24 +73,24 @@ final class SalesQuote {
     required this.rsvp,
     required this.priceFullKopecks,
     required this.pricePromoKopecks,
-    this.webinarAt,
-    this.salesStartAt,
-    this.promoEndsAt,
-    this.regularSalesAt,
-    this.salesEndAt,
-    this.courseStartAt,
+    required this.webinarAt,
+    required this.salesStartAt,
+    required this.promoEndsAt,
+    required this.regularSalesAt,
+    required this.salesEndAt,
+    required this.courseStartAt,
   });
 
   final SalesPhase phase;
   final bool rsvp;
   final int priceFullKopecks;
   final int pricePromoKopecks;
-  final DateTime? webinarAt;
-  final DateTime? salesStartAt;
-  final DateTime? promoEndsAt;
-  final DateTime? regularSalesAt;
-  final DateTime? salesEndAt;
-  final DateTime? courseStartAt;
+  final DateTime webinarAt;
+  final DateTime salesStartAt;
+  final DateTime promoEndsAt;
+  final DateTime regularSalesAt;
+  final DateTime salesEndAt;
+  final DateTime courseStartAt;
 
   bool get checkoutOpen => switch (phase) {
     SalesPhase.preSales || SalesPhase.closed => false,
@@ -132,11 +101,5 @@ final class SalesQuote {
 
   int get payableKopecks => promoPriceApplies ? pricePromoKopecks : priceFullKopecks;
 
-  DateTime? get moscowDayStartOfSalesEnd {
-    final end = salesEndAt;
-    if (end == null) {
-      return null;
-    }
-    return MoscowTime.dayStartUtc(end);
-  }
+  DateTime get moscowDayStartOfSalesEnd => MoscowTime.dayStartUtc(salesEndAt);
 }

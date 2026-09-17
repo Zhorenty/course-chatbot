@@ -21,21 +21,12 @@ final class AppConfig {
     this.warmupEnabled = true,
     this.courseChannelId,
     this.leadMagnetFileId,
-    this.leadMagnetUrl,
     this.leadMagnetPath = 'assets/guide.pdf',
     this.leadMagnetFilename = 'Гайд Язык цвета.pdf',
     this.paymentProvider = PaymentProvider.yookassa,
     this.yookassaShopId,
     this.yookassaSecretKey,
     this.paymentWebhookBind = '127.0.0.1:8080',
-    this.offerUrl,
-    this.productCode = 'course',
-    this.launchCode = 'launch-1',
-    this.priceFullRub = 18000,
-    this.depositAmountRub = 5000,
-    this.depositDueDays = 7,
-    this.depositDueDate = '2026-10-05',
-    this.courseStartDate = '2026-10-12',
     this.abandonFirstDelayHours = 6,
     this.abandonSecondDelayHours = 24,
     this.yookassaReturnUrl,
@@ -65,17 +56,8 @@ final class AppConfig {
   final bool warmupEnabled;
   final int? courseChannelId;
   final String? leadMagnetFileId;
-  final String? leadMagnetUrl;
   final String? leadMagnetPath;
   final String leadMagnetFilename;
-  final String? offerUrl;
-  final String productCode;
-  final String launchCode;
-  final int priceFullRub;
-  final int depositAmountRub;
-  final int depositDueDays;
-  final String? depositDueDate;
-  final String? courseStartDate;
   final int abandonFirstDelayHours;
   final int abandonSecondDelayHours;
   final String? yookassaReturnUrl;
@@ -95,11 +77,6 @@ final class AppConfig {
   final String sqliteBackupDir;
   final int sqliteBackupKeep;
   final int sqliteBackupIntervalHours;
-
-  DateTime? get depositDueAt =>
-      parseIsoDateEndOfDay(depositDueDate, timezoneOffsetHours: timezoneOffsetHours);
-
-  DateTime? get courseStartAt => parseIsoDate(courseStartDate);
 
   bool get usesLiveKassa {
     switch (paymentProvider) {
@@ -133,7 +110,6 @@ final class AppConfig {
       ..addOption('admin-chat-id', help: 'Telegram chat id for admin notifications')
       ..addOption('course-channel-id', help: 'Closed channel id for this launch')
       ..addOption('lead-magnet-file-id', help: 'Telegram file_id of the guide PDF')
-      ..addOption('offer-url', help: 'Offer / terms URL shown before checkout')
       ..addOption('yookassa-return-url', help: 'Redirect after YooKassa checkout')
       ..addOption('payment-provider', help: 'yookassa | manual')
       ..addOption('yookassa-shop-id', help: 'YooKassa shop id')
@@ -191,7 +167,6 @@ final class AppConfig {
       logLevel: resolve('LOG_LEVEL', 'log-level') ?? 'info',
       courseChannelId: int.tryParse(resolve('COURSE_CHANNEL_ID', 'course-channel-id') ?? ''),
       leadMagnetFileId: resolve('LEAD_MAGNET_FILE_ID', 'lead-magnet-file-id'),
-      offerUrl: resolve('OFFER_URL', 'offer-url'),
       yookassaReturnUrl: resolve('YOOKASSA_RETURN_URL', 'yookassa-return-url'),
       paymentProvider: paymentProvider,
       yookassaShopId: resolve('YOOKASSA_SHOP_ID', 'yookassa-shop-id'),
@@ -293,36 +268,4 @@ Set<int> _parseIntSet(String? raw) {
     return const <int>{};
   }
   return raw.split(',').map((item) => int.tryParse(item.trim())).whereType<int>().toSet();
-}
-
-final _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
-
-DateTime? parseIsoDate(String? raw) {
-  final match = _isoDate.firstMatch(raw?.trim() ?? '');
-  if (match == null) {
-    return null;
-  }
-  final year = int.parse(match.group(1)!);
-  final month = int.parse(match.group(2)!);
-  final day = int.parse(match.group(3)!);
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
-    return null;
-  }
-  return DateTime.utc(year, month, day);
-}
-
-/// End of the calendar day in the business timezone, stored as UTC.
-DateTime? parseIsoDateEndOfDay(String? raw, {required int timezoneOffsetHours}) {
-  final date = parseIsoDate(raw);
-  if (date == null) {
-    return null;
-  }
-  return DateTime.utc(
-    date.year,
-    date.month,
-    date.day,
-    23,
-    59,
-    59,
-  ).subtract(Duration(hours: timezoneOffsetHours));
 }

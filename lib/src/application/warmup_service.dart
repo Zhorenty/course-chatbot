@@ -19,7 +19,6 @@ final class WarmupService {
   final JobDedupeRepository _dedupe;
 
   /// Builtin `dozhim_d*` copy applies only when this launch has no custom days.
-  /// Custom days sit after `sales_regular` and before `last_wagon`.
   List<WarmupStep> stepsFor({
     required List<WarmupStep> global,
     List<LaunchDozhimMessage> dozhim = const <LaunchDozhimMessage>[],
@@ -29,11 +28,8 @@ final class WarmupService {
     }
     return <WarmupStep>[
       for (final step in global)
-        if (!WarmupStep.isBuiltinDozhim(step.stepKey) && step.stepKey != WarmupStep.lastWagonKey)
-          step,
+        if (!WarmupStep.isBuiltinDozhim(step.stepKey)) step,
       for (final message in dozhim) message.toWarmupStep(),
-      for (final step in global)
-        if (step.stepKey == WarmupStep.lastWagonKey) step,
     ];
   }
 
@@ -63,7 +59,7 @@ final class WarmupService {
           step: step,
           steps: steps,
           now: now,
-          anchor: launch?.courseStartAt?.toUtc(),
+          anchor: launch?.courseStartAt.toUtc(),
           sameAnchor: WarmupAnchor.courseStart,
         ),
         WarmupAnchor.webinar => _webinarDue(step: step, steps: steps, now: now, launch: launch),
@@ -72,18 +68,18 @@ final class WarmupService {
           step: step,
           steps: steps,
           now: now,
-          anchor: launch == null ? null : LaunchSales.salesOpenAt(launch)?.toUtc(),
+          anchor: launch == null ? null : LaunchSales.salesOpenAt(launch),
           sameAnchor: WarmupAnchor.salesStart,
         ),
         WarmupAnchor.regularSales => _afterAnchorDue(
           step: step,
           steps: steps,
           now: now,
-          anchor: launch == null ? null : LaunchSales.regularSalesAt(launch)?.toUtc(),
+          anchor: launch == null ? null : LaunchSales.regularSalesAt(launch),
           sameAnchor: WarmupAnchor.regularSales,
-          cap: launch?.salesEndAt?.toUtc(),
+          cap: launch?.salesEndAt.toUtc(),
         ),
-        WarmupAnchor.salesEnd => _salesEndDue(now: now, salesEnd: launch?.salesEndAt?.toUtc()),
+        WarmupAnchor.salesEnd => _salesEndDue(now: now, salesEnd: launch?.salesEndAt.toUtc()),
       };
       if (!due) {
         continue;
@@ -135,7 +131,7 @@ final class WarmupService {
       if (step.anchor == WarmupAnchor.regularSales && step.delay == Duration.zero) {
         final open = LaunchSales.salesOpenAt(launch);
         final regular = LaunchSales.regularSalesAt(launch);
-        if (open != null && regular != null && !regular.isAfter(open)) {
+        if (!regular.isAfter(open)) {
           return false;
         }
       }
@@ -156,7 +152,7 @@ final class WarmupService {
     required DateTime now,
     required Launch? launch,
   }) {
-    final webinar = launch?.webinarAt?.toUtc();
+    final webinar = launch?.webinarAt.toUtc();
     if (webinar == null) {
       return false;
     }
@@ -181,7 +177,7 @@ final class WarmupService {
     }
     final windowStart = MoscowTime.nextCalendarDayAtHourUtc(webinar, hour: 12);
     var windowEnd = windowStart.add(const Duration(days: 1));
-    final cap = launch == null ? null : LaunchSales.regularSalesAt(launch)?.toUtc();
+    final cap = launch == null ? null : LaunchSales.regularSalesAt(launch);
     if (cap != null && cap.isBefore(windowEnd)) {
       windowEnd = cap;
     }

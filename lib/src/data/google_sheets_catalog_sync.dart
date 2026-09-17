@@ -41,9 +41,7 @@ final class GoogleSheetsCatalogSync {
     this.botUsername,
     this.timezoneOffsetHours = CoursesSheet.defaultTimezoneOffsetHours,
     this.fallbackChannelId,
-    this.fallbackOfferUrl,
     this.fallbackLeadMagnetFileId,
-    this.fallbackLeadMagnetUrl,
     this.requestTimeout = const Duration(seconds: 25),
   }) : _gateway = gateway,
        _catalog = catalog,
@@ -55,9 +53,7 @@ final class GoogleSheetsCatalogSync {
   final String? botUsername;
   final int timezoneOffsetHours;
   final int? fallbackChannelId;
-  final String? fallbackOfferUrl;
   final String? fallbackLeadMagnetFileId;
-  final String? fallbackLeadMagnetUrl;
   final Duration requestTimeout;
   Set<String> _sheetLaunchCodes = <String>{};
 
@@ -420,7 +416,6 @@ final class GoogleSheetsCatalogSync {
     return draft.copyWith(
       productCode: _blankToNull(cell(CoursesSheet.productCode)) ?? draft.productCode,
       productTitle: _blankToNull(cell(CoursesSheet.productTitle)) ?? draft.productTitle,
-      offerUrl: draft.offerUrl ?? cell(CoursesSheet.offerUrl),
       leadMagnetFileId: draft.leadMagnetFileId,
       leadMagnetUrl: draft.leadMagnetUrl ?? cell(CoursesSheet.leadMagnetUrl),
     );
@@ -501,16 +496,15 @@ final class GoogleSheetsCatalogSync {
     var rows = await _gateway
         .getValues('$quoted!${CoursesSheet.valuesA1Range}')
         .timeout(requestTimeout);
+    _catalog.backfillLaunchDefaults(fallbackChannelId: fallbackChannelId);
     var parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
-    final legacyFileIds = <String, String?>{
-      for (final row in parsed.rows) row.launchCode: row.leadMagnetFileId,
-    };
+    final legacyFileIds = _leadMagnetFileIdsFromRows(rows);
     var seeded = false;
     if (_needsSeed(parsed)) {
       await _gateway
           .updateValues(
             a1Range: '$quoted!A1',
-            rows: CoursesSheet.seedRows(),
+            rows: CoursesSheet.seedRows(channelId: fallbackChannelId),
             valueInputOption: 'USER_ENTERED',
           )
           .timeout(requestTimeout);
@@ -518,7 +512,6 @@ final class GoogleSheetsCatalogSync {
       rows = await _gateway
           .getValues('$quoted!${CoursesSheet.valuesA1Range}')
           .timeout(requestTimeout);
-      parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     } else if (CoursesSheetParser.needsLayoutRewrite(rows, hasValidRows: parsed.rows.isNotEmpty)) {
       await _gateway
           .updateValues(
@@ -530,8 +523,19 @@ final class GoogleSheetsCatalogSync {
       rows = await _gateway
           .getValues('$quoted!${CoursesSheet.valuesA1Range}')
           .timeout(requestTimeout);
-      parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
     }
+    final filled = CoursesSheetParser.fillImpliedCells(
+      rows,
+      fallbackChannelId: fallbackChannelId,
+      timezoneOffsetHours: timezoneOffsetHours,
+    );
+    if (filled.changed) {
+      await _gateway
+          .updateValues(a1Range: '$quoted!A1', rows: filled.rows, valueInputOption: 'USER_ENTERED')
+          .timeout(requestTimeout);
+      rows = filled.rows;
+    }
+    parsed = CoursesSheetParser.parse(rows, timezoneOffsetHours: timezoneOffsetHours);
 
     final headerAt = CoursesSheetParser.headerRowIndex(rows) ?? CoursesSheet.defaultHeaderRow;
     final dataRowCount = parsed.rows.isEmpty ? CoursesSheet.extraDataRows : parsed.rows.length + 3;
@@ -563,10 +567,7 @@ final class GoogleSheetsCatalogSync {
     }
 
     final appliedActive = draft.withFallbacks(
-      channelId: fallbackChannelId,
-      offerUrl: _blankToNull(fallbackOfferUrl),
       leadMagnetFileId: _blankToNull(fallbackLeadMagnetFileId),
-      leadMagnetUrl: _blankToNull(fallbackLeadMagnetUrl),
     );
     Launch? launch;
     for (final row in parsed.rows) {
@@ -587,7 +588,6 @@ final class GoogleSheetsCatalogSync {
         salesStartAt: applied.salesStartAt,
         salesEndAt: applied.salesEndAt,
         channelId: applied.channelId,
-        offerUrl: applied.offerUrl,
         leadMagnetFileId: applied.leadMagnetFileId ?? legacyFileIds[applied.launchCode],
         leadMagnetUrl: applied.leadMagnetUrl,
       );
@@ -881,6 +881,28 @@ final class GoogleSheetsCatalogSync {
       return false;
     }
     return parsed.skippedInvalidCount == 0;
+  }
+
+  Map<String, String> _leadMagnetFileIdsFromRows(List<List<Object?>> rows) {
+    final headerAt = CoursesSheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return <String, String>{};
+    }
+    final headerIndex = CoursesSheetParser.headerIndexMap(rows[headerAt]);
+    final out = <String, String>{};
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final raw = rows[i];
+      final code = CoursesSheetParser.cellOf(raw, headerIndex, CoursesSheet.launchCode);
+      if (code == null || code.isEmpty) {
+        continue;
+      }
+      final fileId = CoursesSheetParser.cellOf(raw, headerIndex, CoursesSheet.leadMagnetFileId);
+      if (fileId == null || fileId.isEmpty) {
+        continue;
+      }
+      out[code] = fileId;
+    }
+    return out;
   }
 
   Future<({String title, int headerRow, List<String> launchTitles})>

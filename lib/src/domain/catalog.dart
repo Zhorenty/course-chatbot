@@ -21,6 +21,14 @@ final class Launch {
       '<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>\n\n'
       'А пока можно записаться на <b>бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться»</b>, после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.';
 
+  static DateTime impliedSalesStartAt(DateTime webinarAt) {
+    return MoscowTime.nextMoscowDayStart(webinarAt);
+  }
+
+  static DateTime impliedSalesEndAt(DateTime courseStartAt) {
+    return MoscowTime.endOfMoscowDay(courseStartAt);
+  }
+
   const Launch({
     required this.id,
     required this.productId,
@@ -29,18 +37,17 @@ final class Launch {
     required this.priceFullKopecks,
     required this.depositKopecks,
     required this.depositDueDays,
-    this.pricePromoKopecks = 0,
+    required this.pricePromoKopecks,
+    required this.courseStartAt,
+    required this.webinarAt,
+    required this.salesStartAt,
+    required this.salesEndAt,
+    required this.channelId,
+    required this.description,
     this.depositDueAt,
-    this.courseStartAt,
-    this.webinarAt,
     this.webinarUrl,
-    this.salesStartAt,
-    this.salesEndAt,
-    this.channelId,
-    this.offerUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
-    this.description,
     this.isActive = false,
   });
 
@@ -48,46 +55,25 @@ final class Launch {
   final int productId;
   final String code;
   final String title;
-  final int? channelId;
+  final int channelId;
   final int priceFullKopecks;
   final int pricePromoKopecks;
   final int depositKopecks;
   final int depositDueDays;
   final DateTime? depositDueAt;
-  final DateTime? courseStartAt;
-  final DateTime? webinarAt;
+  final DateTime courseStartAt;
+  final DateTime webinarAt;
   final String? webinarUrl;
-  final DateTime? salesStartAt;
-  final DateTime? salesEndAt;
-  final String? offerUrl;
+  final DateTime salesStartAt;
+  final DateTime salesEndAt;
   final String? leadMagnetFileId;
   final String? leadMagnetUrl;
-  final String? description;
+  final String description;
   final bool isActive;
 
-  String get resolvedDescription {
-    final text = description;
-    if (text == null || text.trim().isEmpty) {
-      return defaultDescription;
-    }
-    return text;
-  }
+  bool get hasCustomDescription => description.trim() != defaultDescription;
 
-  bool get hasCustomDescription {
-    final text = description;
-    if (text == null || text.trim().isEmpty) {
-      return false;
-    }
-    return text.trim() != defaultDescription;
-  }
-
-  int get resolvedPriceFullKopecks =>
-      priceFullKopecks > 0 ? priceFullKopecks : LaunchPrices.fullKopecks;
-
-  int get resolvedPricePromoKopecks =>
-      pricePromoKopecks > 0 ? pricePromoKopecks : LaunchPrices.promoKopecks;
-
-  bool get hasDepositOption => depositKopecks > 0 && depositKopecks < resolvedPriceFullKopecks;
+  bool get hasDepositOption => depositKopecks > 0 && depositKopecks < priceFullKopecks;
 
   bool hasDepositOptionFor(int payableKopecks) =>
       depositKopecks > 0 && depositKopecks < payableKopecks;
@@ -102,10 +88,10 @@ final class Launch {
 
   bool get hasWebinarUrl => resolvedWebinarUrl != null;
 
-  DateTime? get impliedDepositDueAt =>
+  DateTime get impliedDepositDueAt =>
       MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays);
 
   DateTime resolveDepositDueAt(DateTime now) {
-    return impliedDepositDueAt ?? depositDueAt ?? now.add(Duration(days: depositDueDays));
+    return depositDueAt ?? impliedDepositDueAt;
   }
 }

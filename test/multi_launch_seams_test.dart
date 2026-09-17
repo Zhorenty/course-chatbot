@@ -30,11 +30,14 @@ Launch _launch2(
     launchCode: 'launch-2',
     launchTitle: 'Ноябрь',
     priceFullKopecks: 2100000,
+    pricePromoKopecks: LaunchPrices.promoKopecks,
     depositKopecks: 500000,
     depositDueDays: 7,
     depositDueAt: DateTime.utc(2026, 11, 5, 20, 59, 59),
     courseStartAt: courseStartAt ?? DateTime.utc(2026, 11, 12),
     webinarAt: DateTime.utc(2020, 1, 1, 16),
+    salesStartAt: Launch.impliedSalesStartAt(DateTime.utc(2020, 1, 1, 16)),
+    salesEndAt: Launch.impliedSalesEndAt(courseStartAt ?? DateTime.utc(2026, 11, 12)),
     channelId: channelId,
     leadMagnetFileId: leadMagnetFileId,
     activate: activate,
@@ -108,7 +111,7 @@ void main() {
     );
 
     expect(result.grantedAccess, isTrue);
-    expect(harness.channel.createdChatIds, <int>[launch1.channelId!]);
+    expect(harness.channel.createdChatIds, <int>[launch1.channelId]);
     expect(harness.course.accessFor(userId: 42, launchId: launch1.id)?.inviteLink, isNotNull);
     expect(harness.course.accessFor(userId: 42, launchId: launch2.id), isNull);
     expect(

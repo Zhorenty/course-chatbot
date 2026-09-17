@@ -92,9 +92,6 @@ final class LaunchCatalogAdminService {
   }
 
   static CatalogFieldError? validateChannel(String raw) {
-    if (CoursesSheetParser.isOmittedChannelId(raw)) {
-      return null;
-    }
     final id = CoursesSheetParser.parseChannelId(raw);
     if (id == null || id >= 0) {
       return CatalogFieldError.badChannel;
@@ -120,7 +117,6 @@ final class LaunchCatalogAdminService {
       salesStartAt: launch.salesStartAt,
       salesEndAt: launch.salesEndAt,
       channelId: launch.channelId,
-      offerUrl: launch.offerUrl,
       leadMagnetFileId: launch.leadMagnetFileId,
       leadMagnetUrl: launch.leadMagnetUrl,
     );
@@ -248,8 +244,11 @@ final class LaunchCatalogAdminService {
     if (draft.depositKopecks < 0 || draft.depositKopecks >= draft.priceFullKopecks) {
       return CatalogFieldError.badDeposit;
     }
-    if (draft.courseStartAt == null) {
-      return CatalogFieldError.badDate;
+    if (draft.channelId >= 0) {
+      return CatalogFieldError.badChannel;
+    }
+    if (draft.pricePromoKopecks <= 0) {
+      return CatalogFieldError.badPrice;
     }
     return null;
   }

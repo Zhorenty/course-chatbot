@@ -279,11 +279,11 @@ final class MessageTemplates {
   }
 
   String _courseStartLine(Launch? launch, DateTime now) {
-    final start = _formatDate(launch?.courseStartAt);
-    if (start == null) {
+    if (launch == null) {
       return 'Дата старта пока не указана.';
     }
-    if (_courseHasStarted(launch?.courseStartAt, now)) {
+    final start = _formatDate(launch.courseStartAt)!;
+    if (_courseHasStarted(launch.courseStartAt, now)) {
       return 'Идёт с $start.';
     }
     return start;
@@ -380,11 +380,6 @@ final class MessageTemplates {
     }
     return switch (stepKey) {
       'warmup_0' => _warmupZero(launch, rsvp: rsvp),
-      'warmup_d1' => _warmupDay1(),
-      'warmup_d3' => _warmupDay3(launch),
-      'warmup_d7' => _warmupDay7(launch),
-      'enroll_d1' => _enrollDay1(launch),
-      'enroll_d3' => _enrollDay3(launch),
       'webinar_24h' => _webinarTomorrow(launch, rsvp: rsvp),
       'webinar_10m' => _webinarTenMinutes(launch, rsvp: rsvp),
       'webinar_live' => _webinarLive(launch),
@@ -395,10 +390,6 @@ final class MessageTemplates {
       'dozhim_d2' => _dozhimFear(launch),
       'dozhim_d3' => _dozhimBeforeAfter(launch),
       'dozhim_d4' => _dozhimReviews(launch),
-      'last_wagon' => _lastWagon(launch),
-      'warmup_start_d7' => _startNudge(launch),
-      'warmup_start_d3' => _startNudge(launch),
-      'warmup_start_d1' => _startNudge(launch),
       _ =>
         '<b>Ещё одно касание</b>\n\n'
             'Можно записаться на поток, когда будет удобно. '
@@ -461,7 +452,7 @@ final class MessageTemplates {
 
   String _webinarNextDay(Launch? launch) {
     final resolved = launch ?? _placeholderLaunch();
-    final promo = formatRubSpaced(resolved.resolvedPricePromoKopecks, unit: 'руб.');
+    final promo = formatRubSpaced(resolved.pricePromoKopecks, unit: 'руб.');
     final was = _compareAtRub(resolved);
     return 'Спасибо, что был(а) со мной на Мастер-классе🤍\n\n'
         'Если после эфира захотелось разобраться в цвете уже системно, а не по кусочкам, приглашаю тебя на следующий шаг — '
@@ -475,14 +466,23 @@ final class MessageTemplates {
   }
 
   Launch _placeholderLaunch() {
-    return const Launch(
+    final webinar = DateTime.utc(2026, 9, 29, 16);
+    final start = DateTime.utc(2026, 10, 12);
+    return Launch(
       id: 0,
       productId: 0,
       code: '',
       title: '',
-      priceFullKopecks: 0,
+      priceFullKopecks: LaunchPrices.fullKopecks,
+      pricePromoKopecks: LaunchPrices.promoKopecks,
       depositKopecks: 0,
       depositDueDays: 7,
+      courseStartAt: start,
+      webinarAt: webinar,
+      salesStartAt: Launch.impliedSalesStartAt(webinar),
+      salesEndAt: Launch.impliedSalesEndAt(start),
+      channelId: -1,
+      description: Launch.defaultDescription,
     );
   }
 
@@ -499,7 +499,7 @@ final class MessageTemplates {
 
   String _salesRegular(Launch? launch) {
     final start = _formatHumanDate(launch?.courseStartAt);
-    final price = _marketingPrice(launch?.resolvedPriceFullKopecks);
+    final price = _marketingPrice(launch?.priceFullKopecks);
     final deposit = launch != null && launch.hasDepositOption
         ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
         : null;
@@ -514,6 +514,13 @@ final class MessageTemplates {
         '$priceLine'
         '${start == null ? '' : '\nСтарт потока $start'}\n\n'
         'Ты с нами?';
+  }
+
+  String? _marketingPrice(int? kopecks) {
+    if (kopecks == null || kopecks <= 0) {
+      return null;
+    }
+    return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
   String _dozhimCase(Launch? launch) {
@@ -581,110 +588,21 @@ final class MessageTemplates {
         'Записаться по кнопке внизу 👇';
   }
 
-  String _lastWagon(Launch? launch) {
-    return '<b>Любителям запрыгнуть в последний вагон</b>\n\n'
-        'Сегодня последний день, когда можно присоединиться к курсу ${_quotedCourseTitle(launch)}! '
-        'Старт потока ${_formatHumanDate(launch?.courseStartAt) ?? 'когда будет дата'}.\n\n'
-        'Присоединиться по кнопке ниже.';
-  }
-
   String webinarRsvpConfirmed(Launch launch, {required bool showLink}) {
     if (showLink) {
       return 'Поздравляю! Ты в списке участников!\n\n'
           'Мастер-класс уже идёт — кнопка со ссылкой ниже.';
     }
-    final day = _formatHumanDate(launch.webinarAt);
-    final time = _formatClock(launch.webinarAt);
-    final when = day == null
-        ? ''
-        : 'Бесплатный Мастер-класс <b>«${MessageTemplates.masterClassTitle}»</b> пройдет\n'
-              '📅 <b>$day${time == null ? '' : ' в $time'}</b>\n\n';
+    final day = _formatHumanDate(launch.webinarAt)!;
+    final time = _formatClock(launch.webinarAt)!;
+    final when =
+        'Бесплатный Мастер-класс <b>«${MessageTemplates.masterClassTitle}»</b> пройдет\n'
+        '📅 <b>$day в $time</b>\n\n';
     return 'Поздравляю! Ты в списке участников!\n\n'
         '$when'
         'Напомню ближе дате мастер-класса и пришлю ссылку.\n'
         '${_webinarLinkFollowup(launch)}\n\n'
         'Жду встречи! 🤍';
-  }
-
-  String _warmupDay1() {
-    return '<b>Почему любимый цвет «не работает» в объекте</b>\n\n'
-        'Часто дело не во вкусе, а в том, как оттенок живёт со светом, деревом и металлом: '
-        'один и тот же цвет может звучать чисто — или грязно.\n\n'
-        'Гайд это подсвечивает. На курсе собираем палитру, которая держит характер пространства. '
-        'Курс — в меню, когда будет момент.';
-  }
-
-  String _warmupDay3(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    final price = _marketingPrice(launch?.priceFullKopecks);
-    final deposit = launch != null && launch.hasDepositOption
-        ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
-        : null;
-    final due = _formatHumanDate(launch?.depositDueAt);
-    final buf = StringBuffer()
-      ..writeln(start == null ? '<b>Если идёшь на курс</b>' : '<b>Старт потока $start</b>')
-      ..writeln();
-    buf.write('Курс ${_quotedCourseTitle(launch)}.');
-    if (price != null) {
-      buf.write(' Полная стоимость $price.');
-      if (deposit != null) {
-        final until = due == null ? 'до старта' : 'до $due';
-        buf.write(' Можно внести предоплату $deposit и закрыть остаток $until.');
-      }
-    } else {
-      buf.write(' Можно закрыть полную сумму или внести предоплату.');
-    }
-    buf
-      ..writeln()
-      ..writeln()
-      ..write(
-        'Ссылка в канал курса придёт после полной оплаты. '
-        'Курс — в меню внизу.',
-      );
-    return buf.toString();
-  }
-
-  String _warmupDay7(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    final startLine = start == null ? 'Курс ещё можно успеть.' : 'Старт потока $start.';
-    return '<b>Неделя с гайдом</b>\n\n'
-        '$startLine Если хочешь собирать цвет в интерьере как систему — курс в меню внизу.';
-  }
-
-  String _enrollDay1(Launch? launch) {
-    return '<b>Подарок всё ещё здесь</b>\n\n'
-        'Гайд «${MessageTemplates.guideTitle}» никуда не делся — '
-        'и курс ${_quotedCourseTitle(launch)} тоже.'
-        '${_startFact(launch)}\n\n'
-        'Оба ждут в меню внизу.';
-  }
-
-  String _enrollDay3(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    final startLine = start == null ? 'Курс ещё можно успеть.' : 'Старт потока $start.';
-    return '<b>Гайд никуда не делся</b>\n\n'
-        '$startLine «${MessageTemplates.guideTitle}» и курс ${_quotedCourseTitle(launch)} '
-        'всё ещё в меню внизу — открой, когда будет минута.';
-  }
-
-  String _startNudge(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    final headline = start == null ? 'Курс близко' : 'Старт потока $start';
-    return '<b>$headline</b>\n\n'
-        'Присоединиться ещё можно из меню внизу. '
-        'Ссылку в канал курса пришлю после полной оплаты.';
-  }
-
-  String _startFact(Launch? launch) {
-    final start = _formatHumanDate(launch?.courseStartAt);
-    return start == null ? '' : ' Старт потока $start.';
-  }
-
-  String? _marketingPrice(int? kopecks) {
-    if (kopecks == null || kopecks <= 0) {
-      return null;
-    }
-    return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
   String optOutConfirmed() {
@@ -699,7 +617,7 @@ final class MessageTemplates {
     bool webinarStarted = false,
     bool hasOpenCheckout = false,
   }) {
-    final start = _formatHumanDate(launch.courseStartAt) ?? 'когда будет дата';
+    final start = _formatHumanDate(launch.courseStartAt)!;
     final title = _quotedCourseTitle(launch);
     final promo = formatRubSpaced(quote.pricePromoKopecks, unit: 'руб.');
     final wasRub = _compareAtRub(launch);
@@ -725,10 +643,8 @@ final class MessageTemplates {
             'Если оплата уже шла — напиши в «${MessageTemplates.buttonHelp}».';
       case SalesPhase.promo:
         if (quote.rsvp) {
-          final until = _formatHumanDate(quote.promoEndsAt);
-          final untilLine = until == null
-              ? 'Предложение актуально 3 дня'
-              : 'Предложение актуально до $until';
+          final until = _formatHumanDate(quote.promoEndsAt)!;
+          final untilLine = 'Предложение актуально до $until';
           return 'Специальная цена на курс $title\n\n'
               '🎁 Для тебя открыты специальные условия - стоимость курса составляет $promo вместо <s>$wasRub</s>.\n'
               '⚡$untilLine, далее цена сменится на обычную и приобрести программу по специальной стоимости уже не получится.\n\n'
@@ -825,12 +741,11 @@ final class MessageTemplates {
   }
 
   String adminWebinarRsvp({required UserProfile user, required Launch launch}) {
-    final when = _formatDateTime(launch.webinarAt);
-    final whenLine = when == null ? 'эфир: дата ещё не стоит' : 'эфир: $when';
+    final when = _formatDateTime(launch.webinarAt)!;
     return '<b>Записался на эфир</b>\n\n'
         '${_adminWhoLineFor(user)}\n'
         '${_adminLaunchLine(launch)}\n'
-        '$whenLine';
+        'эфир: $when';
   }
 
   String adminPaidWithInvite({
@@ -958,7 +873,7 @@ final class MessageTemplates {
         'Спеццена — 3 дня с эфира, только у отметившихся.\n\n'
         '<b>Продажи</b>\n'
         'До старта продаж «${MessageTemplates.buttonEnroll}» — карточка курса и «ждём кассу», без оплаты. '
-        'Старт продаж — поле в карточке курса (пусто — следующий день после эфира). '
+        'Старт и конец продаж — поля в карточке курса. '
         'В день старта продаж пишем тем, кто уже может оплатить. '
         'После окна спеццены — обычная цена и дожим. '
         'В последний день продаж — «последний вагон». Старт потока $startLine.\n\n'
@@ -1778,7 +1693,7 @@ final class MessageTemplates {
   }
 
   String _resolvedCourseDescription(Launch? launch) {
-    return launch?.resolvedDescription ?? Launch.defaultDescription;
+    return launch?.description ?? Launch.defaultDescription;
   }
 
   String _courseDescriptionHtml(Launch? launch) {
@@ -1816,24 +1731,18 @@ final class MessageTemplates {
   }
 
   String _preSalesMasterClassWhen(Launch? launch) {
-    final day = _formatHumanDate(launch?.webinarAt);
-    final time = _formatClock(launch?.webinarAt);
-    if (day != null && time != null) {
-      return '📅 Мастер-класс пройдет $day в $time мск';
+    if (launch == null) {
+      return '📅 Мастер-класс: дату и время пришлю отдельно.';
     }
-    if (day != null) {
-      return '📅 Мастер-класс пройдет $day';
-    }
-    if (time != null) {
-      return '📅 Мастер-класс пройдет в $time мск';
-    }
-    return '📅 Мастер-класс: дату и время пришлю отдельно.';
+    final day = _formatHumanDate(launch.webinarAt)!;
+    final time = _formatClock(launch.webinarAt)!;
+    return '📅 Мастер-класс пройдет $day в $time мск';
   }
 
   String _compareAtRub(Launch? launch) {
     final kopecks = LaunchPrices.wasKopecks > 0
         ? LaunchPrices.wasKopecks
-        : (launch?.resolvedPriceFullKopecks ?? 0);
+        : (launch?.priceFullKopecks ?? 0);
     return formatRubSpaced(kopecks, unit: 'руб.');
   }
 
@@ -1871,16 +1780,11 @@ final class MessageTemplates {
   }
 
   String _webinarScheduleBlock(Launch? launch) {
-    final day = _formatHumanDate(launch?.webinarAt);
-    final time = _formatClock(launch?.webinarAt);
-    if (day == null && time == null) {
+    if (launch == null) {
       return 'Дату и время пришлю, когда они появятся в карточке курса.';
     }
-    final lines = <String>[
-      if (day != null) '📅 Дата: $day' else '📅 Дата ещё уточняется',
-      if (time != null) '⏰ Время: $time' else '⏰ Время уточню отдельно',
-    ];
-    return lines.join('\n');
+    return '📅 Дата: ${_formatHumanDate(launch.webinarAt)}\n'
+        '⏰ Время: ${_formatClock(launch.webinarAt)}';
   }
 
   String _warmupRsvpCta({

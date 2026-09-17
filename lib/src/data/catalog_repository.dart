@@ -11,19 +11,19 @@ abstract interface class CatalogRepository {
     required String launchCode,
     required String launchTitle,
     required int priceFullKopecks,
+    required int pricePromoKopecks,
     required int depositKopecks,
     required int depositDueDays,
-    int pricePromoKopecks = 0,
+    required DateTime courseStartAt,
+    required DateTime webinarAt,
+    required DateTime salesStartAt,
+    required DateTime salesEndAt,
+    required int channelId,
     DateTime? depositDueAt,
-    DateTime? courseStartAt,
-    DateTime? webinarAt,
     String? webinarUrl,
-    DateTime? salesStartAt,
-    DateTime? salesEndAt,
-    int? channelId,
-    String? offerUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
+    String? description,
     bool activate = false,
   });
 
@@ -33,19 +33,19 @@ abstract interface class CatalogRepository {
     required String launchCode,
     required String launchTitle,
     required int priceFullKopecks,
+    required int pricePromoKopecks,
     required int depositKopecks,
     required int depositDueDays,
-    int pricePromoKopecks = 0,
+    required DateTime courseStartAt,
+    required DateTime webinarAt,
+    required DateTime salesStartAt,
+    required DateTime salesEndAt,
+    required int channelId,
     DateTime? depositDueAt,
-    DateTime? courseStartAt,
-    DateTime? webinarAt,
     String? webinarUrl,
-    DateTime? salesStartAt,
-    DateTime? salesEndAt,
-    int? channelId,
-    String? offerUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
+    String? description,
   });
 
   void setActiveLaunch(String launchCode);
@@ -62,6 +62,9 @@ abstract interface class CatalogRepository {
 
   List<Launch> listLaunches();
 
+  /// Persist implied promo / sales window / description / channel on existing rows.
+  void backfillLaunchDefaults({int? fallbackChannelId});
+
   LaunchUsage launchUsage(int launchId);
 
   void renameLaunchCode({required String from, required String to});
@@ -70,7 +73,7 @@ abstract interface class CatalogRepository {
 
   void setLeadMagnetFileId(String fileId, {int? launchId});
 
-  void setLaunchDescription(String? text, {required int launchId});
+  void setLaunchDescription(String text, {required int launchId});
 
   List<LaunchDozhimMessage> listLaunchDozhim(int launchId);
 

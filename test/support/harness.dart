@@ -13,6 +13,7 @@ import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
+import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
@@ -68,6 +69,10 @@ final class HandlerHarness {
   }) async {
     course.init();
     JobDedupeRepository(databaseHandle: handle).initSchema();
+    final start = courseStartAt ?? DateTime.utc(2026, 10, 12);
+    final webinar = identical(webinarAt, _unsetWebinar)
+        ? DateTime.utc(2020, 1, 1, 16)
+        : webinarAt as DateTime;
     course.upsertActiveLaunch(
       productCode: 'course',
       productTitle: 'Курс',
@@ -78,13 +83,11 @@ final class HandlerHarness {
       depositKopecks: depositKopecks,
       depositDueDays: 7,
       depositDueAt: depositDueAt ?? DateTime.utc(2026, 10, 5, 20, 59, 59),
-      courseStartAt: courseStartAt ?? DateTime.utc(2026, 10, 12),
-      webinarAt: identical(webinarAt, _unsetWebinar)
-          ? DateTime.utc(2020, 1, 1, 16)
-          : webinarAt as DateTime?,
+      courseStartAt: start,
+      webinarAt: webinar,
       webinarUrl: webinarUrl,
-      salesStartAt: salesStartAt,
-      salesEndAt: salesEndAt,
+      salesStartAt: salesStartAt ?? Launch.impliedSalesStartAt(webinar),
+      salesEndAt: salesEndAt ?? Launch.impliedSalesEndAt(start),
       channelId: channelId,
       leadMagnetFileId: leadMagnetFileId,
     );
