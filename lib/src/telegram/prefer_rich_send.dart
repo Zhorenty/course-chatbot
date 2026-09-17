@@ -10,8 +10,9 @@ const int _maxPhotoCaptionLength = 1024;
 /// On 400 / unknown rich errors, fall back to classic HTML.
 ///
 /// Photos stay in the same message: Rich HTML uses a media block
-/// (`<img src="tg://photo?id=…"/>` + `InputRichMessage.media`). If that fails,
-/// classic `sendPhoto` / album carries the copy as a caption.
+/// (`<figure><img/>` / `<tg-slideshow>` + `InputRichMessage.media`) and puts
+/// the copy in `<figcaption>` so `<b>` / `<u>` / `<i>` survive. If that fails,
+/// classic `sendPhoto` / album carries the copy as an HTML caption.
 Future<int> sendPreferRich(
   MessageSender sender,
   int chatId,
@@ -22,7 +23,7 @@ Future<int> sendPreferRich(
   bool disableWebPagePreview = true,
   Map<String, Object?>? replyMarkup,
 }) async {
-  final html = _withPhotos(_resolveRichHtml(text, richHtml), media);
+  final html = _withPhotos(_resolveRichHtml(text, richHtml), media, classicText: text);
   if (html.isNotEmpty) {
     try {
       final sent = await sender.sendRichMessage(
@@ -101,7 +102,7 @@ String _resolveRichHtml(String text, String? richHtml) {
   return richHtmlFromClassic(text);
 }
 
-String _withPhotos(String html, List<InputRichMessageMedia> media) {
+String _withPhotos(String html, List<InputRichMessageMedia> media, {required String classicText}) {
   final photos = <String>[
     for (final item in media)
       if (item.isPhoto) item.id,
@@ -109,7 +110,13 @@ String _withPhotos(String html, List<InputRichMessageMedia> media) {
   if (photos.isEmpty) {
     return html;
   }
-  return '${richPhotoBlock(photos)}$html';
+  final imgs = <String>[for (final id in photos) richPhoto(mediaId: id)].join();
+  final caption = inlineRichCaption(classicText);
+  final captionHtml = caption.isEmpty ? '' : '<figcaption>$caption</figcaption>';
+  if (photos.length == 1) {
+    return '<figure>$imgs$captionHtml</figure>';
+  }
+  return '<tg-slideshow>$imgs$captionHtml</tg-slideshow>';
 }
 
 Future<List<int>?> _sendClassicPhotosWithCaption(

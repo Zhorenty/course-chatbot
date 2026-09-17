@@ -50,6 +50,10 @@ void main() {
       '<p>Скоро стартует мой курс по интерьерной колористике<br><br>'
       'Я сообщу тебе, когда откроются продажи.</p>',
     );
+    expect(
+      inlineRichCaption('Привет 🤍\n\n<b>Для начала подарок</b>\n<u>Особенно жду тебя</u>'),
+      'Привет 🤍<br><br><b>Для начала подарок</b><br><u>Особенно жду тебя</u>',
+    );
   });
 
   test('guide ready rich embeds the PDF and strips it for classic HTML', () {

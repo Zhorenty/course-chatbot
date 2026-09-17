@@ -62,6 +62,15 @@ String richPhoto({required String mediaId}) {
   return '<img src="tg://photo?id=${escapeHtml(mediaId)}"/>';
 }
 
+/// Classic Telegram HTML (`<b>`, `<u>`, `<i>`, newlines) as a rich `<figcaption>`.
+///
+/// Photo / slideshow captions are [RichText], not block tags. Wrapping the copy
+/// in `<p>` / `<h2>` next to `<img>` makes Telegram treat it as the media
+/// caption and drop bold / underline / italic.
+String inlineRichCaption(String html) {
+  return html.trim().replaceAll('\r\n', '\n').replaceAll('\n', '<br>');
+}
+
 /// One photo, or a swipeable slideshow when there are several.
 String richPhotoBlock(List<String> mediaIds) {
   if (mediaIds.isEmpty) {

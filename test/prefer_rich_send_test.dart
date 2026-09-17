@@ -10,7 +10,7 @@ void main() {
     await sendPreferRich(
       sender,
       42,
-      '<b>Привет</b>',
+      '<b>Для начала</b> и <u>подчёркивание</u>',
       media: <InputRichMessageMedia>[
         InputRichMessageMedia.photo(
           id: 'p0',
@@ -23,8 +23,13 @@ void main() {
     expect(sender.documents, <String>['assets/funnel/welcome.jpg']);
     expect(sender.messages, hasLength(1));
     expect(sender.messages.single.isRich, isTrue);
-    expect(sender.messages.single.text, startsWith('<img src="tg://photo?id=p0"/>'));
-    expect(sender.messages.single.text, contains('Привет'));
+    expect(sender.messages.single.text, contains('<figure>'));
+    expect(sender.messages.single.text, contains('<img src="tg://photo?id=p0"/>'));
+    expect(
+      sender.messages.single.text,
+      contains('<figcaption><b>Для начала</b> и <u>подчёркивание</u></figcaption>'),
+    );
+    expect(sender.messages.single.text, isNot(contains('<p>')));
   });
 
   test('classic fallback sends photo and caption as one message', () async {
@@ -84,6 +89,33 @@ void main() {
     expect(sender.messages, hasLength(2));
   });
 
+  test('album rich payload keeps caption formatting', () async {
+    final sender = FakeMessageSender();
+    await sendPreferRich(
+      sender,
+      7,
+      '<b>Два кадра</b>\n<u>подпись</u>',
+      media: <InputRichMessageMedia>[
+        InputRichMessageMedia.photo(
+          id: 'p0',
+          document: InputRichDocument.file(localPath: 'assets/funnel/post_1.jpg'),
+        ),
+        InputRichMessageMedia.photo(
+          id: 'p1',
+          document: InputRichDocument.file(localPath: 'assets/funnel/post_2.jpg'),
+        ),
+      ],
+    );
+
+    expect(sender.photoBatches, isEmpty);
+    expect(sender.messages.single.isRich, isTrue);
+    expect(sender.messages.single.text, startsWith('<tg-slideshow>'));
+    expect(
+      sender.messages.single.text,
+      contains('<figcaption><b>Два кадра</b><br><u>подпись</u></figcaption>'),
+    );
+  });
+
   test('file_id photos stay inside the rich payload', () async {
     final sender = FakeMessageSender();
     await sendPreferRich(
@@ -97,6 +129,8 @@ void main() {
 
     expect(sender.photoBatches, isEmpty);
     expect(sender.documents, <String>['AgAD-photo']);
+    expect(sender.messages.single.text, contains('<figure>'));
     expect(sender.messages.single.text, contains('<img src="tg://photo?id=p0"/>'));
+    expect(sender.messages.single.text, contains('<figcaption>Подпись</figcaption>'));
   });
 }

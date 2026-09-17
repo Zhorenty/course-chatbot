@@ -151,6 +151,12 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('мастер-класс')), isTrue);
     final warmup = harness.sender.messages.where((m) => m.text.contains('мастер-класс')).single;
     expect(warmup.text, contains('<img src="tg://photo?id=p0"/>'));
+    expect(warmup.text, contains('<u>Особенно жду тебя'));
+    expect(
+      warmup.text,
+      contains('<b>«Как начать работать с цветом смелее и не бояться ошибиться»</b>'),
+    );
+    expect(warmup.text, isNot(contains('<p>')));
     expect(harness.sender.documents, contains('assets/funnel/masterclass.jpg'));
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);
