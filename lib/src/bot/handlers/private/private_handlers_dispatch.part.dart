@@ -118,7 +118,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       case MessageTemplates.cbHelp:
         return _showHome(context);
       case MessageTemplates.cbNewInvite:
-        return true;
+        return _send(context, _templates.inviteAskAdmin());
       case MessageTemplates.cbBroadcastSend:
         return _confirmBroadcast(context);
       case MessageTemplates.cbBroadcastSelectAll:

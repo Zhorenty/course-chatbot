@@ -25,7 +25,12 @@ extension _PrivateHandlersStart on PrivateHandlers {
       return _showEnroll(context);
     }
     if (phase == FunnelPhase.magnetIssued || phase == FunnelPhase.warming) {
-      return true;
+      return _send(
+        context,
+        _templates.alreadyInFunnel(),
+        richHtml: _templates.alreadyInFunnelRich(),
+        replyMarkup: _homeKeyboard(user.userId),
+      );
     }
     await _send(
       context,

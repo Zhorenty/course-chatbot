@@ -157,7 +157,8 @@ void main() {
     await client.press(MessageTemplates.cbNewInvite);
     expect(harness.channel.created, hasLength(1));
     expect(harness.channel.revoked, isEmpty);
-    expect(harness.sender.messages, isEmpty);
+    expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
 
     harness.sender.messages.clear();
     await client.tap(MessageTemplates.buttonCourseStatus);
@@ -341,7 +342,10 @@ void main() {
     harness.sender.messages.clear();
     await client.tap('/start');
     expect(harness.course.getUser(7)?.source, 'tg_announce');
-    expect(harness.sender.messages, isEmpty);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
+      isTrue,
+    );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 

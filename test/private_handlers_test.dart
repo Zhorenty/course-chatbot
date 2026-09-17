@@ -232,7 +232,11 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages, isEmpty);
+    final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
+    expect(texts, contains(MessageTemplates.buttonGuide));
+    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(MessageTemplates.buttonHelp));
+    expect(harness.sender.messages.single.text, contains('Продолжаем с того же места'));
   });
 
   test('help callback opens help and does not escalate', () async {
@@ -532,7 +536,10 @@ void main() {
     );
     harness.sender.messages.clear();
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
-    expect(harness.sender.messages, isEmpty);
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
+      isTrue,
+    );
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
   });
 
@@ -697,7 +704,8 @@ void main() {
     );
     expect(harness.channel.created, isEmpty);
     expect(harness.channel.revoked, isEmpty);
-    expect(harness.sender.messages, isEmpty);
+    expect(harness.sender.messages.any((m) => m.text.contains('админ')), isTrue);
+    expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
   });
 
   test('/start after a missed kassa success updates the chat', () async {
