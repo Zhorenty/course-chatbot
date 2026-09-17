@@ -156,7 +156,8 @@ void main() {
       warmup.text,
       contains('<b>«Как начать работать с цветом смелее и не бояться ошибиться»</b>'),
     );
-    expect(warmup.text, isNot(contains('<p>')));
+    expect(warmup.text, contains('<p>'));
+    expect(warmup.text, isNot(contains('<figcaption>')));
     expect(harness.sender.documents, contains('assets/funnel/masterclass.jpg'));
     expect('${warmup.replyMarkup}', isNot(contains(MessageTemplates.buttonOptOut)));
     expect(harness.course.getUser(42)?.funnelPhase, FunnelPhase.warming);

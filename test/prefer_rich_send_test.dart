@@ -23,13 +23,14 @@ void main() {
     expect(sender.documents, <String>['assets/funnel/welcome.jpg']);
     expect(sender.messages, hasLength(1));
     expect(sender.messages.single.isRich, isTrue);
-    expect(sender.messages.single.text, contains('<figure>'));
-    expect(sender.messages.single.text, contains('<img src="tg://photo?id=p0"/>'));
     expect(
       sender.messages.single.text,
-      contains('<figcaption><b>Для начала</b> и <u>подчёркивание</u></figcaption>'),
+      startsWith('<figure><img src="tg://photo?id=p0"/></figure>'),
     );
-    expect(sender.messages.single.text, isNot(contains('<p>')));
+    expect(sender.messages.single.text, contains('<p>'));
+    expect(sender.messages.single.text, contains('<b>Для начала</b>'));
+    expect(sender.messages.single.text, contains('<u>подчёркивание</u>'));
+    expect(sender.messages.single.text, isNot(contains('<figcaption>')));
   });
 
   test('classic fallback sends photo and caption as one message', () async {
@@ -94,7 +95,7 @@ void main() {
     await sendPreferRich(
       sender,
       7,
-      '<b>Два кадра</b>\n<u>подпись</u>',
+      '<b>Два</b> кадра\n<u>подпись</u>',
       media: <InputRichMessageMedia>[
         InputRichMessageMedia.photo(
           id: 'p0',
@@ -110,10 +111,9 @@ void main() {
     expect(sender.photoBatches, isEmpty);
     expect(sender.messages.single.isRich, isTrue);
     expect(sender.messages.single.text, startsWith('<tg-slideshow>'));
-    expect(
-      sender.messages.single.text,
-      contains('<figcaption><b>Два кадра</b><br><u>подпись</u></figcaption>'),
-    );
+    expect(sender.messages.single.text, contains('<b>Два</b>'));
+    expect(sender.messages.single.text, contains('<u>подпись</u>'));
+    expect(sender.messages.single.text, isNot(contains('<figcaption>')));
   });
 
   test('file_id photos stay inside the rich payload', () async {
@@ -131,6 +131,7 @@ void main() {
     expect(sender.documents, <String>['AgAD-photo']);
     expect(sender.messages.single.text, contains('<figure>'));
     expect(sender.messages.single.text, contains('<img src="tg://photo?id=p0"/>'));
-    expect(sender.messages.single.text, contains('<figcaption>Подпись</figcaption>'));
+    expect(sender.messages.single.text, contains('Подпись'));
+    expect(sender.messages.single.text, isNot(contains('<figcaption>')));
   });
 }

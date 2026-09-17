@@ -9,10 +9,12 @@ const int _maxPhotoCaptionLength = 1024;
 /// Send [text] as `sendRichMessage` (dedicated [richHtml] or classic→rich).
 /// On 400 / unknown rich errors, fall back to classic HTML.
 ///
-/// Photos stay in the same message: Rich HTML uses a media block
-/// (`<figure><img/>` / `<tg-slideshow>` + `InputRichMessage.media`) and puts
-/// the copy in `<figcaption>` so `<b>` / `<u>` / `<i>` survive. If that fails,
-/// classic `sendPhoto` / album carries the copy as an HTML caption.
+/// Photos stay in the same message: a closed media block
+/// (`<figure><img/></figure>` / `<tg-slideshow>` + `InputRichMessage.media`),
+/// then the copy as regular rich paragraphs so `<b>` / `<u>` / `<i>` keep
+/// normal message color. Do not put the body in `<figcaption>` — Telegram
+/// renders that as a dim photo caption. If rich fails, classic `sendPhoto`
+/// / album carries the copy as an HTML caption.
 Future<int> sendPreferRich(
   MessageSender sender,
   int chatId,
@@ -23,7 +25,7 @@ Future<int> sendPreferRich(
   bool disableWebPagePreview = true,
   Map<String, Object?>? replyMarkup,
 }) async {
-  final html = _withPhotos(_resolveRichHtml(text, richHtml), media, classicText: text);
+  final html = _withPhotos(_resolveRichHtml(text, richHtml), media);
   if (html.isNotEmpty) {
     try {
       final sent = await sender.sendRichMessage(
@@ -102,7 +104,7 @@ String _resolveRichHtml(String text, String? richHtml) {
   return richHtmlFromClassic(text);
 }
 
-String _withPhotos(String html, List<InputRichMessageMedia> media, {required String classicText}) {
+String _withPhotos(String html, List<InputRichMessageMedia> media) {
   final photos = <String>[
     for (final item in media)
       if (item.isPhoto) item.id,
@@ -111,12 +113,10 @@ String _withPhotos(String html, List<InputRichMessageMedia> media, {required Str
     return html;
   }
   final imgs = <String>[for (final id in photos) richPhoto(mediaId: id)].join();
-  final caption = inlineRichCaption(classicText);
-  final captionHtml = caption.isEmpty ? '' : '<figcaption>$caption</figcaption>';
-  if (photos.length == 1) {
-    return '<figure>$imgs$captionHtml</figure>';
-  }
-  return '<tg-slideshow>$imgs$captionHtml</tg-slideshow>';
+  final mediaHtml = photos.length == 1
+      ? '<figure>$imgs</figure>'
+      : '<tg-slideshow>$imgs</tg-slideshow>';
+  return '$mediaHtml$html';
 }
 
 Future<List<int>?> _sendClassicPhotosWithCaption(

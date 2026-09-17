@@ -33,12 +33,13 @@ void main() {
     expect(handled, isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
     expect(harness.sender.messages.first.text, contains('<img src="tg://photo?id=p0"/>'));
-    expect(harness.sender.messages.first.text, contains('<figcaption>'));
+    expect(harness.sender.messages.first.text, contains('<figure>'));
+    expect(harness.sender.messages.first.text, contains('<p>'));
     expect(
       harness.sender.messages.first.text,
       contains('<b>Для начала у меня для тебя подарок — гайд «Язык цвета».</b>'),
     );
-    expect(harness.sender.messages.first.text, isNot(contains('<p>')));
+    expect(harness.sender.messages.first.text, isNot(contains('<figcaption>')));
     expect(harness.sender.documents, contains('assets/funnel/welcome.jpg'));
     expect(harness.course.getUser(42)?.source, isNull);
   });
