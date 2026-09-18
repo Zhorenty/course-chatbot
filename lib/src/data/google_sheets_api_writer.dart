@@ -5,6 +5,7 @@ import 'package:course_chatbot/src/data/google_sheets_credentials.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_ids.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
+import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
@@ -177,8 +178,8 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
       l.w('Refusing to delete gid=0 catalog sheet ($title).');
       return sheets;
     }
-    if (match.title == LinksSheet.tabTitle) {
-      l.w('Refusing to delete human-editable tab ${LinksSheet.tabTitle}.');
+    if (match.title == LinksSheet.tabTitle || match.title == CopySheet.tabTitle) {
+      l.w('Refusing to delete human-editable tab ${match.title}.');
       return sheets;
     }
     if (sheets.length <= 1) {
@@ -201,10 +202,10 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   }
 
   void _assertNotCatalogTitle(List<GoogleSheetsSheetInfo> sheets, String title) {
-    if (title == LinksSheet.tabTitle) {
+    if (title == LinksSheet.tabTitle || title == CopySheet.tabTitle) {
       throw StateError(
         'Refusing to wipe human-editable tab "$title". '
-        'The bot seeds it and fills URLs; it does not replace the sheet.',
+        'The bot seeds it once and does not replace the sheet.',
       );
     }
     for (final sheet in sheets) {

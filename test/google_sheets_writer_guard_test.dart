@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/data/google_sheets_api_writer.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
+import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
@@ -163,5 +164,25 @@ void main() {
     );
     expect(gateway.clearedRanges, isEmpty);
     expect(gateway.valuesBySheetId[4]!.first.first, LinksSheet.title);
+  });
+
+  test('replaceSheet refuses to wipe ТЕКСТЫ', () async {
+    final gateway = FakeGoogleSheetsGateway(
+      sheets: const <GoogleSheetsSheetInfo>[
+        GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        GoogleSheetsSheetInfo(title: CopySheet.tabTitle, sheetId: 5),
+      ],
+      valuesBySheetId: <int, List<List<Object?>>>{
+        CoursesSheet.sheetId: CoursesSheet.seedRows(),
+        5: CopySheet.seedRows(),
+      },
+    );
+    final writer = GoogleSheetsApiWriter(gateway: gateway);
+    await expectLater(
+      writer.replaceSheet(sheetTitle: CopySheet.tabTitle, rows: const <List<Object?>>[]),
+      throwsStateError,
+    );
+    expect(gateway.clearedRanges, isEmpty);
+    expect(gateway.valuesBySheetId[5]!.first.first, CopySheet.title);
   });
 }

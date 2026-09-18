@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/data/google_sheets_copy_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
@@ -8,6 +9,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/channel_access.dart';
 import 'package:course_chatbot/src/domain/conversation_log.dart';
+import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
@@ -680,6 +682,19 @@ void main() {
     expect(LinksSheet.launchDropdownFormula(coursesSheetTitle: 'КУРСЫ'), contains("'КУРСЫ'"));
     expect(LinksSheet.extraDataRows, greaterThanOrEqualTo(24));
     expect(look.rowCount, greaterThanOrEqualTo(LinksSheet.defaultHeaderRow + 1 + 24));
+  });
+
+  test('ТЕКСТЫ catalog look matches COURSES palette and has no charts', () {
+    final look = GoogleSheetsCopyCatalog.build();
+    expect(look.sheetTitle, CopySheet.tabTitle);
+    expect(look.charts, isEmpty);
+    expect(look.hideGridlines, isTrue);
+    expect(look.frozenRowCount, 4);
+    expect(look.columnCount, 5);
+    expect(look.notes, hasLength(5));
+    expect(look.notes[1].text, contains('COURSES'));
+    expect(look.columnWidthsPx, hasLength(5));
+    expect(look.styles, isNotEmpty);
   });
 
   test('admin search prompt lists id and username', () {

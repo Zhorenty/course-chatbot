@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:course_chatbot/src/data/catalog_repository.dart';
+import 'package:course_chatbot/src/data/google_sheets_copy_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_courses_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_ids.dart';
@@ -8,6 +9,7 @@ import 'package:course_chatbot/src/data/google_sheets_links_catalog.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
@@ -471,6 +473,13 @@ final class GoogleSheetsCatalogSync {
           l.w('ССЫЛКИ catalog sync failed: $error', stackTrace);
         }
       }(),
+      () async {
+        try {
+          await _syncCopyOnce();
+        } on Object catch (error, stackTrace) {
+          l.w('${CopySheet.tabTitle} catalog sync failed: $error', stackTrace);
+        }
+      }(),
     ]);
     return outcomes.first! as CatalogSyncResult;
   }
@@ -812,6 +821,55 @@ final class GoogleSheetsCatalogSync {
     );
   }
 
+  Future<void> _syncCopyOnce() async {
+    var sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    var tab = _sheetByTitle(sheets, CopySheet.tabTitle);
+    if (tab == null) {
+      await _gateway.addSheet(CopySheet.tabTitle).timeout(requestTimeout);
+      sheets = await _gateway.describeSheets().timeout(requestTimeout);
+      tab = _sheetByTitle(sheets, CopySheet.tabTitle);
+    }
+    if (tab == null) {
+      throw StateError('Failed to create ${CopySheet.tabTitle} sheet.');
+    }
+
+    final quoted = quoteA1SheetTitle(tab.title);
+    var rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+    var parsed = CopySheetParser.parse(rows);
+    var seeded = false;
+    if (_needsCopySeed(parsed, rows)) {
+      await _gateway
+          .updateValues(
+            a1Range: '$quoted!A1',
+            rows: CopySheet.seedRows(),
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(requestTimeout);
+      seeded = true;
+      rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+      parsed = CopySheetParser.parse(rows);
+    }
+
+    final headerAt = CopySheetParser.headerRowIndex(rows) ?? CopySheet.defaultHeaderRow;
+    final dataRowCount = parsed.rowCount + 3 < CopySheet.extraDataRows
+        ? CopySheet.extraDataRows
+        : parsed.rowCount + 3;
+    try {
+      await _gateway
+          .applyDashboardLook(
+            sheetId: tab.sheetId,
+            dashboard: GoogleSheetsCopyCatalog.build(
+              headerRow: headerAt,
+              dataRowCount: dataRowCount,
+            ),
+          )
+          .timeout(requestTimeout);
+    } on Object catch (error, stackTrace) {
+      l.w('${CopySheet.tabTitle} catalog look failed: $error', stackTrace);
+    }
+    l.i('${CopySheet.tabTitle} catalog synced. letters=${parsed.rowCount} seeded=$seeded');
+  }
+
   Future<void> _ensureEmptyLinkRows({
     required String title,
     required List<List<Object?>> rows,
@@ -881,6 +939,13 @@ final class GoogleSheetsCatalogSync {
       return false;
     }
     return parsed.skippedInvalidCount == 0;
+  }
+
+  bool _needsCopySeed(CopySheetParseResult parsed, List<List<Object?>> rows) {
+    if (CopySheetParser.headerRowIndex(rows) != null) {
+      return false;
+    }
+    return parsed.isEmpty;
   }
 
   Map<String, String> _leadMagnetFileIdsFromRows(List<List<Object?>> rows) {

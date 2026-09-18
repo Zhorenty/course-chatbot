@@ -3,13 +3,14 @@ part of 'package:course_chatbot/src/messages/message_templates.dart';
 extension MessageTemplatesAdminLinks on MessageTemplates {
   String adminSheetsHubOpened() {
     return '<b>Google Sheets</b>\n\n'
-        'Курсы, диплинки и срез воронки. «${MessageTemplates.buttonAdminBack}» — выход в админку.';
+        'Курсы, диплинки, тексты и срез воронки. «${MessageTemplates.buttonAdminBack}» — выход в админку.';
   }
 
   String adminSheetsHub() {
     return '<b>Google Sheets</b>\n\n'
         '«${MessageTemplates.buttonAdminCatalog}» — потоки на листе ${escapeHtml(CoursesSheet.tabTitle)}. '
         '«${MessageTemplates.buttonAdminLinks}» — метки на листе ${escapeHtml(LinksSheet.tabTitle)}. '
+        'Письма ученика — лист ${escapeHtml(CopySheet.tabTitle)}, бот выгружает его один раз. '
         '«${MessageTemplates.buttonAdminSheets}» — перечитать таблицу и пересобрать воронку.';
   }
 

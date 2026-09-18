@@ -6,6 +6,7 @@ import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -371,7 +372,7 @@ void main() {
       expect(first.ok, isTrue);
       expect(first.seeded, isTrue);
       expect(course.activeLaunch()?.priceFullKopecks, 1900000);
-      expect(gateway.applyLookCount, 2);
+      expect(gateway.applyLookCount, 3);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(17));
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 17);
@@ -391,7 +392,7 @@ void main() {
       expect(second.ok, isTrue);
       expect(second.seeded, isFalse);
       expect(gateway.updateValuesCount, updatesAfterSeed + 4);
-      expect(gateway.applyLookCount, looksAfterSeed + 2);
+      expect(gateway.applyLookCount, looksAfterSeed + 3);
       expect(course.activeLaunch()?.priceFullKopecks, 2100000);
     });
 
@@ -1174,6 +1175,40 @@ void main() {
       expect(links.byPayload('ig_stories_guide'), isNull);
       expect(gateway.deletedSheetIds, isEmpty);
       expect(gateway.deletedDimensions, isNotEmpty);
+    });
+
+    test('ТЕКСТЫ seeds empty tab once and keeps later edits', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
+      await sync.sync();
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == CopySheet.tabTitle);
+      final seeded = gateway.valuesBySheetId[tab.sheetId]!;
+      expect(seeded.first.first, CopySheet.title);
+      expect(seeded[CopySheet.defaultHeaderRow][0], 'этап');
+      expect(
+        seeded.any((row) => row.any((cell) => cell.toString().contains('Напомню ближе к дате'))),
+        isTrue,
+      );
+      expect(
+        seeded.any(
+          (row) => row.any((cell) => cell.toString().contains('Забудьте про круг Иттена')),
+        ),
+        isTrue,
+      );
+      expect(gateway.looksBySheetId[tab.sheetId]?.hideGridlines, isTrue);
+      expect(gateway.looksBySheetId[tab.sheetId]?.notes, hasLength(5));
+
+      seeded[CopySheet.defaultHeaderRow + 1][1] = 'правили руками';
+      await sync.sync();
+      expect(
+        gateway.valuesBySheetId[tab.sheetId]![CopySheet.defaultHeaderRow + 1][1],
+        'правили руками',
+      );
+      expect(gateway.deletedSheetIds, isEmpty);
     });
   });
 }
