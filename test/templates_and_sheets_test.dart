@@ -458,9 +458,24 @@ void main() {
     );
 
     expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('ХХ:ХХ')));
-    expect(templates.warmupStep('warmup_0', launch: launch), contains('прикрепим позже'));
-    expect(templates.warmupStep('webinar_live', launch: launch), contains('прикрепим позже'));
-    expect(templates.webinarRsvpConfirmed(launch, showLink: false), contains('прикрепим позже'));
+    expect(templates.warmupStep('warmup_0', launch: launch), contains('⏰ Время: 19:00 мск'));
+    expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('прикрепим позже')));
+    expect(
+      templates.warmupStep('webinar_live', launch: launch),
+      isNot(contains('прикрепим позже')),
+    );
+    expect(
+      templates.webinarRsvpConfirmed(launch, showLink: false),
+      contains('Напомню ближе к дате мастер-класса и пришлю ссылку'),
+    );
+    expect(
+      templates.webinarRsvpConfirmed(launch, showLink: false),
+      contains('Ссылка придет в этом боте'),
+    );
+    expect(
+      templates.webinarRsvpConfirmed(launch, showLink: false),
+      isNot(contains('прикрепим позже')),
+    );
   });
 
   test('course card keeps general copy and prints launch facts as parameters', () {
@@ -485,7 +500,6 @@ void main() {
     expect(card, contains('<b>бесплатный Мастер-класс'));
     expect(card, contains('📅 Мастер-класс пройдет 5 октября в 19:00 мск'));
     expect(card, contains('уже в списке'));
-    expect(card, isNot(contains('Ссылку прикрепим позже')));
     expect(templates.startCourseCard(launch: launch), contains('Старт потока 12 октября'));
 
     final custom = testLaunch(

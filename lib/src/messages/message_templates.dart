@@ -389,7 +389,7 @@ final class MessageTemplates {
       'warmup_0' => _warmupZero(launch, rsvp: rsvp),
       'webinar_24h' => _webinarTomorrow(launch, rsvp: rsvp),
       'webinar_10m' => _webinarTenMinutes(launch, rsvp: rsvp),
-      'webinar_live' => _webinarLive(launch),
+      'webinar_live' => _webinarLive(),
       'webinar_next' => _webinarNextDay(launch),
       'sales_open' => _salesOpen(launch),
       'sales_regular' => _salesRegular(launch),
@@ -414,7 +414,7 @@ final class MessageTemplates {
         '<u>Особенно жду тебя, если ты уже проходил интенсивы по колористике и всё стало только сложнее!</u>\n'
         'После этого материала ты начнешь работать с цветом в интерьерах легко и осознанно!\n\n'
         '${_webinarScheduleBlock(launch)}\n\n'
-        '${_warmupRsvpCta(launch: launch, rsvp: rsvp)}';
+        '${_warmupRsvpCta(rsvp: rsvp)}';
   }
 
   String _webinarTomorrow(Launch? launch, {required bool rsvp}) {
@@ -426,32 +426,25 @@ final class MessageTemplates {
         'Это будет не стандартный набор формул, о которых вы уже много раз слышали.\n'
         'Именно после этого материала мои ученики-дизайнеры говорят "А что, так можно было?!" 🤭, '
         'приходит уверенность и легкость в работе с цветом, а их объекты обретают авторский узнаваемый почерк.\n\n'
-        '${_warmupRsvpCta(launch: launch, rsvp: rsvp, listed: 'Ты уже в списке. ${_webinarLinkFollowup(launch)}', unlisted: _joinSentences('Ссылка придет тем, кто отметился по кнопке внизу, нажимай скорее', _webinarLinkLaterIfMissing(launch)))}';
+        '${_warmupRsvpCta(rsvp: rsvp, listed: 'Ты уже в списке. $_webinarLinkInBotLine', unlisted: 'Ссылка придет тем, кто отметился по кнопке внизу, нажимай скорее')}';
   }
 
   String _webinarTenMinutes(Launch? launch, {required bool rsvp}) {
     final time = _formatClock(launch?.webinarAt);
     final when = time == null ? 'скоро' : 'ровно в $time мск';
-    final unlisted = _joinSentences(
-      '🤫 По секрету между нами: нажимай на кнопку, даже если не получится быть онлайн — '
-      'пришлю запись и специальное предложение на мой курс по интерьерной колористике.',
-      _webinarLinkLaterIfMissing(launch),
-    );
-    final listed = _joinSentences(
-      '🤫 По секрету между нами: даже если не получится быть онлайн — '
-      'пришлю запись и специальное предложение на мой курс по интерьерной колористике.',
-      _webinarLinkFollowup(launch),
-    );
+    const unlisted =
+        '🤫 По секрету между нами: нажимай на кнопку, даже если не получится быть онлайн — '
+        'пришлю запись и специальное предложение на мой курс по интерьерной колористике.';
+    const listed =
+        '🤫 По секрету между нами: даже если не получится быть онлайн — '
+        'пришлю запись и специальное предложение на мой курс по интерьерной колористике. '
+        '$_webinarLinkInBotLine';
     return 'Начинаем через 10 минут\n\n'
         'Мастер-класс <b>«${MessageTemplates.masterClassTitle}»</b> стартует $when.\n\n'
-        '${_warmupRsvpCta(launch: launch, rsvp: rsvp, listed: listed, unlisted: unlisted)}';
+        '${_warmupRsvpCta(rsvp: rsvp, listed: listed, unlisted: unlisted)}';
   }
 
-  String _webinarLive(Launch? launch) {
-    if (!(launch?.hasWebinarUrl ?? false)) {
-      return 'Мы начинаем 🔥\n\n'
-          '${_webinarLinkLaterLine()} Ты в списке.';
-    }
+  String _webinarLive() {
     return 'Мы начинаем 🔥\n\n'
         'Мастер-класс «${MessageTemplates.masterClassTitle}» вот-вот стартует. '
         'Присоединяйся по кнопке ниже.';
@@ -607,8 +600,8 @@ final class MessageTemplates {
         '📅 <b>$day в $time</b>\n\n';
     return 'Поздравляю! Ты в списке участников!\n\n'
         '$when'
-        'Напомню ближе дате мастер-класса и пришлю ссылку.\n'
-        '${_webinarLinkFollowup(launch)}\n\n'
+        'Напомню ближе к дате мастер-класса и пришлю ссылку.\n'
+        '$_webinarLinkInBotLine\n\n'
         'Жду встречи! 🤍';
   }
 
@@ -1825,54 +1818,23 @@ final class MessageTemplates {
     return formatRubSpaced(LaunchPrices.wasRegularKopecks);
   }
 
-  String _webinarLinkLaterLine() {
-    return 'Ссылку прикрепим позже и пришлём в этот чат.';
-  }
-
-  String _webinarLinkFollowup(Launch? launch) {
-    if (launch?.hasWebinarUrl ?? false) {
-      return 'Ссылка придет в этом боте.';
-    }
-    return _webinarLinkLaterLine();
-  }
-
-  String _webinarLinkLaterIfMissing(Launch? launch) {
-    if (launch?.hasWebinarUrl ?? false) {
-      return '';
-    }
-    return _webinarLinkLaterLine();
-  }
-
-  String _joinSentences(String head, String tail) {
-    final extra = tail.trim();
-    if (extra.isEmpty) {
-      return head.trim();
-    }
-    return '${head.trim()} $extra';
-  }
+  static const String _webinarLinkInBotLine = 'Ссылка придет в этом боте.';
 
   String _webinarScheduleBlock(Launch? launch) {
     if (launch == null) {
       return 'Дату и время пришлю, когда они появятся в карточке курса.';
     }
     return '📅 Дата: ${_formatHumanDate(launch.webinarAt)}\n'
-        '⏰ Время: ${_formatClock(launch.webinarAt)}';
+        '⏰ Время: ${_formatClock(launch.webinarAt)} мск';
   }
 
-  String _warmupRsvpCta({
-    required Launch? launch,
-    required bool rsvp,
-    String? listed,
-    String? unlisted,
-  }) {
+  String _warmupRsvpCta({required bool rsvp, String? listed, String? unlisted}) {
     if (rsvp) {
-      return (listed ?? 'Ты уже в списке. ${_webinarLinkFollowup(launch)}').trim();
+      return (listed ?? 'Ты уже в списке. $_webinarLinkInBotLine').trim();
     }
-    final fallback = _joinSentences(
-      'Мастер-класс бесплатный! Нажми на кнопку, чтобы попасть в список участников в 1 клик',
-      _webinarLinkLaterIfMissing(launch),
-    );
-    return (unlisted ?? fallback).trim();
+    return (unlisted ??
+            'Мастер-класс бесплатный! Нажми на кнопку, чтобы попасть в список участников в 1 клик')
+        .trim();
   }
 
   String _preSalesMasterClassCta({
