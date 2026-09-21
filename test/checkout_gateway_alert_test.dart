@@ -1,5 +1,7 @@
 import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
+import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:test/test.dart';
@@ -211,7 +213,7 @@ void main() {
       expect(message.text, contains('Ошибка онлайн-оплаты'));
       expect(message.text, contains('yookassa'));
       expect(message.text, contains('42'));
-      expect(message.text, contains('@masha'));
+      expect(message.text, contains('<a href="https://t.me/masha">@masha</a>'));
       expect(message.text, contains('Маша'));
       expect(message.text, contains('полная оплата'));
       expect(message.parseMode, 'rich');
@@ -259,13 +261,13 @@ void main() {
     );
     final admin = harness.sender.messages.where((message) => message.chatId == 1);
     expect(admin, isNotEmpty);
-    expect(admin.first.text, contains('@masha'));
+    expect(admin.first.text, contains('<a href="https://t.me/masha">@masha</a>'));
     expect(admin.first.text, contains('42'));
     expect(admin.first.text, contains('Test'));
     expect(admin.first.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
   });
 
-  test('PaymentAlertNotifier pushes guide, RSVP and paid-with-invite to admin chats', () async {
+  test('PaymentAlertNotifier pushes digest and paid-with-invite to admin chats', () async {
     harness = HandlerHarness();
     await harness.init(adminUserIds: <int>{1});
     final templates = MessageTemplates();
@@ -294,22 +296,26 @@ void main() {
       checkoutStartedAt: DateTime.utc(2026, 10, 6),
     );
 
-    await notifier.notifyGuideIssued(user: user, launch: launch);
-    await notifier.notifyWebinarRsvp(user: user, launch: launch);
+    await notifier.notifyFunnelDayDigest(
+      day: DateTime.utc(2026, 9, 20),
+      slice: FunnelDaySlice(guidesIssued: <UserProfile>[user], webinarRsvps: <UserProfile>[user]),
+    );
     await notifier.notifyPaidWithInvite(user: user, order: order, launch: launch);
 
     final admin = harness.sender.messages.where((message) => message.chatId == 1).toList();
-    expect(admin, hasLength(3));
-    expect(admin[0].text, contains('Получил гайд'));
-    expect(admin[1].text, contains('Записался на эфир'));
-    expect(admin[2].text, contains('Оплатил — ссылка в канал выдана'));
+    expect(admin, hasLength(2));
+    expect(admin[0].text, contains('Воронка за 20.09.2026'));
+    expect(admin[0].text, contains('<a href="https://t.me/masha">@masha</a>'));
+    expect(admin[0].replyMarkup, isNull);
+    expect(admin[1].text, contains('Оплатил — ссылка в канал выдана'));
+    expect(admin[1].text, contains('<a href="https://t.me/masha">@masha</a>'));
     expect(
-      harness.sender.messages.where((message) => message.chatId == 42),
+      harness.sender.messages.where(
+        (message) => message.chatId == 42 && message.text.contains('Оплатил'),
+      ),
       isEmpty,
-      reason: 'the person who triggered the event must not get the admin copy',
+      reason: 'the person who paid must not get the admin copy',
     );
-    for (final message in admin) {
-      expect(message.replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
-    }
+    expect(admin[1].replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
   });
 }

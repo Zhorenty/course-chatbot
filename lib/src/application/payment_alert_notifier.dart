@@ -1,5 +1,6 @@
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
@@ -10,9 +11,7 @@ import 'package:l/l.dart';
 abstract interface class AdminAlertPort {
   Future<void> notifyGuideMissing({required int userId});
 
-  Future<void> notifyGuideIssued({required UserProfile user, Launch? launch});
-
-  Future<void> notifyWebinarRsvp({required UserProfile user, required Launch launch});
+  Future<void> notifyFunnelDayDigest({required DateTime day, required FunnelDaySlice slice});
 
   Future<void> notifyPaidWithInvite({
     required UserProfile user,
@@ -23,7 +22,7 @@ abstract interface class AdminAlertPort {
 
 /// Pushes the same admin chats used for `_escalateToAdmin` (see
 /// `AdminGate.notificationChatIds`) for kassa outages, a missing lead magnet,
-/// and live funnel events (guide, RSVP, paid + invite).
+/// paid + invite, and the daily guide/RSVP digest.
 final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertPort {
   PaymentAlertNotifier({
     required MessageSender sender,
@@ -75,20 +74,10 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
   }
 
   @override
-  Future<void> notifyGuideIssued({required UserProfile user, Launch? launch}) {
+  Future<void> notifyFunnelDayDigest({required DateTime day, required FunnelDaySlice slice}) {
     return _pushAdmins(
-      _templates.adminGuideIssued(user: user, launch: launch),
-      userId: user.userId,
-      richHtml: _templates.adminGuideIssuedRich(user: user, launch: launch),
-    );
-  }
-
-  @override
-  Future<void> notifyWebinarRsvp({required UserProfile user, required Launch launch}) {
-    return _pushAdmins(
-      _templates.adminWebinarRsvp(user: user, launch: launch),
-      userId: user.userId,
-      richHtml: _templates.adminWebinarRsvpRich(user: user, launch: launch),
+      _templates.adminFunnelDayDigest(day: day, slice: slice),
+      richHtml: _templates.adminFunnelDayDigestRich(day: day, slice: slice),
     );
   }
 
@@ -105,8 +94,9 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
     );
   }
 
-  Future<void> _pushAdmins(String text, {required int userId, String? richHtml}) async {
-    final markup = _templates.adminIncomingKeyboard(userId);
+  Future<void> _pushAdmins(String text, {int? userId, String? richHtml}) async {
+    final markup = userId == null ? null : _templates.adminIncomingKeyboard(userId);
+    var delivered = 0;
     for (final chatId in _notificationChatIds) {
       if (chatId == userId) {
         continue;
@@ -120,9 +110,13 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
           disableNotification: false,
           replyMarkup: markup,
         );
+        delivered++;
       } on Object catch (error, stackTrace) {
         l.w('Failed to notify admin $chatId: $error', stackTrace);
       }
+    }
+    if (delivered == 0 && _notificationChatIds.where((id) => id != userId).isNotEmpty) {
+      throw StateError('Admin alert reached no chats');
     }
   }
 }

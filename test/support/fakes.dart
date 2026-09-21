@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
@@ -527,8 +528,7 @@ final class GatewayAlert {
 final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, AdminAlertPort {
   final List<GatewayAlert> alerts = <GatewayAlert>[];
   final List<int> guideMissing = <int>[];
-  final List<UserProfile> guideIssued = <UserProfile>[];
-  final List<UserProfile> webinarRsvp = <UserProfile>[];
+  final List<FunnelDaySlice> funnelDayDigests = <FunnelDaySlice>[];
   final List<CourseOrder> paidWithInvite = <CourseOrder>[];
 
   @override
@@ -560,13 +560,8 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
   }
 
   @override
-  Future<void> notifyGuideIssued({required UserProfile user, Launch? launch}) async {
-    guideIssued.add(user);
-  }
-
-  @override
-  Future<void> notifyWebinarRsvp({required UserProfile user, required Launch launch}) async {
-    webinarRsvp.add(user);
+  Future<void> notifyFunnelDayDigest({required DateTime day, required FunnelDaySlice slice}) async {
+    funnelDayDigests.add(slice);
   }
 
   @override

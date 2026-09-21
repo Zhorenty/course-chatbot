@@ -9,6 +9,7 @@ import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
@@ -16,6 +17,7 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/participant_list.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
+import 'package:course_chatbot/src/domain/telegram_username.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
@@ -89,8 +91,6 @@ final class MessageTemplates {
   static const String buttonAdminLinks = '🔗 Управление диплинками';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminBack = '↩️ Назад';
-  // TODO(mvp-reset): remove this debug button after the first live launch.
-  static const String buttonAdminClearFunnel = '🧹 Очистить воронку';
   static const String buttonAdminMenu = '🛠 Админка';
   static const String buttonAdminChangeStatus = '✏️ Изменить статус';
   static const String buttonAdminStatusUnpaid = '⏳ Не оплачено';
@@ -102,8 +102,6 @@ final class MessageTemplates {
   static const String buttonAdminDm = '✉️ Написать';
   static const String buttonAdminConfirmYes = 'Убрать с курса';
   static const String buttonAdminConfirmNo = 'Оставить';
-  static const String buttonAdminClearFunnelYes = 'Очистить воронку';
-  static const String buttonAdminClearFunnelNo = 'Не очищать';
   static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
   static const String buttonAdminBroadcastContinue = 'Далее';
@@ -182,6 +180,7 @@ final class MessageTemplates {
   static const String cbAdminPeopleHub = 'ph';
   static const String cbAdminPeopleSeg = 'ps:';
   static const int adminPeoplePageSize = 8;
+  static const int adminFunnelDigestListLimit = 40;
   static const String cbCatalogMenu = 'cm';
   static const String cbCatalogNew = 'cn';
   static const String cbCatalogOpen = 'cl:';
@@ -215,9 +214,6 @@ final class MessageTemplates {
   static const String cbLinksDestCourse = 'ldc';
   static const String cbLinksSkipLaunch = 'lsk';
   static const String cbLinksPickLaunch = 'lp:';
-  // TODO(mvp-reset): remove with buttonAdminClearFunnel.
-  static const String cbAdminClearFunnelConfirm = 'cfy';
-  static const String cbAdminClearFunnelAbort = 'cfn';
 
   String startGuideOffer() {
     return 'Привет 🤍\n'
@@ -358,14 +354,13 @@ final class MessageTemplates {
   }
 
   String adminIncomingUserMessage({required UserProfile user, String? text, FunnelPhase? phase}) {
-    final handle = user.username == null || user.username!.trim().isEmpty
-        ? ''
-        : ' · @${escapeHtml(user.username!.trim())}';
+    final handle = _adminUsernameHtml(user.username);
+    final handleLine = handle == null ? '' : ' · $handle';
     final body = (text == null || text.trim().isEmpty)
         ? 'без текста — фото или файл'
         : escapeHtml(text.trim());
     return '<b>Написал ${escapeHtml(user.displayName)}</b>\n'
-        'id <code>${user.userId}</code>$handle\n'
+        'id <code>${user.userId}</code>$handleLine\n'
         '${escapeHtml(_adminPhaseLabel(phase ?? user.funnelPhase))}\n\n'
         '$body';
   }
@@ -700,14 +695,22 @@ final class MessageTemplates {
     if (name != null && name.isNotEmpty) {
       parts.add(escapeHtml(name));
     }
-    final handle = username?.trim();
-    if (handle != null && handle.isNotEmpty) {
-      parts.add('@${escapeHtml(handle)}');
+    final handle = _adminUsernameHtml(username);
+    if (handle != null) {
+      parts.add(handle);
     }
     if (parts.isEmpty) {
       return 'Кто: id <code>$userId</code>';
     }
     return 'Кто: ${parts.join(' · ')} · id <code>$userId</code>';
+  }
+
+  String? _adminUsernameHtml(String? username) {
+    final handle = normalizeTelegramUsername(username);
+    if (handle == null) {
+      return null;
+    }
+    return '<a href="https://t.me/$handle">@${escapeHtml(handle)}</a>';
   }
 
   String _adminWhoLineFor(UserProfile user) {
@@ -734,19 +737,48 @@ final class MessageTemplates {
         'Пришли PDF в этот чат и сохрани как гайд запуска.';
   }
 
-  String adminGuideIssued({required UserProfile user, Launch? launch}) {
-    return '<b>Получил гайд</b>\n\n'
-        '${_adminWhoLineFor(user)}\n'
-        '${_adminSourceLine(user.source)}\n'
-        '${_adminLaunchLine(launch)}';
+  String adminFunnelDayDigest({required DateTime day, required FunnelDaySlice slice}) {
+    final date = _formatDate(day) ?? _date.format(MoscowTime.toMoscow(day));
+    final buf = StringBuffer()
+      ..writeln('<b>Воронка за $date</b>')
+      ..writeln()
+      ..writeln('Гайд получили: ${_adminPeopleCountLine(slice.guidesIssued.length)}')
+      ..writeln('Записались на эфир: ${_adminPeopleCountLine(slice.webinarRsvps.length)}');
+    _writeAdminDigestPeople(buf, title: 'Гайд', people: slice.guidesIssued);
+    _writeAdminDigestPeople(buf, title: 'Эфир', people: slice.webinarRsvps);
+    return buf.toString();
   }
 
-  String adminWebinarRsvp({required UserProfile user, required Launch launch}) {
-    final when = _formatDateTime(launch.webinarAt)!;
-    return '<b>Записался на эфир</b>\n\n'
-        '${_adminWhoLineFor(user)}\n'
-        '${_adminLaunchLine(launch)}\n'
-        'эфир: $when';
+  void _writeAdminDigestPeople(
+    StringBuffer buf, {
+    required String title,
+    required List<UserProfile> people,
+  }) {
+    if (people.isEmpty) {
+      return;
+    }
+    buf
+      ..writeln()
+      ..writeln('<b>$title</b>');
+    final shown = people.take(MessageTemplates.adminFunnelDigestListLimit);
+    for (final user in shown) {
+      buf.writeln(_adminDigestPersonLine(user));
+    }
+    final rest = people.length - MessageTemplates.adminFunnelDigestListLimit;
+    if (rest > 0) {
+      buf.writeln('и ещё $rest — в «${MessageTemplates.buttonAdminPeople}»');
+    }
+  }
+
+  String _adminDigestPersonLine(UserProfile user) {
+    final name = user.firstName?.trim();
+    final handle = _adminUsernameHtml(user.username);
+    final parts = <String>[
+      if (name != null && name.isNotEmpty) escapeHtml(name),
+      if (handle != null) handle,
+      'id <code>${user.userId}</code>',
+    ];
+    return parts.join(' · ');
   }
 
   String adminPaidWithInvite({
@@ -845,9 +877,7 @@ final class MessageTemplates {
     return '<b>Админка</b>\n\n'
         'Поиск — карточка, статус, письмо. Нет карточки — создай из поиска. '
         'Кто на мастер-классе, кто оплатил и остальные группы — «${MessageTemplates.buttonAdminPeople}». '
-        'Курсы, диплинки (метки входа t.me) и срез воронки — «${MessageTemplates.buttonAdminSheetsHub}». '
-        // TODO(mvp-reset): drop this sentence with the clear-funnel button.
-        'Временно: «${MessageTemplates.buttonAdminClearFunnel}» сотрёт людей из бота.';
+        'Курсы, диплинки (метки входа t.me) и срез воронки — «${MessageTemplates.buttonAdminSheetsHub}».';
   }
 
   String adminPeopleHub({Launch? launch, required Map<ParticipantListSegment, int> counts}) {
@@ -916,10 +946,10 @@ final class MessageTemplates {
 
   String _adminPeopleLine(UserProfile user) {
     final name = user.firstName?.trim();
-    final handle = user.username?.trim();
+    final handle = _adminUsernameHtml(user.username);
     final parts = <String>[
       if (name != null && name.isNotEmpty) escapeHtml(name),
-      if (handle != null && handle.isNotEmpty) '@${escapeHtml(handle)}',
+      if (handle != null) handle,
       '<code>${user.userId}</code>',
       escapeHtml(_adminPhaseLabel(user.funnelPhase)),
       if (user.botBlocked) 'бот заблокирован',
@@ -1301,16 +1331,6 @@ final class MessageTemplates {
     return buf.toString().trim();
   }
 
-  String adminAskClearFunnel() {
-    return '<b>Очистить воронку</b>\n\n'
-        'Сотру людей, оплаты, прогрев и лог. Каталог запусков не трогаю. '
-        'Это для тестов — потом кнопку уберём.';
-  }
-
-  String adminFunnelCleared({required int people}) {
-    return 'Воронка очищена. Было людей: $people. Каталог запусков на месте.';
-  }
-
   String adminSheetsDisabled() {
     return '📊 Google Sheets не подключён. Проверь ключ, id таблицы и GOOGLE_SHEETS_WRITE_ENABLED.';
   }
@@ -1529,13 +1549,13 @@ final class MessageTemplates {
 
   String _adminCardTitle(UserProfile user) {
     final name = user.firstName?.trim();
-    final handle = user.username?.trim();
+    final handle = _adminUsernameHtml(user.username);
     final parts = <String>[];
     if (name != null && name.isNotEmpty) {
       parts.add(escapeHtml(name));
     }
-    if (handle != null && handle.isNotEmpty) {
-      parts.add('@${escapeHtml(handle)}');
+    if (handle != null) {
+      parts.add(handle);
     }
     if (parts.isEmpty) {
       return '<b>Карточка</b>';

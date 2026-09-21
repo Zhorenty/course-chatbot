@@ -21,6 +21,7 @@ import 'package:course_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:course_chatbot/src/data/sqlite_course_repository.dart';
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
+import 'package:course_chatbot/src/jobs/funnel_day_digest_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
@@ -230,6 +231,14 @@ final class CourseBotRuntime {
         templates: templates,
         quietHours: quietHours,
       ),
+      funnelDayDigestJob: adminAlerts == null
+          ? null
+          : FunnelDayDigestJob(
+              course: course,
+              dedupe: jobDedupe,
+              alerts: adminAlerts,
+              quietHours: quietHours,
+            ),
       sheetsExportJob: sheetsExportJob,
       maintenanceJob: SqliteMaintenanceJob(
         databaseHandle: databaseHandle,

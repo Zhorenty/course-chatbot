@@ -38,9 +38,4 @@ abstract interface class CourseRepository
   List<ConversationLogEntry> dialogForUser(int userId, {int limit = 30});
 
   void pruneConversationLog({required DateTime olderThan, int keepPerUser = 200});
-
-  /// Deletes people, orders, warmup log and related funnel rows. Keeps launches.
-  ///
-  /// TODO(mvp-reset): remove with the admin «Очистить воронку» button.
-  int clearFunnelPeople();
 }

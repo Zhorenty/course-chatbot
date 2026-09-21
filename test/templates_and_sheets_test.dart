@@ -776,7 +776,6 @@ void main() {
       MessageTemplates.buttonAdminSheetsHub,
       MessageTemplates.buttonAdminPeople,
       MessageTemplates.buttonAdminBroadcast,
-      MessageTemplates.buttonAdminClearFunnel,
     ]);
     expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
@@ -784,7 +783,7 @@ void main() {
     expect(texts, isNot(contains(MessageTemplates.buttonAdminLinks)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminSheets)));
     final rows = keyboard['keyboard'] as List<dynamic>;
-    expect(rows, hasLength(3));
+    expect(rows, hasLength(2));
     expect(
       <List<String>>[
         for (final row in rows)
@@ -793,7 +792,6 @@ void main() {
       <List<String>>[
         <String>[MessageTemplates.buttonAdminSearch, MessageTemplates.buttonAdminSheetsHub],
         <String>[MessageTemplates.buttonAdminPeople, MessageTemplates.buttonAdminBroadcast],
-        <String>[MessageTemplates.buttonAdminClearFunnel],
       ],
     );
     expect(texts, isNot(contains(MessageTemplates.buttonEnroll)));
@@ -967,12 +965,6 @@ void main() {
     expect(templates.adminLinksCard(link), isNot(contains('Reels <b>')));
   });
 
-  test('admin clear-funnel copy asks to confirm', () {
-    final templates = MessageTemplates();
-    expect(templates.adminAskClearFunnel(), contains('Сотру людей'));
-    expect(templates.adminFunnelCleared(people: 3), contains('3'));
-  });
-
   test('broadcast confirm keyboard is not locked to one segment', () {
     final templates = MessageTemplates();
     final rows = templates.broadcastConfirmKeyboard()['inline_keyboard'] as List<dynamic>;
@@ -1084,7 +1076,10 @@ void main() {
       ],
     );
 
-    expect(text, contains('<b>Карточка</b> Анна &lt;b&gt; · @anna'));
+    expect(
+      text,
+      contains('<b>Карточка</b> Анна &lt;b&gt; · <a href="https://t.me/anna">@anna</a>'),
+    );
     expect(text, contains('id <code>50</code>'));
     expect(text, contains('источник: Instagram Reels · <code>ig_reels_guide</code>'));
     expect(text, contains('<b>Внесена предоплата</b>'));
@@ -1159,13 +1154,30 @@ void main() {
       checkoutStartedAt: DateTime.utc(2026, 10, 6),
     );
 
-    expect(templates.adminGuideIssued(user: user, launch: launch), contains('Получил гайд'));
-    expect(templates.adminGuideIssued(user: user, launch: launch), contains('@masha'));
-    expect(templates.adminGuideIssued(user: user, launch: launch), contains('Instagram Reels'));
-    expect(templates.adminWebinarRsvp(user: user, launch: launch), contains('Записался на эфир'));
-    expect(templates.adminWebinarRsvp(user: user, launch: launch), contains('05.10.2026'));
+    expect(
+      templates.adminFunnelDayDigest(
+        day: DateTime.utc(2026, 9, 20),
+        slice: FunnelDaySlice(guidesIssued: <UserProfile>[user], webinarRsvps: <UserProfile>[user]),
+      ),
+      contains('Воронка за 20.09.2026'),
+    );
+    expect(
+      templates.adminFunnelDayDigest(
+        day: DateTime.utc(2026, 9, 20),
+        slice: FunnelDaySlice(guidesIssued: <UserProfile>[user], webinarRsvps: <UserProfile>[user]),
+      ),
+      contains('<a href="https://t.me/masha">@masha</a>'),
+    );
+    expect(
+      templates.adminFunnelDayDigest(
+        day: DateTime.utc(2026, 9, 20),
+        slice: FunnelDaySlice(guidesIssued: <UserProfile>[user]),
+      ),
+      contains('Записались на эфир: 0 человек'),
+    );
     final paid = templates.adminPaidWithInvite(user: user, order: order, launch: launch);
     expect(paid, contains('Оплатил — ссылка в канал выдана'));
+    expect(paid, contains('<a href="https://t.me/masha">@masha</a>'));
     expect(paid, contains('15000 ₽'));
     expect(paid, contains('полная оплата'));
     expect(paid, isNot(contains('t.me/+')));

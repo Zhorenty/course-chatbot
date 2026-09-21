@@ -75,12 +75,13 @@ extension MessageTemplatesRich on MessageTemplates {
     final phase = enrollment?.funnelPhase ?? user.funnelPhase;
     final optOut = enrollment?.warmupOptOut ?? user.warmupOptOut;
     final who = _adminPersonLabel(user);
+    final handle = _adminUsernameHtml(user.username);
     final money = _adminOrderLines(order).toList();
     final dialogHtml = dialog.isEmpty
         ? ''
         : richDetails('Последние сообщения', _adminDialogHtml(dialog));
     return '${richH2(who.isEmpty ? 'Карточка' : 'Карточка · $who')}'
-        '${richTable(<(String, String)>[('id', '<code>${user.userId}</code>'), ('источник', _adminSourceLine(user.source).replaceFirst('источник: ', '')), ('воронка', escapeHtml(_headline(_adminPhaseLabel(phase))))])}'
+        '${richTable(<(String, String)>[('id', '<code>${user.userId}</code>'), if (handle != null) ('username', handle), ('источник', _adminSourceLine(user.source).replaceFirst('источник: ', '')), ('воронка', escapeHtml(_headline(_adminPhaseLabel(phase))))])}'
         '${richH3('Деньги')}'
         '${richP(money.map(escapeHtml).join('<br>'))}'
         '${richH3('Канал')}'
@@ -219,12 +220,12 @@ extension MessageTemplatesRich on MessageTemplates {
     String? text,
     FunnelPhase? phase,
   }) {
-    final handle = user.username?.trim();
+    final handle = _adminUsernameHtml(user.username);
     final body = (text == null || text.trim().isEmpty)
         ? 'без текста — фото или файл'
         : escapeHtml(text.trim());
     return '${richH2('Написал ${user.displayName}')}'
-        '${richTable(<(String, String)>[('id', '<code>${user.userId}</code>'), if (handle != null && handle.isNotEmpty) ('username', '@${escapeHtml(handle)}'), ('воронка', escapeHtml(_adminPhaseLabel(phase ?? user.funnelPhase)))])}'
+        '${richTable(<(String, String)>[('id', '<code>${user.userId}</code>'), if (handle != null) ('username', handle), ('воронка', escapeHtml(_adminPhaseLabel(phase ?? user.funnelPhase)))])}'
         '${richQuote(body)}';
   }
 
@@ -328,15 +329,29 @@ extension MessageTemplatesRich on MessageTemplates {
         '${richP('Человеку показан запасной путь через администратора. Можно отметить оплату вручную из карточки.')}';
   }
 
-  String adminGuideIssuedRich({required UserProfile user, Launch? launch}) {
-    return '${richH2('Получил гайд')}'
-        '${richTable(_adminFunnelAlertRows(user: user, launch: launch, extra: <(String, String)>[('источник', _adminSourceValue(user.source))]))}';
+  String adminFunnelDayDigestRich({required DateTime day, required FunnelDaySlice slice}) {
+    final date = _formatDate(day) ?? _date.format(MoscowTime.toMoscow(day));
+    final guideItems = _adminDigestPeopleItems(slice.guidesIssued);
+    final rsvpItems = _adminDigestPeopleItems(slice.webinarRsvps);
+    return '${richH2('Воронка за $date')}'
+        '${richTable(<(String, String)>[('Гайд получили', _adminPeopleCountLine(slice.guidesIssued.length)), ('Записались на эфир', _adminPeopleCountLine(slice.webinarRsvps.length))])}'
+        '${guideItems == null ? '' : '${richH3('Гайд')}${richUl(guideItems)}'}'
+        '${rsvpItems == null ? '' : '${richH3('Эфир')}${richUl(rsvpItems)}'}';
   }
 
-  String adminWebinarRsvpRich({required UserProfile user, required Launch launch}) {
-    final when = _formatDateTime(launch.webinarAt)!;
-    return '${richH2('Записался на эфир')}'
-        '${richTable(_adminFunnelAlertRows(user: user, launch: launch, extra: <(String, String)>[('эфир', when)]))}';
+  List<String>? _adminDigestPeopleItems(List<UserProfile> people) {
+    if (people.isEmpty) {
+      return null;
+    }
+    final items = <String>[
+      for (final user in people.take(MessageTemplates.adminFunnelDigestListLimit))
+        _adminDigestPersonLine(user),
+    ];
+    final rest = people.length - MessageTemplates.adminFunnelDigestListLimit;
+    if (rest > 0) {
+      items.add('и ещё $rest — в «${escapeHtml(MessageTemplates.buttonAdminPeople)}»');
+    }
+    return items;
   }
 
   String adminPaidWithInviteRich({
@@ -366,17 +381,5 @@ extension MessageTemplatesRich on MessageTemplates {
       return 'не выбран';
     }
     return escapeHtml(title);
-  }
-
-  String _adminSourceValue(String? source) {
-    final raw = source?.trim();
-    if (raw == null || raw.isEmpty) {
-      return 'без метки';
-    }
-    final label = _adminSourceLabel(raw);
-    if (label == raw) {
-      return '<code>${escapeHtml(raw)}</code>';
-    }
-    return '$label · <code>${escapeHtml(raw)}</code>';
   }
 }

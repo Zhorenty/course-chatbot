@@ -1,3 +1,5 @@
+import 'package:course_chatbot/src/domain/user_profile.dart';
+
 final class SourceFunnelSlice {
   const SourceFunnelSlice({
     required this.source,
@@ -75,4 +77,17 @@ final class FunnelStepCount {
 
   final String label;
   final int count;
+}
+
+/// People who took the guide or RSVP'd during a half-open UTC window.
+final class FunnelDaySlice {
+  const FunnelDaySlice({
+    this.guidesIssued = const <UserProfile>[],
+    this.webinarRsvps = const <UserProfile>[],
+  });
+
+  final List<UserProfile> guidesIssued;
+  final List<UserProfile> webinarRsvps;
+
+  bool get isEmpty => guidesIssued.isEmpty && webinarRsvps.isEmpty;
 }

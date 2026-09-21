@@ -110,6 +110,57 @@ mixin _SqliteAnalyticsStore on _SqliteEnrollmentStore implements FunnelAnalytics
     );
   }
 
+  @override
+  FunnelDaySlice funnelDaySlice({required DateTime fromUtc, required DateTime toExclusiveUtc}) {
+    return FunnelDaySlice(
+      guidesIssued: _usersWithEnrollmentTime(
+        column: 'magnet_issued_at',
+        fromUtc: fromUtc,
+        toExclusiveUtc: toExclusiveUtc,
+      ),
+      webinarRsvps: _usersWithEnrollmentTime(
+        column: 'webinar_rsvp_at',
+        fromUtc: fromUtc,
+        toExclusiveUtc: toExclusiveUtc,
+      ),
+    );
+  }
+
+  List<UserProfile> _usersWithEnrollmentTime({
+    required String column,
+    required DateTime fromUtc,
+    required DateTime toExclusiveUtc,
+  }) {
+    final fromIso = fromUtc.toUtc().toIso8601String();
+    final toIso = toExclusiveUtc.toUtc().toIso8601String();
+    final rows = _db.select(
+      '''
+      SELECT
+        u.user_id,
+        u.username,
+        u.first_name,
+        u.source,
+        u.funnel_phase,
+        u.warmup_opt_out,
+        u.bot_blocked,
+        u.magnet_issued_at,
+        u.first_started_at,
+        u.last_seen_at
+      FROM telegram_users u
+      WHERE EXISTS (
+        SELECT 1 FROM user_enrollments e
+        WHERE e.user_id = u.user_id AND e.$column >= ? AND e.$column < ?
+      )
+      ORDER BY (
+        SELECT MIN(e.$column) FROM user_enrollments e
+        WHERE e.user_id = u.user_id AND e.$column >= ? AND e.$column < ?
+      ) ASC, u.user_id ASC;
+      ''',
+      <Object?>[fromIso, toIso, fromIso, toIso],
+    );
+    return rows.map(mapUser).toList(growable: false);
+  }
+
   List<SourceFunnelSlice> _sourceFunnels({int? launchId}) {
     final enrollLaunch = launchId == null ? '' : ' AND e.launch_id = ?';
     final orderLaunch = launchId == null ? '' : ' AND o.launch_id = ?';

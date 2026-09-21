@@ -7,7 +7,7 @@ import 'support/fakes.dart';
 import 'support/harness.dart';
 
 void main() {
-  test('first guide delivery notifies admins, a repeat request does not', () async {
+  test('guide delivery does not ping admins per person', () async {
     final harness = HandlerHarness();
     final alerts = FakePaymentGatewayAlertPort();
     await harness.init(adminUserIds: const <int>{1}, alertPort: alerts);
@@ -29,17 +29,11 @@ void main() {
         data: MessageTemplates.cbGuide,
       ),
     );
-    expect(alerts.guideIssued, hasLength(1));
-    expect(alerts.guideIssued.single.userId, 42);
-    expect(alerts.guideIssued.single.username, 'masha');
-
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonGuide),
-    );
-    expect(alerts.guideIssued, hasLength(1));
+    expect(alerts.funnelDayDigests, isEmpty);
+    expect(harness.course.getUser(42)?.magnetIssuedAt, isNotNull);
   });
 
-  test('missing guide alerts the missing-file path, not guide issued', () async {
+  test('missing guide alerts the missing-file path, not a digest', () async {
     final harness = HandlerHarness();
     final alerts = FakePaymentGatewayAlertPort();
     await harness.init(adminUserIds: const <int>{1}, alertPort: alerts, leadMagnetFileId: '');
@@ -54,11 +48,11 @@ void main() {
         data: MessageTemplates.cbGuide,
       ),
     );
-    expect(alerts.guideIssued, isEmpty);
+    expect(alerts.funnelDayDigests, isEmpty);
     expect(alerts.guideMissing, <int>[42]);
   });
 
-  test('first webinar RSVP notifies admins, a second tap does not', () async {
+  test('webinar RSVP does not ping admins per person', () async {
     final harness = HandlerHarness();
     final alerts = FakePaymentGatewayAlertPort();
     await harness.init(
@@ -80,18 +74,16 @@ void main() {
         data: MessageTemplates.cbGuide,
       ),
     );
-    expect(alerts.webinarRsvp, isEmpty);
-
     await harness.handlers.handle(
       privateCallbackUpdate(callbackId: '2', chatId: 42, userId: 42, data: MessageTemplates.cbRsvp),
     );
-    expect(alerts.webinarRsvp, hasLength(1));
-    expect(alerts.webinarRsvp.single.userId, 42);
-
-    await harness.handlers.handle(
-      privateCallbackUpdate(callbackId: '3', chatId: 42, userId: 42, data: MessageTemplates.cbRsvp),
+    expect(alerts.funnelDayDigests, isEmpty);
+    expect(
+      harness.course
+          .getEnrollment(userId: 42, launchId: harness.course.activeLaunch()!.id)
+          ?.webinarRsvp,
+      isTrue,
     );
-    expect(alerts.webinarRsvp, hasLength(1));
   });
 
   test('full payment with invite notifies admins once; deposit does not', () async {

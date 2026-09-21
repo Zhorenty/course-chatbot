@@ -142,14 +142,6 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
           _templates.adminGuideDiscarded(),
           replyMarkup: _templates.adminMenuKeyboard(),
         );
-      // TODO(mvp-reset): remove with the admin «Очистить воронку» button.
-      case MessageTemplates.cbAdminClearFunnelConfirm:
-        return _adminClearFunnel(context);
-      case MessageTemplates.cbAdminClearFunnelAbort:
-        if (!_adminGate.isConfiguredAdmin(context.userId)) {
-          return false;
-        }
-        return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     if (data.startsWith(MessageTemplates.cbAdminPeopleSeg)) {
       final parsed = MessageTemplates.peopleSegmentFromCallback(data);

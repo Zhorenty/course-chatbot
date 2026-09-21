@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:course_chatbot/src/config/app_config.dart';
 import 'package:course_chatbot/src/data/google_sheets_writer.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
+import 'package:course_chatbot/src/jobs/funnel_day_digest_job.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:course_chatbot/src/jobs/job_scheduler.dart';
 import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
@@ -26,6 +27,7 @@ final class BotRunner {
     AbandonedPaymentJob? abandonedPaymentJob,
     RemainderReminderJob? remainderReminderJob,
     UnjoinedInviteJob? unjoinedInviteJob,
+    FunnelDayDigestJob? funnelDayDigestJob,
     PendingPaymentSyncJob? pendingPaymentSyncJob,
     GoogleSheetsFunnelExportJob? sheetsExportJob,
     SqliteMaintenanceJob? maintenanceJob,
@@ -38,6 +40,7 @@ final class BotRunner {
        _abandonedPaymentJob = abandonedPaymentJob,
        _remainderReminderJob = remainderReminderJob,
        _unjoinedInviteJob = unjoinedInviteJob,
+       _funnelDayDigestJob = funnelDayDigestJob,
        _pendingPaymentSyncJob = pendingPaymentSyncJob,
        _sheetsExportJob = sheetsExportJob,
        _maintenanceJob = maintenanceJob,
@@ -52,6 +55,7 @@ final class BotRunner {
   final AbandonedPaymentJob? _abandonedPaymentJob;
   final RemainderReminderJob? _remainderReminderJob;
   final UnjoinedInviteJob? _unjoinedInviteJob;
+  final FunnelDayDigestJob? _funnelDayDigestJob;
   final PendingPaymentSyncJob? _pendingPaymentSyncJob;
   final GoogleSheetsFunnelExportJob? _sheetsExportJob;
   final SqliteMaintenanceJob? _maintenanceJob;
@@ -182,6 +186,10 @@ final class BotRunner {
     final unjoined = _unjoinedInviteJob;
     if (unjoined != null) {
       _schedulePeriodic(const Duration(minutes: 15), 'unjoined', unjoined.run);
+    }
+    final digest = _funnelDayDigestJob;
+    if (digest != null) {
+      _schedulePeriodic(const Duration(minutes: 15), 'funnel-digest', digest.run);
     }
     final sheets = _sheetsExportJob;
     if (sheets != null) {

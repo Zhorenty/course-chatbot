@@ -10,6 +10,7 @@ import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/abandoned_payment_job.dart';
+import 'package:course_chatbot/src/jobs/funnel_day_digest_job.dart';
 import 'package:course_chatbot/src/jobs/pending_payment_sync_job.dart';
 import 'package:course_chatbot/src/jobs/remainder_reminder_job.dart';
 import 'package:course_chatbot/src/jobs/unjoined_invite_job.dart';
@@ -17,6 +18,7 @@ import 'package:course_chatbot/src/jobs/warmup_nudge_job.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
+import 'support/fakes.dart';
 import 'support/harness.dart';
 import 'support/launch_fixture.dart';
 
@@ -931,6 +933,57 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
     await job.run();
     expect(harness.sender.messages.where((m) => m.text.contains('Успешная оплата')), hasLength(1));
+  });
+
+  test('funnel day digest summarizes yesterday and skips empty or claimed days', () async {
+    final launch = harness.course.activeLaunch()!;
+    harness.course.ensureUser(
+      userId: 42,
+      username: 'masha',
+      firstName: 'Маша',
+      now: DateTime.utc(2026, 9, 20, 8),
+    );
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.magnetIssued,
+      magnetIssuedAt: DateTime.utc(2026, 9, 20, 12),
+      launchId: launch.id,
+    );
+    harness.course.setWebinarRsvp(
+      userId: 42,
+      launchId: launch.id,
+      now: DateTime.utc(2026, 9, 20, 13),
+    );
+    harness.course.ensureUser(userId: 7, username: 'today', now: DateTime.utc(2026, 9, 21, 8));
+    harness.course.setFunnelPhase(
+      userId: 7,
+      phase: FunnelPhase.magnetIssued,
+      magnetIssuedAt: DateTime.utc(2026, 9, 21, 8),
+      launchId: launch.id,
+    );
+
+    final alerts = FakePaymentGatewayAlertPort();
+    final dedupe = JobDedupeRepository(databaseHandle: harness.handle)..initSchema();
+    FunnelDayDigestJob jobFor(DateTime now) {
+      return FunnelDayDigestJob(
+        course: harness.course,
+        dedupe: dedupe,
+        alerts: alerts,
+        quietHours: quietHours,
+        nowProvider: () => now,
+      );
+    }
+
+    await jobFor(DateTime.utc(2026, 9, 21, 6)).run();
+    expect(alerts.funnelDayDigests, isEmpty, reason: 'before 10:00 Moscow the digest waits');
+
+    await jobFor(DateTime.utc(2026, 9, 21, 7, 5)).run();
+    expect(alerts.funnelDayDigests, hasLength(1));
+    expect(alerts.funnelDayDigests.single.guidesIssued.single.userId, 42);
+    expect(alerts.funnelDayDigests.single.webinarRsvps.single.userId, 42);
+
+    await jobFor(DateTime.utc(2026, 9, 21, 12)).run();
+    expect(alerts.funnelDayDigests, hasLength(1));
   });
 }
 

@@ -104,7 +104,6 @@ void main() {
       MessageTemplates.buttonAdminSheetsHub,
       MessageTemplates.buttonAdminPeople,
       MessageTemplates.buttonAdminBroadcast,
-      MessageTemplates.buttonAdminClearFunnel,
     ]);
     expect(texts, isNot(contains(MessageTemplates.buttonAdminAddUser)));
     expect(texts, isNot(contains(MessageTemplates.buttonAdminCatalogNew)));
@@ -288,66 +287,6 @@ void main() {
       _inlineButtonTexts(second.replyMarkup),
       contains(MessageTemplates.buttonAdminPeopleBack),
     );
-  });
-
-  test('admin can clear funnel people and keep the launch', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
-    );
-    expect(harness.course.getUser(99), isNotNull);
-    final launchCode = harness.course.activeLaunch()?.code;
-
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminClearFunnel),
-    );
-    expect(harness.sender.messages.last.text, contains('Сотру людей'));
-    expect(harness.course.getUser(99), isNotNull);
-
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'cf',
-        chatId: 1,
-        userId: 1,
-        data: MessageTemplates.cbAdminClearFunnelConfirm,
-      ),
-    );
-    expect(harness.sender.messages.last.text, contains('Воронка очищена'));
-    expect(harness.course.getUser(99), isNull);
-    expect(harness.course.activeLaunch()?.code, launchCode);
-  });
-
-  test('admin abort keeps funnel people', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide'),
-    );
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminClearFunnel),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'cfn',
-        chatId: 1,
-        userId: 1,
-        data: MessageTemplates.cbAdminClearFunnelAbort,
-      ),
-    );
-    expect(harness.course.getUser(99), isNotNull);
-    expect(harness.sender.messages.last.text, contains('Админка'));
-  });
-
-  test('non-admin cannot clear funnel via callback', () async {
-    await harness.handlers.handle(
-      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide'),
-    );
-    await harness.handlers.handle(
-      privateCallbackUpdate(
-        callbackId: 'cf',
-        chatId: 99,
-        userId: 99,
-        data: MessageTemplates.cbAdminClearFunnelConfirm,
-      ),
-    );
-    expect(harness.course.getUser(99), isNotNull);
   });
 
   test('admin Google Sheets hub shows catalog, links and refresh', () async {
