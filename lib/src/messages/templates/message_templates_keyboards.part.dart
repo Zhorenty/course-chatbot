@@ -234,6 +234,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     int userId, {
     required AdminPaymentStatus status,
     bool inChannel = false,
+    bool canResetFunnel = false,
   }) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[
@@ -260,6 +261,14 @@ extension MessageTemplateKeyboards on MessageTemplates {
           <String, Object?>{
             'text': MessageTemplates.buttonAdminCancel,
             'callback_data': '${MessageTemplates.cbAdminCancel}$userId',
+            'style': 'danger',
+          },
+        ],
+      if (canResetFunnel)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminResetFunnel,
+            'callback_data': '${MessageTemplates.cbAdminResetFunnel}$userId',
             'style': 'danger',
           },
         ],

@@ -122,6 +122,8 @@ final class MessageTemplates {
   static const String buttonAdminGuideSave = '💾 Сохранить гайд';
   static const String buttonAdminGuideDiscard = '✖️ Не сохранять';
   static const String buttonAdminOpenCard = 'Открыть карточку';
+  static const String buttonAdminResetFunnel = '🔁 Сбросить воронку';
+  static const String buttonAdminResetConfirmYes = 'Сбросить воронку';
   static const String buttonAdminCatalogNew = '🆕 Создать курс';
   static const String buttonAdminCatalogEdit = '✏️ Изменить поле';
   static const String buttonAdminCatalogParams = '⚙️ Параметры';
@@ -172,6 +174,8 @@ final class MessageTemplates {
   static const String cbAdminDepositConfirm = 'ady:';
   static const String cbAdminCancel = 'ac:';
   static const String cbAdminCancelConfirm = 'acy:';
+  static const String cbAdminResetFunnel = 'ar:';
+  static const String cbAdminResetFunnelConfirm = 'ary:';
   static const String cbAdminInvite = 'ai:';
   static const String cbAdminCreate = 'an:';
   static const String cbAdminDm = 'am:';
@@ -894,6 +898,16 @@ final class MessageTemplates {
     return 'Убрать $who · id <code>${user.userId}</code>? '
         'Ссылка отзовётся, из канала выкину.';
   }
+
+  String adminConfirmResetFunnel(UserProfile user) {
+    final handle = _adminUsernameHtml(user.username);
+    final name = user.firstName?.trim();
+    final who = handle ?? ((name == null || name.isEmpty) ? 'человека' : escapeHtml(name));
+    return 'Сбросить воронку $who · id <code>${user.userId}</code>? '
+        'Сможет заново нажать /start. Оплата, доступ и рассылка обнулятся.';
+  }
+
+  String adminFunnelReset() => 'Сбросил воронку. Можно снова нажать /start.';
 
   String adminAskDm(int userId) {
     return 'Напиши текст — отправлю id <code>$userId</code> от имени бота.';

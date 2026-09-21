@@ -678,6 +678,8 @@ abstract final class CoursesSheetParser {
       slot.canonical: slot.canonical,
       slot.coursesHeader.toLowerCase(): slot.canonical,
     },
+    'rsvp': LaunchCopySlotKey.rsvpCta.canonical,
+    'подтверждение rsvp': LaunchCopySlotKey.rsvpConfirmed.canonical,
     CoursesSheet.description: CoursesSheet.description,
     'описание': CoursesSheet.description,
     CoursesSheet.dozhim: CoursesSheet.dozhim,

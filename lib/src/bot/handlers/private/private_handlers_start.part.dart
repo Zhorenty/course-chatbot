@@ -9,7 +9,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
       firstName: context.firstName,
       payload: payload,
     );
-    if (_adminGate.isConfiguredAdmin(user.userId)) {
+    if (_adminGate.isConfiguredAdmin(user.userId) && !FunnelReplayAllowlist.allows(user.username)) {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     final phase = _funnel.phaseOf(user);
@@ -58,7 +58,7 @@ extension _PrivateHandlersStart on PrivateHandlers {
     if (user == null) {
       return _handleStart(context, '/start');
     }
-    if (_adminGate.isConfiguredAdmin(user.userId)) {
+    if (_adminGate.isConfiguredAdmin(user.userId) && !FunnelReplayAllowlist.allows(user.username)) {
       return _send(context, _templates.adminMenu(), replyMarkup: _templates.adminMenuKeyboard());
     }
     return _sendHelp(context);

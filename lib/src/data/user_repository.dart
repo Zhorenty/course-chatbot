@@ -28,6 +28,9 @@ abstract interface class UserRepository {
 
   void setBotBlocked({required int userId, required bool blocked});
 
+  /// Test replay: drop this person's funnel, orders, access and drip so `/start` is first-run again.
+  void resetUserFunnel(int userId);
+
   UserProfile? findUserByUsername(String username);
 
   List<UserProfile> searchUsers(String query, {int limit = 10});

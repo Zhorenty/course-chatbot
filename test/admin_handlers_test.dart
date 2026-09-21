@@ -2037,6 +2037,158 @@ void main() {
       isNot(contains(MessageTemplates.buttonAdminCatalog)),
     );
   });
+
+  test('person card shows funnel reset only for @dvor_support', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(
+        chatId: 50,
+        userId: 50,
+        text: '/start ig_reels_guide',
+        username: 'dvor_support',
+      ),
+    );
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
+    );
+    await harness.handlers.handle(privateMessageUpdate(chatId: 1, userId: 1, text: '@lead'));
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminResetFunnel)),
+    );
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: '@dvor_support'),
+    );
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminResetFunnel),
+    );
+  });
+
+  test('admin reset of @dvor_support lets them replay /start', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(
+        chatId: 50,
+        userId: 50,
+        text: '/start ig_reels_guide',
+        username: 'dvor_support',
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'g',
+        chatId: 50,
+        userId: 50,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    expect(harness.course.getUser(50)?.funnelPhase, isNot(FunnelPhase.lead));
+    expect(harness.course.hasWarmupBeenSent(userId: 50, stepKey: 'warmup_0'), isTrue);
+
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 50, userId: 50, text: '/start', username: 'dvor_support'),
+    );
+    expect(harness.sender.messages.last.text, contains('Продолжаем с того же места'));
+
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSearch),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: '@dvor_support'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rr',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminResetFunnel}50',
+      ),
+    );
+    expect(harness.sender.messages.last.text, contains('/start'));
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonAdminResetConfirmYes),
+    );
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rry',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminResetFunnelConfirm}50',
+      ),
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('Сбросил воронку')), isTrue);
+    expect(harness.course.getUser(50)?.funnelPhase, FunnelPhase.lead);
+    expect(harness.course.getUser(50)?.source, isNull);
+    expect(harness.course.getUser(50)?.magnetIssuedAt, isNull);
+    expect(harness.course.latestOrder(50), isNull);
+    expect(harness.course.hasWarmupBeenSent(userId: 50, stepKey: 'warmup_0'), isFalse);
+    expect(harness.course.listAcquisitionEvents(50), isEmpty);
+
+    harness.sender.messages.clear();
+    await harness.handlers.handle(
+      privateMessageUpdate(
+        chatId: 50,
+        userId: 50,
+        text: '/start ig_reels_guide',
+        username: 'dvor_support',
+      ),
+    );
+    expect(harness.sender.messages.last.text, contains('Привет'));
+    expect(
+      harness.sender.messages.any((m) => m.text.contains('Продолжаем с того же места')),
+      isFalse,
+    );
+    expect(harness.course.getUser(50)?.source, 'ig_reels_guide');
+  });
+
+  test('funnel reset callback is ignored for a regular client', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'g',
+        chatId: 99,
+        userId: 99,
+        data: MessageTemplates.cbGuide,
+      ),
+    );
+    final phase = harness.course.getUser(99)?.funnelPhase;
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'rry',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbAdminResetFunnelConfirm}99',
+      ),
+    );
+    expect(harness.course.getUser(99)?.funnelPhase, phase);
+    expect(
+      _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.buttonAdminResetFunnel)),
+    );
+  });
+
+  test('allowlisted admin /start walks the student funnel', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: '/start', username: 'dvor_support'),
+    );
+    expect(harness.sender.messages.last.text, contains('Привет'));
+    expect(
+      _replyButtonTexts(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.buttonGuide),
+    );
+  });
 }
 
 Future<void> _runCatalogCreateWizardToChannel(

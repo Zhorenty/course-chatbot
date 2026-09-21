@@ -206,6 +206,18 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminCancel),
       );
     }
+    if (data.startsWith(MessageTemplates.cbAdminResetFunnelConfirm)) {
+      return _adminResetFunnel(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminResetFunnelConfirm),
+      );
+    }
+    if (data.startsWith(MessageTemplates.cbAdminResetFunnel)) {
+      return _adminAskResetFunnel(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbAdminResetFunnel),
+      );
+    }
     if (data.startsWith(MessageTemplates.cbAdminInvite)) {
       return _adminReinvite(
         context,

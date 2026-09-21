@@ -4,6 +4,7 @@ import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/funnel_replay.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/participant_list.dart';
@@ -20,6 +21,13 @@ void main() {
     expect(hours.isQuiet(DateTime.utc(2026, 8, 26, 7)), isFalse); // 10 MSK
     expect(hours.isQuiet(DateTime.utc(2026, 8, 26, 17)), isFalse); // 20 MSK
     expect(hours.isQuiet(DateTime.utc(2026, 8, 26, 18)), isTrue); // 21 MSK
+  });
+
+  test('funnel replay allowlist is only @dvor_support', () {
+    expect(FunnelReplayAllowlist.allows('dvor_support'), isTrue);
+    expect(FunnelReplayAllowlist.allows('@Dvor_Support'), isTrue);
+    expect(FunnelReplayAllowlist.allows('lead'), isFalse);
+    expect(FunnelReplayAllowlist.allows(null), isFalse);
   });
 
   test('first /start payload wins', () {

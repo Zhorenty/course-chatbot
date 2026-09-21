@@ -1513,6 +1513,29 @@ void main() {
       _inlineCallbackData(templates.adminStatusKeyboard(1, AdminPaymentStatus.paid)),
       contains(MessageTemplates.adminStatusSetData(AdminPaymentStatus.deposit, 1)),
     );
+    expect(
+      _inlineButtonTexts(templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid)),
+      isNot(contains(MessageTemplates.buttonAdminResetFunnel)),
+    );
+    expect(
+      _inlineButtonTexts(
+        templates.adminCardKeyboard(1, status: AdminPaymentStatus.unpaid, canResetFunnel: true),
+      ),
+      contains(MessageTemplates.buttonAdminResetFunnel),
+    );
+    expect(
+      templates.adminConfirmResetFunnel(
+        UserProfile(
+          userId: 7,
+          username: 'dvor_support',
+          firstName: 'Support',
+          funnelPhase: FunnelPhase.lead,
+          firstStartedAt: DateTime.utc(2026, 9, 1),
+          lastSeenAt: DateTime.utc(2026, 9, 1),
+        ),
+      ),
+      contains('/start'),
+    );
   });
 }
 

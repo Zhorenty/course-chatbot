@@ -22,6 +22,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/funnel_replay.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -121,13 +122,17 @@ final class PrivateHandlers implements PaymentResultNotifier {
   Launch? get _launch => _course.activeLaunch();
 
   Map<String, Object?> _homeKeyboard(int userId) {
-    if (_adminGate.isConfiguredAdmin(userId)) {
+    if (_adminGate.isConfiguredAdmin(userId) && !_isFunnelReplayUser(userId)) {
       return _templates.adminMenuKeyboard();
     }
     return _templates.userMenuKeyboard(
       showCourseStatus: _funnel.enrollmentFor(userId)?.funnelPhase.showsCourseStatus ?? false,
       launch: _launch,
     );
+  }
+
+  bool _isFunnelReplayUser(int userId) {
+    return FunnelReplayAllowlist.allows(_course.getUser(userId)?.username);
   }
 
   Future<bool> _dmUser(
@@ -171,4 +176,4 @@ final class PrivateHandlers implements PaymentResultNotifier {
   }
 }
 
-enum _AdminConfirmKind { cancel }
+enum _AdminConfirmKind { cancel, resetFunnel }

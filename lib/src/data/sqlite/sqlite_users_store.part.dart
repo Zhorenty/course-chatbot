@@ -200,6 +200,51 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
   }
 
   @override
+  void resetUserFunnel(int userId) {
+    _handle.transaction(() {
+      final orderRows = _db.select('SELECT id FROM orders WHERE user_id = ?;', <Object?>[userId]);
+      for (final row in orderRows) {
+        final orderId = row['id'] as int;
+        _db.execute('DELETE FROM job_dedupe_log WHERE dedupe_key LIKE ?;', <Object?>[
+          'abandon:$orderId:%',
+        ]);
+        _db.execute('DELETE FROM job_dedupe_log WHERE dedupe_key LIKE ?;', <Object?>[
+          'remainder:$orderId:%',
+        ]);
+      }
+      _db.execute(
+        'DELETE FROM payments WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?);',
+        <Object?>[userId],
+      );
+      _db.execute('DELETE FROM orders WHERE user_id = ?;', <Object?>[userId]);
+      _db.execute('DELETE FROM channel_access WHERE user_id = ?;', <Object?>[userId]);
+      _db.execute('DELETE FROM warmup_sent WHERE user_id = ?;', <Object?>[userId]);
+      _db.execute('DELETE FROM user_enrollments WHERE user_id = ?;', <Object?>[userId]);
+      _db.execute('DELETE FROM acquisition_events WHERE user_id = ?;', <Object?>[userId]);
+      for (final launch in listLaunches()) {
+        _db.execute('DELETE FROM job_dedupe_log WHERE dedupe_key LIKE ?;', <Object?>[
+          'warmup:${launch.id}:$userId:%',
+        ]);
+      }
+      _db.execute('DELETE FROM job_dedupe_log WHERE dedupe_key LIKE ?;', <Object?>[
+        'unjoined:$userId:%',
+      ]);
+      _db.execute(
+        '''
+        UPDATE telegram_users
+        SET source = NULL,
+            funnel_phase = 'lead',
+            warmup_opt_out = 0,
+            magnet_issued_at = NULL,
+            updated_at = ?
+        WHERE user_id = ?;
+        ''',
+        <Object?>[_nowProvider().toUtc().toIso8601String(), userId],
+      );
+    });
+  }
+
+  @override
   UserProfile? findUserByUsername(String username) {
     final normalized = normalizeTelegramUsername(username);
     if (normalized == null) {

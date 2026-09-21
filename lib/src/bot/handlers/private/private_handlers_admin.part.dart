@@ -477,6 +477,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         user.userId,
         status: status,
         inChannel: access?.hasJoined ?? false,
+        canResetFunnel: FunnelReplayAllowlist.allows(user.username),
       ),
     );
   }
@@ -516,6 +517,44 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     return _adminAskConfirm(context, targetUserId, kind: _AdminConfirmKind.cancel);
   }
 
+  Future<bool> _adminAskResetFunnel(PrivateMessageContext context, int? targetUserId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
+      return _send(context, _templates.adminNotFound('$targetUserId'));
+    }
+    if (!FunnelReplayAllowlist.allows(user.username)) {
+      return _presentAdminCard(context, user);
+    }
+    return _adminAskConfirm(context, targetUserId, kind: _AdminConfirmKind.resetFunnel);
+  }
+
+  Future<bool> _adminResetFunnel(PrivateMessageContext context, int? targetUserId) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || targetUserId == null) {
+      return false;
+    }
+    final user = _course.getUser(targetUserId);
+    if (user == null) {
+      return _send(context, _templates.adminNotFound('$targetUserId'));
+    }
+    if (!FunnelReplayAllowlist.allows(user.username)) {
+      return _presentAdminCard(context, user);
+    }
+    for (final launch in _course.listLaunches()) {
+      await _access.revoke(userId: targetUserId, launch: launch);
+    }
+    _course.resetUserFunnel(targetUserId);
+    _flowByUserId.remove(targetUserId);
+    await _send(context, _templates.adminFunnelReset());
+    final reset = _course.getUser(targetUserId);
+    if (reset == null) {
+      return true;
+    }
+    return _presentAdminCard(context, reset);
+  }
+
   Future<bool> _adminAskConfirm(
     PrivateMessageContext context,
     int? targetUserId, {
@@ -528,10 +567,16 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (user == null) {
       return _send(context, _templates.adminNotFound('$targetUserId'));
     }
-    final (text, yesPrefix) = switch (kind) {
+    final (text, yesPrefix, yesText) = switch (kind) {
       _AdminConfirmKind.cancel => (
         _templates.adminConfirmCancel(user),
         MessageTemplates.cbAdminCancelConfirm,
+        MessageTemplates.buttonAdminConfirmYes,
+      ),
+      _AdminConfirmKind.resetFunnel => (
+        _templates.adminConfirmResetFunnel(user),
+        MessageTemplates.cbAdminResetFunnelConfirm,
+        MessageTemplates.buttonAdminResetConfirmYes,
       ),
     };
     return _send(
@@ -540,6 +585,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       replyMarkup: _templates.adminConfirmKeyboard(
         yesData: '$yesPrefix$targetUserId',
         noData: '${MessageTemplates.cbAdminActionAbort}$targetUserId',
+        yesText: yesText,
       ),
     );
   }
