@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/domain/acquisition_link.dart';
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 
 const Object _unset = Object();
 
@@ -62,6 +63,7 @@ final class CatalogWizardDraft {
     this.isActive,
     this.editLaunchId,
     this.editField,
+    this.editSlot,
     this.dozhimReplaceId,
   });
 
@@ -83,6 +85,7 @@ final class CatalogWizardDraft {
   final bool? isActive;
   final int? editLaunchId;
   final CatalogLaunchField? editField;
+  final LaunchCopySlotKey? editSlot;
   final int? dozhimReplaceId;
 
   CatalogWizardDraft copyWith({
@@ -104,6 +107,7 @@ final class CatalogWizardDraft {
     Object? isActive = _unset,
     Object? editLaunchId = _unset,
     Object? editField = _unset,
+    Object? editSlot = _unset,
     Object? dozhimReplaceId = _unset,
   }) {
     return CatalogWizardDraft(
@@ -131,6 +135,7 @@ final class CatalogWizardDraft {
       isActive: identical(isActive, _unset) ? this.isActive : isActive as bool?,
       editLaunchId: identical(editLaunchId, _unset) ? this.editLaunchId : editLaunchId as int?,
       editField: identical(editField, _unset) ? this.editField : editField as CatalogLaunchField?,
+      editSlot: identical(editSlot, _unset) ? this.editSlot : editSlot as LaunchCopySlotKey?,
       dozhimReplaceId: identical(dozhimReplaceId, _unset)
           ? this.dozhimReplaceId
           : dozhimReplaceId as int?,

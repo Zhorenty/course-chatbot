@@ -1,6 +1,7 @@
 import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 
@@ -74,6 +75,18 @@ abstract interface class CatalogRepository {
   void setLeadMagnetFileId(String fileId, {int? launchId});
 
   void setLaunchDescription(String text, {required int launchId});
+
+  LaunchCopy copyOf(int launchId);
+
+  void upsertLaunchCopySlot({
+    required int launchId,
+    required LaunchCopySlotKey slot,
+    required StoredTelegramMessage payload,
+  });
+
+  void deleteLaunchCopySlot({required int launchId, required LaunchCopySlotKey slot});
+
+  void seedActiveLaunchCopy();
 
   List<LaunchDozhimMessage> listLaunchDozhim(int launchId);
 

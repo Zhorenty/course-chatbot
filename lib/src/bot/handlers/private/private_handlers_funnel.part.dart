@@ -43,7 +43,10 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     try {
       final sent = await _sender.sendRichMessage(
         chatId,
-        InputRichMessage(html: _templates.guideReadyRich(), media: <InputRichMessageMedia>[media]),
+        InputRichMessage(
+          html: _templates.guideReadyRich(launch: _launch),
+          media: <InputRichMessageMedia>[media],
+        ),
         replyMarkup: menu,
       );
       if (!useFileId) {
@@ -73,16 +76,18 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     required bool useFileId,
   }) async {
     if (useFileId) {
-      await _sender.sendDocument(chatId, document: fileId!);
+      await _sender.sendDocument(chatId, document: fileId!, replyMarkup: menu);
     } else {
       final sent = await _sender.sendDocument(
         chatId,
         document: localPath!,
         filename: leadMagnetFilename,
         fromFile: true,
+        replyMarkup: menu,
       );
       _cacheLeadMagnetFileId(sent.fileId);
     }
+    await _sendHtml(chatId, _templates.guideReady(launch: _launch), replyMarkup: menu);
   }
 
   void _cacheLeadMagnetFileId(String? fileId) {
@@ -137,7 +142,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
             launch: launch,
             rsvp: enrollment.webinarRsvp,
           ),
-          media: FunnelMedia.richMedia(WarmupService.firstStepKey),
+          media: _templates.warmupMedia(WarmupService.firstStepKey, launch: launch),
           replyMarkup: _templates.warmupKeyboard(
             WarmupService.firstStepKey,
             launch: launch,
@@ -227,12 +232,12 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     }
     final now = _nowProvider();
     if (!LaunchSales.rsvpOpen(launch, now)) {
-      await _answerCallback(context, text: 'Регистрация на эфир уже закрыта.');
+      await _answerCallback(context, text: _templates.webinarRsvpClosedToast());
       return true;
     }
     final firstRsvp = !(_funnel.enrollmentFor(userId, launch: launch)?.webinarRsvp ?? false);
     _funnel.markWebinarRsvp(userId, launchId: launch.id);
-    await _answerCallback(context, text: 'Ты в списке участников!');
+    await _answerCallback(context, text: _templates.webinarRsvpListedToast());
     final url = launch.resolvedWebinarUrl;
     final started = LaunchSales.webinarStarted(launch, now);
     final showLink = started && url != null;
@@ -272,7 +277,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     return _send(
       context,
       _templates.paymentSucceeded(launch: launch),
-      media: FunnelMedia.richMedia(FunnelMedia.paid),
+      media: _templates.copyMedia(launch, LaunchCopySlotKey.paymentSucceeded),
       replyMarkup: unjoined ? _templates.unjoinedInviteKeyboard(link) : null,
     );
   }

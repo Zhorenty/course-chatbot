@@ -241,6 +241,28 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       }
       return _adminEnsureAndShowCard(context, targetId);
     }
+    if (data.startsWith(MessageTemplates.cbCatalogSlotReplace)) {
+      final parsed = MessageTemplates.catalogSlotFromCallback(
+        data,
+        MessageTemplates.cbCatalogSlotReplace,
+      );
+      return _askCatalogSlot(context, parsed?.id, parsed?.slot);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogSlotReset)) {
+      final parsed = MessageTemplates.catalogSlotFromCallback(
+        data,
+        MessageTemplates.cbCatalogSlotReset,
+      );
+      return _resetCatalogSlot(context, parsed?.id, parsed?.slot);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogSlot)) {
+      final parsed = MessageTemplates.catalogSlotFromCallback(data, MessageTemplates.cbCatalogSlot);
+      return _showCatalogSlot(context, parsed?.id, parsed?.slot);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogSegment)) {
+      final parsed = MessageTemplates.catalogSegmentFromCallback(data);
+      return _showCatalogSegment(context, parsed?.id, parsed?.segment);
+    }
     if (data.startsWith(MessageTemplates.cbCatalogDozhimAdd)) {
       return _askCatalogDozhimCompose(
         context,
@@ -352,6 +374,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     }
     if (text == MessageTemplates.buttonEnroll ||
         text == MessageTemplates.buttonCourseStatus ||
+        text == _templates.courseReplyButton(_launch) ||
         text == '/enroll' ||
         text == '/course') {
       return _showEnroll(context);

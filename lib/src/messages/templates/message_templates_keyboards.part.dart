@@ -1,14 +1,12 @@
 part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplateKeyboards on MessageTemplates {
-  Map<String, Object?> userMenuKeyboard({required bool showCourseStatus}) {
+  Map<String, Object?> userMenuKeyboard({required bool showCourseStatus, Launch? launch}) {
+    final course = courseReplyButton(launch);
     return replyKeyboard(<List<Map<String, Object?>>>[
       <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonGuide},
-        if (showCourseStatus)
-          <String, Object?>{'text': MessageTemplates.buttonCourseStatus}
-        else
-          <String, Object?>{'text': MessageTemplates.buttonEnroll},
+        <String, Object?>{'text': course},
       ],
       <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonHelp},
@@ -506,24 +504,15 @@ extension MessageTemplateKeyboards on MessageTemplates {
 
   Map<String, Object?> adminCatalogCardKeyboard(Launch launch, {int dozhimCount = 0}) {
     final rows = <List<Map<String, Object?>>>[
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': MessageTemplates.buttonAdminCatalogEdit,
-          'callback_data': '${MessageTemplates.cbCatalogEdit}${launch.id}',
-        },
-      ],
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': adminCatalogGuideButton(launch),
-          'callback_data': MessageTemplates.catalogFieldData(launch.id, CatalogLaunchField.guide),
-        },
-      ],
-      <Map<String, Object?>>[
-        <String, Object?>{
-          'text': adminCatalogDozhimButton(dozhimCount),
-          'callback_data': '${MessageTemplates.cbCatalogDozhim}${launch.id}',
-        },
-      ],
+      for (final segment in LaunchCopySegment.values)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': segment == LaunchCopySegment.dozhim
+                ? adminCatalogDozhimButton(dozhimCount)
+                : segment.adminLabel,
+            'callback_data': MessageTemplates.catalogSegmentData(launch.id, segment),
+          },
+        ],
       if (!launch.isActive)
         <Map<String, Object?>>[
           <String, Object?>{
@@ -549,7 +538,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
 
   Map<String, Object?> adminCatalogFieldsKeyboard(int launchId) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
-      for (final field in CatalogLaunchField.values)
+      for (final field in CatalogLaunchField.paramsFields)
         <Map<String, Object?>>[
           <String, Object?>{
             'text': adminCatalogFieldLabel(field),
@@ -560,6 +549,81 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, Object?>{
           'text': MessageTemplates.buttonAdminCatalogBack,
           'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogSegmentKeyboard(int launchId, LaunchCopySegment segment) {
+    if (segment == LaunchCopySegment.params) {
+      return adminCatalogFieldsKeyboard(launchId);
+    }
+    if (segment == LaunchCopySegment.dozhim) {
+      return adminCatalogDozhimListKeyboard(launchId, const <LaunchDozhimMessage>[]);
+    }
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final slot in LaunchCopySlotKey.slotsOf(segment))
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': slot.adminLabel,
+            'callback_data': MessageTemplates.catalogSlotData(
+              MessageTemplates.cbCatalogSlot,
+              launchId,
+              slot,
+            ),
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': '${MessageTemplates.cbCatalogOpen}$launchId',
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogSlotKeyboard(int launchId, LaunchCopySlotKey slot) {
+    if (slot == LaunchCopySlotKey.guideFile) {
+      return inlineKeyboard(<List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminCatalogReplaceGuide,
+            'callback_data': MessageTemplates.catalogFieldData(launchId, CatalogLaunchField.guide),
+          },
+        ],
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminCatalogBack,
+            'callback_data': MessageTemplates.catalogSegmentData(launchId, slot.segment),
+          },
+        ],
+      ]);
+    }
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogReplaceSlot,
+          'callback_data': MessageTemplates.catalogSlotData(
+            MessageTemplates.cbCatalogSlotReplace,
+            launchId,
+            slot,
+          ),
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogResetSlot,
+          'callback_data': MessageTemplates.catalogSlotData(
+            MessageTemplates.cbCatalogSlotReset,
+            launchId,
+            slot,
+          ),
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': MessageTemplates.catalogSegmentData(launchId, slot.segment),
         },
       ],
     ]);

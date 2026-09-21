@@ -18,6 +18,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
@@ -26,6 +27,7 @@ import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/telegram_username.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
+import 'package:course_chatbot/src/messages/launch_copy_defaults.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 part 'sqlite/sqlite_catalog_store.part.dart';
@@ -66,6 +68,9 @@ final class SqliteCourseRepository extends _SqliteCourseStore
       'Скоро стартует мой курс по интерьерной колористике\n\n'
           'Я сообщу тебе, когда откроются продажи по самой выгодной цене.\n\n'
           'А пока можно записаться на бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться», после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.',
+      'Скоро стартует мой курс по интерьерной колористике\n\n'
+          '<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>\n\n'
+          'А пока можно записаться на <b>бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться»</b>, после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.',
     ];
     for (final previous in previousDefaultDescriptions) {
       _db.execute('UPDATE launches SET description = ? WHERE description = ?;', <Object?>[
@@ -78,6 +83,7 @@ final class SqliteCourseRepository extends _SqliteCourseStore
       <Object?>[Launch.defaultDescription],
     );
     backfillLaunchDefaults();
+    seedActiveLaunchCopy();
   }
 
   @override
@@ -228,7 +234,34 @@ class _SqliteCourseStore {
       leadMagnetUrl: row['lead_magnet_url'] as String?,
       description: description,
       isActive: (row['is_active'] as int?) == 1,
+      copy: loadLaunchCopy(row['id'] as int),
     );
+  }
+
+  LaunchCopy loadLaunchCopy(int launchId) {
+    final rows = _db.select(
+      'SELECT slot_key, payload FROM launch_copy_slots WHERE launch_id = ?;',
+      <Object?>[launchId],
+    );
+    if (rows.isEmpty) {
+      return const LaunchCopy.empty();
+    }
+    final slots = <LaunchCopySlotKey, StoredTelegramMessage>{};
+    for (final row in rows) {
+      final slot = LaunchCopySlotKey.fromCanonical(row['slot_key'] as String? ?? '');
+      if (slot == null) {
+        continue;
+      }
+      try {
+        final payload = StoredTelegramMessage.fromJson(jsonDecode(row['payload'] as String));
+        if (payload != null) {
+          slots[slot] = payload;
+        }
+      } on Object {
+        continue;
+      }
+    }
+    return LaunchCopy(slots);
   }
 
   ConversationLogEntry mapLog(Row row) {

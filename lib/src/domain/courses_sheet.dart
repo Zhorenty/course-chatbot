@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/catalog.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 
@@ -7,7 +8,9 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int columnCount = 17;
+  static const int scalarColumnCount = 14;
+  static const int presenceColumnCount = 21;
+  static const int columnCount = 36;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -17,7 +20,33 @@ abstract final class CoursesSheet {
   static const String dozhimHeader = 'Дожим';
   static const String dozhimYes = 'Да';
   static const String dozhimNo = 'Нет';
-  static const List<String> presenceHeaders = <String>[descriptionHeader, dozhimHeader];
+  static const List<LaunchCopySlotKey> presenceSlotOrder = <LaunchCopySlotKey>[
+    LaunchCopySlotKey.guideFile,
+    LaunchCopySlotKey.startOffer,
+    LaunchCopySlotKey.guideTitle,
+    LaunchCopySlotKey.guideReady,
+    LaunchCopySlotKey.masterClassTitle,
+    LaunchCopySlotKey.rsvpCta,
+    LaunchCopySlotKey.warmupImmediate,
+    LaunchCopySlotKey.warmupTomorrow,
+    LaunchCopySlotKey.warmupTenMinutes,
+    LaunchCopySlotKey.warmupStarted,
+    LaunchCopySlotKey.rsvpConfirmed,
+    LaunchCopySlotKey.courseButton,
+    LaunchCopySlotKey.description,
+    LaunchCopySlotKey.enrollPromo,
+    LaunchCopySlotKey.enrollRegular,
+    LaunchCopySlotKey.coursePitch,
+    LaunchCopySlotKey.afterWebinar,
+    LaunchCopySlotKey.salesOpen,
+    LaunchCopySlotKey.salesRegular,
+    LaunchCopySlotKey.paymentSucceeded,
+  ];
+
+  static final List<String> presenceHeaders = <String>[
+    for (final slot in presenceSlotOrder) slot.coursesHeader,
+    dozhimHeader,
+  ];
 
   static const String productCode = 'product_code';
   static const String productTitle = 'product_title';
@@ -52,8 +81,8 @@ abstract final class CoursesSheet {
       'Доплата после предоплаты — за неделю до старта курса. '
       'Пустая только ссылка на эфир: её можно дописать позже. Остальные поля обязательны. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
-      'Дожим и описание — только в карточке курса в боте. '
-      'Колонки «Описание» и «Дожим» — Нет или Да (у дожима ещё число дней). Не правь их руками. '
+      'Дожим и тексты писем — только в карточке курса в боте. '
+      'Колонки наличия (Гайд…Дожим) — Нет или Да (у дожима ещё число дней). Не правь их руками. '
       'После правок в таблице нажми в боте «Google Sheets» → «Обновить Sheets».';
 
   static const List<String> headers = <String>[
@@ -71,12 +100,35 @@ abstract final class CoursesSheet {
     salesStartAt,
     salesEndDate,
     channelId,
-    description,
-    dozhim,
+    ..._presenceKeys,
     status,
   ];
 
-  static const List<String> displayHeaders = <String>[
+  static const List<String> _presenceKeys = <String>[
+    'guide_file',
+    'start_offer',
+    'guide_title',
+    'guide_ready',
+    'master_class_title',
+    'rsvp_cta',
+    'warmup_0',
+    'webinar_24h',
+    'webinar_10m',
+    'webinar_live',
+    'rsvp_confirmed',
+    'course_button',
+    description,
+    'enroll_promo',
+    'enroll_regular',
+    'course_pitch',
+    'after_webinar',
+    'sales_open',
+    'sales_regular',
+    'payment_succeeded',
+    dozhim,
+  ];
+
+  static final List<String> displayHeaders = <String>[
     'Код продукта',
     'Продукт',
     'Код запуска',
@@ -91,12 +143,11 @@ abstract final class CoursesSheet {
     'Старт продаж',
     'Конец продаж',
     'ID канала',
-    'Описание',
-    'Дожим',
+    ...presenceHeaders,
     'статус',
   ];
 
-  static const List<String> headerNotes = <String>[
+  static final List<String> headerNotes = <String>[
     'Короткий код продукта. Пример: course.',
     'Как называется продукт. Пример: Курс.',
     'Короткий код этого потока. Пример: launch-1. Без кода строка не попадёт в бота.',
@@ -113,8 +164,10 @@ abstract final class CoursesSheet {
     'Когда открывается касса и продающий прогрев. Дата и время по Москве, как 30.09.2026 00:00. Обязательно.',
     'Последний день продаж, как 12.10.2026. Обязательно.',
     'Номер закрытого канала этого потока. Число вида −100…. Обязательно.',
-    'Свой текст карточки курса. Да — админ задал текст в боте. Нет — шаблон. Не правь руками.',
-    'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.',
+    for (final header in presenceHeaders)
+      header == dozhimHeader
+          ? 'Свои сообщения дожима. Нет или Да и число дней. Правится в боте. Не правь руками.'
+          : 'Наличие письма «$header». Да — задано в боте. Нет — шаблон. Не правь руками.',
     'Готово или чего не хватает. Не пиши сюда руками. Если вся строка пустая — статус тоже пустой.',
   ];
 
@@ -171,8 +224,7 @@ abstract final class CoursesSheet {
       seedSalesStartAt,
       seedSalesEndDate,
       channelId ?? '',
-      '',
-      '',
+      for (var i = 0; i < presenceColumnCount; i++) '',
       statusFormula(row: defaultHeaderRow + 2),
     ]);
   }
@@ -351,6 +403,8 @@ abstract final class CoursesSheet {
     return displayHeaders[index];
   }
 
+  static int get presenceStartColumn => scalarColumnCount;
+
   static int get descriptionColumn => headers.indexOf(description);
 
   static int get dozhimStartColumn => headers.indexOf(dozhim);
@@ -391,6 +445,18 @@ abstract final class CoursesSheet {
   }
 
   static String descriptionCell(bool custom) => custom ? dozhimYes : dozhimNo;
+
+  static List<Object?> presenceCells(Launch launch, {required int dozhimCount}) {
+    return <Object?>[
+      for (final slot in presenceSlotOrder)
+        descriptionCell(
+          slot == LaunchCopySlotKey.guideFile
+              ? (launch.leadMagnetFileId?.trim().isNotEmpty ?? false)
+              : launch.copy.has(slot),
+        ),
+      dozhimCell(dozhimCount),
+    ];
+  }
 
   static String dozhimCell(int count) {
     if (count <= 0) {
@@ -564,7 +630,7 @@ final class CoursesSheetParseResult {
 }
 
 abstract final class CoursesSheetParser {
-  static const Map<String, String> headerAliases = <String, String>{
+  static final Map<String, String> headerAliases = <String, String>{
     CoursesSheet.productCode: CoursesSheet.productCode,
     'код продукта': CoursesSheet.productCode,
     CoursesSheet.productTitle: CoursesSheet.productTitle,
@@ -608,6 +674,10 @@ abstract final class CoursesSheetParser {
     CoursesSheet.channelId: CoursesSheet.channelId,
     'id канала': CoursesSheet.channelId,
     'канал': CoursesSheet.channelId,
+    for (final slot in LaunchCopySlotKey.values) ...<String, String>{
+      slot.canonical: slot.canonical,
+      slot.coursesHeader.toLowerCase(): slot.canonical,
+    },
     CoursesSheet.description: CoursesSheet.description,
     'описание': CoursesSheet.description,
     CoursesSheet.dozhim: CoursesSheet.dozhim,

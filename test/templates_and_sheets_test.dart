@@ -13,13 +13,16 @@ import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/participant_list.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/funnel_media.dart';
+import 'package:course_chatbot/src/messages/launch_copy_defaults.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/messages/rich_html.dart';
 import 'package:course_chatbot/src/telegram/input_rich_message.dart';
@@ -69,6 +72,30 @@ void main() {
     expect(rich, contains('<tg-document src="tg://document?id=guide"></tg-document>'));
     expect(classicHtmlFromRich(rich), isNot(contains('tg-document')));
     expect(classicHtmlFromRich(rich), contains('Гайд «Язык цвета»'));
+    expect(classicHtmlFromRich(rich), isNot(contains('файл выше')));
+  });
+
+  test('guide ready rich uses the launch caption slot', () {
+    final templates = MessageTemplates();
+    final launch = testLaunch(
+      copy: LaunchCopy(<LaunchCopySlotKey, StoredTelegramMessage>{
+        LaunchCopySlotKey.guideTitle: LaunchCopyDefaults.textSlot('Мой гайд'),
+        LaunchCopySlotKey.guideReady: LaunchCopyDefaults.textSlot('Держи гайд «{guide_title}»'),
+      }),
+    );
+    expect(templates.guideReadyRich(launch: launch), contains('Держи гайд «Мой гайд»'));
+  });
+
+  test('custom copy slot without media does not attach bundled photos', () {
+    final templates = MessageTemplates();
+    expect(templates.copyMedia(null, LaunchCopySlotKey.startOffer), isNotEmpty);
+    expect(templates.copyMedia(testLaunch(), LaunchCopySlotKey.startOffer), isNotEmpty);
+    final custom = testLaunch(
+      copy: LaunchCopy(<LaunchCopySlotKey, StoredTelegramMessage>{
+        LaunchCopySlotKey.startOffer: LaunchCopyDefaults.textSlot('Привет без фото'),
+      }),
+    );
+    expect(templates.copyMedia(custom, LaunchCopySlotKey.startOffer), isEmpty);
   });
 
   test('rich message media serializes file_id and local attach://', () {
@@ -236,6 +263,51 @@ void main() {
     expect(templates.payManualFallback(), isNot(contains('@Zhorenty')));
   });
 
+  test('course reply button keeps the full launch title from the slot', () {
+    final templates = MessageTemplates();
+    final launch = testLaunch(
+      title: MessageTemplates.defaultCourseTitle,
+      copy: LaunchCopy(<LaunchCopySlotKey, StoredTelegramMessage>{
+        LaunchCopySlotKey.courseButton: LaunchCopyDefaults.textSlot(
+          LaunchCopyDefaults.courseButton,
+        ),
+      }),
+    );
+    expect(templates.courseReplyButton(launch), MessageTemplates.buttonEnroll);
+  });
+
+  test('warmup_0 reads the launch RSVP slot', () {
+    final templates = MessageTemplates();
+    final launch = testLaunch(
+      copy: LaunchCopy(<LaunchCopySlotKey, StoredTelegramMessage>{
+        LaunchCopySlotKey.rsvpCta: LaunchCopyDefaults.textSlot('Жми RSVP кастом'),
+        LaunchCopySlotKey.warmupImmediate: LaunchCopyDefaults.textSlot('{rsvp_cta}'),
+      }),
+    );
+    expect(templates.warmupStep('warmup_0', launch: launch), contains('Жми RSVP кастом'));
+  });
+
+  test('seeded dozhim placeholders render before send', () {
+    final templates = MessageTemplates();
+    final launch = testLaunch(title: 'Запуск', courseStartAt: DateTime.utc(2026, 10, 12));
+    final days = LaunchCopyDefaults.builtinDozhim();
+    expect(days.first.payload.html, contains('{course_start_join}'));
+    expect(days[1].payload.html, contains('{title}'));
+    expect(
+      days[3].payload.html,
+      contains('Вы еще успеваете присоединиться, стартуем {course_start}.'),
+    );
+    final first = templates.renderDozhimCopy(days.first.payload, launch);
+    expect(first.html, contains('стартуем 12 октября'));
+    expect(first.html, isNot(contains('{course_start_join}')));
+    final second = templates.renderDozhimCopy(days[1].payload, launch);
+    expect(second.html, contains('"Запуск"'));
+    expect(second.html, isNot(contains('{title}')));
+    final fourth = templates.renderDozhimCopy(days[3].payload, launch);
+    expect(fourth.html, contains('Вы еще успеваете присоединиться, стартуем 12 октября.'));
+    expect(fourth.html, isNot(contains('{course_start}')));
+  });
+
   test('selling drip uses interior voice not wardrobe stubs', () {
     final templates = MessageTemplates();
     final launch = testLaunch(
@@ -294,6 +366,15 @@ void main() {
     );
     expect(templates.warmupStep('dozhim_d2', launch: launch), isNot(contains('очередной курс')));
     expect(templates.warmupStep('dozhim_d4', launch: launch), contains('Pinterest'));
+    expect(
+      templates.warmupStep('dozhim_d4', launch: launch),
+      contains('Вы еще успеваете присоединиться, стартуем 12 октября.'),
+    );
+    expect(
+      templates.warmupStep('webinar_10m', launch: launch),
+      contains('специальное предложение на мой курс по интерьерной колористике'),
+    );
+    expect(templates.warmupStep('sales_open', launch: launch), contains('Курс «Цвет в интерьере»'));
     expect(templates.warmupStep('warmup_d1'), isEmpty);
     for (final key in keys) {
       expect(templates.warmupStep(key, launch: launch).length, lessThan(4096), reason: key);
@@ -337,6 +418,7 @@ void main() {
     expect(templates.enrollOptions(launch, quote: quote), contains('<s>23 000 ₽</s>'));
     expect(templates.enrollOptions(launch, quote: quote), isNot(contains('В канал пущу')));
     expect(templates.warmupStep('sales_open', launch: launch), contains('открывает свои двери'));
+    expect(templates.warmupStep('sales_open', launch: launch), contains('Курс «Запуск»'));
     expect(templates.warmupStep('sales_open', launch: launch), contains('16 уроков'));
     expect(
       templates.warmupStep('sales_open', launch: launch),
@@ -543,8 +625,7 @@ void main() {
       contains(
         '<p>Курс "Цвет в интерьере" 🎨<br><br>'
         'Скоро стартует мой курс по интерьерной колористике<br>'
-        'Старт потока 12 октября. '
-        '<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u><br><br>',
+        'Старт потока 12 октября. <u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u><br><br>',
       ),
     );
 
@@ -613,15 +694,15 @@ void main() {
     expect(look.hideGridlines, isTrue);
     expect(look.frozenRowCount, 4);
     expect(look.tabColor, GoogleSheetsCoursesCatalog.header);
-    expect(look.columnWidthsPx, hasLength(17));
-    expect(look.columnCount, 17);
-    expect(look.notes, hasLength(17));
+    expect(look.columnWidthsPx, hasLength(CoursesSheet.columnCount));
+    expect(look.columnCount, CoursesSheet.columnCount);
+    expect(look.notes, hasLength(CoursesSheet.columnCount));
     expect(look.notes[8].text, contains('Выбери в календаре'));
-    expect(look.notes[14].text, contains('шаблон'));
+    expect(look.notes[CoursesSheet.descriptionColumn].text, contains('шаблон'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
     expect(look.validations.first.clear, isTrue);
-    expect(look.validations.first.endColumnExclusive, 17);
+    expect(look.validations.first.endColumnExclusive, CoursesSheet.columnCount);
     final depositCol = CoursesSheet.headers.indexOf(CoursesSheet.depositRub);
     expect(
       look.validations.where((rule) => !rule.clear).every((rule) => rule.startColumn != depositCol),
@@ -825,17 +906,28 @@ void main() {
     expect(data.every((item) => item.length <= 64), isTrue);
     expect(data, contains(MessageTemplates.cbCatalogNew));
     expect(data, contains('${MessageTemplates.cbCatalogOpen}12'));
+    expect(data, contains(MessageTemplates.catalogSegmentData(12, LaunchCopySegment.params)));
+    expect(data, contains(MessageTemplates.catalogSegmentData(12, LaunchCopySegment.welcome)));
+    expect(data, contains(MessageTemplates.catalogSegmentData(12, LaunchCopySegment.dozhim)));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.price)));
     expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.salesStart)));
-    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide)));
+    expect(data, isNot(contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.guide))));
     expect(data, contains(MessageTemplates.cbCatalogKeepCode));
     expect(data, contains(MessageTemplates.cbCatalogSkipOptional));
     expect(templates.adminCatalogCard(launch), contains('гайд: нет'));
     expect(templates.adminCatalogCard(launch), contains('описание: шаблон'));
     expect(templates.adminCatalogCard(launch), contains('дожим: нет'));
-    expect(data, contains(MessageTemplates.catalogFieldData(12, CatalogLaunchField.description)));
+    expect(
+      _inlineCallbackData(templates.adminCatalogSegmentKeyboard(12, LaunchCopySegment.card)),
+      contains(
+        MessageTemplates.catalogSlotData(
+          MessageTemplates.cbCatalogSlot,
+          12,
+          LaunchCopySlotKey.description,
+        ),
+      ),
+    );
     expect(templates.adminCatalogCard(launch, dozhimCount: 2), contains('дожим: 2 дня'));
-    expect(data, contains('${MessageTemplates.cbCatalogDozhim}12'));
     expect(
       _inlineCallbackData(
         templates.adminCatalogDozhimListKeyboard(12, const <LaunchDozhimMessage>[]),

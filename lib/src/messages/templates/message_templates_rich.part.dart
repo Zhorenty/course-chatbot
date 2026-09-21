@@ -1,12 +1,12 @@
 part of 'package:course_chatbot/src/messages/message_templates.dart';
 
 extension MessageTemplatesRich on MessageTemplates {
-  String startGuideOfferRich() {
-    return richParagraphsFromTelegramHtml(startGuideOffer());
+  String startGuideOfferRich({Launch? launch}) {
+    return richParagraphsFromTelegramHtml(startGuideOffer(launch: launch));
   }
 
-  String guideReadyRich() {
-    return '${richH2('Гайд «${MessageTemplates.guideTitle}»')}'
+  String guideReadyRich({Launch? launch}) {
+    return '${richParagraphsFromTelegramHtml(guideReady(launch: launch))}'
         '${richDocument(mediaId: MessageTemplates.guideDocumentMediaId)}';
   }
 

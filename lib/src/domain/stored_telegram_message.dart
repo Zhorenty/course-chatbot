@@ -48,7 +48,7 @@ final class StoredTelegramMessage {
       case BroadcastContentKind.animation:
       case BroadcastContentKind.sticker:
       case BroadcastContentKind.videoNote:
-        return media.any((item) => item.fileId.isNotEmpty);
+        return media.any((item) => item.canReplay);
     }
   }
 
@@ -112,6 +112,36 @@ final class StoredTelegramMessage {
     );
   }
 
+  StoredTelegramMessage mapHtml(String Function(String html) render) {
+    return StoredTelegramMessage(
+      kind: kind,
+      html: _mapOptionalHtml(html, render),
+      media: <StoredTelegramMedia>[
+        for (final item in media)
+          StoredTelegramMedia(
+            type: item.type,
+            fileId: item.fileId,
+            localPath: item.localPath,
+            filename: item.filename,
+            html: _mapOptionalHtml(item.html, render),
+          ),
+      ],
+      latitude: latitude,
+      longitude: longitude,
+      contactPhone: contactPhone,
+      contactFirstName: contactFirstName,
+      contactLastName: contactLastName,
+      contactUserId: contactUserId,
+    );
+  }
+
+  static String? _mapOptionalHtml(String? value, String Function(String html) render) {
+    if (value == null) {
+      return null;
+    }
+    return render(value);
+  }
+
   static BroadcastContentKind? _kind(String? raw) {
     for (final value in BroadcastContentKind.values) {
       if (value.name == raw) {
@@ -123,17 +153,33 @@ final class StoredTelegramMessage {
 }
 
 final class StoredTelegramMedia {
-  const StoredTelegramMedia({required this.type, required this.fileId, this.filename, this.html});
+  const StoredTelegramMedia({
+    required this.type,
+    this.fileId = '',
+    this.localPath,
+    this.filename,
+    this.html,
+  });
 
   final StoredTelegramMediaType type;
   final String fileId;
+  final String? localPath;
   final String? filename;
   final String? html;
+
+  bool get canReplay {
+    if (fileId.trim().isNotEmpty) {
+      return true;
+    }
+    final path = localPath?.trim();
+    return path != null && path.isNotEmpty;
+  }
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'type': type.name,
-      'file_id': fileId,
+      if (fileId.isNotEmpty) 'file_id': fileId,
+      if (localPath != null && localPath!.isNotEmpty) 'local_path': localPath,
       if (filename != null) 'filename': filename,
       if (html != null) 'html': html,
     };
@@ -144,13 +190,18 @@ final class StoredTelegramMedia {
       return null;
     }
     final type = StoredTelegramMediaType.fromName(raw['type']?.toString());
-    final fileId = raw['file_id']?.toString().trim();
-    if (type == null || fileId == null || fileId.isEmpty) {
+    final fileId = raw['file_id']?.toString().trim() ?? '';
+    final localPath = raw['local_path']?.toString().trim();
+    if (type == null) {
+      return null;
+    }
+    if (fileId.isEmpty && (localPath == null || localPath.isEmpty)) {
       return null;
     }
     return StoredTelegramMedia(
       type: type,
       fileId: fileId,
+      localPath: localPath,
       filename: raw['filename']?.toString(),
       html: raw['html']?.toString(),
     );

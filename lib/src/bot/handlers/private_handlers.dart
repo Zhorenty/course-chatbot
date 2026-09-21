@@ -22,6 +22,7 @@ import 'package:course_chatbot/src/domain/conversation_log.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/enrollment.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/sales_window.dart';
@@ -29,7 +30,7 @@ import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
 import 'package:course_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
-import 'package:course_chatbot/src/messages/funnel_media.dart';
+import 'package:course_chatbot/src/messages/launch_copy_defaults.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:course_chatbot/src/messages/telegram_html.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
@@ -125,6 +126,7 @@ final class PrivateHandlers implements PaymentResultNotifier {
     }
     return _templates.userMenuKeyboard(
       showCourseStatus: _funnel.enrollmentFor(userId)?.funnelPhase.showsCourseStatus ?? false,
+      launch: _launch,
     );
   }
 

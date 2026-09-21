@@ -251,6 +251,14 @@ final class SqliteDatabaseHandle {
       CREATE INDEX IF NOT EXISTS idx_launch_dozhim_launch
       ON launch_dozhim (launch_id, day_index);
     ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS launch_copy_slots (
+        launch_id INTEGER NOT NULL REFERENCES launches(id) ON DELETE CASCADE,
+        slot_key TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        PRIMARY KEY (launch_id, slot_key)
+      );
+    ''');
     _ensureWarmupSentSchema(db);
     db.execute('''
       CREATE TABLE IF NOT EXISTS conversation_log (

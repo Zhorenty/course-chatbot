@@ -232,7 +232,7 @@ abstract final class GoogleSheetsCoursesCatalog {
       rows: const <List<Object?>>[],
       charts: const <GoogleSheetsChart>[],
       styles: styles,
-      columnWidthsPx: const <int>[
+      columnWidthsPx: <int>[
         130,
         140,
         130,
@@ -247,8 +247,7 @@ abstract final class GoogleSheetsCoursesCatalog {
         150,
         130,
         140,
-        110,
-        110,
+        ...List<int>.filled(CoursesSheet.presenceColumnCount, 110),
         280,
       ],
       frozenRowCount: headerRow + 1,

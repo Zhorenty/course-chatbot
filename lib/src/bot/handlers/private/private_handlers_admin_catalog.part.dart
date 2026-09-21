@@ -627,8 +627,15 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     final flow = _flowByUserId[context.userId!]?.catalogDraft;
     final launchId = flow?.editLaunchId;
     final field = flow?.editField;
+    final slot = flow?.editSlot;
     final launch = launchId == null ? null : _course.getLaunch(launchId);
-    if (admin == null || launch == null || field == null) {
+    if (admin == null || launch == null) {
+      return _showCatalogList(context);
+    }
+    if (slot != null) {
+      return _captureCatalogSlot(context, launch, slot, rawOverride: rawOverride);
+    }
+    if (field == null) {
       return _showCatalogList(context);
     }
     final text = rawOverride ?? context.text?.trim() ?? '';
@@ -905,6 +912,139 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       return _templates.adminCatalogRefreshFailed('$error');
     }
     return null;
+  }
+
+  Future<bool> _showCatalogSegment(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySegment? segment,
+  ) async {
+    if (segment == LaunchCopySegment.dozhim) {
+      return _showCatalogDozhim(context, launchId);
+    }
+    if (segment == LaunchCopySegment.params) {
+      return _showCatalogFields(context, launchId);
+    }
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || segment == null) {
+      return false;
+    }
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
+      return _showCatalogList(context);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogMenu,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogSegment(launch, segment),
+      replyMarkup: _templates.adminCatalogSegmentKeyboard(launchId, segment),
+    );
+  }
+
+  Future<bool> _showCatalogSlot(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySlotKey? slot,
+  ) async {
+    if (slot == LaunchCopySlotKey.guideFile) {
+      return _askCatalogEditField(context, launchId, CatalogLaunchField.guide);
+    }
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || slot == null) {
+      return false;
+    }
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
+      return _showCatalogList(context);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogMenu,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskSlot(slot, launch: launch),
+      replyMarkup: _templates.adminCatalogSlotKeyboard(launchId, slot),
+    );
+  }
+
+  Future<bool> _askCatalogSlot(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySlotKey? slot,
+  ) async {
+    if (slot == LaunchCopySlotKey.guideFile) {
+      return _askCatalogEditField(context, launchId, CatalogLaunchField.guide);
+    }
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || slot == null) {
+      return false;
+    }
+    final launch = _course.getLaunch(launchId);
+    if (launch == null) {
+      return _showCatalogList(context);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogEditValue,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId, editSlot: slot),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskSlot(slot, launch: launch),
+      replyMarkup: _templates.adminCatalogSlotKeyboard(launchId, slot),
+    );
+  }
+
+  Future<bool> _resetCatalogSlot(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySlotKey? slot,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || slot == null) {
+      return false;
+    }
+    if (slot.storesInCopyTable) {
+      _course.deleteLaunchCopySlot(launchId: launchId, slot: slot);
+    }
+    await _writeDozhimPresenceFlags();
+    return _showCatalogSlot(context, launchId, slot);
+  }
+
+  Future<bool> _captureCatalogSlot(
+    PrivateMessageContext context,
+    Launch launch,
+    LaunchCopySlotKey slot, {
+    String? rawOverride,
+  }) async {
+    StoredTelegramMessage payload;
+    if (slot.allowsMedia) {
+      final snapshot = snapshotTelegramMessage(context.message);
+      if (snapshot != null && snapshot.canReplay) {
+        payload = snapshot;
+      } else {
+        final html = rawOverride == null
+            ? telegramTextMessageToHtml(context.message)
+            : (rawOverride.trim().isEmpty ? null : telegramEntitiesToHtml(rawOverride, null));
+        if (html == null || html.trim().isEmpty) {
+          return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
+        }
+        payload = LaunchCopyDefaults.textSlot(html);
+      }
+    } else {
+      final html = rawOverride == null
+          ? telegramTextMessageToHtml(context.message)
+          : (rawOverride.trim().isEmpty ? null : telegramEntitiesToHtml(rawOverride, null));
+      if (html == null || html.trim().isEmpty) {
+        return _presentCatalog(context, _templates.adminBroadcastEmptyRejected());
+      }
+      payload = LaunchCopyDefaults.textSlot(html);
+    }
+    _course.upsertLaunchCopySlot(launchId: launch.id, slot: slot, payload: payload);
+    await _writeDozhimPresenceFlags();
+    return _showCatalogSlot(context, launch.id, slot);
   }
 
   Future<bool> _showCatalogDozhim(PrivateMessageContext context, int? launchId) async {

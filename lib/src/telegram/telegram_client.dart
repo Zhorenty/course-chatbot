@@ -956,11 +956,21 @@ final class TelegramClient implements MessageSender, ChannelApi {
       ];
     }
     final caption = content.captionHtml;
+    final hasLocal = content.media.any((item) {
+      final path = item.localPath?.trim();
+      return path != null && path.isNotEmpty;
+    });
     final media = <Map<String, Object?>>[
       for (var i = 0; i < content.media.length; i++)
         <String, Object?>{
           'type': content.media[i].type.inputMediaType,
-          'media': content.media[i].fileId,
+          'media': () {
+            final local = content.media[i].localPath?.trim();
+            if (local != null && local.isNotEmpty) {
+              return 'attach://media$i';
+            }
+            return content.media[i].fileId;
+          }(),
           if (i == 0 &&
               caption != null &&
               content.media[i].type.supportsCaption) ...<String, Object?>{
@@ -969,14 +979,46 @@ final class TelegramClient implements MessageSender, ChannelApi {
           },
         },
     ];
-    final payload = await _post(
-      'sendMediaGroup',
-      body: <String, Object?>{
-        'chat_id': chatId,
-        'media': media,
-        'disable_notification': disableNotification,
-      },
-    );
+    late final Map<String, dynamic> payload;
+    if (hasLocal) {
+      payload = await _postMultipart(
+        'sendMediaGroup',
+        fields: <String, String>{
+          'chat_id': '$chatId',
+          'media': jsonEncode(media),
+          'disable_notification': '$disableNotification',
+        },
+        files: () async {
+          final files = <http.MultipartFile>[];
+          for (var i = 0; i < content.media.length; i++) {
+            final local = content.media[i].localPath?.trim();
+            if (local == null || local.isEmpty) {
+              continue;
+            }
+            if (!File(local).existsSync()) {
+              throw TelegramApiException('Media file is missing: $local');
+            }
+            files.add(
+              await http.MultipartFile.fromPath(
+                'media$i',
+                local,
+                filename: content.media[i].filename ?? _basename(local),
+              ),
+            );
+          }
+          return files;
+        },
+      );
+    } else {
+      payload = await _post(
+        'sendMediaGroup',
+        body: <String, Object?>{
+          'chat_id': chatId,
+          'media': media,
+          'disable_notification': disableNotification,
+        },
+      );
+    }
     final result = payload['result'];
     if (result is! List) {
       throw const TelegramApiException('Telegram did not return message ids');
@@ -997,6 +1039,32 @@ final class TelegramClient implements MessageSender, ChannelApi {
     required String? captionHtml,
     required bool disableNotification,
   }) async {
+    final local = media.localPath?.trim();
+    if (local != null && local.isNotEmpty) {
+      if (!File(local).existsSync()) {
+        throw TelegramApiException('Media file is missing: $local');
+      }
+      final fields = <String, String>{
+        'chat_id': '$chatId',
+        'disable_notification': '$disableNotification',
+        if (captionHtml != null && media.type.supportsCaption)
+          ..._captionFields(captionHtml, 'HTML'),
+      };
+      final payload = await _postMultipart(
+        media.type.telegramMethod,
+        fields: fields,
+        files: () async {
+          return <http.MultipartFile>[
+            await http.MultipartFile.fromPath(
+              media.type.telegramField,
+              local,
+              filename: media.filename ?? _basename(local),
+            ),
+          ];
+        },
+      );
+      return _messageIdFromPayload(payload);
+    }
     final body = <String, Object?>{
       'chat_id': chatId,
       media.type.telegramField: media.fileId,

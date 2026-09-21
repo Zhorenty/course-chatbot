@@ -150,6 +150,20 @@ final class HandlerHarness {
     );
   }
 
+  String courseReplyButton() {
+    return MessageTemplates().courseReplyButton(course.activeLaunch());
+  }
+
+  void clearLaunchDozhim({int? launchId}) {
+    final id = launchId ?? course.activeLaunch()?.id;
+    if (id == null) {
+      return;
+    }
+    for (final message in course.listLaunchDozhim(id)) {
+      course.deleteLaunchDozhim(message.id);
+    }
+  }
+
   void dispose() {
     handlers.cancelPendingDozhimAlbums();
     db.dispose();

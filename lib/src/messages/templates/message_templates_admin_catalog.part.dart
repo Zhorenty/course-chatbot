@@ -303,6 +303,24 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     return 'Какое поле меняем?';
   }
 
+  String adminCatalogSegment(Launch launch, LaunchCopySegment segment) {
+    return '<b>${escapeHtml(launch.title)}</b>\n\n'
+        '${escapeHtml(segment.adminLabel)}\n'
+        'Открой слот, чтобы заменить текст или вернуть шаблон.';
+  }
+
+  String adminCatalogAskSlot(LaunchCopySlotKey slot, {Launch? launch}) {
+    final current = launch?.copy.htmlOf(slot)?.trim();
+    final preview = (current == null || current.isEmpty)
+        ? LaunchCopyDefaults.htmlOf(slot)
+        : current;
+    final mediaHint = slot.allowsMedia
+        ? '\n\nМожно прислать текст, фото или файл — сохраню как письмо этого слота.'
+        : '\n\nПришли новый текст. Жирный, курсив и абзацы сохранятся.';
+    return '<b>${escapeHtml(slot.adminLabel)}</b>$mediaHint\n\n'
+        'Сейчас:\n$preview';
+  }
+
   String adminCatalogConfirmDelete(Launch launch) {
     return 'Удалить «${escapeHtml(launch.title)}» (<code>${escapeHtml(launch.code)}</code>) из COURSES?';
   }

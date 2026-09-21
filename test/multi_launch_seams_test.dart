@@ -587,7 +587,7 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('Язык цвета')), isTrue);
     expect(
       _replyButtonTexts(harness.sender.messages.last.replyMarkup),
-      contains(MessageTemplates.buttonEnroll),
+      contains(harness.courseReplyButton()),
     );
 
     await harness.handlers.handle(

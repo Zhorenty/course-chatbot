@@ -13,6 +13,20 @@ enum CatalogLaunchField {
   channel,
   guide;
 
+  static const List<CatalogLaunchField> paramsFields = <CatalogLaunchField>[
+    CatalogLaunchField.title,
+    CatalogLaunchField.code,
+    CatalogLaunchField.price,
+    CatalogLaunchField.promo,
+    CatalogLaunchField.deposit,
+    CatalogLaunchField.start,
+    CatalogLaunchField.webinar,
+    CatalogLaunchField.webinarUrl,
+    CatalogLaunchField.salesStart,
+    CatalogLaunchField.salesEnd,
+    CatalogLaunchField.channel,
+  ];
+
   String get token => switch (this) {
     CatalogLaunchField.title => 't',
     CatalogLaunchField.description => 'b',

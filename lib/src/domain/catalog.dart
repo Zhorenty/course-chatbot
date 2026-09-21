@@ -1,3 +1,4 @@
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 
 abstract final class LaunchPrices {
@@ -17,8 +18,8 @@ final class Product {
 
 final class Launch {
   static const String defaultDescription =
-      'Скоро стартует мой курс по интерьерной колористике\n\n'
-      '<u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>\n\n'
+      'Скоро стартует мой курс по интерьерной колористике\n'
+      'Старт потока {course_start}. <u>Я сообщу тебе, когда откроются продажи по самой выгодной цене.</u>\n\n'
       'А пока можно записаться на <b>бесплатный Мастер-класс «Как начать работать с цветом смелее и не бояться ошибиться»</b>, после которого понимание цвета в интерьерах у моих учеников-дизайнеров и хоумстейджеров разделилось на до и после.';
 
   static DateTime impliedSalesStartAt(DateTime webinarAt) {
@@ -49,6 +50,7 @@ final class Launch {
     this.leadMagnetFileId,
     this.leadMagnetUrl,
     this.isActive = false,
+    this.copy = const LaunchCopy.empty(),
   });
 
   final int id;
@@ -70,8 +72,10 @@ final class Launch {
   final String? leadMagnetUrl;
   final String description;
   final bool isActive;
+  final LaunchCopy copy;
 
-  bool get hasCustomDescription => description.trim() != defaultDescription;
+  bool get hasCustomDescription =>
+      copy.has(LaunchCopySlotKey.description) || description.trim() != defaultDescription;
 
   bool get hasDepositOption => depositKopecks > 0 && depositKopecks < priceFullKopecks;
 

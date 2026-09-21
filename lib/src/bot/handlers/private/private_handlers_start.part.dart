@@ -34,9 +34,9 @@ extension _PrivateHandlersStart on PrivateHandlers {
     }
     await _send(
       context,
-      _templates.startGuideOffer(),
-      richHtml: _templates.startGuideOfferRich(),
-      media: FunnelMedia.richMedia(FunnelMedia.start),
+      _templates.startGuideOffer(launch: _launch),
+      richHtml: _templates.startGuideOfferRich(launch: _launch),
+      media: _templates.copyMedia(_launch, LaunchCopySlotKey.startOffer),
       replyMarkup: _homeKeyboard(user.userId),
     );
     final destination = user.source ?? payload;

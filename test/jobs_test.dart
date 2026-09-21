@@ -729,6 +729,7 @@ void main() {
       leadMagnetFileId: 'file-guide',
     );
     final launch = harness.course.activeLaunch()!;
+    clearLaunchDozhim(harness.course, launch.id);
     final custom = harness.course.addLaunchDozhim(
       launchId: launch.id,
       sourceChatId: 1,
@@ -793,6 +794,56 @@ void main() {
     );
   });
 
+  test('seeded builtin dozhim renders title and start date on send', () async {
+    harness.course.upsertActiveLaunch(
+      productCode: 'course',
+      productTitle: 'Курс',
+      launchCode: 'launch-1',
+      launchTitle: 'Запуск',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: LaunchPrices.promoKopecks,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 1, 8, 16),
+      salesStartAt: DateTime.utc(2026, 1, 8, 16),
+      salesEndAt: Launch.impliedSalesEndAt(DateTime.utc(2026, 10, 12)),
+      channelId: -1001,
+      leadMagnetFileId: 'file-guide',
+    );
+    final launch = harness.course.activeLaunch()!;
+    expect(harness.course.listLaunchDozhim(launch.id), hasLength(4));
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+    );
+    for (final key in <String>['warmup_0', 'sales_open', 'sales_regular']) {
+      harness.course.recordWarmupSent(userId: 42, stepKey: key, sentAt: DateTime.utc(2026, 1, 12));
+    }
+
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(
+        course: harness.course,
+        dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+      ),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+    );
+    harness.sender.messages.clear();
+    harness.sender.storedSends.clear();
+    await job.run();
+    expect(harness.sender.storedSends, hasLength(1));
+    expect(harness.sender.storedSends.single.content.html, contains('Иттена'));
+    expect(harness.sender.storedSends.single.content.html, contains('стартуем 12 октября'));
+    expect(harness.sender.storedSends.single.content.html, isNot(contains('{title}')));
+    expect(harness.sender.storedSends.single.content.html, isNot(contains('{course_start_join}')));
+  });
+
   test('custom launch dozhim album is copied as a media group', () async {
     harness.course.upsertActiveLaunch(
       productCode: 'course',
@@ -811,6 +862,7 @@ void main() {
       leadMagnetFileId: 'file-guide',
     );
     final launch = harness.course.activeLaunch()!;
+    clearLaunchDozhim(harness.course, launch.id);
     final custom = harness.course.addLaunchDozhim(
       launchId: launch.id,
       sourceChatId: 1,

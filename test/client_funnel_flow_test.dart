@@ -31,7 +31,10 @@ void main() {
     expect(_inlineButtonTexts(harness.sender.messages.first.replyMarkup), isEmpty);
     expect(
       _replyButtonTexts(harness.sender.messages.last.replyMarkup),
-      containsAll(<String>[MessageTemplates.buttonGuide, MessageTemplates.buttonEnroll]),
+      containsAll(<String>[
+        MessageTemplates.buttonGuide,
+        templates.courseReplyButton(harness.course.activeLaunch()),
+      ]),
     );
 
     await client.tap(MessageTemplates.buttonGuide);
@@ -61,7 +64,7 @@ void main() {
     );
 
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonEnroll);
+    await client.tap(client.courseBtn);
     final preSales = harness.sender.messages.last;
     expect(preSales.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(preSales.replyMarkup), isEmpty);
@@ -70,7 +73,7 @@ void main() {
 
     clock.value = DateTime.utc(2026, 10, 6, 12);
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonEnroll);
+    await client.tap(client.courseBtn);
     final promo = harness.sender.messages.last;
     expect(promo.text, contains('15 000 руб.'));
     expect(promo.text, contains('специальн'));
@@ -161,7 +164,7 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('https://t.me/+')), isFalse);
 
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonCourseStatus);
+    await client.tap(client.courseBtn);
     final status = harness.sender.messages.single;
     expect(status.text, contains('Успешная оплата'));
     expect(status.text, contains('Запуск'));
@@ -194,11 +197,11 @@ void main() {
             .lastWhere((m) => _replyButtonTexts(m.replyMarkup).isNotEmpty)
             .replyMarkup,
       ),
-      contains(MessageTemplates.buttonCourseStatus),
+      contains(templates.courseReplyButton(harness.course.activeLaunch())),
     );
 
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonCourseStatus);
+    await client.tap(client.courseBtn);
     final status = harness.sender.messages.single;
     expect(status.text, contains('Предоплата прошла'));
     expect(_inlineButtonTexts(status.replyMarkup), contains(MessageTemplates.buttonPayRemainder));
@@ -324,7 +327,7 @@ void main() {
     expect(harness.sender.messages.any((m) => m.text.contains('без имени, почты')), isFalse);
 
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonEnroll);
+    await client.tap(client.courseBtn);
     expect(harness.sender.messages.last.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(harness.sender.messages.last.replyMarkup), isEmpty);
     expect(
@@ -361,7 +364,7 @@ void main() {
     expect(_payButtonTexts(card.replyMarkup), isNotEmpty);
     expect(
       _replyButtonTexts(harness.sender.messages.first.replyMarkup),
-      contains(MessageTemplates.buttonEnroll),
+      contains(templates.courseReplyButton(harness.course.activeLaunch())),
     );
     expect(_enrollment(harness, 9)?.enrollIntentAt, isNull);
     expect(_phase(harness, 9), FunnelPhase.lead);
@@ -385,7 +388,7 @@ void main() {
     await client.tap('/start ig_reels_guide');
     await client.tap(MessageTemplates.buttonGuide);
     harness.sender.messages.clear();
-    await client.tap(MessageTemplates.buttonEnroll);
+    await client.tap(client.courseBtn);
     final beforeRsvp = harness.sender.messages.last;
     expect(beforeRsvp.text, contains('Запись на курс'));
     expect(_inlineButtonTexts(beforeRsvp.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
@@ -486,6 +489,8 @@ final class _Client {
   final HandlerHarness harness;
   final int userId;
   int _callbacks = 0;
+
+  String get courseBtn => harness.courseReplyButton();
 
   Future<void> tap(String text) {
     return harness.handlers.handle(

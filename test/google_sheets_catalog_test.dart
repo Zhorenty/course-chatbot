@@ -8,6 +8,7 @@ import 'package:course_chatbot/src/domain/broadcast.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
@@ -56,9 +57,36 @@ void main() {
     expect(CoursesSheet.isDescriptionHeader('Описание'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим 2'), isTrue);
-    expect(CoursesSheet.headers.indexOf(CoursesSheet.description), 14);
-    expect(CoursesSheet.headers.indexOf(CoursesSheet.dozhim), 15);
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.description), 26);
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.dozhim), 34);
     expect(CoursesSheet.headers.last, CoursesSheet.status);
+    expect(CoursesSheet.presenceColumnCount, LaunchCopySlotKey.values.length + 1);
+    expect(
+      CoursesSheet.presenceHeaders,
+      containsAll(<String>[
+        'Гайд',
+        'Приветствие',
+        'Название гайда',
+        'Подпись гайда',
+        'Название МК',
+        'RSVP',
+        'Сразу после гайда',
+        'МК завтра',
+        'МК 10 минут',
+        'МК начали',
+        'Подтверждение RSVP',
+        'Кнопка курса',
+        'Описание',
+        'Спеццена',
+        'Обычная цена',
+        'Pitch',
+        'После МК',
+        'Открытие продаж',
+        'Обычные продажи',
+        'После оплаты',
+        'Дожим',
+      ]),
+    );
     final header = <Object?>[...CoursesSheet.displayHeaders];
     expect(CoursesSheetParser.headerMatchesSpec(header), isTrue);
     expect(header[CoursesSheet.descriptionColumn], 'Описание');
@@ -374,8 +402,11 @@ void main() {
       expect(course.activeLaunch()?.priceFullKopecks, 1900000);
       expect(gateway.applyLookCount, 3);
       expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.hideGridlines, isTrue);
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.notes, hasLength(17));
-      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, 17);
+      expect(
+        gateway.looksBySheetId[CoursesSheet.sheetId]?.notes,
+        hasLength(CoursesSheet.columnCount),
+      );
+      expect(gateway.looksBySheetId[CoursesSheet.sheetId]?.columnCount, CoursesSheet.columnCount);
       expect(gateway.valuesBySheetId[0]!.first.first, CoursesSheet.title);
       final seeded = gateway.valuesBySheetId[0]!;
       final statusCol = CoursesSheetParser.columnIndex(seeded, CoursesSheet.status)!;
@@ -672,13 +703,14 @@ void main() {
       expect(headerAfterSync[CoursesSheet.dozhimStartColumn], 'Дожим');
       expect(
         sheetAfterSync[CoursesSheet.defaultHeaderRow + 1][CoursesSheet.descriptionColumn],
-        'Нет',
+        'Да',
       );
       expect(
         sheetAfterSync[CoursesSheet.defaultHeaderRow + 1][CoursesSheet.dozhimStartColumn],
-        'Нет',
+        'Да · 4',
       );
       final launch = course.activeLaunch()!;
+      clearLaunchDozhim(course, launch.id);
       course.setLaunchDescription('Мой поток про цвет в квартирах.', launchId: launch.id);
       course.addLaunchDozhim(
         launchId: launch.id,
@@ -1196,6 +1228,15 @@ void main() {
       expect(
         seeded.any(
           (row) => row.any((cell) => cell.toString().contains('Забудьте про круг Иттена')),
+        ),
+        isTrue,
+      );
+      expect(
+        seeded.any(
+          (row) => row.any(
+            (cell) =>
+                cell.toString().contains('Если не сработает, напиши сюда, новую выдаст админ.'),
+          ),
         ),
         isTrue,
       );

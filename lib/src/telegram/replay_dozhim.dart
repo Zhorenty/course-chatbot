@@ -1,4 +1,5 @@
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/telegram/copy_source_messages.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 
@@ -8,11 +9,12 @@ Future<List<int>> replayDozhimContent({
   required MessageSender sender,
   required int chatId,
   required LaunchDozhimMessage message,
+  StoredTelegramMessage? payload,
   bool disableNotification = true,
 }) async {
-  final payload = message.payload;
-  if (payload != null && payload.canReplay) {
-    return sender.sendStoredMessage(chatId, payload, disableNotification: disableNotification);
+  final content = payload ?? message.payload;
+  if (content != null && content.canReplay) {
+    return sender.sendStoredMessage(chatId, content, disableNotification: disableNotification);
   }
   return sender.copySourceMessages(
     chatId: chatId,

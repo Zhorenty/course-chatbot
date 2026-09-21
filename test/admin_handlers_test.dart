@@ -611,7 +611,7 @@ void main() {
     final toUser = harness.sender.messages.where((m) => m.chatId == 99);
     expect(toUser.any((m) => m.text.contains('Доступ к потоку снят')), isTrue);
     expect(
-      toUser.any((m) => _replyButtonTexts(m.replyMarkup).contains(MessageTemplates.buttonEnroll)),
+      toUser.any((m) => _replyButtonTexts(m.replyMarkup).contains(harness.courseReplyButton())),
       isTrue,
     );
     expect(
@@ -973,6 +973,7 @@ void main() {
     );
     final count = sheets.sender.messages.length;
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cl',
@@ -993,6 +994,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cz',
@@ -1037,7 +1039,7 @@ void main() {
     expect(header[CoursesSheet.descriptionColumn], 'Описание');
     expect(header[CoursesSheet.dozhimStartColumn], 'Дожим');
     final row = _coursesRowByCode(sheet, 'launch-1')!;
-    expect(row[CoursesSheet.descriptionColumn], 'Нет');
+    expect(row[CoursesSheet.descriptionColumn], 'Да');
     expect(row[CoursesSheet.dozhimStartColumn], 'Да · 2');
   });
 
@@ -1049,6 +1051,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cz',
@@ -1121,6 +1124,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'czl',
@@ -1860,6 +1864,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cl',
@@ -1924,6 +1929,7 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminCatalog),
     );
     final launch = sheets.course.launchByCode('launch-1')!;
+    sheets.clearLaunchDozhim(launchId: launch.id);
     await sheets.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'cl',

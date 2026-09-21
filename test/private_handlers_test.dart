@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
 import 'package:course_chatbot/src/messages/html_escaper.dart';
+import 'package:course_chatbot/src/messages/launch_copy_defaults.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -44,6 +46,20 @@ void main() {
     expect(harness.course.getUser(42)?.source, isNull);
   });
 
+  test('custom start offer without media does not attach coloristic photo', () async {
+    final launch = harness.course.activeLaunch()!;
+    harness.course.upsertLaunchCopySlot(
+      launchId: launch.id,
+      slot: LaunchCopySlotKey.startOffer,
+      payload: LaunchCopyDefaults.textSlot('Привет без картинки'),
+    );
+
+    await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
+
+    expect(harness.sender.messages.any((m) => m.text.contains('Привет без картинки')), isTrue);
+    expect(harness.sender.documents, isNot(contains('assets/funnel/welcome.jpg')));
+  });
+
   test('first deep link payload is stored and later /start does not overwrite it', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start ig_reels_guide'),
@@ -79,7 +95,7 @@ void main() {
       isNull,
     );
     final courseMenu = _replyButtonTexts(harness.sender.messages.first.replyMarkup);
-    expect(courseMenu, contains(MessageTemplates.buttonEnroll));
+    expect(courseMenu, contains(harness.courseReplyButton()));
     expect(courseMenu, contains(MessageTemplates.buttonGuide));
 
     harness.sender.messages.clear();
@@ -210,7 +226,7 @@ void main() {
     );
     extra.sender.messages.clear();
     await extra.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
+      privateMessageUpdate(chatId: 42, userId: 42, text: harness.courseReplyButton()),
     );
     final card = extra.sender.messages.last;
     expect(card.text, contains('самой выгодной цене'));
@@ -234,7 +250,7 @@ void main() {
     await harness.handlers.handle(privateMessageUpdate(chatId: 42, userId: 42, text: '/start'));
     final texts = _replyButtonTexts(harness.sender.messages.single.replyMarkup);
     expect(texts, contains(MessageTemplates.buttonGuide));
-    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(harness.courseReplyButton()));
     expect(texts, contains(MessageTemplates.buttonHelp));
     expect(harness.sender.messages.single.text, contains('Продолжаем с того же места'));
   });
@@ -312,7 +328,7 @@ void main() {
     final texts = _replyButtonTexts(
       harness.sender.messages.lastWhere((m) => m.replyMarkup != null).replyMarkup,
     );
-    expect(texts, contains(MessageTemplates.buttonCourseStatus));
+    expect(texts, contains(harness.courseReplyButton()));
   });
 
   test('bundled PDF is uploaded when Telegram file_id is empty', () async {
@@ -365,6 +381,7 @@ void main() {
 
     expect(harness.sender.documents, contains('file-guide'));
     expect(harness.sender.messages.any((m) => m.text.contains('файл выше')), isFalse);
+    expect(harness.sender.messages.any((m) => m.text.contains('Гайд «Язык цвета»')), isTrue);
     expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
   });
 
@@ -442,7 +459,7 @@ void main() {
     harness.sender.messages.clear();
 
     await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonCourseStatus),
+      privateMessageUpdate(chatId: 42, userId: 42, text: harness.courseReplyButton()),
     );
     final status = harness.sender.messages.single;
     expect(status.text, contains('Предоплата прошла'));
@@ -494,7 +511,7 @@ void main() {
 
     harness.sender.messages.clear();
     await harness.handlers.handle(
-      privateMessageUpdate(chatId: 42, userId: 42, text: MessageTemplates.buttonEnroll),
+      privateMessageUpdate(chatId: 42, userId: 42, text: harness.courseReplyButton()),
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Запись на курс')), isFalse);
@@ -641,7 +658,7 @@ void main() {
     expect(offer.text, isNot(contains('Меню внизу')));
     expect(_inlineButtonTexts(offer.replyMarkup), isEmpty);
     final texts = _replyButtonTexts(offer.replyMarkup);
-    expect(texts, contains(MessageTemplates.buttonEnroll));
+    expect(texts, contains(harness.courseReplyButton()));
     expect(texts, contains(MessageTemplates.buttonGuide));
     expect(texts, contains(MessageTemplates.buttonHelp));
     expect(texts, isNot(contains('👤 Профиль')));

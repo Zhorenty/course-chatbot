@@ -88,6 +88,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (activate) {
       setActiveLaunch(launchCode);
     }
+    seedActiveLaunchCopy();
     return launchByCode(launchCode)!;
   }
 
@@ -144,6 +145,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (next != null && next.id != previousId) {
       _mirrorProfilesOntoLaunch(next.id);
     }
+    seedActiveLaunchCopy();
   }
 
   /// CTA/drip read `telegram_users` as a mirror of the active enrollment.
@@ -352,6 +354,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     if (launchUsage(id).hasPeople) {
       return false;
     }
+    _db.execute('DELETE FROM launch_copy_slots WHERE launch_id = ?;', <Object?>[id]);
     _db.execute('DELETE FROM launch_dozhim WHERE launch_id = ?;', <Object?>[id]);
     _db.execute('DELETE FROM launches WHERE id = ?;', <Object?>[id]);
     return true;
@@ -369,10 +372,99 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   @override
   void setLaunchDescription(String text, {required int launchId}) {
     final trimmed = text.trim();
-    _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[
-      trimmed.isEmpty ? Launch.defaultDescription : text,
+    final body = trimmed.isEmpty ? Launch.defaultDescription : text;
+    _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[body, launchId]);
+    if (trimmed.isEmpty) {
+      deleteLaunchCopySlot(launchId: launchId, slot: LaunchCopySlotKey.description);
+      return;
+    }
+    upsertLaunchCopySlot(
+      launchId: launchId,
+      slot: LaunchCopySlotKey.description,
+      payload: LaunchCopyDefaults.textSlot(body),
+    );
+  }
+
+  @override
+  LaunchCopy copyOf(int launchId) => loadLaunchCopy(launchId);
+
+  @override
+  void upsertLaunchCopySlot({
+    required int launchId,
+    required LaunchCopySlotKey slot,
+    required StoredTelegramMessage payload,
+  }) {
+    if (!slot.storesInCopyTable) {
+      return;
+    }
+    _db.execute(
+      '''
+      INSERT INTO launch_copy_slots (launch_id, slot_key, payload)
+      VALUES (?, ?, ?)
+      ON CONFLICT(launch_id, slot_key) DO UPDATE SET payload = excluded.payload;
+      ''',
+      <Object?>[launchId, slot.canonical, jsonEncode(payload.toJson())],
+    );
+    if (slot == LaunchCopySlotKey.description) {
+      final html = payload.html?.trim();
+      if (html != null && html.isNotEmpty) {
+        _db.execute('UPDATE launches SET description = ? WHERE id = ?;', <Object?>[html, launchId]);
+      }
+    }
+  }
+
+  @override
+  void deleteLaunchCopySlot({required int launchId, required LaunchCopySlotKey slot}) {
+    _db.execute('DELETE FROM launch_copy_slots WHERE launch_id = ? AND slot_key = ?;', <Object?>[
       launchId,
+      slot.canonical,
     ]);
+  }
+
+  @override
+  void seedActiveLaunchCopy() {
+    final launches = listLaunches();
+    Launch? target = activeLaunch();
+    target ??= launches.length == 1 ? launches.single : null;
+    if (target == null) {
+      return;
+    }
+    final others = _db.select(
+      'SELECT COUNT(*) AS c FROM launch_copy_slots WHERE launch_id != ?;',
+      <Object?>[target.id],
+    );
+    if (((others.first['c'] as int?) ?? 0) > 0) {
+      return;
+    }
+    final payload = Map<LaunchCopySlotKey, StoredTelegramMessage>.of(
+      LaunchCopyDefaults.seedPayload(),
+    );
+    final customDescription = target.description.trim();
+    if (customDescription.isNotEmpty && customDescription != Launch.defaultDescription) {
+      payload[LaunchCopySlotKey.description] = LaunchCopyDefaults.textSlot(customDescription);
+    }
+    for (final entry in payload.entries) {
+      _db.execute(
+        '''
+        INSERT OR IGNORE INTO launch_copy_slots (launch_id, slot_key, payload)
+        VALUES (?, ?, ?);
+        ''',
+        <Object?>[target.id, entry.key.canonical, jsonEncode(entry.value.toJson())],
+      );
+    }
+    if (listLaunchDozhim(target.id).isNotEmpty) {
+      return;
+    }
+    for (final day in LaunchCopyDefaults.builtinDozhim()) {
+      addLaunchDozhim(
+        launchId: target.id,
+        sourceChatId: 0,
+        sourceMessageId: 0,
+        contentKind: day.payload.kind,
+        previewText: day.payload.html,
+        payload: day.payload,
+      );
+    }
   }
 
   @override

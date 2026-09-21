@@ -1,5 +1,7 @@
+import 'package:course_chatbot/src/data/catalog_repository.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
+import 'package:course_chatbot/src/domain/launch_copy.dart';
 
 Launch testLaunch({
   int id = 1,
@@ -21,6 +23,7 @@ Launch testLaunch({
   String? leadMagnetUrl,
   String? description,
   bool isActive = false,
+  LaunchCopy copy = const LaunchCopy.empty(),
 }) {
   final start = courseStartAt ?? DateTime.utc(2026, 10, 12);
   final webinar = webinarAt ?? DateTime.utc(2026, 9, 29, 16);
@@ -44,6 +47,7 @@ Launch testLaunch({
     leadMagnetUrl: leadMagnetUrl,
     description: description ?? Launch.defaultDescription,
     isActive: isActive,
+    copy: copy,
   );
 }
 
@@ -89,4 +93,10 @@ CatalogLaunchDraft testDraft({
     leadMagnetFileId: leadMagnetFileId,
     leadMagnetUrl: leadMagnetUrl,
   );
+}
+
+void clearLaunchDozhim(CatalogRepository catalog, int launchId) {
+  for (final message in catalog.listLaunchDozhim(launchId)) {
+    catalog.deleteLaunchDozhim(message.id);
+  }
 }
