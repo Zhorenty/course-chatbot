@@ -292,135 +292,57 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
   List<int> listBroadcastUserIds({
     required BroadcastSegment segment,
     bool excludeOptOut = false,
-    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
     int? launchId,
   }) {
-    final params = <Object?>[];
-    final sql = _broadcastSelect(
-      segment,
-      excludeOptOut: excludeOptOut,
-      courseEntrySources: courseEntrySources,
-      launchId: resolveEnrollmentLaunchId(launchId),
-      params: params,
-    );
-    return _db.select(sql, params).map((row) => row['user_id'] as int).toList(growable: false);
+    final resolved = resolveEnrollmentLaunchId(launchId);
+    if (resolved == null) {
+      return const <int>[];
+    }
+    final params = <Object?>[resolved];
+    final where = _broadcastWhere(segment, excludeOptOut: excludeOptOut, params: params);
+    final rows = _db.select('''
+      SELECT u.user_id
+      FROM telegram_users u
+      JOIN user_enrollments e ON e.user_id = u.user_id AND e.launch_id = ?
+      WHERE $where
+      ORDER BY u.user_id;
+      ''', params);
+    return rows.map((row) => row['user_id'] as int).toList(growable: false);
   }
 
   @override
   int countBroadcastUsers({
     required BroadcastSegment segment,
     bool excludeOptOut = false,
-    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
     int? launchId,
   }) {
-    final params = <Object?>[];
-    final sql = _broadcastSelect(
-      segment,
-      excludeOptOut: excludeOptOut,
-      courseEntrySources: courseEntrySources,
-      launchId: resolveEnrollmentLaunchId(launchId),
-      params: params,
-      count: true,
-    );
-    final rows = _db.select(sql, params);
+    final resolved = resolveEnrollmentLaunchId(launchId);
+    if (resolved == null) {
+      return 0;
+    }
+    final params = <Object?>[resolved];
+    final where = _broadcastWhere(segment, excludeOptOut: excludeOptOut, params: params);
+    final rows = _db.select('''
+      SELECT COUNT(*) AS c
+      FROM telegram_users u
+      JOIN user_enrollments e ON e.user_id = u.user_id AND e.launch_id = ?
+      WHERE $where;
+      ''', params);
     return rows.first['c'] as int;
-  }
-
-  String _broadcastSelect(
-    BroadcastSegment segment, {
-    required bool excludeOptOut,
-    required Set<String> courseEntrySources,
-    required int? launchId,
-    required List<Object?> params,
-    bool count = false,
-  }) {
-    final scoped = launchId != null;
-    if (scoped) {
-      params.add(launchId);
-    }
-    final from = scoped
-        ? 'telegram_users u JOIN user_enrollments e ON e.user_id = u.user_id AND e.launch_id = ?'
-        : 'telegram_users';
-    final cols = scoped
-        ? (
-            user: 'u.user_id',
-            blocked: 'u.bot_blocked',
-            source: 'u.source',
-            phase: 'e.funnel_phase',
-            magnet: 'e.magnet_issued_at',
-            opt: 'e.warmup_opt_out',
-            accessLaunch: 'e.launch_id',
-          )
-        : (
-            user: 'user_id',
-            blocked: 'bot_blocked',
-            source: 'source',
-            phase: 'funnel_phase',
-            magnet: 'magnet_issued_at',
-            opt: 'warmup_opt_out',
-            accessLaunch: null,
-          );
-    final where = _broadcastWhere(
-      segment,
-      excludeOptOut: excludeOptOut,
-      courseEntrySources: courseEntrySources,
-      params: params,
-      cols: cols,
-    );
-    if (count) {
-      return 'SELECT COUNT(*) AS c FROM $from WHERE $where;';
-    }
-    return 'SELECT ${cols.user} AS user_id FROM $from WHERE $where ORDER BY ${cols.user};';
   }
 
   String _broadcastWhere(
     BroadcastSegment segment, {
     required bool excludeOptOut,
-    required Set<String> courseEntrySources,
     required List<Object?> params,
-    required ({
-      String user,
-      String blocked,
-      String source,
-      String phase,
-      String magnet,
-      String opt,
-      String? accessLaunch,
-    })
-    cols,
   }) {
-    final optOut = excludeOptOut ? ' AND ${cols.opt} = 0' : '';
-    return switch (segment) {
-      BroadcastSegment.allStarted =>
-        "${cols.blocked} = 0 AND ${cols.phase} NOT IN ('paid', 'access_granted', 'cancelled')$optOut",
-      BroadcastSegment.leadNoGuide =>
-        "${cols.blocked} = 0 AND ${cols.phase} = 'lead' AND ${cols.magnet} IS NULL$optOut"
-            '${_sourceNotIn(cols.source, courseEntrySources, params)}',
-      BroadcastSegment.guideNotPaid =>
-        '${cols.blocked} = 0 AND ${cols.magnet} IS NOT NULL '
-            "AND ${cols.phase} NOT IN ('paid', 'access_granted', 'cancelled', 'deposit_paid', 'checkout')$optOut",
-      BroadcastSegment.courseLeadNoCheckout => _courseLeadWhere(
-        cols: cols,
-        courseEntrySources: courseEntrySources,
-        params: params,
-        excludeOptOut: excludeOptOut,
-      ),
-      BroadcastSegment.checkoutOpen => "${cols.blocked} = 0 AND ${cols.phase} = 'checkout'$optOut",
-      BroadcastSegment.depositPaid =>
-        "${cols.blocked} = 0 AND ${cols.phase} = 'deposit_paid'$optOut",
-      BroadcastSegment.paidAccess =>
-        "${cols.blocked} = 0 AND ${cols.phase} IN ('paid', 'access_granted')$optOut",
-      BroadcastSegment.paidNotJoined =>
-        "${cols.blocked} = 0 AND ${cols.phase} IN ('paid', 'access_granted')$optOut "
-            'AND EXISTS ('
-            '  SELECT 1 FROM channel_access a '
-            '  WHERE a.user_id = ${cols.user} '
-            '    AND a.invite_link IS NOT NULL AND a.invite_link != \'\' '
-            '    AND a.joined_at IS NULL AND a.revoked_at IS NULL'
-            '${cols.accessLaunch == null ? '' : ' AND a.launch_id = ${cols.accessLaunch}'}'
-            ')',
-      BroadcastSegment.cancelled => "${cols.blocked} = 0 AND ${cols.phase} = 'cancelled'$optOut",
-    };
+    final filter = _participantsWhere(
+      segment.participantSegment,
+      excludeUserIds: const <int>{},
+      params: params,
+    );
+    final optOut = excludeOptOut ? ' AND e.warmup_opt_out = 0' : '';
+    return '($filter) AND u.bot_blocked = 0$optOut';
   }
 
   @override
@@ -518,39 +440,5 @@ mixin _SqliteUsersStore on _SqliteEnrollmentStore implements UserRepository {
       ParticipantListSegment.started ||
       ParticipantListSegment.cancelled => 'e.updated_at DESC, u.user_id DESC',
     };
-  }
-
-  String _courseLeadWhere({
-    required ({
-      String user,
-      String blocked,
-      String source,
-      String phase,
-      String magnet,
-      String opt,
-      String? accessLaunch,
-    })
-    cols,
-    required Set<String> courseEntrySources,
-    required List<Object?> params,
-    required bool excludeOptOut,
-  }) {
-    final optOut = excludeOptOut ? ' AND ${cols.opt} = 0' : '';
-    if (courseEntrySources.isEmpty) {
-      return '0';
-    }
-    final placeholders = List<String>.filled(courseEntrySources.length, '?').join(', ');
-    params.addAll(courseEntrySources);
-    return "${cols.blocked} = 0 AND ${cols.phase} = 'lead' AND ${cols.magnet} IS NULL "
-        'AND ${cols.source} IN ($placeholders)$optOut';
-  }
-
-  String _sourceNotIn(String sourceCol, Set<String> sources, List<Object?> params) {
-    if (sources.isEmpty) {
-      return '';
-    }
-    final placeholders = List<String>.filled(sources.length, '?').join(', ');
-    params.addAll(sources);
-    return ' AND ($sourceCol IS NULL OR $sourceCol NOT IN ($placeholders))';
   }
 }

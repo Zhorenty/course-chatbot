@@ -128,7 +128,7 @@ void main() {
     expect(FunnelMedia.pathsFor('start'), hasLength(1));
     expect(FunnelMedia.pathsFor('warmup_0'), hasLength(1));
     expect(FunnelMedia.pathsFor('webinar_24h'), FunnelMedia.pathsFor('warmup_0'));
-    expect(FunnelMedia.pathsFor('webinar_next'), hasLength(2));
+    expect(FunnelMedia.pathsFor('webinar_next'), hasLength(9));
     expect(FunnelMedia.pathsFor('sales_open'), FunnelMedia.pathsFor('webinar_next'));
     expect(FunnelMedia.pathsFor('paid'), hasLength(1));
     expect(FunnelMedia.pathsFor('dozhim_d1'), hasLength(9));
@@ -502,21 +502,28 @@ void main() {
       rsvp: false,
       now: DateTime.utc(2026, 10, 5, 17),
     );
-    expect(promoQuote.checkoutOpen, isTrue);
+    expect(promoQuote.checkoutOpen, isFalse);
+    expect(promoQuote.canBuy, isFalse);
     expect(
       templates.enrollOptions(promoOpen, quote: promoQuote, rsvpOpen: true),
-      contains('специальную цену'),
+      isNot(contains('Специальная цена')),
     );
     expect(
       _inlineButtonTexts(templates.enrollKeyboard(promoOpen, quote: promoQuote, rsvpOpen: true)),
-      contains(MessageTemplates.buttonRsvpEnroll),
+      <String>[MessageTemplates.buttonRsvpEnroll],
     );
+    final promoRsvp = LaunchSales.quote(promoOpen, rsvp: true, now: DateTime.utc(2026, 10, 5, 17));
+    expect(promoRsvp.promoOffer, isTrue);
     expect(
-      _inlineButtonTexts(
-        templates.enrollKeyboard(promoOpen, quote: promoQuote, rsvpOpen: true),
-      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
-      isTrue,
+      templates.enrollOptions(promoOpen, quote: promoRsvp),
+      contains('После оплаты с тобой свяжется администратор и пригласит тебя в группу.'),
     );
+    final promoMarkup = templates.enrollKeyboard(promoOpen, quote: promoRsvp);
+    final promoButton =
+        ((promoMarkup['inline_keyboard'] as List<dynamic>).single as List<dynamic>).single as Map;
+    expect(promoButton['text'], MessageTemplates.buttonPayFullPromo);
+    expect(promoButton['url'], LaunchPrices.defaultPromoCheckoutUrl);
+    expect(promoButton.containsKey('callback_data'), isFalse);
     final closed = testLaunch(
       id: 4,
       productId: 1,
@@ -697,7 +704,7 @@ void main() {
     expect(look.columnWidthsPx, hasLength(CoursesSheet.columnCount));
     expect(look.columnCount, CoursesSheet.columnCount);
     expect(look.notes, hasLength(CoursesSheet.columnCount));
-    expect(look.notes[8].text, contains('Выбери в календаре'));
+    expect(look.notes[9].text, contains('Выбери в календаре'));
     expect(look.notes[CoursesSheet.descriptionColumn].text, contains('шаблон'));
     expect(look.notes.last.text, contains('пустая'));
     expect(look.validations, isNotEmpty);
@@ -1091,7 +1098,7 @@ void main() {
 
     final selected = templates.broadcastSegmentKeyboard(
       counts,
-      selected: <BroadcastSegment>{BroadcastSegment.guideNotPaid, BroadcastSegment.depositPaid},
+      selected: <BroadcastSegment>{BroadcastSegment.magnet, BroadcastSegment.deposit},
     );
     final selectedTexts = <String>[
       for (final row in selected['inline_keyboard'] as List<dynamic>)
@@ -1099,7 +1106,7 @@ void main() {
     ];
     expect(
       selectedTexts,
-      contains('✓ ${templates.broadcastSegmentButton(BroadcastSegment.guideNotPaid, 0)}'),
+      contains('✓ ${templates.broadcastSegmentButton(BroadcastSegment.magnet, 0)}'),
     );
     expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastContinue));
     expect(selectedTexts, contains(MessageTemplates.buttonAdminBroadcastSelectAll));

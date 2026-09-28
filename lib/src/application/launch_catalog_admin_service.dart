@@ -114,6 +114,7 @@ final class LaunchCatalogAdminService {
       courseStartAt: launch.courseStartAt,
       webinarAt: launch.webinarAt,
       webinarUrl: launch.webinarUrl,
+      promoCheckoutUrl: launch.promoCheckoutUrl,
       salesStartAt: launch.salesStartAt,
       salesEndAt: launch.salesEndAt,
       channelId: launch.channelId,

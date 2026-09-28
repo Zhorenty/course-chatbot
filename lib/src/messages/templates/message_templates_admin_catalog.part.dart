@@ -54,6 +54,9 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     buf.writeln(
       webinarUrl == null || webinarUrl.isEmpty ? 'ссылка эфира: нет' : 'ссылка эфира: есть',
     );
+    buf.writeln(
+      launch.hasCustomPromoCheckoutUrl ? 'ссылка спеццены: своя' : 'ссылка спеццены: LeadPay',
+    );
     buf.writeln('старт продаж: ${_formatDateTime(launch.salesStartAt)}');
     buf.writeln('конец продаж: ${_formatDate(launch.salesEndAt)}');
     final channel = launch.channelId;
@@ -287,12 +290,15 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
             'Если сменишь код, диплинки на листе ССЫЛКИ с этим кодом поправь руками.',
       CatalogLaunchField.price => 'Новая обычная цена в рублях. Число, как 19000.',
       CatalogLaunchField.promo => 'Спеццена эфира в рублях. Число, как 15000. Пусто — 15000.',
+      CatalogLaunchField.promoUrl =>
+        'Ссылка на оплату спеццены в стороннем сервисе. Пусто — ${LaunchPrices.defaultPromoCheckoutUrl}',
       CatalogLaunchField.deposit => 'Новая предоплата в рублях. Пусто или 0 — без предоплаты.',
       CatalogLaunchField.start => 'Новая дата старта, как 19.08.2026.',
       CatalogLaunchField.webinar => 'Дата и время эфира по Москве, как 29.09.2026 19:00.',
       CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
       CatalogLaunchField.salesStart =>
-        'Когда открывается касса. Дата и время по Москве, как 30.09.2026 00:00.',
+        'С какого момента отметившимся доступна спеццена. Касса бота откроется через 3 дня после эфира. '
+            'Дата и время по Москве, как 30.09.2026 00:00.',
       CatalogLaunchField.salesEnd => 'Последний день продаж, как 12.10.2026.',
       CatalogLaunchField.channel => 'Новый ID канала (число вида −100…). Обязательно.',
       CatalogLaunchField.guide => 'Пришли PDF гайда в этот чат. Старый файл этого потока заменю.',
@@ -379,6 +385,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     CatalogLaunchField.code => '🔖 Код',
     CatalogLaunchField.price => '💰 Цена',
     CatalogLaunchField.promo => '🎁 Спеццена',
+    CatalogLaunchField.promoUrl => '🔗 Ссылка спеццены',
     CatalogLaunchField.deposit => '💵 Предоплата',
     CatalogLaunchField.start => '🚀 Старт',
     CatalogLaunchField.webinar => '📺 Эфир',

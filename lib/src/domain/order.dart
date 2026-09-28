@@ -91,6 +91,7 @@ final class CourseOrder {
   CourseOrder copyWith({
     OrderStatus? status,
     PaymentKind? kind,
+    int? priceFullKopecks,
     int? amountPaidKopecks,
     int? amountDueKopecks,
     Object? dueAt = _unset,
@@ -104,7 +105,7 @@ final class CourseOrder {
       launchId: launchId,
       status: status ?? this.status,
       kind: kind ?? this.kind,
-      priceFullKopecks: priceFullKopecks,
+      priceFullKopecks: priceFullKopecks ?? this.priceFullKopecks,
       amountPaidKopecks: amountPaidKopecks ?? this.amountPaidKopecks,
       amountDueKopecks: amountDueKopecks ?? this.amountDueKopecks,
       checkoutStartedAt: checkoutStartedAt,

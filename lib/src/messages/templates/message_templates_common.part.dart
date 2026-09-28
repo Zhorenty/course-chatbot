@@ -155,9 +155,6 @@ extension MessageTemplatesCommon on MessageTemplates {
   }
 
   String payFullButtonLabel(SalesQuote quote) {
-    if (quote.promoPriceApplies) {
-      return MessageTemplates.buttonPayFullPromo;
-    }
     return '${MessageTemplates.buttonPayFull} (${formatRubSpaced(quote.payableKopecks, unit: 'руб.')})';
   }
 

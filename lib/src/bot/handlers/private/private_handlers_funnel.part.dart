@@ -247,7 +247,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       replyMarkup: showLink ? _templates.webinarLinkKeyboard(url) : null,
     );
     final quote = LaunchSales.quote(launch, rsvp: true, now: now);
-    if (firstRsvp && !showLink && quote.checkoutOpen) {
+    if (firstRsvp && !showLink && quote.canBuy) {
       return _showEnroll(context);
     }
     return true;

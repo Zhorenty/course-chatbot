@@ -8,9 +8,9 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 abstract final class CoursesSheet {
   static const String tabTitle = 'COURSES';
   static const int sheetId = 0;
-  static const int scalarColumnCount = 14;
+  static const int scalarColumnCount = 15;
   static const int presenceColumnCount = 21;
-  static const int columnCount = 36;
+  static const int columnCount = 37;
   static const int defaultHeaderRow = 3;
   static const int extraDataRows = 8;
   static const int defaultDepositDueDays = 7;
@@ -55,6 +55,7 @@ abstract final class CoursesSheet {
   static const String isActive = 'is_active';
   static const String priceFullRub = 'price_full_rub';
   static const String pricePromoRub = 'price_promo_rub';
+  static const String promoCheckoutUrl = 'promo_checkout_url';
   static const String depositRub = 'deposit_rub';
   static const String depositDueDate = 'deposit_due_date';
   static const String courseStartDate = 'course_start_date';
@@ -76,8 +77,9 @@ abstract final class CoursesSheet {
 
   static const String hint =
       'Флажок «Активен» — ровно в одной строке, это текущий набор. Обычная цена 19000, спеццена эфира 15000. '
-      'Старт продаж — когда открывается касса и продающий прогрев. '
-      'Эфир — дата и время, как 29.09.2026 19:00 (Москва). Спеццена держится 3 дня с эфира. '
+      'Эфир — дата и время, как 29.09.2026 19:00 (Москва). Спеццена держится 3 дня с эфира: '
+      'отметившимся бот даёт ссылку на оплату в стороннем сервисе, оплату админ отмечает в карточке. '
+      'Касса бота (полная оплата и предоплата) открывается через 3 дня после эфира. '
       'Доплата после предоплаты — за неделю до старта курса. '
       'Пустая только ссылка на эфир: её можно дописать позже. Остальные поля обязательны. '
       'Править можно в боте («Google Sheets» → «Управление курсами») или здесь. '
@@ -93,6 +95,7 @@ abstract final class CoursesSheet {
     isActive,
     priceFullRub,
     pricePromoRub,
+    promoCheckoutUrl,
     depositRub,
     courseStartDate,
     webinarAt,
@@ -136,6 +139,7 @@ abstract final class CoursesSheet {
     'Активен',
     'Цена, ₽',
     'Спеццена, ₽',
+    'Ссылка на спеццену',
     'Предоплата, ₽',
     'Старт курса',
     'Эфир',
@@ -155,13 +159,17 @@ abstract final class CoursesSheet {
     'Флажок: ДА — текущий набор. ДА должна быть ровно одна строка. Если нигде нет — возьмётся первая заполненная.',
     'Обычная цена в рублях. Пиши число: 19000 или 19 000. Для тех, кто не отмечался на эфир.',
     'Спеццена эфира в рублях. 15000. Для тех, кто нажал «Хочу на Мастер-класс». Действует 3 дня с даты эфира. '
-        'Пусто при синке запишем 15000.',
+        'Оплачивается по ссылке на спеццену, не в кассе бота. Эту сумму бот ставит, когда админ отмечает '
+        '«Спеццена оплачена» в карточке. Пусто при синке запишем 15000.',
+    'Ссылка на оплату спеццены в стороннем сервисе. Бот даёт её отметившимся на эфир в первые 3 дня. '
+        'Пусто — ${LaunchPrices.defaultPromoCheckoutUrl}',
     'Сумма предоплаты в рублях. 0 — сразу полная оплата, без предоплаты. '
         'Срок доплаты бот ставит сам: за неделю до старта курса.',
     'Дата. Выбери в календаре. Формат 19.08.2026. Когда начинается обучение. Обязательно.',
     'Дата и время эфира по Москве. Формат 29.09.2026 19:00. Без времени возьмём 19:00. Обязательно.',
     'Ссылка на эфир. Бот пришлёт её отметившимся в день эфира. Единственное поле, которое можно дописать позже.',
-    'Когда открывается касса и продающий прогрев. Дата и время по Москве, как 30.09.2026 00:00. Обязательно.',
+    'С какого момента отметившимся доступна спеццена. Касса бота откроется не раньше, чем через 3 дня после эфира. '
+        'Дата и время по Москве, как 30.09.2026 00:00. Обязательно.',
     'Последний день продаж, как 12.10.2026. Обязательно.',
     'Номер закрытого канала этого потока. Число вида −100…. Обязательно.',
     for (final header in presenceHeaders)
@@ -217,6 +225,7 @@ abstract final class CoursesSheet {
       activeYes,
       seedPriceFullRub,
       seedPricePromoRub,
+      LaunchPrices.defaultPromoCheckoutUrl,
       seedDepositRub,
       seedCourseStartDate,
       seedWebinarAt,
@@ -338,6 +347,7 @@ abstract final class CoursesSheet {
       activeCell(draft.isActive),
       priceCell(draft.priceFullKopecks),
       priceCell(draft.pricePromoKopecks),
+      draft.promoCheckoutUrl ?? '',
       draft.depositKopecks > 0 ? priceCell(draft.depositKopecks) : 0,
       formatDottedDate(draft.courseStartAt),
       formatDottedDateTime(draft.webinarAt),
@@ -501,6 +511,7 @@ final class CatalogLaunchDraft {
     required this.channelId,
     this.depositDueAt,
     this.webinarUrl,
+    this.promoCheckoutUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
   });
@@ -518,6 +529,7 @@ final class CatalogLaunchDraft {
   final DateTime courseStartAt;
   final DateTime webinarAt;
   final String? webinarUrl;
+  final String? promoCheckoutUrl;
   final DateTime salesStartAt;
   final DateTime salesEndAt;
   final int channelId;
@@ -539,6 +551,7 @@ final class CatalogLaunchDraft {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: webinarUrl,
+      promoCheckoutUrl: promoCheckoutUrl,
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
@@ -561,6 +574,7 @@ final class CatalogLaunchDraft {
     DateTime? courseStartAt,
     DateTime? webinarAt,
     Object? webinarUrl = _catalogDraftUnset,
+    Object? promoCheckoutUrl = _catalogDraftUnset,
     DateTime? salesStartAt,
     DateTime? salesEndAt,
     int? channelId,
@@ -585,6 +599,9 @@ final class CatalogLaunchDraft {
       webinarUrl: identical(webinarUrl, _catalogDraftUnset)
           ? this.webinarUrl
           : webinarUrl as String?,
+      promoCheckoutUrl: identical(promoCheckoutUrl, _catalogDraftUnset)
+          ? this.promoCheckoutUrl
+          : promoCheckoutUrl as String?,
       salesStartAt: salesStartAt ?? this.salesStartAt,
       salesEndAt: salesEndAt ?? this.salesEndAt,
       channelId: channelId ?? this.channelId,
@@ -651,6 +668,10 @@ abstract final class CoursesSheetParser {
     'спеццена руб': CoursesSheet.pricePromoRub,
     'спеццена': CoursesSheet.pricePromoRub,
     'цена эфира': CoursesSheet.pricePromoRub,
+    CoursesSheet.promoCheckoutUrl: CoursesSheet.promoCheckoutUrl,
+    'ссылка на спеццену': CoursesSheet.promoCheckoutUrl,
+    'ссылка спеццены': CoursesSheet.promoCheckoutUrl,
+    'оплата спеццены': CoursesSheet.promoCheckoutUrl,
     CoursesSheet.depositRub: CoursesSheet.depositRub,
     'предоплата руб': CoursesSheet.depositRub,
     'предоплата': CoursesSheet.depositRub,
@@ -1121,6 +1142,7 @@ abstract final class CoursesSheetParser {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: _cell(raw, headerIndex, CoursesSheet.webinarUrl),
+      promoCheckoutUrl: _cell(raw, headerIndex, CoursesSheet.promoCheckoutUrl),
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,

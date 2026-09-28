@@ -104,6 +104,7 @@ final class MessageTemplates {
   static const String buttonAdminStatusUnpaid = '⏳ Не оплачено';
   static const String buttonAdminStatusDeposit = '💵 Предоплата';
   static const String buttonAdminStatusPaid = '✅ Оплачено полностью';
+  static const String buttonAdminStatusPromoPaid = '🎁 Спеццена оплачена';
   static const String buttonAdminCancel = '🚫 Убрать с курса';
   static const String buttonAdminStatusBack = '↩️ К карточке';
   static const String buttonAdminReinvite = '🔗 Выдать ссылку в канал';
@@ -410,8 +411,21 @@ final class MessageTemplates {
     final start = _formatHumanDate(launch.courseStartAt)!;
     final promo = formatRubSpaced(quote.pricePromoKopecks, unit: 'руб.');
     final wasRub = _compareAtRub(launch);
+    if (quote.promoOffer) {
+      return _applyCopyPlaceholders(
+        _rawCopySlot(launch, LaunchCopySlotKey.enrollPromo, LaunchCopyDefaults.enrollPromo),
+        launch,
+        <String, String>{
+          'promo_until': _formatHumanDate(quote.promoEndsAt) ?? '',
+          'price_promo': promo,
+          'price_was': wasRub,
+          'course_start': start,
+        },
+      );
+    }
     switch (quote.phase) {
       case SalesPhase.preSales:
+      case SalesPhase.promo:
         return _preSalesCourseCopy(
           launch,
           cta: _preSalesMasterClassCta(
@@ -430,20 +444,6 @@ final class MessageTemplates {
         return '<b>Запись закрыта</b>\n\n'
             'Продажи этого потока закончились. Старт $start. '
             'Если оплата уже шла — напиши в «${MessageTemplates.buttonHelp}».';
-      case SalesPhase.promo:
-        if (quote.rsvp) {
-          return _applyCopyPlaceholders(
-            _rawCopySlot(launch, LaunchCopySlotKey.enrollPromo, LaunchCopyDefaults.enrollPromo),
-            launch,
-            <String, String>{
-              'promo_until': _formatHumanDate(quote.promoEndsAt) ?? '',
-              'price_promo': promo,
-              'price_was': wasRub,
-              'course_start': start,
-            },
-          );
-        }
-        return _regularEnrollCopy(launch: launch, quote: quote, start: start, rsvpOpen: rsvpOpen);
       case SalesPhase.regular:
         return _regularEnrollCopy(launch: launch, quote: quote, start: start);
     }
@@ -827,6 +827,9 @@ final class MessageTemplates {
   String adminMarkedPaid({bool clientNotified = true, bool clientReached = true}) =>
       '✅ Оплата проставлена вручную.${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
 
+  String adminMarkedPromoPaid({bool clientNotified = true, bool clientReached = true}) =>
+      '🎁 Спеццена проставлена вручную.${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
+
   String adminMarkedDeposit({bool clientNotified = true, bool clientReached = true}) =>
       '💵 Предоплата проставлена вручную.${_adminClientFollowup(attempted: clientNotified, reached: clientReached)}';
 
@@ -850,6 +853,10 @@ final class MessageTemplates {
       clientReached: clientReached,
     ),
     AdminPaymentStatus.paid => adminMarkedPaid(
+      clientNotified: clientNotified,
+      clientReached: clientReached,
+    ),
+    AdminPaymentStatus.promoPaid => adminMarkedPromoPaid(
       clientNotified: clientNotified,
       clientReached: clientReached,
     ),
@@ -882,6 +889,7 @@ final class MessageTemplates {
     AdminPaymentStatus.unpaid => 'не оплачено',
     AdminPaymentStatus.deposit => 'предоплата',
     AdminPaymentStatus.paid => 'оплачено полностью',
+    AdminPaymentStatus.promoPaid => 'оплачено по спеццене',
     AdminPaymentStatus.cancelled => 'убран с курса',
   };
 
@@ -889,6 +897,7 @@ final class MessageTemplates {
     AdminPaymentStatus.unpaid => buttonAdminStatusUnpaid,
     AdminPaymentStatus.deposit => buttonAdminStatusDeposit,
     AdminPaymentStatus.paid => buttonAdminStatusPaid,
+    AdminPaymentStatus.promoPaid => buttonAdminStatusPromoPaid,
     AdminPaymentStatus.cancelled => buttonAdminCancel,
   };
 
@@ -1242,17 +1251,8 @@ final class MessageTemplates {
     return BroadcastSegment.fromCode(data.substring(cbBroadcastSegment.length));
   }
 
-  String broadcastSegmentLabel(BroadcastSegment segment) => switch (segment) {
-    BroadcastSegment.allStarted => 'Воронка без оплативших',
-    BroadcastSegment.leadNoGuide => 'Пришли за гайдом, ещё не забрали',
-    BroadcastSegment.guideNotPaid => 'Гайд есть, без записи',
-    BroadcastSegment.courseLeadNoCheckout => 'Пришли на курс, без записи',
-    BroadcastSegment.checkoutOpen => 'Начали оплату',
-    BroadcastSegment.depositPaid => 'Предоплата',
-    BroadcastSegment.paidAccess => 'Оплатили / доступ',
-    BroadcastSegment.paidNotJoined => 'Оплатили, не вошли',
-    BroadcastSegment.cancelled => 'Отмена / возврат',
-  };
+  String broadcastSegmentLabel(BroadcastSegment segment) =>
+      participantListLabel(segment.participantSegment);
 
   String broadcastSegmentButton(BroadcastSegment segment, int count, {bool selected = false}) {
     final label = '${broadcastSegmentLabel(segment)} ($count)';
@@ -1669,25 +1669,20 @@ final class MessageTemplates {
     required Launch launch,
     required SalesQuote quote,
     required String start,
-    bool rsvpOpen = false,
   }) {
     final price = formatRubSpaced(quote.payableKopecks);
     final was = _regularCompareAtRub(quote.payableKopecks);
     final priceLine = was == null ? price : '$price <s>$was</s>';
-    final deposit = !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks)
+    final deposit = launch.hasDepositOptionFor(quote.payableKopecks)
         ? formatRubSpaced(launch.depositKopecks, unit: 'руб.')
         : null;
     final depositLine = deposit == null
         ? ''
         : '\nМожно закрыть всю сумму или забронировать место предоплатой $deposit.';
-    final rsvpHint = rsvpOpen && !quote.rsvp
-        ? '\n\nЕщё можно попасть в список мастер-класса и взять специальную цену — кнопка ниже.'
-        : '';
-    final body = _applyCopyPlaceholders(
+    return _applyCopyPlaceholders(
       _rawCopySlot(launch, LaunchCopySlotKey.enrollRegular, LaunchCopyDefaults.enrollRegular),
       launch,
       <String, String>{'price_full': priceLine, 'deposit_line': depositLine, 'course_start': start},
     );
-    return '$body$rsvpHint';
   }
 }

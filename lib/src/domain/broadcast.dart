@@ -1,25 +1,28 @@
+import 'package:course_chatbot/src/domain/participant_list.dart';
+
+/// Same slices as «Список участников», scoped to the active launch.
 enum BroadcastSegment {
-  allStarted,
-  leadNoGuide,
-  guideNotPaid,
-  courseLeadNoCheckout,
-  checkoutOpen,
-  depositPaid,
-  paidAccess,
-  paidNotJoined,
+  webinarRsvp,
+  paid,
+  deposit,
+  checkout,
+  enrollIntent,
+  magnet,
+  started,
   cancelled;
 
-  String get code => switch (this) {
-    BroadcastSegment.allStarted => 'a',
-    BroadcastSegment.leadNoGuide => 'l',
-    BroadcastSegment.guideNotPaid => 'g',
-    BroadcastSegment.courseLeadNoCheckout => 'k',
-    BroadcastSegment.checkoutOpen => 'c',
-    BroadcastSegment.depositPaid => 'd',
-    BroadcastSegment.paidAccess => 'p',
-    BroadcastSegment.paidNotJoined => 'n',
-    BroadcastSegment.cancelled => 'x',
+  ParticipantListSegment get participantSegment => switch (this) {
+    BroadcastSegment.webinarRsvp => ParticipantListSegment.webinarRsvp,
+    BroadcastSegment.paid => ParticipantListSegment.paid,
+    BroadcastSegment.deposit => ParticipantListSegment.deposit,
+    BroadcastSegment.checkout => ParticipantListSegment.checkout,
+    BroadcastSegment.enrollIntent => ParticipantListSegment.enrollIntent,
+    BroadcastSegment.magnet => ParticipantListSegment.magnet,
+    BroadcastSegment.started => ParticipantListSegment.started,
+    BroadcastSegment.cancelled => ParticipantListSegment.cancelled,
   };
+
+  String get code => participantSegment.code;
 
   static BroadcastSegment? fromCode(String? raw) {
     final code = raw?.trim();

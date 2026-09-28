@@ -441,7 +441,7 @@ void main() {
     expect(candidates.map((c) => c.launchId), <int>[launch1.id]);
   });
 
-  test('paidNotJoined is scoped to the enrollment launch', () {
+  test('broadcast segments are scoped to the enrollment launch', () {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch1 = harness.course.activeLaunch()!;
     harness.course.setFunnelPhase(
@@ -449,31 +449,25 @@ void main() {
       phase: FunnelPhase.accessGranted,
       launchId: launch1.id,
     );
-    harness.course.upsertAccess(
-      userId: 42,
-      launchId: launch1.id,
-      orderId: 1,
-      inviteLink: 'https://t.me/+old',
-    );
     final launch2 = _launch2(harness);
     harness.course.ensureEnrollment(
       userId: 42,
       launchId: launch2.id,
       now: DateTime.utc(2026, 1, 2),
     );
-    harness.course.setFunnelPhase(
-      userId: 42,
-      phase: FunnelPhase.accessGranted,
-      launchId: launch2.id,
+    harness.course.setFunnelPhase(userId: 42, phase: FunnelPhase.checkout, launchId: launch2.id);
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.paid, launchId: launch1.id),
+      <int>[42],
     );
-    harness.course.upsertAccess(
-      userId: 42,
-      launchId: launch2.id,
-      orderId: 2,
-      inviteLink: 'https://t.me/+new',
-      joinedAt: DateTime.utc(2026, 1, 2, 12),
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.paid, launchId: launch2.id),
+      isEmpty,
     );
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.paidNotJoined), isEmpty);
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.checkout, launchId: launch2.id),
+      <int>[42],
+    );
   });
 
   test('callback without order or payment id does not guess the latest open checkout', () async {

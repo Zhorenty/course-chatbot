@@ -47,7 +47,7 @@ abstract final class CopySheet {
   static const String _mkPhoto =
       '1 картинка: https://drive.google.com/file/d/17tKOmtqn-XmBghRXzuat5aVzSxaCjARx/view?usp=sharing';
   static const String _coursePhotos =
-      '2 картинки-оформление поста: https://drive.google.com/drive/folders/1uAb5adQQ0WGuCUWu42VRr36tas9nVn4m?usp=sharing';
+      '9 картинок-оформление поста: https://drive.google.com/drive/folders/1hnD9z5oBP2ndt_uvSHE1IVUDRuQ7Vg43?usp=sharing';
   static const String _paidPhoto =
       '1 картинка: https://drive.google.com/file/d/1G8Y6GXhgR_MIiQmmvVF2oYg9d4tLFywe/view?usp=sharing';
   static const String _dozhim1 =
@@ -193,9 +193,9 @@ abstract final class CopySheet {
             '⚡Предложение актуально до {конец спеццены}, далее цена сменится на обычную и приобрести программу по специальной стоимости уже не получится.\n\n'
             'Старт потока {старт потока}.\n'
             'Оплатить можно по ссылке внизу.\n'
-            'После полной оплаты придет ссылка на канал курса.',
+            'После оплаты с тобой свяжется администратор и пригласит тебя в группу.',
         button: 'Оплатить курс по специальной цене',
-        leadsTo: 'ведет на полную оплату по спеццене',
+        leadsTo: 'ведет на оплату спеццены в стороннем сервисе (ссылка на спеццену из COURSES)',
       ),
       const CopySheetEntry(
         stage: 'спеццена истекла, кто был в списке МК и не записался за 3 дня',

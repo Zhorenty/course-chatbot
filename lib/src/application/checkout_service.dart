@@ -103,13 +103,17 @@ final class CheckoutService {
     required PaymentKind kind,
   }) {
     _assertCanStartCharge(userId: userId, launchId: launch.id, kind: kind);
-    final existing = _course.latestOpenOrder(userId, launchId: launch.id);
-    if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
-      return existing;
-    }
     final now = _nowProvider();
     final enrollment = _course.getEnrollment(userId: userId, launchId: launch.id);
     final quote = LaunchSales.quote(launch, rsvp: enrollment?.webinarRsvp ?? false, now: now);
+    final notYetOpen = quote.phase == SalesPhase.preSales || quote.phase == SalesPhase.promo;
+    if (kind != PaymentKind.remainder && notYetOpen) {
+      throw const CheckoutBlockedException(CheckoutBlockReason.salesNotOpen);
+    }
+    final existing = _course.latestOpenOrder(userId, launchId: launch.id);
+    if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
+      return _repriceUnpaid(existing, launch);
+    }
     if (kind != PaymentKind.remainder && !quote.checkoutOpen) {
       throw CheckoutBlockedException(
         quote.phase == SalesPhase.closed
@@ -151,6 +155,23 @@ final class CheckoutService {
     if (latest != null && latest.status.isFullyPaid) {
       throw const CheckoutBlockedException(CheckoutBlockReason.alreadyPaid);
     }
+  }
+
+  /// An untouched order from an older price (e.g. the retired in-bot promo) follows
+  /// the current kassa price.
+  CourseOrder _repriceUnpaid(CourseOrder order, Launch launch) {
+    if (order.status == OrderStatus.depositPaid ||
+        order.amountPaidKopecks > 0 ||
+        order.priceFullKopecks == launch.priceFullKopecks) {
+      return order;
+    }
+    _course.cancelPendingPayments(order.id);
+    final updated = order.copyWith(
+      priceFullKopecks: launch.priceFullKopecks,
+      amountDueKopecks: launch.priceFullKopecks,
+    );
+    _course.updateOrder(updated);
+    return updated;
   }
 
   /// Reuse an open checkout for the same charge type.
@@ -572,7 +593,12 @@ final class CheckoutService {
   AdminPaymentStatus currentAdminStatus({required int userId, required Launch launch}) {
     final order = _course.latestOrder(userId, launchId: launch.id);
     final enrollment = _course.getEnrollment(userId: userId, launchId: launch.id);
-    return AdminPaymentStatusX.resolve(order: order, phase: enrollment?.funnelPhase);
+    final promo = launch.pricePromoKopecks;
+    return AdminPaymentStatusX.resolve(
+      order: order,
+      phase: enrollment?.funnelPhase,
+      promoPriceKopecks: promo > 0 && promo != launch.priceFullKopecks ? promo : null,
+    );
   }
 
   /// Admin override: set unpaid / deposit / paid / cancelled even if already charged.
@@ -596,6 +622,13 @@ final class CheckoutService {
         return _forceManualPaid(userId: userId, launch: launch, kind: PaymentKind.deposit);
       case AdminPaymentStatus.paid:
         return _forceManualPaid(userId: userId, launch: launch, kind: PaymentKind.full);
+      case AdminPaymentStatus.promoPaid:
+        return _forceManualPaid(
+          userId: userId,
+          launch: launch,
+          kind: PaymentKind.full,
+          priceKopecks: launch.pricePromoKopecks,
+        );
     }
   }
 
@@ -607,6 +640,7 @@ final class CheckoutService {
         order.copyWith(
           status: OrderStatus.awaitingPayment,
           kind: PaymentKind.full,
+          priceFullKopecks: launch.priceFullKopecks,
           amountPaidKopecks: 0,
           amountDueKopecks: launch.priceFullKopecks,
           accessGranted: false,
@@ -628,9 +662,17 @@ final class CheckoutService {
     required int userId,
     required Launch launch,
     required PaymentKind kind,
+    int? priceKopecks,
   }) async {
     await _access.revoke(userId: userId, launch: launch);
-    final order = _reopenOrderForAdmin(userId: userId, launch: launch, kind: kind);
+    final order = _reopenOrderForAdmin(
+      userId: userId,
+      launch: launch,
+      kind: kind,
+      priceKopecks: priceKopecks != null && priceKopecks > 0
+          ? priceKopecks
+          : launch.priceFullKopecks,
+    );
     _course.setFunnelPhase(
       userId: userId,
       phase: FunnelPhase.checkout,
@@ -649,6 +691,7 @@ final class CheckoutService {
     required int userId,
     required Launch launch,
     required PaymentKind kind,
+    required int priceKopecks,
   }) {
     final existing = _course.latestOrder(userId, launchId: launch.id);
     if (existing == null) {
@@ -657,8 +700,8 @@ final class CheckoutService {
         userId: userId,
         launchId: launch.id,
         kind: kind,
-        priceFullKopecks: launch.priceFullKopecks,
-        amountDueKopecks: launch.priceFullKopecks,
+        priceFullKopecks: priceKopecks,
+        amountDueKopecks: priceKopecks,
         now: now,
         dueAt: kind == PaymentKind.deposit ? launch.resolveDepositDueAt(now) : null,
       );
@@ -668,8 +711,9 @@ final class CheckoutService {
       existing.copyWith(
         status: OrderStatus.awaitingPayment,
         kind: kind,
+        priceFullKopecks: priceKopecks,
         amountPaidKopecks: 0,
-        amountDueKopecks: launch.priceFullKopecks,
+        amountDueKopecks: priceKopecks,
         accessGranted: false,
         paidAt: null,
         cancelledAt: null,

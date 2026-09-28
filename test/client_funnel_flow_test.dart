@@ -18,7 +18,7 @@ void main() {
   const quietHours = QuietHours(timezoneOffsetHours: 3, fromHour: 10, toHour: 21);
   final templates = MessageTemplates();
 
-  test('A: guide → RSVP → promo full pay → one-time channel invite', () async {
+  test('A: guide → RSVP → promo link → full pay after 3 days → one-time channel invite', () async {
     final clock = _Clock(DateTime.utc(2026, 10, 4, 12));
     final harness = await _clientHarness(clock);
     addTearDown(harness.dispose);
@@ -77,28 +77,34 @@ void main() {
     final promo = harness.sender.messages.last;
     expect(promo.text, contains('15 000 руб.'));
     expect(promo.text, contains('специальн'));
-    expect(_inlineButtonTexts(promo.replyMarkup), contains(MessageTemplates.buttonPayFullPromo));
-    expect(
-      _inlineButtonTexts(
-        promo.replyMarkup,
-      ).any((text) => text.startsWith(MessageTemplates.buttonPayDeposit)),
-      isFalse,
-    );
-    expect(_inlineButtonTexts(promo.replyMarkup), isNot(contains('Рассрочка')));
+    expect(promo.text, contains('свяжется администратор'));
+    expect(_inlineButtonTexts(promo.replyMarkup), <String>[MessageTemplates.buttonPayFullPromo]);
+    expect(_inlineUrls(promo.replyMarkup), <String>[LaunchPrices.defaultPromoCheckoutUrl]);
+    expect(_payButtonTexts(promo.replyMarkup), isEmpty);
+
+    await client.press(MessageTemplates.cbPayFull);
+    expect(harness.gateway.creates, 0);
+    expect(harness.course.latestOrder(42, launchId: harness.course.activeLaunch()!.id), isNull);
+
+    clock.value = DateTime.utc(2026, 10, 9, 12);
+    harness.sender.messages.clear();
+    await client.tap(client.courseBtn);
+    final regular = harness.sender.messages.last;
+    expect(regular.text, isNot(contains('Специальная цена')));
+    expect(_payButtonTexts(regular.replyMarkup), hasLength(2));
 
     await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
-    expect(harness.sender.messages.any((m) => m.text.contains('Ссылка на оплату')), isTrue);
     expect(_phase(harness, 42), FunnelPhase.checkout);
     final launch = harness.course.activeLaunch()!;
     final order = harness.course.latestOrder(42, launchId: launch.id)!;
     expect(order.status, OrderStatus.awaitingPayment);
-    expect(order.priceFullKopecks, LaunchPrices.promoKopecks);
+    expect(order.priceFullKopecks, LaunchPrices.fullKopecks);
     final pending = harness.course.latestPendingPayment(order.id)!;
 
     final paid = await client.settle(
       kind: PaymentKind.full,
-      amountKopecks: LaunchPrices.promoKopecks,
+      amountKopecks: LaunchPrices.fullKopecks,
     );
     expect(paid.grantedAccess, isTrue);
     expect(harness.sender.messages.any((m) => m.text.contains('Успешная оплата')), isTrue);
@@ -122,7 +128,7 @@ void main() {
         orderId: order.id,
         paymentDbId: pending.id,
         userId: 42,
-        amountKopecks: LaunchPrices.promoKopecks,
+        amountKopecks: LaunchPrices.fullKopecks,
       ),
       launch: launch,
     );
@@ -175,7 +181,7 @@ void main() {
     final harness = await _clientHarness(clock);
     addTearDown(harness.dispose);
     final client = _Client(harness);
-    await _reachPromoCheckout(client, clock);
+    await _reachCheckout(client, clock);
 
     await client.pay(MessageTemplates.cbPayDeposit);
     expect(harness.gateway.creates, 1);
@@ -240,7 +246,7 @@ void main() {
     final harness = await _clientHarness(clock);
     addTearDown(harness.dispose);
     final client = _Client(harness);
-    await _reachPromoCheckout(client, clock);
+    await _reachCheckout(client, clock);
     await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
     final launch = harness.course.activeLaunch()!;
@@ -296,7 +302,7 @@ void main() {
       isTrue,
     );
 
-    await client.settle(kind: PaymentKind.full, amountKopecks: LaunchPrices.promoKopecks);
+    await client.settle(kind: PaymentKind.full, amountKopecks: LaunchPrices.fullKopecks);
     harness.sender.messages.clear();
     await dayJob.run();
     expect(
@@ -353,7 +359,7 @@ void main() {
   });
 
   test('F: course deep link after sales open shows checkout, not the pre-sales card', () async {
-    final clock = _Clock(DateTime.utc(2026, 10, 8, 12));
+    final clock = _Clock(DateTime.utc(2026, 10, 9, 12));
     final harness = await _clientHarness(clock);
     addTearDown(harness.dispose);
     final client = _Client(harness, userId: 9);
@@ -370,7 +376,34 @@ void main() {
     expect(_phase(harness, 9), FunnelPhase.lead);
   });
 
-  test('G: RSVP while sales are open opens the special-price card', () async {
+  test('F2: without RSVP the course stays closed for 3 days after the webinar', () async {
+    final clock = _Clock(DateTime.utc(2026, 10, 7, 12));
+    final harness = await _clientHarness(clock);
+    addTearDown(harness.dispose);
+    final client = _Client(harness, userId: 9);
+
+    await client.tap('/start ig_reels_guide');
+    await client.tap(MessageTemplates.buttonGuide);
+    harness.sender.messages.clear();
+    await client.tap(client.courseBtn);
+    final card = harness.sender.messages.last;
+    expect(card.text, contains('самой выгодной цене'));
+    expect(card.text, isNot(contains('Специальная цена')));
+    expect(_payButtonTexts(card.replyMarkup), isEmpty);
+    expect(_inlineUrls(card.replyMarkup), isEmpty);
+
+    await client.press(MessageTemplates.cbPayDeposit);
+    expect(harness.gateway.creates, 0);
+
+    clock.value = DateTime.utc(2026, 10, 8, 17);
+    harness.sender.messages.clear();
+    await client.tap(client.courseBtn);
+    expect(_payButtonTexts(harness.sender.messages.last.replyMarkup), hasLength(2));
+    await client.pay(MessageTemplates.cbPayDeposit);
+    expect(harness.gateway.creates, 1);
+  });
+
+  test('G: RSVP during the promo window opens the outside special-price link', () async {
     final clock = _Clock(DateTime.utc(2026, 10, 5, 16, 30));
     final harness = HandlerHarness();
     await harness.init(
@@ -390,14 +423,9 @@ void main() {
     harness.sender.messages.clear();
     await client.tap(client.courseBtn);
     final beforeRsvp = harness.sender.messages.last;
-    expect(beforeRsvp.text, contains('Запись на курс'));
+    expect(beforeRsvp.text, contains('самой выгодной цене'));
     expect(_inlineButtonTexts(beforeRsvp.replyMarkup), contains(MessageTemplates.buttonRsvpEnroll));
-    expect(
-      _inlineButtonTexts(
-        beforeRsvp.replyMarkup,
-      ).any((text) => text.startsWith(MessageTemplates.buttonPayFull)),
-      isTrue,
-    );
+    expect(_payButtonTexts(beforeRsvp.replyMarkup), isEmpty);
 
     harness.sender.messages.clear();
     await client.press(MessageTemplates.cbRsvp);
@@ -408,6 +436,9 @@ void main() {
       _inlineButtonTexts(harness.sender.messages.last.replyMarkup),
       contains(MessageTemplates.buttonPayFullPromo),
     );
+    expect(_inlineUrls(harness.sender.messages.last.replyMarkup), <String>[
+      LaunchPrices.defaultPromoCheckoutUrl,
+    ]);
   });
 }
 
@@ -425,11 +456,11 @@ Future<HandlerHarness> _clientHarness(_Clock clock) async {
   return harness;
 }
 
-Future<void> _reachPromoCheckout(_Client client, _Clock clock) async {
+Future<void> _reachCheckout(_Client client, _Clock clock) async {
   await client.tap('/start ig_reels_guide');
   await client.tap(MessageTemplates.buttonGuide);
   await client.press(MessageTemplates.cbRsvp);
-  clock.value = DateTime.utc(2026, 10, 6, 12);
+  clock.value = DateTime.utc(2026, 10, 9, 12);
   await client.tap(MessageTemplates.buttonEnroll);
 }
 
@@ -466,13 +497,23 @@ List<String> _inlineButtonTexts(Map<String, Object?>? markup) {
 }
 
 List<String> _payButtonTexts(Map<String, Object?>? markup) {
-  return _inlineButtonTexts(markup)
-      .where(
-        (text) =>
-            text.startsWith(MessageTemplates.buttonPayFull) ||
-            text.startsWith(MessageTemplates.buttonPayDeposit),
-      )
-      .toList();
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>)
+        if ((cell as Map)['callback_data'] == MessageTemplates.cbPayFull ||
+            cell['callback_data'] == MessageTemplates.cbPayDeposit)
+          cell['text'] as String,
+  ];
+}
+
+List<String> _inlineUrls(Map<String, Object?>? markup) {
+  final rows = markup?['inline_keyboard'] as List<dynamic>? ?? const <dynamic>[];
+  return <String>[
+    for (final row in rows)
+      for (final cell in row as List<dynamic>)
+        if ((cell as Map)['url'] case final String url) url,
+  ];
 }
 
 final class _Clock {

@@ -240,6 +240,7 @@ abstract final class GoogleSheetsCoursesCatalog {
         90,
         110,
         120,
+        220,
         130,
         120,
         150,

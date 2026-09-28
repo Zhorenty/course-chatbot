@@ -43,7 +43,10 @@ extension MessageTemplatesRich on MessageTemplates {
     bool webinarStarted = false,
     bool hasOpenCheckout = false,
   }) {
-    if (quote.phase == SalesPhase.preSales) {
+    final preSalesCard =
+        quote.phase == SalesPhase.preSales ||
+        (quote.phase == SalesPhase.promo && !quote.promoOffer);
+    if (preSalesCard) {
       return startCourseCardRich(
         launch: launch,
         cta: _preSalesMasterClassCta(
@@ -105,7 +108,7 @@ extension MessageTemplatesRich on MessageTemplates {
     final webinarUrl = launch.webinarUrl?.trim();
     final channel = launch.channelId;
     return '${richH2(launch.title)}'
-        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.pricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? ''), ('эфир', _formatDateTime(launch.webinarAt) ?? ''), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? ''), ('конец продаж', _formatDate(launch.salesEndAt) ?? ''), ('канал', '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('описание', launch.hasCustomDescription ? 'своё' : 'шаблон'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
+        '${richTable(<(String, String)>[('код', '<code>${escapeHtml(launch.code)}</code>'), ('цена', formatRubFromKopecks(launch.priceFullKopecks)), ('спеццена', formatRubFromKopecks(launch.pricePromoKopecks)), ('предоплата', launch.depositKopecks > 0 ? formatRubFromKopecks(launch.depositKopecks) : 'нет'), ('старт', _formatDate(launch.courseStartAt) ?? ''), ('эфир', _formatDateTime(launch.webinarAt) ?? ''), ('ссылка эфира', webinarUrl == null || webinarUrl.isEmpty ? 'нет' : 'есть'), ('ссылка спеццены', launch.hasCustomPromoCheckoutUrl ? 'своя' : 'LeadPay'), ('старт продаж', _formatDateTime(launch.salesStartAt) ?? ''), ('конец продаж', _formatDate(launch.salesEndAt) ?? ''), ('канал', '<code>$channel</code>'), ('гайд', _catalogHasGuide(launch) ? 'есть' : 'нет'), ('описание', launch.hasCustomDescription ? 'своё' : 'шаблон'), ('дожим', dozhimCount <= 0 ? 'нет' : '$dozhimCount ${_dayWord(dozhimCount)}'), ('активен', launch.isActive ? 'да' : 'нет')])}';
   }
 
   String adminCatalogDozhimListRich(Launch launch, List<LaunchDozhimMessage> messages) {

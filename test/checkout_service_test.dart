@@ -615,33 +615,85 @@ void main() {
     );
   });
 
-  test('promo checkout is 15000 only after RSVP', () async {
+  test('kassa stays closed during the promo window and opens at full price after it', () async {
+    var now = DateTime.utc(2026, 10, 6, 12);
     final extra = HandlerHarness();
     await extra.init(
       priceFullKopecks: 1900000,
       webinarAt: DateTime.utc(2026, 10, 5, 16),
-      nowProvider: () => DateTime.utc(2026, 10, 6, 12),
+      nowProvider: () => now,
     );
     addTearDown(extra.dispose);
-    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
     final launch = extra.course.activeLaunch()!;
-    final outsider = extra.checkout.startOrReuseOrder(
-      userId: 42,
-      launch: launch,
-      kind: PaymentKind.full,
-    );
-    expect(outsider.priceFullKopecks, 1900000);
+    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
     extra.course.ensureUser(userId: 43, now: DateTime.utc(2026, 10, 1));
     extra.course.setWebinarRsvp(
       userId: 43,
       launchId: launch.id,
       now: DateTime.utc(2026, 10, 5, 16),
     );
-    final order = extra.checkout.startOrReuseOrder(
+    for (final userId in <int>[42, 43]) {
+      for (final kind in <PaymentKind>[PaymentKind.full, PaymentKind.deposit]) {
+        expect(
+          () => extra.checkout.startOrReuseOrder(userId: userId, launch: launch, kind: kind),
+          throwsA(
+            isA<CheckoutBlockedException>().having(
+              (error) => error.reason,
+              'reason',
+              CheckoutBlockReason.salesNotOpen,
+            ),
+          ),
+        );
+      }
+    }
+
+    now = DateTime.utc(2026, 10, 9, 12);
+    final outsider = extra.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    expect(outsider.priceFullKopecks, 1900000);
+    final rsvp = extra.checkout.startOrReuseOrder(
       userId: 43,
       launch: launch,
       kind: PaymentKind.full,
     );
-    expect(order.priceFullKopecks, 1500000);
+    expect(rsvp.priceFullKopecks, 1900000);
+  });
+
+  test('admin promo-paid status records the promo price and issues the invite', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    final launch = harness.course.activeLaunch()!;
+    final result = await harness.checkout.applyAdminPaymentStatus(
+      userId: 42,
+      launch: launch,
+      target: AdminPaymentStatus.promoPaid,
+    );
+    expect(result, isNotNull);
+    expect(result!.depositOnly, isFalse);
+    final order = harness.course.latestOrder(42, launchId: launch.id)!;
+    expect(order.priceFullKopecks, launch.pricePromoKopecks);
+    expect(order.amountPaidKopecks, launch.pricePromoKopecks);
+    expect(order.status, OrderStatus.paid);
+    expect(harness.channel.created, hasLength(1));
+    expect(
+      harness.checkout.currentAdminStatus(userId: 42, launch: launch),
+      AdminPaymentStatus.promoPaid,
+    );
+
+    await harness.checkout.applyAdminPaymentStatus(
+      userId: 42,
+      launch: launch,
+      target: AdminPaymentStatus.paid,
+    );
+    expect(
+      harness.course.latestOrder(42, launchId: launch.id)!.priceFullKopecks,
+      launch.priceFullKopecks,
+    );
+    expect(
+      harness.checkout.currentAdminStatus(userId: 42, launch: launch),
+      AdminPaymentStatus.paid,
+    );
   });
 }

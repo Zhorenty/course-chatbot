@@ -6,6 +6,9 @@ abstract final class LaunchPrices {
   static const int fullKopecks = 1900000;
   static const int wasKopecks = 2100000;
   static const int wasRegularKopecks = 2300000;
+
+  /// Special price is paid outside the bot (LeadPay); the admin then marks it on the card.
+  static const String defaultPromoCheckoutUrl = 'https://app.leadpay.ru/checkout/67241/';
 }
 
 final class Product {
@@ -47,6 +50,7 @@ final class Launch {
     required this.description,
     this.depositDueAt,
     this.webinarUrl,
+    this.promoCheckoutUrl,
     this.leadMagnetFileId,
     this.leadMagnetUrl,
     this.isActive = false,
@@ -66,6 +70,7 @@ final class Launch {
   final DateTime courseStartAt;
   final DateTime webinarAt;
   final String? webinarUrl;
+  final String? promoCheckoutUrl;
   final DateTime salesStartAt;
   final DateTime salesEndAt;
   final String? leadMagnetFileId;
@@ -91,6 +96,16 @@ final class Launch {
   }
 
   bool get hasWebinarUrl => resolvedWebinarUrl != null;
+
+  bool get hasCustomPromoCheckoutUrl => promoCheckoutUrl?.trim().isNotEmpty ?? false;
+
+  String get resolvedPromoCheckoutUrl {
+    final url = promoCheckoutUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return LaunchPrices.defaultPromoCheckoutUrl;
+    }
+    return url;
+  }
 
   DateTime get impliedDepositDueAt =>
       MoscowTime.daysBeforeCourseStart(courseStartAt, days: depositDueDays);

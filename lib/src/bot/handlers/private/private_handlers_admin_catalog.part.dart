@@ -739,6 +739,8 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         overlay = overlay.copyWith(webinarAt: parsed);
       case CatalogLaunchField.webinarUrl:
         overlay = overlay.copyWith(webinarUrl: text.isEmpty ? null : text);
+      case CatalogLaunchField.promoUrl:
+        overlay = overlay.copyWith(promoCheckoutUrl: text.isEmpty ? null : text);
       case CatalogLaunchField.salesStart:
         final parsed = CoursesSheetParser.parseDateTime(text);
         if (parsed == null) {

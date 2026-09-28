@@ -457,7 +457,7 @@ void main() {
     harness.course.ensureUser(userId: 12, now: DateTime.utc(2026, 1, 1));
     harness.course.setFunnelPhase(userId: 12, phase: FunnelPhase.depositPaid);
 
-    final ids = harness.course.listBroadcastUserIds(segment: BroadcastSegment.guideNotPaid);
+    final ids = harness.course.listBroadcastUserIds(segment: BroadcastSegment.magnet);
     expect(ids, contains(10));
     expect(ids, isNot(contains(11)));
     expect(ids, isNot(contains(12)));
@@ -571,6 +571,48 @@ void main() {
       isFalse,
     );
     expect(harness.sender.messages.any((m) => m.text.contains('Человеку написал')), isFalse);
+  });
+
+  test('admin promo-paid status records the special price and sends the invite', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 99, userId: 99, text: '/start ig_reels_guide', username: 'lead'),
+    );
+    expect(
+      _inlineButtonTexts(MessageTemplates().adminStatusKeyboard(99, AdminPaymentStatus.unpaid)),
+      contains(MessageTemplates.buttonAdminStatusPromoPaid),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'sp',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.adminStatusSetData(AdminPaymentStatus.promoPaid, 99),
+      ),
+    );
+    final launch = harness.course.activeLaunch()!;
+    final order = harness.course.latestOrder(99, launchId: launch.id)!;
+    expect(order.status, OrderStatus.paid);
+    expect(order.priceFullKopecks, launch.pricePromoKopecks);
+    expect(harness.course.getUser(99)?.funnelPhase.hasAccess, isTrue);
+    expect(harness.channel.created, hasLength(1));
+    expect(
+      harness.sender.messages.any((m) => m.chatId == 99 && m.text.contains('Успешная оплата')),
+      isTrue,
+    );
+    expect(
+      harness.sender.messages.any(
+        (m) => m.chatId == 1 && m.text.contains('Спеццена проставлена вручную'),
+      ),
+      isTrue,
+    );
+    expect(
+      _inlineButtonTexts(MessageTemplates().adminStatusKeyboard(99, AdminPaymentStatus.promoPaid)),
+      isNot(contains(MessageTemplates.buttonAdminStatusPromoPaid)),
+    );
+    expect(
+      MessageTemplates.adminStatusSetData(AdminPaymentStatus.promoPaid, 99).length,
+      lessThan(64),
+    );
   });
 
   test('admin remove after paid revokes invite and kicks from the channel', () async {

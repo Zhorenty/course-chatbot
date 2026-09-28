@@ -18,6 +18,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required int channelId,
     DateTime? depositDueAt,
     String? webinarUrl,
+    String? promoCheckoutUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
     String? description,
@@ -45,9 +46,9 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       INSERT INTO launches (
         product_id, code, title, channel_id, price_full_kopecks, price_promo_kopecks,
         deposit_kopecks, deposit_due_days, deposit_due_at, course_start_at,
-        webinar_at, webinar_url, sales_start_at, sales_end_at,
+        webinar_at, webinar_url, promo_checkout_url, sales_start_at, sales_end_at,
         lead_magnet_file_id, lead_magnet_url, description, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title,
         channel_id = excluded.channel_id,
@@ -59,6 +60,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         course_start_at = excluded.course_start_at,
         webinar_at = excluded.webinar_at,
         webinar_url = excluded.webinar_url,
+        promo_checkout_url = excluded.promo_checkout_url,
         sales_start_at = excluded.sales_start_at,
         sales_end_at = excluded.sales_end_at,
         lead_magnet_file_id = COALESCE(excluded.lead_magnet_file_id, launches.lead_magnet_file_id),
@@ -78,6 +80,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         courseStartAt.toUtc().toIso8601String(),
         webinarAt.toUtc().toIso8601String(),
         webinarUrl,
+        (promoCheckoutUrl?.trim().isEmpty ?? true) ? null : promoCheckoutUrl!.trim(),
         salesStartAt.toUtc().toIso8601String(),
         salesEndAt.toUtc().toIso8601String(),
         leadMagnetFileId,
@@ -109,6 +112,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     required int channelId,
     DateTime? depositDueAt,
     String? webinarUrl,
+    String? promoCheckoutUrl,
     String? leadMagnetFileId,
     String? leadMagnetUrl,
     String? description,
@@ -126,6 +130,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: webinarUrl,
+      promoCheckoutUrl: promoCheckoutUrl,
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       channelId: channelId,
@@ -419,6 +424,80 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
       launchId,
       slot.canonical,
     ]);
+  }
+
+  /// Brings copy seeded from older defaults up to date; admin-edited slots stay as they are.
+  void _migrateSeededLaunchCopy() {
+    const oldPostNames = <String>['post_1.jpg', 'post_2.jpg'];
+    for (final slot in <LaunchCopySlotKey>[
+      LaunchCopySlotKey.afterWebinar,
+      LaunchCopySlotKey.salesOpen,
+    ]) {
+      final fresh = FunnelMedia.pathsFor(slot.funnelMediaKey ?? '');
+      if (fresh.length <= oldPostNames.length) {
+        continue;
+      }
+      for (final row in _db.select(
+        'SELECT launch_id, payload FROM launch_copy_slots WHERE slot_key = ?;',
+        <Object?>[slot.canonical],
+      )) {
+        final stored = _decodeStoredCopy(row['payload']);
+        if (stored == null || stored.media.length != oldPostNames.length) {
+          continue;
+        }
+        var seeded = true;
+        for (var i = 0; i < oldPostNames.length; i++) {
+          final path = stored.media[i].localPath ?? '';
+          if (!path.endsWith('/${oldPostNames[i]}')) {
+            seeded = false;
+          }
+        }
+        if (!seeded) {
+          continue;
+        }
+        final updated = storedCopyFromHtml(stored.captionHtml ?? '', photoPaths: fresh);
+        _writeCopySlotPayload(row['launch_id'] as int, slot, updated);
+      }
+    }
+    const oldPromoLine = 'После полной оплаты придет ссылка на канал курса.';
+    const newPromoLine = 'После оплаты с тобой свяжется администратор и пригласит тебя в группу.';
+    for (final row in _db.select(
+      'SELECT launch_id, payload FROM launch_copy_slots WHERE slot_key = ?;',
+      <Object?>[LaunchCopySlotKey.enrollPromo.canonical],
+    )) {
+      final stored = _decodeStoredCopy(row['payload']);
+      final html = stored?.html;
+      if (stored == null || html == null || !html.contains(oldPromoLine)) {
+        continue;
+      }
+      _writeCopySlotPayload(
+        row['launch_id'] as int,
+        LaunchCopySlotKey.enrollPromo,
+        StoredTelegramMessage(
+          kind: stored.kind,
+          html: html.replaceAll(oldPromoLine, newPromoLine),
+          media: stored.media,
+        ),
+      );
+    }
+  }
+
+  StoredTelegramMessage? _decodeStoredCopy(Object? raw) {
+    if (raw is! String) {
+      return null;
+    }
+    try {
+      return StoredTelegramMessage.fromJson(jsonDecode(raw));
+    } on FormatException {
+      return null;
+    }
+  }
+
+  void _writeCopySlotPayload(int launchId, LaunchCopySlotKey slot, StoredTelegramMessage payload) {
+    _db.execute(
+      'UPDATE launch_copy_slots SET payload = ? WHERE launch_id = ? AND slot_key = ?;',
+      <Object?>[jsonEncode(payload.toJson()), launchId, slot.canonical],
+    );
   }
 
   @override

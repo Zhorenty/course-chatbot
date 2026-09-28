@@ -71,6 +71,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
         },
       ]);
     }
+    if (quote.promoOffer) {
+      return inlineKeyboard(<List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonPayFullPromo,
+            'url': launch.resolvedPromoCheckoutUrl,
+            'style': 'primary',
+          },
+        ],
+      ]);
+    }
     if (!quote.checkoutOpen) {
       final liveUrl = launch.resolvedWebinarUrl;
       if (quote.rsvp && webinarStarted && liveUrl != null) {
@@ -88,9 +99,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
         'style': 'primary',
       },
     ]);
-    final showDeposit =
-        !quote.promoPriceApplies && launch.hasDepositOptionFor(quote.payableKopecks);
-    if (showDeposit) {
+    if (launch.hasDepositOptionFor(quote.payableKopecks)) {
       rows.add(<Map<String, Object?>>[
         <String, Object?>{
           'text': payDepositButtonLabel(launch.depositKopecks),

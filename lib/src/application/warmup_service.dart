@@ -68,7 +68,7 @@ final class WarmupService {
           step: step,
           steps: steps,
           now: now,
-          anchor: launch == null ? null : LaunchSales.salesOpenAt(launch),
+          anchor: launch == null ? null : LaunchSales.regularSalesAt(launch),
           sameAnchor: WarmupAnchor.salesStart,
         ),
         WarmupAnchor.regularSales => _afterAnchorDue(
@@ -125,15 +125,13 @@ final class WarmupService {
         return false;
       }
       final quote = LaunchSales.quote(launch, rsvp: candidate.webinarRsvp, now: now);
-      if (!quote.checkoutOpen) {
+      if (!quote.canBuy) {
         return false;
       }
-      if (step.anchor == WarmupAnchor.regularSales && step.delay == Duration.zero) {
-        final open = LaunchSales.salesOpenAt(launch);
-        final regular = LaunchSales.regularSalesAt(launch);
-        if (!regular.isAfter(open)) {
-          return false;
-        }
+      if (step.anchor == WarmupAnchor.regularSales &&
+          step.delay == Duration.zero &&
+          !LaunchSales.hasPromoWindow(launch)) {
+        return false;
       }
     }
     return switch (step.anchor) {

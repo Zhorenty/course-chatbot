@@ -57,8 +57,8 @@ void main() {
     expect(CoursesSheet.isDescriptionHeader('Описание'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим'), isTrue);
     expect(CoursesSheet.isDozhimHeader('Дожим 2'), isTrue);
-    expect(CoursesSheet.headers.indexOf(CoursesSheet.description), 26);
-    expect(CoursesSheet.headers.indexOf(CoursesSheet.dozhim), 34);
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.description), 27);
+    expect(CoursesSheet.headers.indexOf(CoursesSheet.dozhim), 35);
     expect(CoursesSheet.headers.last, CoursesSheet.status);
     expect(CoursesSheet.presenceColumnCount, LaunchCopySlotKey.values.length + 1);
     expect(
@@ -189,6 +189,7 @@ void main() {
         'да',
         18000,
         15000,
+        '',
         5000,
         '12.10.2026',
         '29.09.2026 19:00',
@@ -203,6 +204,23 @@ void main() {
     expect(parsed.active!.depositDueAt, DateTime.utc(2026, 10, 5, 20, 59, 59));
     expect(parsed.active!.courseStartAt, DateTime.utc(2026, 10, 12));
     expect(parsed.active!.channelId, _seedChannelId);
+  });
+
+  test('promo checkout link column parses and defaults to LeadPay', () {
+    final seeded = CoursesSheetParser.parse(<List<Object?>>[
+      CoursesSheet.headers,
+      CoursesSheet.seedDataRow(channelId: _seedChannelId),
+    ]);
+    expect(seeded.active!.promoCheckoutUrl, LaunchPrices.defaultPromoCheckoutUrl);
+    final custom = CoursesSheet.seedDataRow(channelId: _seedChannelId)
+      ..[CoursesSheet.headers.indexOf(CoursesSheet.promoCheckoutUrl)] = 'https://pay.example/promo';
+    final parsed = CoursesSheetParser.parse(<List<Object?>>[CoursesSheet.displayHeaders, custom]);
+    expect(parsed.active!.promoCheckoutUrl, 'https://pay.example/promo');
+    expect(
+      CoursesSheet.headers.indexOf(CoursesSheet.promoCheckoutUrl),
+      CoursesSheet.headers.indexOf(CoursesSheet.pricePromoRub) + 1,
+    );
+    expect(CoursesSheet.displayHeaders, contains('Ссылка на спеццену'));
   });
 
   test('webinar datetime parses Moscow wall time and date-only 19:00', () {
@@ -280,6 +298,7 @@ void main() {
           CoursesSheet.activeYes,
           CoursesSheet.seedPriceFullRub,
           '',
+          '',
           CoursesSheet.seedDepositRub,
           CoursesSheet.seedCourseStartDate,
           CoursesSheet.seedWebinarAt,
@@ -314,7 +333,7 @@ void main() {
     expect(formula, contains('нет конца продаж'));
     expect(formula, contains('нет канала'));
     expect(formula, isNot(contains('.env')));
-    expect(CoursesSheet.headerNotes[8], contains('Выбери в календаре'));
+    expect(CoursesSheet.headerNotes[9], contains('Выбери в календаре'));
     expect(CoursesSheet.headerNotes.last, contains('пустая'));
     expect(CoursesSheet.displayHeaders, isNot(contains('Файл гайда')));
     expect(CoursesSheet.displayHeaders, isNot(contains('Доплата до')));
@@ -503,6 +522,7 @@ void main() {
           '1',
           18000,
           15000,
+          '',
           5000,
           '2026-10-12',
           '29.09.2026 19:00',

@@ -594,6 +594,7 @@ final class GoogleSheetsCatalogSync {
         courseStartAt: applied.courseStartAt,
         webinarAt: applied.webinarAt,
         webinarUrl: applied.webinarUrl,
+        promoCheckoutUrl: applied.promoCheckoutUrl,
         salesStartAt: applied.salesStartAt,
         salesEndAt: applied.salesEndAt,
         channelId: applied.channelId,

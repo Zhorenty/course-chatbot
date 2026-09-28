@@ -1,5 +1,4 @@
 import 'package:course_chatbot/src/data/course_repository.dart';
-import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/jobs/claimed_outbound.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/telegram_api_exception.dart';
@@ -25,29 +24,17 @@ final class BroadcastService {
   List<int> listRecipients({
     required Iterable<BroadcastSegment> segments,
     bool excludeOptOut = false,
-    Set<String>? courseEntrySources,
   }) {
-    final sources = courseEntrySources ?? AcquisitionSource.coursePayloads;
     final ids = <int>{};
     for (final segment in BroadcastSegment.ordered(segments)) {
-      ids.addAll(
-        _course.listBroadcastUserIds(
-          segment: segment,
-          excludeOptOut: excludeOptOut,
-          courseEntrySources: sources,
-        ),
-      );
+      ids.addAll(_course.listBroadcastUserIds(segment: segment, excludeOptOut: excludeOptOut));
     }
     return (ids.toList()..sort());
   }
 
-  int countOptOut({required Iterable<BroadcastSegment> segments, Set<String>? courseEntrySources}) {
-    return listRecipients(segments: segments, courseEntrySources: courseEntrySources).length -
-        listRecipients(
-          segments: segments,
-          excludeOptOut: true,
-          courseEntrySources: courseEntrySources,
-        ).length;
+  int countOptOut({required Iterable<BroadcastSegment> segments}) {
+    return listRecipients(segments: segments).length -
+        listRecipients(segments: segments, excludeOptOut: true).length;
   }
 
   Future<BroadcastResult> send({
@@ -55,13 +42,8 @@ final class BroadcastService {
     required int fromChatId,
     required int messageId,
     bool excludeOptOut = false,
-    Set<String>? courseEntrySources,
   }) async {
-    final userIds = listRecipients(
-      segments: segments,
-      excludeOptOut: excludeOptOut,
-      courseEntrySources: courseEntrySources,
-    );
+    final userIds = listRecipients(segments: segments, excludeOptOut: excludeOptOut);
     var sent = 0;
     var failed = 0;
     for (var i = 0; i < userIds.length; i++) {

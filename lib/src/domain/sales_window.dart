@@ -1,7 +1,11 @@
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 
-/// Sales calendar for one launch. Promo is 3 days from the webinar instant.
+/// Sales calendar for one launch.
+///
+/// Promo is 3 days from the webinar instant. During promo the bot kassa stays
+/// closed for everyone: RSVP get the special price via an external checkout
+/// link, the rest wait. Full / deposit via the bot kassa open after promo.
 enum SalesPhase { preSales, promo, regular, closed }
 
 final class LaunchSales {
@@ -42,6 +46,9 @@ final class LaunchSales {
     if (!nowUtc.isBefore(launch.webinarAt.toUtc()) && nowUtc.isBefore(promoEnd)) {
       return SalesPhase.promo;
     }
+    if (nowUtc.isBefore(promoEnd)) {
+      return SalesPhase.preSales;
+    }
     return SalesPhase.regular;
   }
 
@@ -49,6 +56,7 @@ final class LaunchSales {
     return launch.webinarAt.toUtc().add(promoDuration);
   }
 
+  /// When the bot kassa opens: 3 days after the webinar, or later «Старт продаж».
   static DateTime regularSalesAt(Launch launch) {
     final open = salesOpenAt(launch);
     final promoEnd = promoEndsAt(launch);
@@ -56,6 +64,11 @@ final class LaunchSales {
       return open;
     }
     return promoEnd;
+  }
+
+  /// True when RSVP get a special-price window before the bot kassa opens.
+  static bool hasPromoWindow(Launch launch) {
+    return regularSalesAt(launch).isAfter(salesOpenAt(launch));
   }
 
   static bool rsvpOpen(Launch launch, DateTime now) {
@@ -92,14 +105,16 @@ final class SalesQuote {
   final DateTime salesEndAt;
   final DateTime courseStartAt;
 
-  bool get checkoutOpen => switch (phase) {
-    SalesPhase.preSales || SalesPhase.closed => false,
-    SalesPhase.promo || SalesPhase.regular => true,
-  };
+  /// Bot kassa (full / deposit). Closed during promo for everyone.
+  bool get checkoutOpen => phase == SalesPhase.regular;
 
-  bool get promoPriceApplies => phase == SalesPhase.promo && rsvp;
+  /// RSVP during promo: special price via the external checkout link.
+  bool get promoOffer => phase == SalesPhase.promo && rsvp;
 
-  int get payableKopecks => promoPriceApplies ? pricePromoKopecks : priceFullKopecks;
+  /// This person can buy right now, in the bot or via the promo link.
+  bool get canBuy => checkoutOpen || promoOffer;
+
+  int get payableKopecks => priceFullKopecks;
 
   DateTime get moscowDayStartOfSalesEnd => MoscowTime.dayStartUtc(salesEndAt);
 }

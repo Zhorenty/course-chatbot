@@ -490,7 +490,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
 
   bool _clientHadCourseSeat({required int userId, required Launch launch}) {
     final status = _checkout.currentAdminStatus(userId: userId, launch: launch);
-    if (status == AdminPaymentStatus.paid || status == AdminPaymentStatus.deposit) {
+    if (status.isFullyPaid || status == AdminPaymentStatus.deposit) {
       return true;
     }
     final access = _course.accessFor(userId: userId, launchId: launch.id);
@@ -782,18 +782,11 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
   }
 
   Map<BroadcastSegment, int> _broadcastCounts({bool excludeOptOut = false}) {
-    final sources = _funnel.links.courseEntryPayloads;
     return <BroadcastSegment, int>{
       for (final segment in BroadcastSegment.values)
-        segment: _course.countBroadcastUsers(
-          segment: segment,
-          excludeOptOut: excludeOptOut,
-          courseEntrySources: sources,
-        ),
+        segment: _course.countBroadcastUsers(segment: segment, excludeOptOut: excludeOptOut),
     };
   }
-
-  Set<String> get _broadcastCourseEntrySources => _funnel.links.courseEntryPayloads;
 
   Future<bool> _presentBroadcastPicker(
     PrivateMessageContext context, {
@@ -810,9 +803,7 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
         const PrivateFlowState(step: PrivateFlowStep.adminBroadcastSegment);
     final counts = _broadcastCounts();
     final selected = flow.broadcastSegments;
-    final recipientCount = _broadcast
-        .listRecipients(segments: selected, courseEntrySources: _broadcastCourseEntrySources)
-        .length;
+    final recipientCount = _broadcast.listRecipients(segments: selected).length;
     final text = _templates.adminBroadcastPickSegment(
       counts,
       selected: selected,
@@ -972,35 +963,21 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       _templates.adminBroadcastPreview(
         segments: segments,
         recipientCount: _broadcast
-            .listRecipients(
-              segments: segments,
-              excludeOptOut: flow.broadcastExcludeOptOut,
-              courseEntrySources: _broadcastCourseEntrySources,
-            )
+            .listRecipients(segments: segments, excludeOptOut: flow.broadcastExcludeOptOut)
             .length,
         kind: kind,
         previewText: flow.broadcastPreviewText,
-        optOutCount: _broadcast.countOptOut(
-          segments: segments,
-          courseEntrySources: _broadcastCourseEntrySources,
-        ),
+        optOutCount: _broadcast.countOptOut(segments: segments),
         excludeOptOut: flow.broadcastExcludeOptOut,
       ),
       richHtml: _templates.adminBroadcastPreviewRich(
         segments: segments,
         recipientCount: _broadcast
-            .listRecipients(
-              segments: segments,
-              excludeOptOut: flow.broadcastExcludeOptOut,
-              courseEntrySources: _broadcastCourseEntrySources,
-            )
+            .listRecipients(segments: segments, excludeOptOut: flow.broadcastExcludeOptOut)
             .length,
         kind: kind,
         previewText: flow.broadcastPreviewText,
-        optOutCount: _broadcast.countOptOut(
-          segments: segments,
-          courseEntrySources: _broadcastCourseEntrySources,
-        ),
+        optOutCount: _broadcast.countOptOut(segments: segments),
         excludeOptOut: flow.broadcastExcludeOptOut,
       ),
       replyMarkup: _templates.broadcastConfirmKeyboard(excludeOptOut: flow.broadcastExcludeOptOut),
@@ -1062,7 +1039,6 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
       fromChatId: fromChatId,
       messageId: messageId,
       excludeOptOut: flow?.broadcastExcludeOptOut ?? false,
-      courseEntrySources: _broadcastCourseEntrySources,
     );
     return _send(
       context,

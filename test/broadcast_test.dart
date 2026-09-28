@@ -31,33 +31,30 @@ void main() {
     _seed(harness, 18, phase: FunnelPhase.warming, magnet: now, optOut: true);
     _seed(harness, 19, phase: FunnelPhase.magnetIssued, magnet: now);
 
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.allStarted), <int>[
-      10,
-      12,
-      13,
-      14,
-      18,
-      19,
-    ]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.leadNoGuide), <int>[12]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.guideNotPaid), <int>[
-      10,
-      18,
-      19,
-    ]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.checkoutOpen), <int>[13]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.depositPaid), <int>[14]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.paidAccess), <int>[
-      11,
-      15,
-    ]);
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.cancelled), <int>[16]);
-    harness.course.ensureUser(userId: 21, source: 'tg_announce', now: now);
-    expect(
-      harness.course.listBroadcastUserIds(segment: BroadcastSegment.courseLeadNoCheckout),
-      <int>[21],
+    harness.course.setWebinarRsvp(
+      userId: 19,
+      launchId: harness.course.activeLaunch()!.id,
+      now: now,
     );
-    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.leadNoGuide), <int>[12]);
+
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.started),
+      containsAll(<int>[10, 11, 12, 13, 14, 15, 16, 18, 19]),
+    );
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.webinarRsvp), <int>[19]);
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.magnet), <int>[
+      10,
+      18,
+      19,
+    ]);
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.checkout), <int>[13]);
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.deposit), <int>[14]);
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.paid), <int>[11, 15]);
+    expect(harness.course.listBroadcastUserIds(segment: BroadcastSegment.cancelled), <int>[16]);
+    expect(
+      harness.course.listBroadcastUserIds(segment: BroadcastSegment.magnet, excludeOptOut: true),
+      <int>[10, 19],
+    );
 
     for (final segment in BroadcastSegment.values) {
       expect(
@@ -79,12 +76,13 @@ void main() {
 
     final picker = harness.sender.messages.last;
     expect(picker.text, contains('Кому отправить? Можно несколько сегментов'));
-    expect(picker.text, contains('Гайд есть, без записи — 1'));
-    expect(picker.text, contains('Оплатили / доступ — 1'));
-    expect(picker.text, contains('Воронка без оплативших — '));
+    expect(picker.text, contains('Получили гайд — 1'));
+    expect(picker.text, contains('Оплатили курс — 1'));
+    expect(picker.text, contains('Все в потоке — '));
+    expect(picker.text, contains('Мастер-класс — 0'));
     final buttons = _inlineButtonTexts(picker.replyMarkup);
-    expect(buttons, contains('Гайд есть, без записи (1)'));
-    expect(buttons, contains('Оплатили / доступ (1)'));
+    expect(buttons, contains('Получили гайд (1)'));
+    expect(buttons, contains('Оплатили курс (1)'));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastCancel));
     expect(buttons, contains(MessageTemplates.buttonAdminBroadcastSelectAll));
     expect(buttons, isNot(contains(MessageTemplates.buttonAdminBroadcastContinue)));
@@ -99,7 +97,7 @@ void main() {
   test('preview copies to admin and does not copy to recipients yet', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _openBroadcast(harness);
-    await _pickSegment(harness, BroadcastSegment.guideNotPaid);
+    await _pickSegment(harness, BroadcastSegment.magnet);
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Привет поток', messageId: 41),
     );
@@ -111,7 +109,7 @@ void main() {
     expect(harness.sender.copies.any((c) => c.chatId == 10), isFalse);
     final preview = harness.sender.messages.last;
     expect(preview.text, contains('Превью'));
-    expect(preview.text, contains('Гайд есть, без записи'));
+    expect(preview.text, contains('Получили гайд'));
     expect(preview.text, contains('Получателей'));
     expect(preview.text, contains('1'));
     expect(preview.text, contains('текст'));
@@ -129,7 +127,7 @@ void main() {
     _seed(harness, 11, phase: FunnelPhase.accessGranted);
     await _draftBroadcast(
       harness,
-      BroadcastSegment.guideNotPaid,
+      BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Только гайд', messageId: 42),
     );
     await _confirmBroadcast(harness);
@@ -147,7 +145,7 @@ void main() {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _draftBroadcast(
       harness,
-      BroadcastSegment.guideNotPaid,
+      BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Не слать', messageId: 43),
     );
     await harness.handlers.handle(
@@ -168,7 +166,7 @@ void main() {
     _seed(harness, 11, phase: FunnelPhase.accessGranted);
     await _draftBroadcast(
       harness,
-      BroadcastSegment.guideNotPaid,
+      BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Тот же черновик', messageId: 44),
     );
     await harness.handlers.handle(
@@ -179,10 +177,10 @@ void main() {
         data: MessageTemplates.cbBroadcastOtherSegment,
       ),
     );
-    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
-    await _pickSegment(harness, BroadcastSegment.paidAccess);
+    await _toggleSegment(harness, BroadcastSegment.magnet);
+    await _pickSegment(harness, BroadcastSegment.paid);
     expect(harness.sender.copies.last.messageId, 44);
-    expect(harness.sender.messages.last.text, contains('Оплатили / доступ'));
+    expect(harness.sender.messages.last.text, contains('Оплатили курс'));
     expect(harness.sender.messages.last.text, contains('Получателей'));
     expect(harness.sender.messages.last.text, contains('1'));
     await _confirmBroadcast(harness);
@@ -196,7 +194,7 @@ void main() {
 
   test('photo document and video in broadcast do not save the guide', () async {
     await _openBroadcast(harness);
-    await _pickSegment(harness, BroadcastSegment.allStarted);
+    await _pickSegment(harness, BroadcastSegment.started);
 
     await harness.handlers.handle(privatePhotoUpdate(chatId: 1, userId: 1, caption: 'фото'));
     expect(harness.course.activeLaunch()?.leadMagnetFileId, 'file-guide');
@@ -242,7 +240,7 @@ void main() {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _draftBroadcast(
       harness,
-      BroadcastSegment.guideNotPaid,
+      BroadcastSegment.magnet,
       privatePhotoUpdate(chatId: 1, userId: 1, caption: 'Подпись к фото', messageId: 61),
     );
     expect(harness.sender.messages.last.text, contains('Подпись к фото'));
@@ -257,7 +255,7 @@ void main() {
   test('album is rejected and nobody is sent the broadcast', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _openBroadcast(harness);
-    await _pickSegment(harness, BroadcastSegment.guideNotPaid);
+    await _pickSegment(harness, BroadcastSegment.magnet);
     await harness.handlers.handle(
       privatePhotoUpdate(chatId: 1, userId: 1, mediaGroupId: 'grp-1', caption: 'альбом'),
     );
@@ -270,7 +268,7 @@ void main() {
 
   test('empty message without attachment is rejected', () async {
     await _openBroadcast(harness);
-    await _pickSegment(harness, BroadcastSegment.allStarted);
+    await _pickSegment(harness, BroadcastSegment.started);
     await harness.handlers.handle(privateEmptyMessageUpdate(chatId: 1, userId: 1));
     expect(harness.sender.messages.last.text, contains('Пришли текст, фото, файл'));
     expect(harness.sender.copies, isEmpty);
@@ -284,7 +282,7 @@ void main() {
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastOtherSegment));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastCancel));
     expect(texts, contains(MessageTemplates.buttonAdminBroadcastSkipOptOut));
-    expect(texts.join(), isNot(contains('Гайд есть, без записи')));
+    expect(texts.join(), isNot(contains('Получили гайд')));
     expect(data, contains(MessageTemplates.cbBroadcastSend));
     expect(data, contains(MessageTemplates.cbBroadcastOtherSegment));
     expect(data, contains(MessageTemplates.cbBroadcastToggleOptOut));
@@ -295,7 +293,7 @@ void main() {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _draftBroadcast(
       harness,
-      BroadcastSegment.guideNotPaid,
+      BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'первый', messageId: 71),
     );
     await harness.handlers.handle(
@@ -324,24 +322,24 @@ void main() {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     _seed(harness, 11, phase: FunnelPhase.accessGranted);
     await _openBroadcast(harness);
-    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
+    await _toggleSegment(harness, BroadcastSegment.magnet);
 
     final afterFirst = harness.sender.messages.last;
-    expect(afterFirst.text, contains('✓ Гайд есть, без записи — 1'));
-    expect(afterFirst.text, contains('Выбрано: Гайд есть, без записи'));
+    expect(afterFirst.text, contains('✓ Получили гайд — 1'));
+    expect(afterFirst.text, contains('Выбрано: Получили гайд'));
     expect(afterFirst.text, contains('Получателей: 1'));
-    expect(_inlineButtonTexts(afterFirst.replyMarkup), contains('✓ Гайд есть, без записи (1)'));
+    expect(_inlineButtonTexts(afterFirst.replyMarkup), contains('✓ Получили гайд (1)'));
     expect(
       _inlineButtonTexts(afterFirst.replyMarkup),
       contains(MessageTemplates.buttonAdminBroadcastContinue),
     );
     expect(harness.sender.copies, isEmpty);
 
-    await _toggleSegment(harness, BroadcastSegment.paidAccess);
+    await _toggleSegment(harness, BroadcastSegment.paid);
     final afterSecond = harness.sender.messages.last;
-    expect(afterSecond.text, contains('Выбрано: Гайд есть, без записи, Оплатили / доступ'));
+    expect(afterSecond.text, contains('Выбрано: Оплатили курс, Получили гайд'));
     expect(afterSecond.text, contains('Получателей: 2'));
-    expect(_inlineButtonTexts(afterSecond.replyMarkup), contains('✓ Оплатили / доступ (1)'));
+    expect(_inlineButtonTexts(afterSecond.replyMarkup), contains('✓ Оплатили курс (1)'));
 
     await _confirmSegments(harness);
     await harness.handlers.handle(
@@ -364,14 +362,14 @@ void main() {
 
     final afterAll = harness.sender.messages.last;
     expect(afterAll.text, contains('Выбрано: все сегменты'));
-    expect(afterAll.text, contains('✓ Гайд есть, без записи — 1'));
-    expect(afterAll.text, contains('✓ Оплатили / доступ — 1'));
+    expect(afterAll.text, contains('✓ Получили гайд — 1'));
+    expect(afterAll.text, contains('✓ Оплатили курс — 1'));
     expect(afterAll.text, contains('Получателей: 3'));
     final afterAllButtons = _inlineButtonTexts(afterAll.replyMarkup);
     expect(afterAllButtons, contains(MessageTemplates.buttonAdminBroadcastClearAll));
     expect(afterAllButtons, contains(MessageTemplates.buttonAdminBroadcastContinue));
-    expect(afterAllButtons, contains('✓ Гайд есть, без записи (1)'));
-    expect(afterAllButtons, contains('✓ Оплатили / доступ (1)'));
+    expect(afterAllButtons, contains('✓ Получили гайд (1)'));
+    expect(afterAllButtons, contains('✓ Оплатили курс (1)'));
 
     await _toggleAllSegments(harness);
     final afterClear = harness.sender.messages.last;
@@ -401,8 +399,8 @@ void main() {
   test('overlapping segments are copied once', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _openBroadcast(harness);
-    await _toggleSegment(harness, BroadcastSegment.allStarted);
-    await _toggleSegment(harness, BroadcastSegment.guideNotPaid);
+    await _toggleSegment(harness, BroadcastSegment.started);
+    await _toggleSegment(harness, BroadcastSegment.magnet);
     await _confirmSegments(harness);
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Без дубля', messageId: 82),

@@ -93,20 +93,23 @@ void main() {
     expect(AdminPaymentStatus.cancelled.canRemoveFromCourse(inChannel: true), isTrue);
   });
 
-  test('broadcast segment codes are short and parse back', () {
-    expect(BroadcastSegment.guideNotPaid.code, 'g');
-    expect(BroadcastSegment.fromCode('a'), BroadcastSegment.allStarted);
-    expect(BroadcastSegment.fromCode('l'), BroadcastSegment.leadNoGuide);
-    expect(BroadcastSegment.fromCode('n'), BroadcastSegment.paidNotJoined);
-    expect(BroadcastSegment.fromCode('k'), BroadcastSegment.courseLeadNoCheckout);
-    expect(BroadcastSegment.fromCode('nope'), isNull);
-    expect(MessageTemplates.segmentFromCallback('bs:p'), BroadcastSegment.paidAccess);
+  test('broadcast segments mirror the participant list', () {
     expect(
-      BroadcastSegment.ordered({BroadcastSegment.paidAccess, BroadcastSegment.guideNotPaid}),
-      <BroadcastSegment>[BroadcastSegment.guideNotPaid, BroadcastSegment.paidAccess],
+      BroadcastSegment.values.map((segment) => segment.participantSegment).toList(),
+      ParticipantListSegment.values,
+    );
+    for (final segment in BroadcastSegment.values) {
+      expect(segment.code, segment.participantSegment.code);
+      expect(BroadcastSegment.fromCode(segment.code), segment);
+    }
+    expect(BroadcastSegment.fromCode('nope'), isNull);
+    expect(MessageTemplates.segmentFromCallback('bs:p'), BroadcastSegment.paid);
+    expect(
+      BroadcastSegment.ordered({BroadcastSegment.magnet, BroadcastSegment.webinarRsvp}),
+      <BroadcastSegment>[BroadcastSegment.webinarRsvp, BroadcastSegment.magnet],
     );
     expect(BroadcastSegment.coversAll(BroadcastSegment.values), isTrue);
-    expect(BroadcastSegment.coversAll({BroadcastSegment.paidAccess}), isFalse);
+    expect(BroadcastSegment.coversAll({BroadcastSegment.paid}), isFalse);
   });
 
   test('participant list segment codes are short and parse back', () {
@@ -138,7 +141,7 @@ void main() {
     expect(FunnelPhase.cancelled.canTransitionTo(FunnelPhase.paid), isTrue);
   });
 
-  test('promo price is 15000 for RSVP during three days after webinar', () {
+  test('three days after the webinar only RSVP get the outside promo link', () {
     final launch = testLaunch(
       priceFullKopecks: 1900000,
       pricePromoKopecks: 1500000,
@@ -147,15 +150,27 @@ void main() {
     );
     final during = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 6, 12));
     expect(during.phase, SalesPhase.promo);
-    expect(during.checkoutOpen, isTrue);
-    expect(during.payableKopecks, 1500000);
+    expect(during.promoOffer, isTrue);
+    expect(during.checkoutOpen, isFalse);
+    expect(during.canBuy, isTrue);
     final outsider = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 6, 12));
-    expect(outsider.checkoutOpen, isTrue);
-    expect(outsider.payableKopecks, 1900000);
+    expect(outsider.promoOffer, isFalse);
+    expect(outsider.checkoutOpen, isFalse);
+    expect(outsider.canBuy, isFalse);
+    expect(LaunchSales.regularSalesAt(launch), DateTime.utc(2026, 10, 8, 16));
+    expect(LaunchSales.hasPromoWindow(launch), isTrue);
     final regular = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 9, 12));
     expect(regular.phase, SalesPhase.regular);
+    expect(regular.promoOffer, isFalse);
     expect(regular.payableKopecks, 1900000);
     expect(regular.checkoutOpen, isTrue);
+    final regularOutsider = LaunchSales.quote(
+      launch,
+      rsvp: false,
+      now: DateTime.utc(2026, 10, 9, 12),
+    );
+    expect(regularOutsider.checkoutOpen, isTrue);
+    expect(regularOutsider.payableKopecks, 1900000);
   });
 
   test('sales stay closed until the stored sales start', () {
@@ -206,8 +221,8 @@ void main() {
     expect(duringLive.checkoutOpen, isFalse);
     final nextAfternoon = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 6, 12));
     expect(nextAfternoon.phase, SalesPhase.promo);
-    expect(nextAfternoon.checkoutOpen, isTrue);
-    expect(nextAfternoon.payableKopecks, 1500000);
+    expect(nextAfternoon.promoOffer, isTrue);
+    expect(nextAfternoon.checkoutOpen, isFalse);
   });
 
   test('parseRubStringToKopecks avoids binary float drift', () {

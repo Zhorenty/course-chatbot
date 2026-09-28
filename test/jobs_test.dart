@@ -550,6 +550,7 @@ void main() {
       priceFullKopecks: 1900000,
       depositKopecks: 500000,
       depositDueDays: 7,
+      webinarAt: DateTime.utc(2025, 12, 20, 16),
       salesStartAt: DateTime.utc(2026, 1, 2),
     );
     expect(
@@ -615,6 +616,7 @@ void main() {
         priceFullKopecks: 1900000,
         depositKopecks: 500000,
         depositDueDays: 7,
+        webinarAt: DateTime.utc(2026, 1, 1, 16),
         salesStartAt: DateTime.utc(2026, 1, 10, 12),
       );
       expect(
@@ -654,6 +656,7 @@ void main() {
         priceFullKopecks: 1900000,
         depositKopecks: 500000,
         depositDueDays: 7,
+        webinarAt: DateTime.utc(2026, 1, 1, 16),
         salesStartAt: DateTime.utc(2026, 1, 10, 12),
       );
       final afterSalesOpen = WarmupCandidate(

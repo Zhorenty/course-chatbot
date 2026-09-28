@@ -38,14 +38,12 @@ abstract interface class UserRepository {
   List<int> listBroadcastUserIds({
     required BroadcastSegment segment,
     bool excludeOptOut = false,
-    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
     int? launchId,
   });
 
   int countBroadcastUsers({
     required BroadcastSegment segment,
     bool excludeOptOut = false,
-    Set<String> courseEntrySources = AcquisitionSource.coursePayloads,
     int? launchId,
   });
 

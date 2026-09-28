@@ -10,12 +10,24 @@ abstract final class FunnelMedia {
   static const String paid = 'paid';
   static const String defaultRoot = 'assets/funnel';
 
+  static const List<String> _posts = <String>[
+    'post_1',
+    'post_2',
+    'post_3',
+    'post_4',
+    'post_5',
+    'post_6',
+    'post_7',
+    'post_8',
+    'post_9',
+  ];
+
   static const Map<String, List<String>> _stems = <String, List<String>>{
     start: <String>['welcome'],
     'warmup_0': <String>['masterclass'],
     'webinar_24h': <String>['masterclass'],
-    'webinar_next': <String>['post_1', 'post_2'],
-    'sales_open': <String>['post_1', 'post_2'],
+    'webinar_next': _posts,
+    'sales_open': _posts,
     paid: <String>['paid'],
     'dozhim_d1': <String>[
       'dozhim1_01',

@@ -79,13 +79,14 @@ mixin _SqliteOrdersStore on _SqliteCourseStore {
     _db.execute(
       '''
       UPDATE orders SET
-        status = ?, kind = ?, amount_paid_kopecks = ?, amount_due_kopecks = ?,
-        due_at = ?, paid_at = ?, cancelled_at = ?, access_granted = ?
+        status = ?, kind = ?, price_full_kopecks = ?, amount_paid_kopecks = ?,
+        amount_due_kopecks = ?, due_at = ?, paid_at = ?, cancelled_at = ?, access_granted = ?
       WHERE id = ?;
       ''',
       <Object?>[
         order.status.storageValue,
         order.kind.storageValue,
+        order.priceFullKopecks,
         order.amountPaidKopecks,
         order.amountDueKopecks,
         order.dueAt?.toUtc().toIso8601String(),

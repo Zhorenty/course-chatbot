@@ -27,7 +27,9 @@ import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/telegram_username.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/domain/warmup.dart';
+import 'package:course_chatbot/src/messages/funnel_media.dart';
 import 'package:course_chatbot/src/messages/launch_copy_defaults.dart';
+import 'package:course_chatbot/src/messages/stored_copy_media.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 part 'sqlite/sqlite_catalog_store.part.dart';
@@ -84,6 +86,7 @@ final class SqliteCourseRepository extends _SqliteCourseStore
     );
     backfillLaunchDefaults();
     seedActiveLaunchCopy();
+    _migrateSeededLaunchCopy();
   }
 
   @override
@@ -228,6 +231,7 @@ class _SqliteCourseStore {
       courseStartAt: courseStartAt,
       webinarAt: webinarAt,
       webinarUrl: row['webinar_url'] as String?,
+      promoCheckoutUrl: row['promo_checkout_url'] as String?,
       salesStartAt: salesStartAt,
       salesEndAt: salesEndAt,
       leadMagnetFileId: row['lead_magnet_file_id'] as String?,
