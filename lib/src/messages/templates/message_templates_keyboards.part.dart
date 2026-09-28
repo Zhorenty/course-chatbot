@@ -35,8 +35,6 @@ extension MessageTemplateKeyboards on MessageTemplates {
       ],
       <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonAdminReadiness},
-      ],
-      <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonAdminSheets},
       ],
       <Map<String, Object?>>[

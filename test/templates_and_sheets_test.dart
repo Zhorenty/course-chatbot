@@ -1030,6 +1030,12 @@ void main() {
     expect(text, contains('Предоплата: нет, сразу полная оплата'));
     expect(text, contains('Приветствие: шаблон'));
     expect(text, contains('Ссылка на спеццену: не указана, LeadPay'));
+    final leadPay = templates.adminCourseReadiness(
+      testLaunch(promoCheckoutUrl: LaunchPrices.defaultPromoCheckoutUrl),
+      dozhimCount: 0,
+    );
+    expect(leadPay, contains('Ссылка на спеццену: указана, LeadPay'));
+    expect(leadPay, isNot(contains('Ссылка на спеццену: не указана')));
 
     final ready = testLaunch(
       title: 'Ноябрь <b>',
@@ -1087,8 +1093,7 @@ void main() {
       ],
       <List<String>>[
         <String>[MessageTemplates.buttonAdminCatalog, MessageTemplates.buttonAdminLinks],
-        <String>[MessageTemplates.buttonAdminReadiness],
-        <String>[MessageTemplates.buttonAdminSheets],
+        <String>[MessageTemplates.buttonAdminReadiness, MessageTemplates.buttonAdminSheets],
         <String>[MessageTemplates.buttonAdminBack],
       ],
     );

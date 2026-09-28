@@ -137,8 +137,7 @@ extension MessageTemplatesAdminReadiness on MessageTemplates {
               '${due == null ? '' : ' · доплата до $due'}'
         : 'нет, сразу полная оплата';
     final promoRaw = launch.promoCheckoutUrl?.trim();
-    final promoCustom =
-        promoRaw != null && promoRaw.isNotEmpty && promoRaw != LaunchPrices.defaultPromoCheckoutUrl;
+    final promoCustom = promoRaw != null && promoRaw.isNotEmpty;
     return <_ReadinessRow>[
       (label: 'Название', valueHtml: escapeHtml(launch.title)),
       (label: 'Код', valueHtml: '<code>${escapeHtml(launch.code)}</code>'),
@@ -147,7 +146,7 @@ extension MessageTemplatesAdminReadiness on MessageTemplates {
       (label: 'Спеццена', valueHtml: escapeHtml(formatRubFromKopecks(launch.pricePromoKopecks))),
       (
         label: 'Ссылка на спеццену',
-        valueHtml: escapeHtml(promoCustom ? 'указана своя' : 'не указана, LeadPay'),
+        valueHtml: escapeHtml(_readinessPromoValue(promoRaw, custom: promoCustom)),
       ),
       (label: 'Предоплата', valueHtml: escapeHtml(deposit)),
       (label: 'Старт курса', valueHtml: escapeHtml(_formatDate(launch.courseStartAt) ?? '')),
@@ -161,6 +160,16 @@ extension MessageTemplatesAdminReadiness on MessageTemplates {
       (label: 'Канал', valueHtml: '<code>${launch.channelId}</code>'),
       (label: 'Гайд', valueHtml: escapeHtml(_readinessGuideValue(launch))),
     ];
+  }
+
+  String _readinessPromoValue(String? url, {required bool custom}) {
+    if (!custom || url == null || url.isEmpty) {
+      return 'не указана, LeadPay';
+    }
+    if (url == LaunchPrices.defaultPromoCheckoutUrl) {
+      return 'указана, LeadPay';
+    }
+    return 'указана своя';
   }
 
   bool _readinessHasGuide(Launch launch) {
