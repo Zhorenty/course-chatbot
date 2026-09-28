@@ -142,6 +142,35 @@ void main() {
     );
   });
 
+  test('admin course readiness lists fields and returns to the sheets hub', () async {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheetsHub),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminReadiness),
+    );
+    expect(harness.sender.messages.any((m) => m.text.contains('не подключ')), isTrue);
+
+    final sheets = HandlerHarness();
+    await sheets.init(adminUserIds: const <int>{1}, enableSheets: true);
+    addTearDown(sheets.dispose);
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheetsHub),
+    );
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminReadiness),
+    );
+    final report = sheets.sender.messages.lastWhere((m) => m.text.contains('Готовность ·'));
+    expect(report.text, contains('Ссылка на эфир'));
+    expect(report.text, contains('Письма:'));
+    expect(report.text, contains('Дожим:'));
+    await sheets.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminBack),
+    );
+    expect(sheets.sender.messages.last.text, contains('Управление курсами'));
+    expect(sheets.sender.messages.last.text, isNot(contains('Готовность ·')));
+  });
+
   test('admin sheets button says disabled when Sheets is off', () async {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: MessageTemplates.buttonAdminSheets),
@@ -298,6 +327,7 @@ void main() {
     expect(_replyButtonTexts(withKeyboard.replyMarkup), <String>[
       MessageTemplates.buttonAdminCatalog,
       MessageTemplates.buttonAdminLinks,
+      MessageTemplates.buttonAdminReadiness,
       MessageTemplates.buttonAdminSheets,
       MessageTemplates.buttonAdminBack,
     ]);

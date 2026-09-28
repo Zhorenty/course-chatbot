@@ -342,6 +342,12 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         MessageTemplates.idFromCallback(data, MessageTemplates.cbCatalogOpen),
       );
     }
+    if (data.startsWith(MessageTemplates.cbReadinessOpen)) {
+      return _showCourseReadiness(
+        context,
+        launchId: MessageTemplates.idFromCallback(data, MessageTemplates.cbReadinessOpen),
+      );
+    }
     if (data.startsWith(MessageTemplates.cbLinksDeleteYes)) {
       return _confirmLinksDelete(
         context,

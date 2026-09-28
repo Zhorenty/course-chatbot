@@ -1010,6 +1010,73 @@ void main() {
     expect(preview, contains('Колористика'));
   });
 
+  test('course readiness lists filled, empty and template fields', () {
+    final templates = MessageTemplates();
+    final empty = testLaunch(
+      title: 'Октябрь',
+      code: 'oct-26',
+      isActive: true,
+      webinarUrl: null,
+      leadMagnetFileId: null,
+      depositKopecks: 0,
+    );
+    final text = templates.adminCourseReadiness(empty, dozhimCount: 0);
+    expect(text, contains('Готовность · Октябрь'));
+    expect(text, contains('Не указано: ссылка на эфир, гайд.'));
+    expect(text, contains('Письма: все шаблон.'));
+    expect(text, contains('Дожим: не указаны, уйдёт встроенный.'));
+    expect(text, contains('Ссылка на эфир: не указано'));
+    expect(text, contains('Гайд: не указано'));
+    expect(text, contains('Предоплата: нет, сразу полная оплата'));
+    expect(text, contains('Приветствие: шаблон'));
+    expect(text, contains('Ссылка на спеццену: не указана, LeadPay'));
+
+    final ready = testLaunch(
+      title: 'Ноябрь <b>',
+      code: 'nov-26',
+      isActive: false,
+      webinarUrl: 'https://webinar.example',
+      leadMagnetFileId: 'file-1',
+      promoCheckoutUrl: 'https://pay.example',
+      depositKopecks: 500000,
+      copy: LaunchCopy(<LaunchCopySlotKey, StoredTelegramMessage>{
+        for (final slot in LaunchCopySlotKey.values)
+          if (slot.storesInCopyTable) slot: LaunchCopyDefaults.textSlot('своё'),
+      }),
+    );
+    final filled = templates.adminCourseReadiness(ready, dozhimCount: 2);
+    expect(filled, contains('Пустых полей нет.'));
+    expect(filled, contains('Письма: все свои.'));
+    expect(filled, contains('указаны, 2 дня'));
+    expect(filled, contains('Ссылка на эфир: указано'));
+    expect(filled, contains('Гайд: указан файл'));
+    expect(filled, contains('Ссылка на спеццену: указана своя'));
+    expect(filled, contains('Не активен.'));
+    expect(filled, contains('Ноябрь &lt;b&gt;'));
+    expect(filled, isNot(contains('Ноябрь <b>')));
+    final rich = templates.adminCourseReadinessRich(ready, dozhimCount: 2);
+    expect(rich, contains('<h2>'));
+    expect(rich, contains('Ноябрь &lt;b&gt;'));
+    expect(rich, contains('<code>nov-26</code>'));
+
+    final other = testLaunch(id: 2, code: 'dec-26', title: 'Декабрь', isActive: false);
+    final rows =
+        templates.adminCourseReadinessKeyboard(<Launch>[
+              ready,
+              other,
+            ], selectedId: ready.id)['inline_keyboard']
+            as List<dynamic>;
+    final data = <String>[
+      for (final row in rows)
+        for (final cell in row as List<dynamic>) (cell as Map)['callback_data'] as String,
+    ];
+    expect(data, <String>[
+      '${MessageTemplates.cbReadinessOpen}1',
+      '${MessageTemplates.cbReadinessOpen}2',
+    ]);
+    expect(data.every((item) => item.length <= 64), isTrue);
+  });
+
   test('admin sheets hub keyboard nests catalog, links and refresh', () {
     final templates = MessageTemplates();
     final rows = templates.adminSheetsHubKeyboard()['keyboard'] as List<dynamic>;
@@ -1020,6 +1087,7 @@ void main() {
       ],
       <List<String>>[
         <String>[MessageTemplates.buttonAdminCatalog, MessageTemplates.buttonAdminLinks],
+        <String>[MessageTemplates.buttonAdminReadiness],
         <String>[MessageTemplates.buttonAdminSheets],
         <String>[MessageTemplates.buttonAdminBack],
       ],

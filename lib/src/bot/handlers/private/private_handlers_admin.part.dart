@@ -55,6 +55,9 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (text == MessageTemplates.buttonAdminLinks || text == '/links') {
       return _openLinksFromMenu(context);
     }
+    if (text == MessageTemplates.buttonAdminReadiness) {
+      return _openCourseReadiness(context);
+    }
     if (_isBroadcastStep(flow?.step)) {
       return _captureBroadcastDraft(context);
     }
@@ -64,7 +67,8 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
     if (_isLinksStep(flow?.step)) {
       return _captureLinks(context);
     }
-    if (flow?.step == PrivateFlowStep.adminSheetsHub) {
+    if (flow?.step == PrivateFlowStep.adminSheetsHub ||
+        flow?.step == PrivateFlowStep.adminCourseReadiness) {
       await _deleteInboundMessage(context);
       return true;
     }
@@ -127,7 +131,77 @@ extension _PrivateHandlersAdmin on PrivateHandlers {
   }
 
   bool _isSheetsSection(PrivateFlowStep? step) {
-    return step == PrivateFlowStep.adminSheetsHub || _isCatalogStep(step) || _isLinksStep(step);
+    return step == PrivateFlowStep.adminSheetsHub ||
+        step == PrivateFlowStep.adminCourseReadiness ||
+        _isCatalogStep(step) ||
+        _isLinksStep(step);
+  }
+
+  Future<bool> _openCourseReadiness(PrivateMessageContext context) async {
+    await _deleteInboundMessage(context);
+    await _ensureSheetsHubPinned(context);
+    return _showCourseReadiness(context, refresh: true);
+  }
+
+  Future<bool> _showCourseReadiness(
+    PrivateMessageContext context, {
+    int? launchId,
+    bool refresh = false,
+  }) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId)) {
+      return false;
+    }
+    final admin = _catalogAdmin;
+    if (admin == null) {
+      _setCatalogFlow(context.userId!, PrivateFlowStep.adminCourseReadiness, clearDraft: true);
+      return _presentCatalog(context, _templates.adminSheetsDisabled());
+    }
+    String? notice;
+    if (refresh) {
+      _setCatalogFlow(context.userId!, PrivateFlowStep.adminCourseReadiness, clearDraft: true);
+      await _presentCatalog(context, _templates.adminCatalogRefreshing());
+      notice = await _refreshCatalogFromSheets();
+    }
+    _setCatalogFlow(context.userId!, PrivateFlowStep.adminCourseReadiness, clearDraft: true);
+    final launches = admin.listVisibleLaunches();
+    final launch = _readinessLaunch(launches, launchId);
+    if (launch == null) {
+      return _presentCatalog(
+        context,
+        _templates.adminCourseReadinessEmpty(notice: notice),
+        richHtml: _templates.adminCourseReadinessEmptyRich(notice: notice),
+      );
+    }
+    final dozhimCount = _course.listLaunchDozhim(launch.id).length;
+    return _presentCatalog(
+      context,
+      _templates.adminCourseReadiness(launch, dozhimCount: dozhimCount, notice: notice),
+      richHtml: _templates.adminCourseReadinessRich(
+        launch,
+        dozhimCount: dozhimCount,
+        notice: notice,
+      ),
+      replyMarkup: _templates.adminCourseReadinessKeyboard(launches, selectedId: launch.id),
+    );
+  }
+
+  Launch? _readinessLaunch(List<Launch> launches, int? launchId) {
+    if (launches.isEmpty) {
+      return null;
+    }
+    if (launchId != null) {
+      for (final launch in launches) {
+        if (launch.id == launchId) {
+          return launch;
+        }
+      }
+    }
+    for (final launch in launches) {
+      if (launch.isActive) {
+        return launch;
+      }
+    }
+    return launches.first;
   }
 
   Map<ParticipantListSegment, int> _peopleCounts() {

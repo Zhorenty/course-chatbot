@@ -236,13 +236,14 @@ extension MessageTemplatesRich on MessageTemplates {
     return '${richH2('Google Sheets')}'
         '${richP('«${escapeHtml(MessageTemplates.buttonAdminCatalog)}» — потоки на листе ${escapeHtml(CoursesSheet.tabTitle)}. '
         '«${escapeHtml(MessageTemplates.buttonAdminLinks)}» — метки на листе ${escapeHtml(LinksSheet.tabTitle)}. '
+        '«${escapeHtml(MessageTemplates.buttonAdminReadiness)}» — какие поля потока указаны, какие пустые, где шаблон. '
         'Письма ученика — лист ${escapeHtml(CopySheet.tabTitle)}, бот выгружает его один раз. '
         '«${escapeHtml(MessageTemplates.buttonAdminSheets)}» — перечитать таблицу и пересобрать воронку.')}';
   }
 
   String adminSheetsHubOpenedRich() {
     return '${richH2('Google Sheets')}'
-        '${richP('Курсы, диплинки, тексты и срез воронки. «${escapeHtml(MessageTemplates.buttonAdminBack)}» — выход в админку.')}';
+        '${richP('Курсы, диплинки, готовность, тексты и срез воронки. «${escapeHtml(MessageTemplates.buttonAdminBack)}» — выход в админку.')}';
   }
 
   String adminCatalogListRich(List<Launch> launches, {String? notice}) {

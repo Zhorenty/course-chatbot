@@ -34,12 +34,45 @@ extension MessageTemplateKeyboards on MessageTemplates {
         <String, Object?>{'text': MessageTemplates.buttonAdminLinks},
       ],
       <Map<String, Object?>>[
+        <String, Object?>{'text': MessageTemplates.buttonAdminReadiness},
+      ],
+      <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonAdminSheets},
       ],
       <Map<String, Object?>>[
         <String, Object?>{'text': MessageTemplates.buttonAdminBack},
       ],
     ]);
+  }
+
+  Map<String, Object?> adminCourseReadinessKeyboard(
+    List<Launch> launches, {
+    required int selectedId,
+  }) {
+    if (launches.length < 2) {
+      return adminCatalogClearInlineKeyboard();
+    }
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final launch in launches.take(12))
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': _readinessLaunchButton(launch, selected: launch.id == selectedId),
+            'callback_data': '${MessageTemplates.cbReadinessOpen}${launch.id}',
+          },
+        ],
+    ]);
+  }
+
+  String _readinessLaunchButton(Launch launch, {required bool selected}) {
+    final label = adminCatalogListButton(launch);
+    if (!selected) {
+      return label;
+    }
+    final marked = '✓ $label';
+    if (marked.length <= 64) {
+      return marked;
+    }
+    return '${marked.substring(0, 63)}…';
   }
 
   Map<String, Object?> helpKeyboard() {

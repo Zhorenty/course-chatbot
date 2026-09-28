@@ -34,6 +34,7 @@ enum PrivateFlowStep {
   adminCatalogDozhim,
   adminCatalogDozhimCompose,
   adminSheetsHub,
+  adminCourseReadiness,
   adminLinksMenu,
   adminLinksCreateOrigin,
   adminLinksCreateDestination,

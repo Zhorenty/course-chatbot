@@ -34,6 +34,7 @@ import 'package:intl/intl.dart';
 
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_admin_catalog.part.dart';
+part 'templates/message_templates_admin_readiness.part.dart';
 part 'templates/message_templates_admin_links.part.dart';
 part 'templates/message_templates_rich.part.dart';
 part 'templates/message_templates_course.part.dart';
@@ -97,6 +98,7 @@ final class MessageTemplates {
   static const String buttonAdminPeoplePrev = '←';
   static const String buttonAdminPeopleNext = '→';
   static const String buttonAdminLinks = '🔗 Управление диплинками';
+  static const String buttonAdminReadiness = '✅ Готовность курса';
   static const String buttonAdminSheets = '📊 Обновить Sheets';
   static const String buttonAdminBack = '↩️ Назад';
   static const String buttonAdminMenu = '🛠 Админка';
@@ -197,6 +199,7 @@ final class MessageTemplates {
   static const String cbAdminPeopleSeg = 'ps:';
   static const int adminPeoplePageSize = 8;
   static const int adminFunnelDigestListLimit = 40;
+  static const String cbReadinessOpen = 'rd:';
   static const String cbCatalogMenu = 'cm';
   static const String cbCatalogNew = 'cn';
   static const String cbCatalogOpen = 'cl:';
