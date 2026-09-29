@@ -173,7 +173,7 @@ final class WarmupService {
     if (webinar == null) {
       return false;
     }
-    final windowStart = MoscowTime.nextCalendarDayAtHourUtc(webinar, hour: 12);
+    final windowStart = MoscowTime.nextCalendarDayAtHourUtc(webinar, hour: 10);
     var windowEnd = windowStart.add(const Duration(days: 1));
     final cap = launch == null ? null : LaunchSales.regularSalesAt(launch);
     if (cap != null && cap.isBefore(windowEnd)) {

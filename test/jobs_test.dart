@@ -453,7 +453,7 @@ void main() {
     );
   });
 
-  test('webinar_next waits until 12:00 Moscow the day after the webinar', () {
+  test('webinar_next waits until 10:00 Moscow the day after the webinar', () {
     final warmup = WarmupService(
       course: harness.course,
       dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
@@ -481,7 +481,7 @@ void main() {
     expect(
       warmup.nextFor(
         listed,
-        DateTime.utc(2026, 10, 6, 8, 59),
+        DateTime.utc(2026, 10, 6, 6, 59),
         steps: WarmupStep.defaults,
         launch: launch,
       ),
@@ -489,7 +489,7 @@ void main() {
     );
     expect(
       warmup
-          .nextFor(listed, DateTime.utc(2026, 10, 6, 9), steps: WarmupStep.defaults, launch: launch)
+          .nextFor(listed, DateTime.utc(2026, 10, 6, 7), steps: WarmupStep.defaults, launch: launch)
           ?.stepKey,
       'webinar_next',
     );
