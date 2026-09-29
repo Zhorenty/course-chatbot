@@ -1357,6 +1357,39 @@ void main() {
       templates.adminPaidWithInviteRich(user: user, order: order, launch: launch),
       contains('Оплатил'),
     );
+    final tomorrow = templates.adminCourseLetterSent(
+      stepKey: 'webinar_24h',
+      recipientCount: 12,
+      launch: launch,
+    );
+    expect(tomorrow, contains('<b>МК завтра</b>'));
+    expect(tomorrow, contains('Письмо ушло: 12 человек'));
+    expect(tomorrow, contains('поток: Запуск'));
+    expect(
+      templates.adminCourseLetterSent(stepKey: 'webinar_10m', recipientCount: 2, launch: launch),
+      contains('<b>МК 10 минут</b>'),
+    );
+    expect(
+      templates.adminCourseLetterSent(stepKey: 'dozhim_d2', recipientCount: 3, launch: launch),
+      contains('Дожим · день 2'),
+    );
+    expect(
+      templates.adminCourseLetterSent(
+        stepKey: 'dozhim:9',
+        recipientCount: 1,
+        launch: launch,
+        dozhimDay: 4,
+      ),
+      contains('Дожим · день 4'),
+    );
+    expect(
+      templates.adminCourseLetterSentRich(
+        stepKey: 'webinar_24h',
+        recipientCount: 12,
+        launch: launch,
+      ),
+      contains('<h2>МК завтра</h2>'),
+    );
   });
 
   test('admin card dialog keeps one line per message and hides file ids', () {

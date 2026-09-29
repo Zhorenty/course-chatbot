@@ -566,6 +566,38 @@ final class MessageTemplates {
     return parts.join(' · ');
   }
 
+  String adminCourseLetterSent({
+    required String stepKey,
+    required int recipientCount,
+    Launch? launch,
+    int? dozhimDay,
+  }) {
+    final label = escapeHtml(_courseLetterLabel(stepKey, dozhimDay: dozhimDay));
+    return '<b>$label</b>\n\n'
+        'Письмо ушло: ${_adminPeopleCountLine(recipientCount)}\n'
+        '${_adminLaunchLine(launch)}';
+  }
+
+  String _courseLetterLabel(String stepKey, {int? dozhimDay}) {
+    final slot = LaunchCopySlotKey.fromCanonical(stepKey);
+    if (slot != null) {
+      return slot.adminLabel;
+    }
+    final day = dozhimDay ?? _builtinDozhimDay(stepKey);
+    if (day != null) {
+      return 'Дожим · день $day';
+    }
+    return stepKey;
+  }
+
+  int? _builtinDozhimDay(String stepKey) {
+    const prefix = 'dozhim_d';
+    if (!stepKey.startsWith(prefix)) {
+      return null;
+    }
+    return int.tryParse(stepKey.substring(prefix.length));
+  }
+
   String adminPaidWithInvite({
     required UserProfile user,
     required CourseOrder order,

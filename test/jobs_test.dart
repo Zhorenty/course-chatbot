@@ -284,6 +284,90 @@ void main() {
     expect(harness.sender.messages.where((m) => m.chatId == 8), isEmpty);
   });
 
+  test('warmup job tells admins once when a course letter goes out', () async {
+    final extra = HandlerHarness();
+    await extra.init(webinarAt: DateTime.utc(2026, 10, 11, 16));
+    addTearDown(extra.dispose);
+    for (final userId in <int>[42, 43]) {
+      extra.course.ensureUser(userId: userId, now: DateTime.utc(2026, 10, 1));
+      extra.course.setFunnelPhase(
+        userId: userId,
+        phase: FunnelPhase.magnetIssued,
+        magnetIssuedAt: DateTime.utc(2026, 10, 1),
+      );
+      extra.course.recordWarmupSent(
+        userId: userId,
+        stepKey: 'warmup_0',
+        sentAt: DateTime.utc(2026, 10, 1),
+      );
+    }
+    final alerts = FakePaymentGatewayAlertPort();
+    final dedupe = JobDedupeRepository(databaseHandle: extra.handle);
+    WarmupNudgeJob jobAt(DateTime now) {
+      return WarmupNudgeJob(
+        course: extra.course,
+        warmup: WarmupService(course: extra.course, dedupe: dedupe),
+        sender: extra.sender,
+        templates: templates,
+        quietHours: quietHours,
+        alerts: alerts,
+        dedupe: dedupe,
+        nowProvider: () => now,
+      );
+    }
+
+    await jobAt(DateTime.utc(2026, 10, 10, 17)).run();
+    expect(alerts.courseLetters, hasLength(1));
+    expect(alerts.courseLetters.single.stepKey, 'webinar_24h');
+    expect(alerts.courseLetters.single.recipientCount, 2);
+    expect(alerts.courseLetters.single.launch?.title, 'Запуск');
+
+    extra.course.ensureUser(userId: 44, now: DateTime.utc(2026, 10, 10, 17, 30));
+    extra.course.setFunnelPhase(
+      userId: 44,
+      phase: FunnelPhase.magnetIssued,
+      magnetIssuedAt: DateTime.utc(2026, 10, 10, 17, 30),
+    );
+    extra.course.recordWarmupSent(
+      userId: 44,
+      stepKey: 'warmup_0',
+      sentAt: DateTime.utc(2026, 10, 10, 17, 30),
+    );
+    alerts.courseLetters.clear();
+    await jobAt(DateTime.utc(2026, 10, 10, 17, 30)).run();
+    expect(extra.course.hasWarmupBeenSent(userId: 44, stepKey: 'webinar_24h'), isTrue);
+    expect(alerts.courseLetters, isEmpty);
+
+    await jobAt(DateTime.utc(2026, 10, 11, 15, 50)).run();
+    expect(alerts.courseLetters, hasLength(1));
+    expect(alerts.courseLetters.single.stepKey, 'webinar_10m');
+    expect(alerts.courseLetters.single.recipientCount, 3);
+  });
+
+  test('warmup job does not tell admins about the letter right after the guide', () async {
+    harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
+    harness.course.setFunnelPhase(
+      userId: 42,
+      phase: FunnelPhase.magnetIssued,
+      magnetIssuedAt: DateTime.utc(2026, 1, 1),
+    );
+    final alerts = FakePaymentGatewayAlertPort();
+    final dedupe = JobDedupeRepository(databaseHandle: harness.handle);
+    final job = WarmupNudgeJob(
+      course: harness.course,
+      warmup: WarmupService(course: harness.course, dedupe: dedupe),
+      sender: harness.sender,
+      templates: templates,
+      quietHours: quietHours,
+      alerts: alerts,
+      dedupe: dedupe,
+      nowProvider: () => DateTime.utc(2026, 1, 1, 12),
+    );
+    await job.run();
+    expect(harness.course.hasWarmupBeenSent(userId: 42, stepKey: 'warmup_0'), isTrue);
+    expect(alerts.courseLetters, isEmpty);
+  });
+
   test('remainder job reminds before the due date', () async {
     harness.course.ensureUser(userId: 42, now: DateTime.utc(2026, 1, 1));
     final launch = harness.course.activeLaunch()!;

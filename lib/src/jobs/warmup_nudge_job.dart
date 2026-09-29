@@ -1,6 +1,8 @@
+import 'package:course_chatbot/src/application/payment_alert_notifier.dart';
 import 'package:course_chatbot/src/application/quiet_hours.dart';
 import 'package:course_chatbot/src/application/warmup_service.dart';
 import 'package:course_chatbot/src/data/course_repository.dart';
+import 'package:course_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
@@ -23,13 +25,17 @@ final class WarmupNudgeJob {
     required QuietHours quietHours,
     Set<int> skipUserIds = const <int>{},
     DateTime Function()? nowProvider,
+    AdminAlertPort? alerts,
+    JobDedupeRepository? dedupe,
   }) : _course = course,
        _warmup = warmup,
        _sender = sender,
        _templates = templates,
        _quietHours = quietHours,
        _skipUserIds = skipUserIds,
-       _nowProvider = nowProvider ?? DateTime.now;
+       _nowProvider = nowProvider ?? DateTime.now,
+       _alerts = alerts,
+       _dedupe = dedupe;
 
   final CourseRepository _course;
   final WarmupService _warmup;
@@ -38,6 +44,9 @@ final class WarmupNudgeJob {
   final QuietHours _quietHours;
   final Set<int> _skipUserIds;
   final DateTime Function() _nowProvider;
+  final AdminAlertPort? _alerts;
+  final JobDedupeRepository? _dedupe;
+  final Map<String, _CourseLetterWave> _pendingLetterNotices = <String, _CourseLetterWave>{};
 
   Future<void> run() async {
     final now = _nowProvider();
@@ -45,6 +54,7 @@ final class WarmupNudgeJob {
     final globalSteps = _course.listWarmupSteps();
     final dozhimByLaunch = <int, List<LaunchDozhimMessage>>{};
     final candidates = _course.listWarmupCandidates(now: now);
+    final sentThisRun = <String, _CourseLetterWave>{};
     var sent = 0;
     for (final candidate in candidates) {
       try {
@@ -82,6 +92,13 @@ final class WarmupNudgeJob {
         );
         if (delivered) {
           sent++;
+          _noteCourseLetter(
+            sentThisRun,
+            candidate: candidate,
+            stepKey: decision.stepKey,
+            launch: launch,
+            custom: custom,
+          );
           await paceOutboundBatch(sent);
         }
       } on Object catch (error, stackTrace) {
@@ -91,6 +108,86 @@ final class WarmupNudgeJob {
         l.w('Warmup candidate ${candidate.userId} failed: $error', stackTrace);
       }
     }
+    await _flushCourseLetterNotices(sentThisRun);
+  }
+
+  void _noteCourseLetter(
+    Map<String, _CourseLetterWave> sentThisRun, {
+    required WarmupCandidate candidate,
+    required String stepKey,
+    required Launch? launch,
+    required List<LaunchDozhimMessage> custom,
+  }) {
+    if (!_announcesCourseLetter(stepKey)) {
+      return;
+    }
+    final key = '${candidate.launchId}:$stepKey';
+    final wave = sentThisRun.putIfAbsent(
+      key,
+      () => _CourseLetterWave(
+        launchId: candidate.launchId,
+        stepKey: stepKey,
+        launch: launch,
+        dozhimDay: _dozhimDay(stepKey, custom),
+      ),
+    );
+    wave.count++;
+  }
+
+  Future<void> _flushCourseLetterNotices(Map<String, _CourseLetterWave> sentThisRun) async {
+    final alerts = _alerts;
+    final dedupe = _dedupe;
+    if (alerts == null || dedupe == null) {
+      return;
+    }
+    for (final wave in sentThisRun.values) {
+      final pending = _pendingLetterNotices.putIfAbsent(wave.noticeKey, () => wave);
+      if (!identical(pending, wave)) {
+        pending.count += wave.count;
+      }
+    }
+    final delivered = <String>[];
+    for (final wave in _pendingLetterNotices.values) {
+      final key = 'course-letter:${wave.launchId}:${wave.stepKey}';
+      if (!dedupe.tryClaim(key)) {
+        delivered.add(wave.noticeKey);
+        continue;
+      }
+      try {
+        await alerts.notifyCourseLetterSent(
+          stepKey: wave.stepKey,
+          recipientCount: wave.count,
+          launch: wave.launch,
+          dozhimDay: wave.dozhimDay,
+        );
+        delivered.add(wave.noticeKey);
+      } on Object catch (error, stackTrace) {
+        dedupe.release(key);
+        l.w(
+          'Course letter notice ${wave.stepKey} for launch ${wave.launchId} failed: $error',
+          stackTrace,
+        );
+      }
+    }
+    for (final key in delivered) {
+      _pendingLetterNotices.remove(key);
+    }
+  }
+
+  bool _announcesCourseLetter(String stepKey) {
+    if (stepKey == WarmupService.firstStepKey) {
+      return false;
+    }
+    return !WarmupStep.retiredKeys.contains(stepKey);
+  }
+
+  int? _dozhimDay(String stepKey, List<LaunchDozhimMessage> custom) {
+    for (final message in custom) {
+      if (message.stepKey == stepKey) {
+        return message.dayIndex;
+      }
+    }
+    return null;
   }
 
   Future<void> _deliverStep({
@@ -151,4 +248,21 @@ final class WarmupNudgeJob {
       }
     }
   }
+}
+
+final class _CourseLetterWave {
+  _CourseLetterWave({
+    required this.launchId,
+    required this.stepKey,
+    required this.launch,
+    required this.dozhimDay,
+  });
+
+  final int launchId;
+  final String stepKey;
+  final Launch? launch;
+  final int? dozhimDay;
+  int count = 0;
+
+  String get noticeKey => '$launchId:$stepKey';
 }

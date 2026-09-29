@@ -530,6 +530,7 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
   final List<int> guideMissing = <int>[];
   final List<FunnelDaySlice> funnelDayDigests = <FunnelDaySlice>[];
   final List<CourseOrder> paidWithInvite = <CourseOrder>[];
+  final List<CourseLetterAlert> courseLetters = <CourseLetterAlert>[];
 
   @override
   Future<void> notifyGatewayUnavailable({
@@ -572,6 +573,37 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
   }) async {
     paidWithInvite.add(order);
   }
+
+  @override
+  Future<void> notifyCourseLetterSent({
+    required String stepKey,
+    required int recipientCount,
+    Launch? launch,
+    int? dozhimDay,
+  }) async {
+    courseLetters.add(
+      CourseLetterAlert(
+        stepKey: stepKey,
+        recipientCount: recipientCount,
+        launch: launch,
+        dozhimDay: dozhimDay,
+      ),
+    );
+  }
+}
+
+final class CourseLetterAlert {
+  const CourseLetterAlert({
+    required this.stepKey,
+    required this.recipientCount,
+    this.launch,
+    this.dozhimDay,
+  });
+
+  final String stepKey;
+  final int recipientCount;
+  final Launch? launch;
+  final int? dozhimDay;
 }
 
 final class FakeChannelApi implements ChannelApi {

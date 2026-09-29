@@ -206,6 +206,8 @@ final class CourseBotRuntime {
               templates: templates,
               quietHours: quietHours,
               skipUserIds: config.adminUserIds,
+              alerts: adminAlerts,
+              dedupe: jobDedupe,
             )
           : null,
       abandonedPaymentJob: AbandonedPaymentJob(

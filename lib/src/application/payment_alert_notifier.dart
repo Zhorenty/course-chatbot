@@ -18,11 +18,18 @@ abstract interface class AdminAlertPort {
     required CourseOrder order,
     Launch? launch,
   });
+
+  Future<void> notifyCourseLetterSent({
+    required String stepKey,
+    required int recipientCount,
+    Launch? launch,
+    int? dozhimDay,
+  });
 }
 
 /// Pushes the same admin chats used for `_escalateToAdmin` (see
 /// `AdminGate.notificationChatIds`) for kassa outages, a missing lead magnet,
-/// paid + invite, and the daily guide/RSVP digest.
+/// paid + invite, the daily guide/RSVP digest, and a course-letter wave.
 final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertPort {
   PaymentAlertNotifier({
     required MessageSender sender,
@@ -91,6 +98,29 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
       _templates.adminPaidWithInvite(user: user, order: order, launch: launch),
       userId: user.userId,
       richHtml: _templates.adminPaidWithInviteRich(user: user, order: order, launch: launch),
+    );
+  }
+
+  @override
+  Future<void> notifyCourseLetterSent({
+    required String stepKey,
+    required int recipientCount,
+    Launch? launch,
+    int? dozhimDay,
+  }) {
+    return _pushAdmins(
+      _templates.adminCourseLetterSent(
+        stepKey: stepKey,
+        recipientCount: recipientCount,
+        launch: launch,
+        dozhimDay: dozhimDay,
+      ),
+      richHtml: _templates.adminCourseLetterSentRich(
+        stepKey: stepKey,
+        recipientCount: recipientCount,
+        launch: launch,
+        dozhimDay: dozhimDay,
+      ),
     );
   }
 

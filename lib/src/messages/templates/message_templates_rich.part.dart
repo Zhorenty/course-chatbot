@@ -358,6 +358,16 @@ extension MessageTemplatesRich on MessageTemplates {
     return items;
   }
 
+  String adminCourseLetterSentRich({
+    required String stepKey,
+    required int recipientCount,
+    Launch? launch,
+    int? dozhimDay,
+  }) {
+    return '${richH2(_courseLetterLabel(stepKey, dozhimDay: dozhimDay))}'
+        '${richTable(<(String, String)>[('Получателей', _adminPeopleCountLine(recipientCount)), ('Поток', _adminLaunchValue(launch))])}';
+  }
+
   String adminPaidWithInviteRich({
     required UserProfile user,
     required CourseOrder order,
