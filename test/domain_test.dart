@@ -33,6 +33,9 @@ void main() {
   test('first /start payload wins', () {
     expect(AcquisitionSource.normalize('Ig_Reels_Guide'), 'ig_reels_guide');
     expect(AcquisitionSource.opensCourseCard('direct_course'), isTrue);
+    expect(AcquisitionSource.opensCourseCard('base_course'), isTrue);
+    expect(AcquisitionSource.opensCourseCard('ig_stories_course'), isTrue);
+    expect(AcquisitionSource.opensCourseCard('ig_bio_course'), isTrue);
     expect(AcquisitionSource.opensCourseCard('ig_reels_guide'), isFalse);
     expect(AcquisitionSource.normalize('bad payload!'), isNull);
     expect(AcquisitionSource.normalize(AcquisitionSource.adminManual), 'admin');

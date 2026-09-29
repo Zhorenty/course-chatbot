@@ -89,7 +89,13 @@ final class AcquisitionSource {
     'email_guide',
   };
 
-  static const Set<String> coursePayloads = <String>{'tg_announce', 'direct_course'};
+  static const Set<String> coursePayloads = <String>{
+    'tg_announce',
+    'direct_course',
+    'base_course',
+    'ig_stories_course',
+    'ig_bio_course',
+  };
 
   /// Attribution when an admin creates the person card by Telegram id.
   static const String adminManual = 'admin';

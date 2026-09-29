@@ -778,6 +778,9 @@ final class GoogleSheetsCatalogSync {
       parsed = LinksSheetParser.parse(rows);
     }
 
+    await _appendMissingStarterLinks(title: tab.title, rows: rows);
+    rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+
     await _ensureEmptyLinkRows(title: tab.title, rows: rows);
     rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
 
@@ -866,6 +869,43 @@ final class GoogleSheetsCatalogSync {
       l.w('${CopySheet.tabTitle} catalog look failed: $error', stackTrace);
     }
     l.i('${CopySheet.tabTitle} catalog synced. letters=${parsed.rowCount} seeded=$seeded');
+  }
+
+  /// Writes built-in start links that are not on the sheet yet. Existing rows stay.
+  Future<void> _appendMissingStarterLinks({
+    required String title,
+    required List<List<Object?>> rows,
+  }) async {
+    final headerAt = LinksSheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return;
+    }
+    final headerIndex = LinksSheetParser.headerIndexMap(rows[headerAt]);
+    final present = <String>{for (final link in LinksSheetParser.parse(rows).rows) link.payload};
+    final missing = <AcquisitionLink>[
+      for (final link in AcquisitionLink.starters)
+        if (!present.contains(link.payload)) link,
+    ];
+    if (missing.isEmpty) {
+      return;
+    }
+    final working = <List<Object?>>[for (final row in rows) List<Object?>.from(row)];
+    final quoted = quoteA1SheetTitle(title);
+    for (final link in missing) {
+      final targetAt = _firstVacantLinkRow(working, headerAt: headerAt, headerIndex: headerIndex);
+      final cells = LinksSheet.rowFromLink(link, botUsername: botUsername);
+      while (working.length <= targetAt) {
+        working.add(LinksSheet.padded(const <Object?>[]));
+      }
+      working[targetAt] = cells;
+      await _gateway
+          .updateValues(
+            a1Range: '$quoted!A${targetAt + 1}',
+            rows: <List<Object?>>[cells],
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(requestTimeout);
+    }
   }
 
   Future<void> _ensureEmptyLinkRows({

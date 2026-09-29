@@ -76,4 +76,4 @@ dart analyze --fatal-infos --fatal-warnings
 dart test
 ```
 
-Стартовые метки: `ig_reels_guide`, `threads_guide`, `tg_announce`, `direct_course` — `https://t.me/<bot>?start=<метка>`.
+Стартовые метки: `ig_reels_guide`, `threads_guide`, `tg_announce`, `direct_course`, `base_course`, `ig_stories_course`, `ig_bio_course` — `https://t.me/<bot>?start=<метка>`. На курс ведут `tg_announce`, `direct_course`, `base_course` (база, уже покупали), `ig_stories_course` (сторис), `ig_bio_course` (био).

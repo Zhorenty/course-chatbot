@@ -68,6 +68,21 @@ final class AcquisitionLink {
       destination: AcquisitionDestination.course,
       payload: 'direct_course',
     ),
+    AcquisitionLink(
+      origin: 'База, прошлые курсы',
+      destination: AcquisitionDestination.course,
+      payload: 'base_course',
+    ),
+    AcquisitionLink(
+      origin: 'Instagram Stories',
+      destination: AcquisitionDestination.course,
+      payload: 'ig_stories_course',
+    ),
+    AcquisitionLink(
+      origin: 'Instagram, био',
+      destination: AcquisitionDestination.course,
+      payload: 'ig_bio_course',
+    ),
   ];
 
   static String? telegramStartUrl(String payload, String? botUsername) {

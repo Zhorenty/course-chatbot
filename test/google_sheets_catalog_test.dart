@@ -777,7 +777,7 @@ void main() {
 
     tearDown(() => db.dispose());
 
-    test('seeds empty sheet with four starters and fills t.me URLs', () async {
+    test('seeds empty sheet with starters and fills t.me URLs', () async {
       final sync = GoogleSheetsCatalogSync(
         gateway: gateway,
         catalog: course,
@@ -796,14 +796,64 @@ void main() {
         'threads_guide',
         'tg_announce',
         'direct_course',
+        'base_course',
+        'ig_stories_course',
+        'ig_bio_course',
       ]);
       final urlCol = LinksSheetParser.columnIndex(sheet, LinksSheet.url)!;
       final dataRow = LinksSheetParser.headerRowIndex(sheet)! + 1;
       expect(sheet[dataRow][urlCol], 'https://t.me/course_bot?start=ig_reels_guide');
-      expect(links.entries, hasLength(4));
+      expect(links.entries, hasLength(AcquisitionLink.starters.length));
       expect(links.opensCourseCard('tg_announce'), isTrue);
+      expect(links.opensCourseCard('base_course'), isTrue);
+      expect(links.opensCourseCard('ig_stories_course'), isTrue);
+      expect(links.opensCourseCard('ig_bio_course'), isTrue);
       final headerAt = LinksSheetParser.headerRowIndex(sheet)!;
       expect(sheet.length, greaterThanOrEqualTo(headerAt + 1 + LinksSheet.extraDataRows));
+    });
+
+    test('sync adds missing course starters and keeps a hand-added row', () async {
+      gateway.sheets = <GoogleSheetsSheetInfo>[
+        const GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        const GoogleSheetsSheetInfo(title: LinksSheet.tabTitle, sheetId: 2),
+      ];
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      gateway.valuesBySheetId[2] = LinksSheet.withChrome(
+        dataRows: <List<Object?>>[
+          for (final link in AcquisitionLink.starters)
+            if (link.payload == 'ig_reels_guide' ||
+                link.payload == 'threads_guide' ||
+                link.payload == 'tg_announce' ||
+                link.payload == 'direct_course')
+              LinksSheet.seedDataRow(link, botUsername: 'course_bot'),
+          LinksSheet.padded(<Object?>['Таргет', 'курс', 'ads_course', '']),
+        ],
+      );
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        links: links,
+        botUsername: 'course_bot',
+        fallbackChannelId: _seedChannelId,
+      );
+      await sync.syncLinks();
+      final sheet = gateway.valuesBySheetId[2]!;
+      final payloads = LinksSheetParser.parse(sheet).rows.map((row) => row.payload).toList();
+      expect(payloads, contains('ads_course'));
+      expect(payloads, containsAll(<String>['base_course', 'ig_stories_course', 'ig_bio_course']));
+      expect(links.byPayload('base_course')?.origin, 'База, прошлые курсы');
+      expect(links.byPayload('ig_stories_course')?.opensCourse, isTrue);
+      expect(links.byPayload('ig_bio_course')?.opensCourse, isTrue);
+      expect(sheet.any((row) => row.contains('https://t.me/course_bot?start=base_course')), isTrue);
+      expect(
+        sheet.any((row) => row.contains('https://t.me/course_bot?start=ig_stories_course')),
+        isTrue,
+      );
+      expect(
+        sheet.any((row) => row.contains('https://t.me/course_bot?start=ig_bio_course')),
+        isTrue,
+      );
+      expect(sheet.any((row) => row.contains('https://t.me/course_bot?start=ads_course')), isTrue);
     });
 
     test('second sync keeps a human fifth row and fills its URL', () async {
@@ -920,7 +970,7 @@ void main() {
       );
       await sync.syncLinks();
       expect(course.activeLaunch(), isNull);
-      expect(links.entries, hasLength(4));
+      expect(links.entries, hasLength(AcquisitionLink.starters.length));
       final tab = gateway.sheets.firstWhere((sheet) => sheet.title == LinksSheet.tabTitle);
       expect(
         gateway.valuesBySheetId[tab.sheetId]!.any(
