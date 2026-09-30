@@ -14,5 +14,9 @@ abstract interface class WarmupRepository {
     int? launchId,
   });
 
-  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200});
+  List<WarmupCandidate> listWarmupCandidates({
+    required DateTime now,
+    int limit = 200,
+    int offset = 0,
+  });
 }

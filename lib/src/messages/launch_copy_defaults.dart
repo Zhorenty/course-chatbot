@@ -94,6 +94,12 @@ abstract final class LaunchCopyDefaults {
       '— Осознанно нарушать классические цветовые схемы, а не бояться от них отступить: собирать сочетания на пять и больше активных цветов там, где раньше выбрали бы один безопасный акцент\n\n'
       '— Защищать смелые цветовые решения перед заказчиком: знать, почему это сработает, до того как соберёте проект, и поднимать чек за счёт результата, который сразу виден';
 
+  static const String masterClassRecordingUrl = 'https://disk.yandex.ru/i/WNieP1vCFx0DKw';
+
+  static const String afterWebinarRecordingLine =
+      '<i>Запись мастер-класса:</i> '
+      '<a href="$masterClassRecordingUrl">$masterClassRecordingUrl</a>';
+
   static const String afterWebinar =
       'Спасибо, что был(а) со мной на Мастер-классе🤍\n\n'
       'Если после эфира захотелось разобраться в цвете уже системно, а не по кусочкам, приглашаю тебя на следующий шаг — '
@@ -103,7 +109,7 @@ abstract final class LaunchCopyDefaults {
       '{price_promo} <s>{price_was}</s>\n'
       '⚡ Предложение действует 3 дня. Далее цена повысится и зайти на программу по специальной цене будет нельзя.\n\n'
       'Успевай сделать финальный шаг навстречу осознанной работе с цветом и узнаваемым объектам со вкусом!\n\n'
-      '<i>Запись мастер-класса:</i>';
+      '$afterWebinarRecordingLine';
 
   static const String salesOpen =
       'Курс «{short_title}» открывает свои двери! 🎉\n\n'

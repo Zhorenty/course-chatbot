@@ -480,6 +480,29 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         ),
       );
     }
+    const oldRecordingLine = '<i>Запись мастер-класса:</i>';
+    for (final row in _db.select(
+      'SELECT launch_id, payload FROM launch_copy_slots WHERE slot_key = ?;',
+      <Object?>[LaunchCopySlotKey.afterWebinar.canonical],
+    )) {
+      final stored = _decodeStoredCopy(row['payload']);
+      final html = stored?.html;
+      if (stored == null ||
+          html == null ||
+          !html.contains(oldRecordingLine) ||
+          html.contains(LaunchCopyDefaults.masterClassRecordingUrl)) {
+        continue;
+      }
+      _writeCopySlotPayload(
+        row['launch_id'] as int,
+        LaunchCopySlotKey.afterWebinar,
+        StoredTelegramMessage(
+          kind: stored.kind,
+          html: html.replaceAll(oldRecordingLine, LaunchCopyDefaults.afterWebinarRecordingLine),
+          media: stored.media,
+        ),
+      );
+    }
   }
 
   StoredTelegramMessage? _decodeStoredCopy(Object? raw) {

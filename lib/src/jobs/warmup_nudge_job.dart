@@ -27,6 +27,7 @@ final class WarmupNudgeJob {
     DateTime Function()? nowProvider,
     AdminAlertPort? alerts,
     JobDedupeRepository? dedupe,
+    int pageSize = 200,
   }) : _course = course,
        _warmup = warmup,
        _sender = sender,
@@ -35,7 +36,8 @@ final class WarmupNudgeJob {
        _skipUserIds = skipUserIds,
        _nowProvider = nowProvider ?? DateTime.now,
        _alerts = alerts,
-       _dedupe = dedupe;
+       _dedupe = dedupe,
+       _pageSize = pageSize;
 
   final CourseRepository _course;
   final WarmupService _warmup;
@@ -46,6 +48,7 @@ final class WarmupNudgeJob {
   final DateTime Function() _nowProvider;
   final AdminAlertPort? _alerts;
   final JobDedupeRepository? _dedupe;
+  final int _pageSize;
   final Map<String, _CourseLetterWave> _pendingLetterNotices = <String, _CourseLetterWave>{};
 
   Future<void> run() async {
@@ -53,60 +56,70 @@ final class WarmupNudgeJob {
     final quiet = _quietHours.isQuiet(now);
     final globalSteps = _course.listWarmupSteps();
     final dozhimByLaunch = <int, List<LaunchDozhimMessage>>{};
-    final candidates = _course.listWarmupCandidates(now: now);
     final sentThisRun = <String, _CourseLetterWave>{};
     var sent = 0;
-    for (final candidate in candidates) {
-      try {
-        final user = _course.getUser(candidate.userId);
-        if (user == null ||
-            _skipUserIds.contains(candidate.userId) ||
-            candidate.funnelPhase.excludeSellingDrip) {
-          continue;
-        }
-        final launch = _course.getLaunch(candidate.launchId);
-        final custom = dozhimByLaunch.putIfAbsent(
-          candidate.launchId,
-          () => _course.listLaunchDozhim(candidate.launchId),
-        );
-        final decision = _warmup.nextFor(
-          candidate,
-          now,
-          steps: _warmup.stepsFor(global: globalSteps, dozhim: custom),
-          launch: launch,
-          quiet: quiet,
-        );
-        if (decision == null) {
-          continue;
-        }
-        final delivered = await _warmup.deliver(
-          decision: decision,
-          now: now,
-          send: () => _deliverStep(
-            candidate: candidate,
-            decision: decision,
-            launch: launch,
-            custom: custom,
-            now: now,
-          ),
-        );
-        if (delivered) {
-          sent++;
-          _noteCourseLetter(
-            sentThisRun,
-            candidate: candidate,
-            stepKey: decision.stepKey,
-            launch: launch,
-            custom: custom,
-          );
-          await paceOutboundBatch(sent);
-        }
-      } on Object catch (error, stackTrace) {
-        if (isUserBlockedError(error)) {
-          _course.setBotBlocked(userId: candidate.userId, blocked: true);
-        }
-        l.w('Warmup candidate ${candidate.userId} failed: $error', stackTrace);
+    var offset = 0;
+    while (true) {
+      final candidates = _course.listWarmupCandidates(now: now, limit: _pageSize, offset: offset);
+      if (candidates.isEmpty) {
+        break;
       }
+      for (final candidate in candidates) {
+        try {
+          final user = _course.getUser(candidate.userId);
+          if (user == null ||
+              _skipUserIds.contains(candidate.userId) ||
+              candidate.funnelPhase.excludeSellingDrip) {
+            continue;
+          }
+          final launch = _course.getLaunch(candidate.launchId);
+          final custom = dozhimByLaunch.putIfAbsent(
+            candidate.launchId,
+            () => _course.listLaunchDozhim(candidate.launchId),
+          );
+          final decision = _warmup.nextFor(
+            candidate,
+            now,
+            steps: _warmup.stepsFor(global: globalSteps, dozhim: custom),
+            launch: launch,
+            quiet: quiet,
+          );
+          if (decision == null) {
+            continue;
+          }
+          final delivered = await _warmup.deliver(
+            decision: decision,
+            now: now,
+            send: () => _deliverStep(
+              candidate: candidate,
+              decision: decision,
+              launch: launch,
+              custom: custom,
+              now: now,
+            ),
+          );
+          if (delivered) {
+            sent++;
+            _noteCourseLetter(
+              sentThisRun,
+              candidate: candidate,
+              stepKey: decision.stepKey,
+              launch: launch,
+              custom: custom,
+            );
+            await paceOutboundBatch(sent);
+          }
+        } on Object catch (error, stackTrace) {
+          if (isUserBlockedError(error)) {
+            _course.setBotBlocked(userId: candidate.userId, blocked: true);
+          }
+          l.w('Warmup candidate ${candidate.userId} failed: $error', stackTrace);
+        }
+      }
+      if (candidates.length < _pageSize) {
+        break;
+      }
+      offset += candidates.length;
     }
     await _flushCourseLetterNotices(sentThisRun);
   }

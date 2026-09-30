@@ -101,7 +101,11 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
   }
 
   @override
-  List<WarmupCandidate> listWarmupCandidates({required DateTime now, int limit = 200}) {
+  List<WarmupCandidate> listWarmupCandidates({
+    required DateTime now,
+    int limit = 200,
+    int offset = 0,
+  }) {
     final rows = _db.select(
       '''
       SELECT e.user_id, e.launch_id, e.magnet_issued_at, e.started_at, e.funnel_phase,
@@ -120,9 +124,9 @@ mixin _SqliteWarmupStore on _SqliteEnrollmentStore implements WarmupRepository {
         )
       GROUP BY e.user_id, e.launch_id
       ORDER BY e.started_at
-      LIMIT ?;
+      LIMIT ? OFFSET ?;
       ''',
-      <Object?>[limit],
+      <Object?>[limit, offset],
     );
     return [
       for (final row in rows)

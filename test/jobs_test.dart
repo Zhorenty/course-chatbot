@@ -537,6 +537,121 @@ void main() {
     );
   });
 
+  test('warmup job sends the live link and the 10-minute letter past the first page', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 11, 16),
+      webinarUrl: 'https://example.com/live',
+    );
+    addTearDown(extra.dispose);
+    const rsvpCount = 150;
+    const waitingCount = 100;
+    for (var i = 0; i < rsvpCount + waitingCount; i++) {
+      final userId = 1000 + i;
+      final started = DateTime.utc(2026, 10, 1).add(Duration(minutes: i));
+      extra.course.ensureUser(userId: userId, now: started);
+      extra.course.setFunnelPhase(
+        userId: userId,
+        phase: FunnelPhase.magnetIssued,
+        magnetIssuedAt: started,
+      );
+      extra.course.recordWarmupSent(userId: userId, stepKey: 'warmup_0', sentAt: started);
+      if (i < rsvpCount) {
+        extra.funnel.markWebinarRsvp(userId);
+      }
+    }
+    final dedupe = JobDedupeRepository(databaseHandle: extra.handle);
+    final job = WarmupNudgeJob(
+      course: extra.course,
+      warmup: WarmupService(course: extra.course, dedupe: dedupe),
+      sender: extra.sender,
+      templates: templates,
+      quietHours: quietHours,
+      dedupe: dedupe,
+      nowProvider: () => DateTime.utc(2026, 10, 11, 15, 50),
+    );
+    await job.run();
+
+    final live = extra.sender.messages.where((m) => m.text.contains('Мы начинаем')).toList();
+    expect(live, hasLength(rsvpCount));
+    for (final message in live) {
+      expect(message.chatId, greaterThanOrEqualTo(1000));
+      expect(message.chatId, lessThan(1000 + rsvpCount));
+      expect('${message.replyMarkup}', contains('https://example.com/live'));
+      expect('${message.replyMarkup}', contains(MessageTemplates.buttonJoinWebinar));
+    }
+
+    final tenMinutes = extra.sender.messages
+        .where((m) => m.text.contains('Начинаем через 10 минут'))
+        .toList();
+    expect(tenMinutes, hasLength(waitingCount));
+    for (final message in tenMinutes) {
+      expect(message.chatId, greaterThanOrEqualTo(1000 + rsvpCount));
+      expect('${message.replyMarkup}', contains(MessageTemplates.buttonRsvp));
+      expect('${message.replyMarkup}', isNot(contains('https://example.com/live')));
+    }
+  });
+
+  test('warmup job sends the day-after letter to every RSVP, past the first page', () async {
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+      pricePromoKopecks: 1500000,
+    );
+    addTearDown(extra.dispose);
+    const rsvpCount = 5;
+    for (var i = 0; i < rsvpCount; i++) {
+      final userId = 2000 + i;
+      final started = DateTime.utc(2026, 10, 1).add(Duration(minutes: i));
+      extra.course.ensureUser(userId: userId, now: started);
+      extra.course.setFunnelPhase(
+        userId: userId,
+        phase: FunnelPhase.warming,
+        magnetIssuedAt: started,
+      );
+      extra.course.recordWarmupSent(userId: userId, stepKey: 'warmup_0', sentAt: started);
+      extra.course.recordWarmupSent(
+        userId: userId,
+        stepKey: 'webinar_live',
+        sentAt: DateTime.utc(2026, 10, 5, 15, 50),
+      );
+      extra.funnel.markWebinarRsvp(userId);
+    }
+    extra.course.ensureUser(userId: 2099, now: DateTime.utc(2026, 10, 1, 3));
+    extra.course.setFunnelPhase(
+      userId: 2099,
+      phase: FunnelPhase.warming,
+      magnetIssuedAt: DateTime.utc(2026, 10, 1, 3),
+    );
+    extra.course.recordWarmupSent(
+      userId: 2099,
+      stepKey: 'warmup_0',
+      sentAt: DateTime.utc(2026, 10, 1, 3),
+    );
+    final dedupe = JobDedupeRepository(databaseHandle: extra.handle);
+    final job = WarmupNudgeJob(
+      course: extra.course,
+      warmup: WarmupService(course: extra.course, dedupe: dedupe),
+      sender: extra.sender,
+      templates: templates,
+      quietHours: quietHours,
+      dedupe: dedupe,
+      pageSize: 2,
+      nowProvider: () => DateTime.utc(2026, 10, 6, 7),
+    );
+    await job.run();
+
+    final letters = extra.sender.messages.where((m) => m.text.contains('специальные условия'));
+    expect(letters.map((m) => m.chatId).toSet(), {2000, 2001, 2002, 2003, 2004});
+    expect(extra.sender.messages.where((m) => m.chatId == 2099), isEmpty);
+    await job.run();
+    expect(
+      extra.sender.messages.where((m) => m.text.contains('специальные условия')),
+      hasLength(5),
+    );
+  });
+
   test('webinar_next waits until 10:00 Moscow the day after the webinar', () {
     final warmup = WarmupService(
       course: harness.course,

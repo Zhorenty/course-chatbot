@@ -111,6 +111,33 @@ void main() {
     );
   });
 
+  test('init adds the master-class recording link to the seeded follow-up letter', () {
+    final active = _upsert(course: course, code: 'launch-1', title: 'Запуск', activate: true);
+    final seeded = LaunchCopyDefaults.afterWebinar.replaceFirst(
+      LaunchCopyDefaults.afterWebinarRecordingLine,
+      '<i>Запись мастер-класса:</i>',
+    );
+    course.upsertLaunchCopySlot(
+      launchId: active.id,
+      slot: LaunchCopySlotKey.afterWebinar,
+      payload: storedCopyFromHtml(seeded),
+    );
+    final custom = _upsert(course: course, code: 'launch-2', title: 'Второй поток');
+    course.upsertLaunchCopySlot(
+      launchId: custom.id,
+      slot: LaunchCopySlotKey.afterWebinar,
+      payload: storedCopyFromHtml('свой текст'),
+    );
+
+    course.init();
+
+    expect(
+      course.getLaunch(active.id)!.copy.htmlOf(LaunchCopySlotKey.afterWebinar),
+      LaunchCopyDefaults.afterWebinar,
+    );
+    expect(course.getLaunch(custom.id)!.copy.htmlOf(LaunchCopySlotKey.afterWebinar), 'свой текст');
+  });
+
   test('init seeds current coloristic copy onto the active launch only', () {
     final active = _upsert(
       course: course,

@@ -350,7 +350,7 @@ void main() {
     );
     expect(
       templates.warmupStep('webinar_next', launch: launch),
-      contains('<i>Запись мастер-класса:</i>'),
+      contains(LaunchCopyDefaults.afterWebinarRecordingLine),
     );
     expect(templates.warmupStep('warmup_0', launch: launch), contains('<u>Особенно жду тебя'));
     expect(

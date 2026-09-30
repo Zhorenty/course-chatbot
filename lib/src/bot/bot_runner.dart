@@ -170,6 +170,7 @@ final class BotRunner {
     final warmup = _warmupNudgeJob;
     if (warmup != null) {
       _schedulePeriodic(const Duration(minutes: 5), 'warmup', warmup.run);
+      _jobScheduler.launch('warmup', warmup.run);
     }
     final abandon = _abandonedPaymentJob;
     if (abandon != null) {
