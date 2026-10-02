@@ -321,6 +321,7 @@ void main() {
     expect(alerts.courseLetters.single.stepKey, 'webinar_24h');
     expect(alerts.courseLetters.single.recipientCount, 2);
     expect(alerts.courseLetters.single.launch?.title, 'Запуск');
+    expect(alerts.courseLetters.single.preview.text, contains('Мастер-класс уже завтра'));
 
     extra.course.ensureUser(userId: 44, now: DateTime.utc(2026, 10, 10, 17, 30));
     extra.course.setFunnelPhase(

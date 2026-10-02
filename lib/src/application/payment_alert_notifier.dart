@@ -1,11 +1,15 @@
 import 'package:course_chatbot/src/application/checkout_service.dart';
 import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
+import 'package:course_chatbot/src/domain/launch_dozhim.dart';
 import 'package:course_chatbot/src/domain/order.dart';
+import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 import 'package:course_chatbot/src/domain/user_profile.dart';
 import 'package:course_chatbot/src/messages/message_templates.dart';
+import 'package:course_chatbot/src/telegram/input_rich_message.dart';
 import 'package:course_chatbot/src/telegram/message_sender.dart';
 import 'package:course_chatbot/src/telegram/prefer_rich_send.dart';
+import 'package:course_chatbot/src/telegram/replay_dozhim.dart';
 import 'package:l/l.dart';
 
 abstract interface class AdminAlertPort {
@@ -24,7 +28,32 @@ abstract interface class AdminAlertPort {
     required int recipientCount,
     Launch? launch,
     int? dozhimDay,
+    required CourseLetterPreview preview,
   });
+}
+
+/// The student letter that just went out, forwarded after the admin count.
+final class CourseLetterPreview {
+  const CourseLetterPreview({
+    this.text = '',
+    this.media = const <InputRichMessageMedia>[],
+    this.replyMarkup,
+    this.dozhim,
+    this.dozhimPayload,
+  });
+
+  final String text;
+  final List<InputRichMessageMedia> media;
+  final Map<String, Object?>? replyMarkup;
+  final LaunchDozhimMessage? dozhim;
+  final StoredTelegramMessage? dozhimPayload;
+
+  bool get isEmpty {
+    if (dozhim != null) {
+      return false;
+    }
+    return text.trim().isEmpty && media.isEmpty;
+  }
 }
 
 /// Pushes the same admin chats used for `_escalateToAdmin` (see
@@ -107,8 +136,9 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
     required int recipientCount,
     Launch? launch,
     int? dozhimDay,
-  }) {
-    return _pushAdmins(
+    required CourseLetterPreview preview,
+  }) async {
+    await _pushAdmins(
       _templates.adminCourseLetterSent(
         stepKey: stepKey,
         recipientCount: recipientCount,
@@ -122,6 +152,42 @@ final class PaymentAlertNotifier implements PaymentGatewayAlertPort, AdminAlertP
         dozhimDay: dozhimDay,
       ),
     );
+    await _pushLetter(preview);
+  }
+
+  Future<void> _pushLetter(CourseLetterPreview preview) async {
+    if (preview.isEmpty) {
+      return;
+    }
+    for (final chatId in _notificationChatIds) {
+      try {
+        final dozhim = preview.dozhim;
+        if (dozhim != null) {
+          final ids = await replayDozhimContent(
+            sender: _sender,
+            chatId: chatId,
+            message: dozhim,
+            payload: preview.dozhimPayload,
+            disableNotification: true,
+          );
+          final markup = preview.replyMarkup;
+          if (markup != null && ids.isNotEmpty) {
+            await _sender.editMessageReplyMarkup(chatId, messageId: ids.last, replyMarkup: markup);
+          }
+          continue;
+        }
+        await sendPreferRich(
+          _sender,
+          chatId,
+          preview.text,
+          media: preview.media,
+          disableNotification: true,
+          replyMarkup: preview.replyMarkup,
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to forward course letter to admin $chatId: $error', stackTrace);
+      }
+    }
   }
 
   Future<void> _pushAdmins(String text, {int? userId, String? richHtml}) async {

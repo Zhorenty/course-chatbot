@@ -318,4 +318,37 @@ void main() {
     );
     expect(admin[1].replyMarkup.toString(), contains('${MessageTemplates.cbAdminCard}42'));
   });
+
+  test('course-letter alert forwards the student message after the count', () async {
+    harness = HandlerHarness();
+    await harness.init(adminUserIds: <int>{1});
+    final templates = MessageTemplates();
+    final notifier = PaymentAlertNotifier(
+      sender: harness.sender,
+      templates: templates,
+      notificationChatIds: <int>{1},
+    );
+    final launch = harness.course.activeLaunch()!;
+    final preview = CourseLetterPreview(
+      text: templates.warmupStep('promo_last_day', launch: launch, rsvp: true),
+      media: templates.warmupMedia('promo_last_day', launch: launch),
+      replyMarkup: templates.warmupKeyboard('promo_last_day', launch: launch, rsvp: true),
+    );
+
+    await notifier.notifyCourseLetterSent(
+      stepKey: 'promo_last_day',
+      recipientCount: 143,
+      launch: launch,
+      preview: preview,
+    );
+
+    final admin = harness.sender.messages.where((message) => message.chatId == 1).toList();
+    expect(admin, hasLength(2));
+    expect(admin[0].text, contains('143 человек'));
+    expect(admin[0].text, contains('Последний день спеццены'));
+    expect(admin[1].text, contains('Специальная цена истекает сегодня в 23:59'));
+    expect(admin[1].text, contains('tg-slideshow'));
+    expect(admin[1].replyMarkup.toString(), contains(MessageTemplates.cbEnroll));
+    expect(admin[1].disableNotification, isTrue);
+  });
 }

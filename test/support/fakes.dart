@@ -580,6 +580,7 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
     required int recipientCount,
     Launch? launch,
     int? dozhimDay,
+    required CourseLetterPreview preview,
   }) async {
     courseLetters.add(
       CourseLetterAlert(
@@ -587,6 +588,7 @@ final class FakePaymentGatewayAlertPort implements PaymentGatewayAlertPort, Admi
         recipientCount: recipientCount,
         launch: launch,
         dozhimDay: dozhimDay,
+        preview: preview,
       ),
     );
   }
@@ -598,12 +600,14 @@ final class CourseLetterAlert {
     required this.recipientCount,
     this.launch,
     this.dozhimDay,
+    required this.preview,
   });
 
   final String stepKey;
   final int recipientCount;
   final Launch? launch;
   final int? dozhimDay;
+  final CourseLetterPreview preview;
 }
 
 final class FakeChannelApi implements ChannelApi {

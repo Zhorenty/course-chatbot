@@ -142,6 +142,8 @@ final class WarmupNudgeJob {
         stepKey: stepKey,
         launch: launch,
         dozhimDay: _dozhimDay(stepKey, custom),
+        rsvp: candidate.webinarRsvp,
+        dozhim: _dozhimMessage(stepKey, custom),
       ),
     );
     wave.count++;
@@ -172,6 +174,7 @@ final class WarmupNudgeJob {
           recipientCount: wave.count,
           launch: wave.launch,
           dozhimDay: wave.dozhimDay,
+          preview: _letterPreview(wave),
         );
         delivered.add(wave.noticeKey);
       } on Object catch (error, stackTrace) {
@@ -195,12 +198,43 @@ final class WarmupNudgeJob {
   }
 
   int? _dozhimDay(String stepKey, List<LaunchDozhimMessage> custom) {
+    return _dozhimMessage(stepKey, custom)?.dayIndex;
+  }
+
+  LaunchDozhimMessage? _dozhimMessage(String stepKey, List<LaunchDozhimMessage> custom) {
     for (final message in custom) {
       if (message.stepKey == stepKey) {
-        return message.dayIndex;
+        return message;
       }
     }
     return null;
+  }
+
+  CourseLetterPreview _letterPreview(_CourseLetterWave wave) {
+    final launch = wave.launch;
+    final now = _nowProvider();
+    final keyboard = launch == null
+        ? null
+        : _templates.warmupKeyboard(
+            wave.stepKey,
+            launch: launch,
+            rsvp: wave.rsvp,
+            rsvpOpen: LaunchSales.rsvpOpen(launch, now),
+          );
+    final dozhim = wave.dozhim;
+    if (dozhim != null) {
+      final raw = dozhim.payload;
+      return CourseLetterPreview(
+        dozhim: dozhim,
+        dozhimPayload: raw == null ? null : _templates.renderDozhimCopy(raw, launch),
+        replyMarkup: keyboard,
+      );
+    }
+    return CourseLetterPreview(
+      text: _templates.warmupStep(wave.stepKey, launch: launch, rsvp: wave.rsvp),
+      media: _templates.warmupMedia(wave.stepKey, launch: launch),
+      replyMarkup: keyboard,
+    );
   }
 
   Future<void> _deliverStep({
@@ -269,12 +303,16 @@ final class _CourseLetterWave {
     required this.stepKey,
     required this.launch,
     required this.dozhimDay,
+    required this.rsvp,
+    this.dozhim,
   });
 
   final int launchId;
   final String stepKey;
   final Launch? launch;
   final int? dozhimDay;
+  final bool rsvp;
+  final LaunchDozhimMessage? dozhim;
   int count = 0;
 
   String get noticeKey => '$launchId:$stepKey';
