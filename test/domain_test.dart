@@ -160,7 +160,13 @@ void main() {
     expect(outsider.promoOffer, isFalse);
     expect(outsider.checkoutOpen, isFalse);
     expect(outsider.canBuy, isFalse);
-    expect(LaunchSales.regularSalesAt(launch), DateTime.utc(2026, 10, 8, 16));
+    expect(LaunchSales.regularSalesAt(launch), DateTime.utc(2026, 10, 8, 20, 59, 59));
+    final lastEvening = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 8, 18));
+    expect(lastEvening.phase, SalesPhase.promo);
+    expect(lastEvening.promoOffer, isTrue);
+    final afterMidnight = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 8, 21));
+    expect(afterMidnight.phase, SalesPhase.regular);
+    expect(afterMidnight.promoOffer, isFalse);
     expect(LaunchSales.hasPromoWindow(launch), isTrue);
     final regular = LaunchSales.quote(launch, rsvp: true, now: DateTime.utc(2026, 10, 9, 12));
     expect(regular.phase, SalesPhase.regular);

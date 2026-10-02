@@ -376,7 +376,7 @@ void main() {
     expect(_phase(harness, 9), FunnelPhase.lead);
   });
 
-  test('F2: without RSVP the course stays closed for 3 days after the webinar', () async {
+  test('F2: without RSVP the course stays closed until 23:59 Moscow on day 3', () async {
     final clock = _Clock(DateTime.utc(2026, 10, 7, 12));
     final harness = await _clientHarness(clock);
     addTearDown(harness.dispose);
@@ -395,7 +395,7 @@ void main() {
     await client.press(MessageTemplates.cbPayDeposit);
     expect(harness.gateway.creates, 0);
 
-    clock.value = DateTime.utc(2026, 10, 8, 17);
+    clock.value = DateTime.utc(2026, 10, 8, 21);
     harness.sender.messages.clear();
     await client.tap(client.courseBtn);
     expect(_payButtonTexts(harness.sender.messages.last.replyMarkup), hasLength(2));

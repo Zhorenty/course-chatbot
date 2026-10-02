@@ -297,7 +297,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
       CatalogLaunchField.webinar => 'Дата и время эфира по Москве, как 29.09.2026 19:00.',
       CatalogLaunchField.webinarUrl => 'Ссылка на эфир. Пусто — убрать ссылку.',
       CatalogLaunchField.salesStart =>
-        'С какого момента отметившимся доступна спеццена. Касса бота откроется через 3 дня после эфира. '
+        'С какого момента отметившимся доступна спеццена. Касса бота откроется в 23:59 мск дня через 3 суток после эфира. '
             'Дата и время по Москве, как 30.09.2026 00:00.',
       CatalogLaunchField.salesEnd => 'Последний день продаж, как 12.10.2026.',
       CatalogLaunchField.channel => 'Новый ID канала (число вида −100…). Обязательно.',

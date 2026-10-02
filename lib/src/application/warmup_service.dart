@@ -64,6 +64,7 @@ final class WarmupService {
         ),
         WarmupAnchor.webinar => _webinarDue(step: step, steps: steps, now: now, launch: launch),
         WarmupAnchor.webinarFollowup => _webinarFollowupDue(now: now, launch: launch),
+        WarmupAnchor.promoLastDay => _promoLastDayDue(now: now, launch: launch),
         WarmupAnchor.salesStart => _afterAnchorDue(
           step: step,
           steps: steps,
@@ -117,6 +118,7 @@ final class WarmupService {
     final selling =
         step.anchor == WarmupAnchor.firstStart ||
         step.anchor == WarmupAnchor.webinarFollowup ||
+        step.anchor == WarmupAnchor.promoLastDay ||
         step.anchor == WarmupAnchor.salesStart ||
         step.anchor == WarmupAnchor.regularSales ||
         step.anchor == WarmupAnchor.salesEnd;
@@ -138,6 +140,7 @@ final class WarmupService {
       WarmupAnchor.magnet || WarmupAnchor.webinar || WarmupAnchor.webinarFollowup => afterGuide,
       WarmupAnchor.firstStart => waitingLead,
       WarmupAnchor.courseStart ||
+      WarmupAnchor.promoLastDay ||
       WarmupAnchor.salesStart ||
       WarmupAnchor.regularSales ||
       WarmupAnchor.salesEnd => afterGuide || waitingLead,
@@ -166,6 +169,17 @@ final class WarmupService {
       anchor: webinar,
       sameAnchor: WarmupAnchor.webinar,
     );
+  }
+
+  /// The Moscow calendar day on which promo ends, until 23:59 that day.
+  bool _promoLastDayDue({required DateTime now, required Launch? launch}) {
+    if (launch == null) {
+      return false;
+    }
+    final end = LaunchSales.promoEndsAt(launch);
+    final start = MoscowTime.dayStartUtc(end);
+    final nowUtc = now.toUtc();
+    return !nowUtc.isBefore(start) && nowUtc.isBefore(end);
   }
 
   bool _webinarFollowupDue({required DateTime now, required Launch? launch}) {

@@ -27,6 +27,17 @@ abstract final class FunnelMedia {
     'warmup_0': <String>['masterclass'],
     'webinar_24h': <String>['masterclass'],
     'webinar_next': _posts,
+    'promo_last_day': <String>[
+      'promo_last_1',
+      'promo_last_2',
+      'promo_last_3',
+      'promo_last_4',
+      'promo_last_5',
+      'promo_last_6',
+      'promo_last_7',
+      'promo_last_8',
+      'promo_last_9',
+    ],
     'sales_open': _posts,
     paid: <String>['paid'],
     'dozhim_d1': <String>[

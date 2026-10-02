@@ -3,9 +3,10 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 
 /// Sales calendar for one launch.
 ///
-/// Promo is 3 days from the webinar instant. During promo the bot kassa stays
-/// closed for everyone: RSVP get the special price via an external checkout
-/// link, the rest wait. Full / deposit via the bot kassa open after promo.
+/// Promo runs until 23:59 Moscow on the calendar day of webinar + 3 days.
+/// During promo the bot kassa stays closed for everyone: RSVP get the special
+/// price via an external checkout link, the rest wait. Full / deposit via the
+/// bot kassa open after promo.
 enum SalesPhase { preSales, promo, regular, closed }
 
 final class LaunchSales {
@@ -53,10 +54,10 @@ final class LaunchSales {
   }
 
   static DateTime promoEndsAt(Launch launch) {
-    return launch.webinarAt.toUtc().add(promoDuration);
+    return MoscowTime.endOfMoscowDay(launch.webinarAt.toUtc().add(promoDuration));
   }
 
-  /// When the bot kassa opens: 3 days after the webinar, or later «Старт продаж».
+  /// When the bot kassa opens: 23:59 Moscow on webinar + 3 days, or later «Старт продаж».
   static DateTime regularSalesAt(Launch launch) {
     final open = salesOpenAt(launch);
     final promoEnd = promoEndsAt(launch);

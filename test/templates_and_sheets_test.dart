@@ -129,6 +129,7 @@ void main() {
     expect(FunnelMedia.pathsFor('warmup_0'), hasLength(1));
     expect(FunnelMedia.pathsFor('webinar_24h'), FunnelMedia.pathsFor('warmup_0'));
     expect(FunnelMedia.pathsFor('webinar_next'), hasLength(9));
+    expect(FunnelMedia.pathsFor('promo_last_day'), hasLength(9));
     expect(FunnelMedia.pathsFor('sales_open'), FunnelMedia.pathsFor('webinar_next'));
     expect(FunnelMedia.pathsFor('paid'), hasLength(1));
     expect(FunnelMedia.pathsFor('dozhim_d1'), hasLength(9));
@@ -342,6 +343,16 @@ void main() {
       expect(text, isNot(contains('Можно оплатить')), reason: key);
       expect(text, isNot(contains('Продажи открылись')), reason: key);
     }
+    expect(
+      templates.warmupStep('promo_last_day', launch: launch),
+      contains('истекает сегодня в 23:59'),
+    );
+    expect(templates.warmupStep('promo_last_day', launch: launch), contains('<s>21000 ₽</s>'));
+    expect(templates.warmupStep('promo_last_day', launch: launch).length, lessThan(1024));
+    expect(
+      _inlineButtonTexts(templates.warmupKeyboard('promo_last_day', launch: launch, rsvp: true)!),
+      contains(MessageTemplates.buttonEnrollInline),
+    );
     expect(templates.warmupStep('sales_regular', launch: launch), contains('19 000 руб.'));
     expect(templates.warmupStep('webinar_next', launch: launch), contains('21 000 руб.'));
     expect(

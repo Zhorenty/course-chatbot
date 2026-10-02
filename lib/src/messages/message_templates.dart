@@ -270,6 +270,9 @@ final class MessageTemplates {
     if (WarmupStep.retiredKeys.contains(stepKey)) {
       return '';
     }
+    if (stepKey == 'promo_last_day') {
+      return LaunchCopyDefaults.promoLastDay;
+    }
     final slot = _warmupSlot(stepKey);
     if (slot != null) {
       final extra = <String, String>{
@@ -579,6 +582,9 @@ final class MessageTemplates {
   }
 
   String _courseLetterLabel(String stepKey, {int? dozhimDay}) {
+    if (stepKey == 'promo_last_day') {
+      return 'Последний день спеццены';
+    }
     final slot = LaunchCopySlotKey.fromCanonical(stepKey);
     if (slot != null) {
       return slot.adminLabel;

@@ -168,6 +168,7 @@ extension MessageTemplateKeyboards on MessageTemplates {
     }
     final sellingEnroll =
         stepKey == 'webinar_next' ||
+        stepKey == 'promo_last_day' ||
         stepKey == 'sales_open' ||
         stepKey == 'sales_regular' ||
         WarmupStep.isBuiltinDozhim(stepKey) ||

@@ -913,6 +913,80 @@ void main() {
     },
   );
 
+  test('promo last day goes only to webinar RSVP and holds sales_regular until 23:59', () {
+    final warmup = WarmupService(
+      course: harness.course,
+      dedupe: JobDedupeRepository(databaseHandle: harness.handle)..initSchema(),
+    );
+    final launch = testLaunch(
+      id: 1,
+      productId: 1,
+      code: 'launch-1',
+      title: 'Запуск',
+      priceFullKopecks: 1900000,
+      pricePromoKopecks: 1500000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      webinarAt: DateTime.utc(2026, 1, 8, 16),
+      salesStartAt: DateTime.utc(2026, 1, 8, 16),
+    );
+    final lastDay = DateTime.utc(2026, 1, 11, 7);
+    WarmupCandidate person({required bool rsvp, FunnelPhase phase = FunnelPhase.warming}) {
+      return WarmupCandidate(
+        userId: rsvp ? 4 : 3,
+        launchId: 1,
+        firstStartedAt: DateTime.utc(2026, 1, 1),
+        magnetIssuedAt: phase == FunnelPhase.lead ? null : DateTime.utc(2026, 1, 1),
+        funnelPhase: phase,
+        sentKeys: const <String>{'warmup_0', 'webinar_next'},
+        webinarRsvp: rsvp,
+      );
+    }
+
+    expect(
+      warmup
+          .nextFor(person(rsvp: true), lastDay, steps: WarmupStep.defaults, launch: launch)
+          ?.stepKey,
+      'promo_last_day',
+    );
+    expect(
+      warmup
+          .nextFor(
+            person(rsvp: true, phase: FunnelPhase.lead),
+            lastDay,
+            steps: WarmupStep.defaults,
+            launch: launch,
+          )
+          ?.stepKey,
+      'promo_last_day',
+    );
+    expect(
+      warmup.nextFor(person(rsvp: false), lastDay, steps: WarmupStep.defaults, launch: launch),
+      isNull,
+    );
+    expect(
+      warmup.nextFor(
+        person(rsvp: true),
+        lastDay,
+        steps: WarmupStep.defaults,
+        launch: launch,
+        quiet: true,
+      ),
+      isNull,
+    );
+    expect(
+      warmup
+          .nextFor(
+            person(rsvp: true),
+            DateTime.utc(2026, 1, 10, 20),
+            steps: WarmupStep.defaults,
+            launch: launch,
+          )
+          ?.stepKey,
+      isNot('promo_last_day'),
+    );
+  });
+
   test('custom launch dozhim replaces builtin copy and is copied as-is', () async {
     harness.course.upsertActiveLaunch(
       productCode: 'course',
@@ -979,7 +1053,7 @@ void main() {
       sender: harness.sender,
       templates: templates,
       quietHours: quietHours,
-      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+      nowProvider: () => DateTime.utc(2026, 1, 13, 8),
     );
     harness.sender.messages.clear();
     harness.sender.copies.clear();
@@ -1034,7 +1108,7 @@ void main() {
       sender: harness.sender,
       templates: templates,
       quietHours: quietHours,
-      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+      nowProvider: () => DateTime.utc(2026, 1, 13, 8),
     );
     harness.sender.messages.clear();
     harness.sender.storedSends.clear();
@@ -1102,7 +1176,7 @@ void main() {
       sender: harness.sender,
       templates: templates,
       quietHours: quietHours,
-      nowProvider: () => DateTime.utc(2026, 1, 12, 17),
+      nowProvider: () => DateTime.utc(2026, 1, 13, 8),
     );
     harness.sender.messages.clear();
     harness.sender.copies.clear();
