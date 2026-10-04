@@ -395,7 +395,7 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         text == _templates.courseReplyButton(_launch) ||
         text == '/enroll' ||
         text == '/course') {
-      return _showEnroll(context);
+      return _showEnroll(context, withProgramCards: true);
     }
     if (text == '👤 Профиль' || text == '📋 Меню' || text == '/profile' || text == '/menu') {
       return _showHome(context);

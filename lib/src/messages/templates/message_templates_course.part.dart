@@ -39,6 +39,8 @@ extension MessageTemplatesCourse on MessageTemplates {
     return FunnelMedia.richMedia(key);
   }
 
+  List<String> courseProgramPhotos() => FunnelMedia.pathsFor('sales_open');
+
   List<InputRichMessageMedia> warmupMedia(String stepKey, {Launch? launch}) {
     final slot = _warmupSlot(stepKey);
     if (slot != null) {

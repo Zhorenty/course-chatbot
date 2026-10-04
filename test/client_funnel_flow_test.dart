@@ -68,6 +68,7 @@ void main() {
     final preSales = harness.sender.messages.last;
     expect(preSales.text, contains('самой выгодной цене'));
     expect(_payButtonTexts(preSales.replyMarkup), isEmpty);
+    expect(harness.sender.photoBatches, isEmpty);
     expect(_enrollment(harness, 42)?.enrollIntentAt, isNotNull);
     expect(_phase(harness, 42), FunnelPhase.warming);
 
@@ -81,6 +82,8 @@ void main() {
     expect(_inlineButtonTexts(promo.replyMarkup), <String>[MessageTemplates.buttonPayFullPromo]);
     expect(_inlineUrls(promo.replyMarkup), <String>[LaunchPrices.defaultPromoCheckoutUrl]);
     expect(_payButtonTexts(promo.replyMarkup), isEmpty);
+    expect(harness.sender.photoBatches, hasLength(1));
+    expect(harness.sender.photoBatches.single, hasLength(9));
 
     await client.press(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 0);
@@ -92,6 +95,8 @@ void main() {
     final regular = harness.sender.messages.last;
     expect(regular.text, isNot(contains('Специальная цена')));
     expect(_payButtonTexts(regular.replyMarkup), hasLength(2));
+    expect(harness.sender.photoBatches, hasLength(2));
+    expect(harness.sender.photoBatches.last, hasLength(9));
 
     await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);
