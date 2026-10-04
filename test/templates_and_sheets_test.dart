@@ -455,6 +455,15 @@ void main() {
     final card = templates.enrollOptions(launch, quote: quote);
     expect(card, contains('Нажимай на кнопку внизу'));
     expect(card, contains('Мастер-класс пройдет'));
+    final listClosed = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 6, 12));
+    expect(
+      templates.enrollOptions(launch, quote: listClosed, rsvpOpen: false),
+      isNot(contains('Запись в список уже закрыта')),
+    );
+    expect(
+      templates.enrollOptions(launch, quote: listClosed, rsvpOpen: false),
+      isNot(contains('Нажимай на кнопку внизу')),
+    );
     expect(
       _inlineButtonTexts(templates.enrollKeyboard(launch, quote: quote, rsvpOpen: true)),
       contains(MessageTemplates.buttonRsvpEnroll),
