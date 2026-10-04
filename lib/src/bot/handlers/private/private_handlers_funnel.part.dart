@@ -165,11 +165,7 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     );
   }
 
-  Future<bool> _showEnroll(
-    PrivateMessageContext context, {
-    bool markIntent = true,
-    bool withProgramCards = false,
-  }) async {
+  Future<bool> _showEnroll(PrivateMessageContext context, {bool markIntent = true}) async {
     if (await _syncPaidCheckout(context)) {
       return true;
     }
@@ -214,9 +210,6 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (text.trim().isEmpty && markup.isEmpty) {
       return true;
     }
-    if (withProgramCards && quote.canBuy) {
-      await _sendProgramCards(context);
-    }
     return _send(
       context,
       text,
@@ -229,18 +222,6 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       ),
       replyMarkup: markup,
     );
-  }
-
-  Future<void> _sendProgramCards(PrivateMessageContext context) async {
-    final chatId = context.chatId;
-    if (chatId == null) {
-      return;
-    }
-    final photos = _templates.courseProgramPhotos();
-    if (photos.isEmpty) {
-      return;
-    }
-    await _sender.sendPhotos(chatId, photos, fromFile: true, disableNotification: true);
   }
 
   Future<bool> _rsvpWebinar(PrivateMessageContext context) async {
