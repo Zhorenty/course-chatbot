@@ -426,15 +426,57 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
     ]);
   }
 
+  bool _isBundledPostAlbum(StoredTelegramMessage stored, List<List<String>> albums) {
+    final names = <String>[for (final item in stored.media) _photoFileName(item.localPath)];
+    for (final album in albums) {
+      if (names.length != album.length) {
+        continue;
+      }
+      var same = true;
+      for (var i = 0; i < album.length; i++) {
+        if (names[i] != album[i]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String _photoFileName(String? path) {
+    final value = path?.trim() ?? '';
+    final slash = value.lastIndexOf('/');
+    if (slash < 0) {
+      return value;
+    }
+    return value.substring(slash + 1);
+  }
+
   /// Brings copy seeded from older defaults up to date; admin-edited slots stay as they are.
   void _migrateSeededLaunchCopy() {
-    const oldPostNames = <String>['post_1.jpg', 'post_2.jpg'];
+    const bundledPostAlbums = <List<String>>[
+      <String>['post_1.jpg', 'post_2.jpg'],
+      <String>[
+        'post_1.jpg',
+        'post_2.jpg',
+        'post_3.jpg',
+        'post_4.jpg',
+        'post_5.jpg',
+        'post_6.jpg',
+        'post_7.jpg',
+        'post_8.jpg',
+        'post_9.jpg',
+      ],
+    ];
     for (final slot in <LaunchCopySlotKey>[
       LaunchCopySlotKey.afterWebinar,
       LaunchCopySlotKey.salesOpen,
     ]) {
       final fresh = FunnelMedia.pathsFor(slot.funnelMediaKey ?? '');
-      if (fresh.length <= oldPostNames.length) {
+      if (fresh.isEmpty) {
         continue;
       }
       for (final row in _db.select(
@@ -442,17 +484,7 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
         <Object?>[slot.canonical],
       )) {
         final stored = _decodeStoredCopy(row['payload']);
-        if (stored == null || stored.media.length != oldPostNames.length) {
-          continue;
-        }
-        var seeded = true;
-        for (var i = 0; i < oldPostNames.length; i++) {
-          final path = stored.media[i].localPath ?? '';
-          if (!path.endsWith('/${oldPostNames[i]}')) {
-            seeded = false;
-          }
-        }
-        if (!seeded) {
+        if (stored == null || !_isBundledPostAlbum(stored, bundledPostAlbums)) {
           continue;
         }
         final updated = storedCopyFromHtml(stored.captionHtml ?? '', photoPaths: fresh);

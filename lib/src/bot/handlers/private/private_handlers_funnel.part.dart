@@ -210,6 +210,9 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
     if (text.trim().isEmpty && markup.isEmpty) {
       return true;
     }
+    if (quote.phase == SalesPhase.regular) {
+      await _sendRegularProgramCards(context);
+    }
     return _send(
       context,
       text,
@@ -222,6 +225,18 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       ),
       replyMarkup: markup,
     );
+  }
+
+  Future<void> _sendRegularProgramCards(PrivateMessageContext context) async {
+    final chatId = context.chatId;
+    if (chatId == null) {
+      return;
+    }
+    final photos = _templates.regularEnrollPhotos();
+    if (photos.isEmpty) {
+      return;
+    }
+    await _sender.sendPhotos(chatId, photos, fromFile: true, disableNotification: true);
   }
 
   Future<bool> _rsvpWebinar(PrivateMessageContext context) async {

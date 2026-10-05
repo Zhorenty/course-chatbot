@@ -81,6 +81,7 @@ void main() {
     expect(_inlineButtonTexts(promo.replyMarkup), <String>[MessageTemplates.buttonPayFullPromo]);
     expect(_inlineUrls(promo.replyMarkup), <String>[LaunchPrices.defaultPromoCheckoutUrl]);
     expect(_payButtonTexts(promo.replyMarkup), isEmpty);
+    expect(harness.sender.photoBatches, isEmpty);
 
     await client.press(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 0);
@@ -92,6 +93,9 @@ void main() {
     final regular = harness.sender.messages.last;
     expect(regular.text, isNot(contains('Специальная цена')));
     expect(_payButtonTexts(regular.replyMarkup), hasLength(2));
+    expect(harness.sender.photoBatches, hasLength(1));
+    expect(harness.sender.photoBatches.single, hasLength(9));
+    expect(harness.sender.photoBatches.single.first, contains('post_1.jpg'));
 
     await client.pay(MessageTemplates.cbPayFull);
     expect(harness.gateway.creates, 1);

@@ -22,11 +22,14 @@ abstract final class FunnelMedia {
     'post_9',
   ];
 
+  static const List<String> _announce = <String>['announce_1', 'announce_2'];
+
   static const Map<String, List<String>> _stems = <String, List<String>>{
     start: <String>['welcome'],
     'warmup_0': <String>['masterclass'],
     'webinar_24h': <String>['masterclass'],
-    'webinar_next': _posts,
+    'webinar_next': _announce,
+    'enroll_regular': _posts,
     'promo_last_day': <String>[
       'promo_last_1',
       'promo_last_2',
@@ -38,7 +41,7 @@ abstract final class FunnelMedia {
       'promo_last_8',
       'promo_last_9',
     ],
-    'sales_open': _posts,
+    'sales_open': _announce,
     paid: <String>['paid'],
     'dozhim_d1': <String>[
       'dozhim1_01',

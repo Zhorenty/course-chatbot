@@ -128,7 +128,8 @@ void main() {
     expect(FunnelMedia.pathsFor('start'), hasLength(1));
     expect(FunnelMedia.pathsFor('warmup_0'), hasLength(1));
     expect(FunnelMedia.pathsFor('webinar_24h'), FunnelMedia.pathsFor('warmup_0'));
-    expect(FunnelMedia.pathsFor('webinar_next'), hasLength(9));
+    expect(FunnelMedia.pathsFor('webinar_next'), hasLength(2));
+    expect(FunnelMedia.pathsFor('enroll_regular'), hasLength(9));
     expect(FunnelMedia.pathsFor('promo_last_day'), hasLength(9));
     expect(FunnelMedia.pathsFor('sales_open'), FunnelMedia.pathsFor('webinar_next'));
     expect(FunnelMedia.pathsFor('paid'), hasLength(1));

@@ -74,11 +74,11 @@ void main() {
 
   test('init refreshes copy seeded from old defaults and keeps custom slots', () {
     final active = _upsert(course: course, code: 'launch-1', title: 'Запуск', activate: true);
-    const oldPosts = <String>['assets/funnel/post_1.jpg', 'assets/funnel/post_2.jpg'];
+    final ninePosts = <String>[for (var i = 1; i <= 9; i++) 'assets/funnel/post_$i.jpg'];
     course.upsertLaunchCopySlot(
       launchId: active.id,
       slot: LaunchCopySlotKey.afterWebinar,
-      payload: storedCopyFromHtml('после эфира', photoPaths: oldPosts),
+      payload: storedCopyFromHtml('после эфира', photoPaths: ninePosts),
     );
     course.upsertLaunchCopySlot(
       launchId: active.id,
@@ -103,8 +103,11 @@ void main() {
       afterWebinar.media.map((item) => item.localPath).toList(),
       FunnelMedia.pathsFor('webinar_next'),
     );
-    expect(afterWebinar.media, hasLength(9));
-    expect(copy[LaunchCopySlotKey.salesOpen]!.media, hasLength(2));
+    expect(afterWebinar.media, hasLength(2));
+    expect(
+      copy[LaunchCopySlotKey.salesOpen]!.media.map((item) => item.localPath).toList(),
+      <String>['assets/funnel/post_2.jpg', 'assets/funnel/post_1.jpg'],
+    );
     expect(
       copy.htmlOf(LaunchCopySlotKey.enrollPromo),
       'Спеццена\nПосле оплаты с тобой свяжется администратор и пригласит тебя в группу.',

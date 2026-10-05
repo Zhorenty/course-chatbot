@@ -39,6 +39,8 @@ extension MessageTemplatesCourse on MessageTemplates {
     return FunnelMedia.richMedia(key);
   }
 
+  List<String> regularEnrollPhotos() => FunnelMedia.pathsFor('enroll_regular');
+
   List<InputRichMessageMedia> warmupMedia(String stepKey, {Launch? launch}) {
     final slot = _warmupSlot(stepKey);
     if (slot != null) {
