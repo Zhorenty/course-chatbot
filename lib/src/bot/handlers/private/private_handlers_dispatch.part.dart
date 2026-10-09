@@ -107,6 +107,8 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _startPay(context, PaymentKind.full);
       case MessageTemplates.cbPayDeposit:
         return _startPay(context, PaymentKind.deposit);
+      case MessageTemplates.cbPayRemainderOwn:
+        return _startPay(context, PaymentKind.remainder);
       case MessageTemplates.cbRsvp:
         return _rsvpWebinar(context);
       case MessageTemplates.cbToggleOffer:
@@ -133,6 +135,19 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
         return _cancelBroadcast(context);
       case MessageTemplates.cbBroadcastToggleOptOut:
         return _toggleBroadcastOptOut(context);
+      case MessageTemplates.cbBroadcastComposeDone:
+      case MessageTemplates.cbBroadcastOpenButtons:
+        return _openBroadcastButtons(context);
+      case MessageTemplates.cbBroadcastButtonsDone:
+        return _finishBroadcastButtons(context);
+      case MessageTemplates.cbBroadcastDropPart:
+        return _dropBroadcastPart(context);
+      case MessageTemplates.cbBroadcastAddButton:
+        return _startBroadcastButton(context);
+      case MessageTemplates.cbBroadcastKeepLabel:
+        return _keepBroadcastButtonLabel(context);
+      case MessageTemplates.cbBroadcastBackToMessages:
+        return _backToBroadcastMessages(context);
       case MessageTemplates.cbGuideSave:
         return _savePendingGuide(context);
       case MessageTemplates.cbGuideDiscard:
@@ -152,6 +167,15 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
     }
     if (data.startsWith(MessageTemplates.cbBroadcastSegment)) {
       return _toggleBroadcastSegment(context, MessageTemplates.segmentFromCallback(data));
+    }
+    if (data.startsWith(MessageTemplates.cbBroadcastButtonAction)) {
+      return _chooseBroadcastButtonAction(context, MessageTemplates.buttonActionFromCallback(data));
+    }
+    if (data.startsWith(MessageTemplates.cbBroadcastButtonRemove)) {
+      return _removeBroadcastButton(
+        context,
+        MessageTemplates.idFromCallback(data, MessageTemplates.cbBroadcastButtonRemove),
+      );
     }
     if (data.startsWith(MessageTemplates.cbContinuePay)) {
       return _continuePay(

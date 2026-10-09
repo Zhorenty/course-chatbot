@@ -176,6 +176,17 @@ String? telegramMediaGroupId(Map<String, dynamic>? message) {
   return raw;
 }
 
+BroadcastContentKind? broadcastLeafKindOf(Map<String, dynamic>? message) {
+  if (message == null) {
+    return null;
+  }
+  if (!isTelegramAlbum(message)) {
+    return broadcastContentKindOf(message);
+  }
+  final stripped = Map<String, dynamic>.from(message)..remove('media_group_id');
+  return broadcastContentKindOf(stripped);
+}
+
 BroadcastContentKind? broadcastContentKindOf(Map<String, dynamic>? message) {
   if (message == null) {
     return null;

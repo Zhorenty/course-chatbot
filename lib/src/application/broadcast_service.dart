@@ -37,10 +37,38 @@ final class BroadcastService {
         listRecipients(segments: segments, excludeOptOut: true).length;
   }
 
+  /// Copies [parts] in order. [replyMarkup] is attached to the last part when
+  /// that part is a single message. Telegram albums have no keyboard.
+  Future<void> copySequence({
+    required int chatId,
+    required int fromChatId,
+    required List<BroadcastDraftPart> parts,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    for (var i = 0; i < parts.length; i++) {
+      final ids = parts[i].messageIds;
+      if (ids.isEmpty) {
+        continue;
+      }
+      final attach = replyMarkup != null && i == parts.length - 1 && ids.length == 1;
+      if (ids.length == 1) {
+        await _sender.copyMessage(
+          chatId: chatId,
+          fromChatId: fromChatId,
+          messageId: ids.single,
+          replyMarkup: attach ? replyMarkup : null,
+        );
+        continue;
+      }
+      await _sender.copyMessages(chatId: chatId, fromChatId: fromChatId, messageIds: ids);
+    }
+  }
+
   Future<BroadcastResult> send({
     required Iterable<BroadcastSegment> segments,
     required int fromChatId,
-    required int messageId,
+    required List<BroadcastDraftPart> parts,
+    Map<String, Object?>? replyMarkup,
     bool excludeOptOut = false,
   }) async {
     final userIds = listRecipients(segments: segments, excludeOptOut: excludeOptOut);
@@ -49,7 +77,12 @@ final class BroadcastService {
     for (var i = 0; i < userIds.length; i++) {
       final userId = userIds[i];
       try {
-        await _sender.copyMessage(chatId: userId, fromChatId: fromChatId, messageId: messageId);
+        await copySequence(
+          chatId: userId,
+          fromChatId: fromChatId,
+          parts: parts,
+          replyMarkup: replyMarkup,
+        );
         sent++;
       } on TelegramApiException catch (error) {
         failed++;

@@ -11,6 +11,11 @@ enum PrivateFlowStep {
   adminAddUser,
   adminBroadcastSegment,
   adminBroadcastCompose,
+  adminBroadcastButtons,
+  adminBroadcastButtonAction,
+  adminBroadcastButtonUrl,
+  adminBroadcastButtonLabel,
+  adminBroadcastPreview,
   adminGuideConfirm,
   adminComposeDm,
   adminCatalogMenu,
@@ -194,11 +199,14 @@ final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
     this.broadcastSegments = const <BroadcastSegment>{},
+    this.broadcastParts = const <BroadcastDraftPart>[],
+    this.broadcastButtons = const <BroadcastButton>[],
     this.broadcastFromChatId,
-    this.broadcastMessageId,
-    this.broadcastContentKind,
-    this.broadcastPreviewText,
+    this.broadcastPendingAction,
+    this.broadcastPendingUrl,
     this.broadcastPickerMessageId,
+    this.broadcastControlMessageId,
+    this.broadcastResumePreview = false,
     this.adminTargetUserId,
     this.pendingGuideFileId,
     this.broadcastExcludeOptOut = false,
@@ -210,11 +218,14 @@ final class PrivateFlowState {
 
   final PrivateFlowStep step;
   final Set<BroadcastSegment> broadcastSegments;
+  final List<BroadcastDraftPart> broadcastParts;
+  final List<BroadcastButton> broadcastButtons;
   final int? broadcastFromChatId;
-  final int? broadcastMessageId;
-  final BroadcastContentKind? broadcastContentKind;
-  final String? broadcastPreviewText;
+  final BroadcastButtonAction? broadcastPendingAction;
+  final String? broadcastPendingUrl;
   final int? broadcastPickerMessageId;
+  final int? broadcastControlMessageId;
+  final bool broadcastResumePreview;
   final int? adminTargetUserId;
   final String? pendingGuideFileId;
   final bool broadcastExcludeOptOut;
@@ -223,18 +234,21 @@ final class PrivateFlowState {
   final int? catalogMessageId;
   final int? catalogPinMessageId;
 
-  bool get hasBroadcastDraft => broadcastFromChatId != null && broadcastMessageId != null;
+  bool get hasBroadcastDraft => broadcastParts.isNotEmpty;
 
   bool get hasBroadcastSegments => broadcastSegments.isNotEmpty;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
     Object? broadcastSegments = _unset,
+    Object? broadcastParts = _unset,
+    Object? broadcastButtons = _unset,
     Object? broadcastFromChatId = _unset,
-    Object? broadcastMessageId = _unset,
-    Object? broadcastContentKind = _unset,
-    Object? broadcastPreviewText = _unset,
+    Object? broadcastPendingAction = _unset,
+    Object? broadcastPendingUrl = _unset,
     Object? broadcastPickerMessageId = _unset,
+    Object? broadcastControlMessageId = _unset,
+    bool? broadcastResumePreview,
     Object? adminTargetUserId = _unset,
     Object? pendingGuideFileId = _unset,
     bool? broadcastExcludeOptOut,
@@ -250,21 +264,28 @@ final class PrivateFlowState {
           : Set<BroadcastSegment>.unmodifiable(
               broadcastSegments as Iterable<BroadcastSegment>? ?? const <BroadcastSegment>{},
             ),
+      broadcastParts: identical(broadcastParts, _unset)
+          ? this.broadcastParts
+          : List<BroadcastDraftPart>.unmodifiable(broadcastParts as List<BroadcastDraftPart>),
+      broadcastButtons: identical(broadcastButtons, _unset)
+          ? this.broadcastButtons
+          : List<BroadcastButton>.unmodifiable(broadcastButtons as List<BroadcastButton>),
       broadcastFromChatId: identical(broadcastFromChatId, _unset)
           ? this.broadcastFromChatId
           : broadcastFromChatId as int?,
-      broadcastMessageId: identical(broadcastMessageId, _unset)
-          ? this.broadcastMessageId
-          : broadcastMessageId as int?,
-      broadcastContentKind: identical(broadcastContentKind, _unset)
-          ? this.broadcastContentKind
-          : broadcastContentKind as BroadcastContentKind?,
-      broadcastPreviewText: identical(broadcastPreviewText, _unset)
-          ? this.broadcastPreviewText
-          : broadcastPreviewText as String?,
+      broadcastPendingAction: identical(broadcastPendingAction, _unset)
+          ? this.broadcastPendingAction
+          : broadcastPendingAction as BroadcastButtonAction?,
+      broadcastPendingUrl: identical(broadcastPendingUrl, _unset)
+          ? this.broadcastPendingUrl
+          : broadcastPendingUrl as String?,
       broadcastPickerMessageId: identical(broadcastPickerMessageId, _unset)
           ? this.broadcastPickerMessageId
           : broadcastPickerMessageId as int?,
+      broadcastControlMessageId: identical(broadcastControlMessageId, _unset)
+          ? this.broadcastControlMessageId
+          : broadcastControlMessageId as int?,
+      broadcastResumePreview: broadcastResumePreview ?? this.broadcastResumePreview,
       adminTargetUserId: identical(adminTargetUserId, _unset)
           ? this.adminTargetUserId
           : adminTargetUserId as int?,

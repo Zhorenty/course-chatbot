@@ -116,6 +116,13 @@ final class MessageTemplates {
   static const String buttonAdminCreateUser = '➕ Создать карточку';
   static const String buttonAdminBroadcastSend = 'Отправить';
   static const String buttonAdminBroadcastContinue = 'Далее';
+  static const String buttonAdminBroadcastSkipButtons = 'Далее без кнопок';
+  static const String buttonAdminBroadcastButtons = 'Кнопки';
+  static const String buttonAdminBroadcastMessages = 'Сообщения';
+  static const String buttonAdminBroadcastAddButton = 'Добавить кнопку';
+  static const String buttonAdminBroadcastToMessages = 'К сообщениям';
+  static const String buttonAdminBroadcastDropPart = 'Убрать последнее';
+  static const String buttonAdminBroadcastKeepLabel = 'Оставить так';
   static const String buttonAdminBroadcastSelectAll = 'Выбрать все';
   static const String buttonAdminBroadcastClearAll = 'Снять все';
   static const String buttonAdminBroadcastOtherSegment = 'Изменить сегменты';
@@ -163,6 +170,7 @@ final class MessageTemplates {
   static const String cbPayFull = 'pf';
   static const String cbPayDeposit = 'pd';
   static const String cbPayRemainder = 'pr:';
+  static const String cbPayRemainderOwn = 'pro';
   // Leftover callbacks from the removed offer-consent screen.
   static const String cbToggleOffer = 'oo';
   static const String cbTogglePersonalData = 'op';
@@ -192,6 +200,15 @@ final class MessageTemplates {
   static const String cbBroadcastOtherSegment = 'br';
   static const String cbBroadcastCancel = 'bx';
   static const String cbBroadcastToggleOptOut = 'bt';
+  static const String cbBroadcastComposeDone = 'bq';
+  static const String cbBroadcastButtonsDone = 'bd';
+  static const String cbBroadcastDropPart = 'bl';
+  static const String cbBroadcastAddButton = 'bk';
+  static const String cbBroadcastButtonAction = 'bj:';
+  static const String cbBroadcastButtonRemove = 'bi:';
+  static const String cbBroadcastKeepLabel = 'bh';
+  static const String cbBroadcastBackToMessages = 'bm';
+  static const String cbBroadcastOpenButtons = 'bb';
   static const String cbGuideSave = 'gs';
   static const String cbGuideDiscard = 'gx';
   static const String cbAdminCard = 'ak:';
@@ -779,8 +796,46 @@ final class MessageTemplates {
     return buf.toString();
   }
 
-  String adminAskBroadcastContent() {
-    return 'Пришли одним сообщением текст, фото, файл, видео или голосовое. Можно с подписью.';
+  String adminBroadcastCompose(List<BroadcastDraftPart> parts, {String? notice}) {
+    final buf = StringBuffer()..writeln('<b>Сообщения</b>');
+    final note = notice?.trim();
+    if (note != null && note.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln(escapeHtml(note));
+    }
+    if (parts.isEmpty) {
+      buf
+        ..writeln()
+        ..writeln(
+          'Пришли их по порядку: текст, фото, видео, кружок или голосовое. '
+          'Каждое станет отдельным сообщением. Альбом из нескольких фото или видео уйдёт одним альбомом.',
+        )
+        ..writeln()
+        ..write('Кнопки потом встанут на последнее сообщение.');
+      return buf.toString();
+    }
+    buf
+      ..writeln()
+      ..writeln('Сейчас ${parts.length}.');
+    for (var i = 0; i < parts.length; i++) {
+      buf.writeln('${i + 1}. ${escapeHtml(broadcastPartLine(parts[i]))}');
+    }
+    buf
+      ..writeln()
+      ..write('Пришли ещё, если нужно. «Далее» — подписи и действия кнопок.');
+    return buf.toString();
+  }
+
+  String broadcastPartLine(BroadcastDraftPart part) {
+    final kind = part.isAlbum
+        ? 'альбом · ${part.messageIds.length}'
+        : broadcastContentKindLabel(part.kind);
+    final preview = _clipBroadcastList(part.previewText);
+    if (preview == null) {
+      return kind;
+    }
+    return '$kind — «$preview»';
   }
 
   String adminBroadcastPickSegment(
@@ -813,11 +868,96 @@ final class MessageTemplates {
     return buf.toString().trim();
   }
 
+  String adminBroadcastButtons(List<BroadcastButton> buttons, {required bool albumBlocksButtons}) {
+    final buf = StringBuffer()..writeln('<b>Кнопки</b>');
+    if (buttons.isEmpty) {
+      buf
+        ..writeln()
+        ..writeln('Пока без кнопок. Можно добавить несколько: у каждой свой текст и своё действие.')
+        ..writeln()
+        ..write('Они встанут столбиком под последним сообщением.');
+    } else {
+      buf.writeln();
+      for (var i = 0; i < buttons.length; i++) {
+        final button = buttons[i];
+        buf.writeln(
+          '${i + 1}. «${escapeHtml(button.label)}» — ${escapeHtml(broadcastButtonEffect(button))}',
+        );
+      }
+      buf
+        ..writeln()
+        ..write('На последнем сообщении, сверху вниз.');
+    }
+    if (albumBlocksButtons) {
+      buf
+        ..writeln()
+        ..writeln()
+        ..write(
+          'Последнее сообщение — альбом, на него кнопки не вешаются. '
+          'Пришли следом текст, фото или видео — кнопки встанут на него.',
+        );
+    }
+    return buf.toString();
+  }
+
+  String adminBroadcastButtonActions() {
+    final buf = StringBuffer()
+      ..writeln('<b>Куда ведёт кнопка</b>')
+      ..writeln()
+      ..writeln('Сначала действие, следующим шагом — текст на кнопке.')
+      ..writeln();
+    for (final action in BroadcastButtonAction.values) {
+      buf.writeln(
+        '• ${escapeHtml(broadcastButtonActionTitle(action))} — ${escapeHtml(broadcastButtonActionHint(action))}',
+      );
+    }
+    return buf.toString().trim();
+  }
+
+  String adminBroadcastButtonLabel(
+    BroadcastButtonAction action, {
+    required String? suggestion,
+    String? notice,
+  }) {
+    final buf = StringBuffer()..writeln('<b>Текст кнопки</b>');
+    final note = notice?.trim();
+    if (note != null && note.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln(escapeHtml(note));
+    }
+    buf
+      ..writeln()
+      ..writeln('Действие: ${escapeHtml(broadcastButtonEffectOf(action))}.')
+      ..writeln('Напиши подпись как на кнопке, до ${BroadcastButton.maxLabelLength} символов.');
+    if (suggestion != null && suggestion.isNotEmpty) {
+      buf
+        ..writeln()
+        ..write('Можно оставить: ${escapeHtml(suggestion)}');
+    }
+    return buf.toString();
+  }
+
+  String adminBroadcastButtonUrl({String? notice}) {
+    final buf = StringBuffer()..writeln('<b>Адрес кнопки</b>');
+    final note = notice?.trim();
+    if (note != null && note.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln(escapeHtml(note));
+    }
+    buf
+      ..writeln()
+      ..write('Пришли ссылку http или https. Следующим сообщением будет подпись на кнопке.');
+    return buf.toString();
+  }
+
   String adminBroadcastPreview({
     required Iterable<BroadcastSegment> segments,
     required int recipientCount,
-    required BroadcastContentKind kind,
-    String? previewText,
+    required List<BroadcastDraftPart> parts,
+    required List<BroadcastButton> buttons,
+    required bool canSend,
     int optOutCount = 0,
     bool excludeOptOut = false,
   }) {
@@ -826,7 +966,11 @@ final class MessageTemplates {
       ..writeln('<b>Превью</b>')
       ..writeln()
       ..writeln('$segmentWord: ${escapeHtml(broadcastSegmentsLabel(segments))}')
-      ..writeln('Получателей: <b>$recipientCount</b>');
+      ..writeln('Получателей: <b>$recipientCount</b>')
+      ..writeln('Сообщений: ${parts.length}');
+    for (var i = 0; i < parts.length; i++) {
+      buf.writeln('${i + 1}. ${escapeHtml(broadcastPartLine(parts[i]))}');
+    }
     if (optOutCount > 0) {
       buf.writeln(
         excludeOptOut
@@ -834,19 +978,83 @@ final class MessageTemplates {
             : '«Не писать» в выборке: $optOutCount — будут включены',
       );
     }
-    buf.write('Содержимое: ${escapeHtml(broadcastContentKindLabel(kind))}');
-    final preview = previewText?.trim();
-    if (preview != null && preview.isNotEmpty) {
-      buf
-        ..writeln()
-        ..writeln()
-        ..write(escapeHtml(_clipBroadcastPreview(preview)));
+    if (buttons.isEmpty) {
+      buf.writeln('Без кнопок.');
+    } else {
+      buf.writeln('Кнопки:');
+      for (final button in buttons) {
+        buf.writeln(
+          '• «${escapeHtml(button.label)}» — ${escapeHtml(broadcastButtonEffect(button))}',
+        );
+      }
+    }
+    buf.writeln();
+    if (!canSend) {
+      buf.write(
+        'Кнопки собраны, но последнее сообщение — альбом. Пришли текст следом, и они встанут на него.',
+      );
+    } else {
+      buf.write('Выше — как это увидят.');
     }
     return buf.toString();
   }
 
-  String adminBroadcastAlbumRejected() {
-    return 'Пришли одно фото или файл, не альбом.';
+  String broadcastButtonActionTitle(BroadcastButtonAction action) => switch (action) {
+    BroadcastButtonAction.payFull => 'Оплатить курс целиком',
+    BroadcastButtonAction.payDeposit => 'Предоплата',
+    BroadcastButtonAction.payRemainder => 'Внести остаток',
+    BroadcastButtonAction.enroll => 'Карточка курса',
+    BroadcastButtonAction.url => 'Своя ссылка',
+  };
+
+  String broadcastButtonActionHint(BroadcastButtonAction action) => switch (action) {
+    BroadcastButtonAction.payFull => 'касса на полную сумму',
+    BroadcastButtonAction.payDeposit => 'касса на сумму предоплаты',
+    BroadcastButtonAction.payRemainder => 'доплата, если предоплата уже есть',
+    BroadcastButtonAction.enroll => 'открывает запись на курс',
+    BroadcastButtonAction.url => 'адрес, который пришлёшь',
+  };
+
+  String broadcastButtonEffectOf(BroadcastButtonAction action) => switch (action) {
+    BroadcastButtonAction.payFull => 'полная оплата',
+    BroadcastButtonAction.payDeposit => 'предоплата',
+    BroadcastButtonAction.payRemainder => 'остаток',
+    BroadcastButtonAction.enroll => 'карточка курса',
+    BroadcastButtonAction.url => 'ссылка',
+  };
+
+  String broadcastButtonEffect(BroadcastButton button) {
+    if (button.action == BroadcastButtonAction.url) {
+      return _clipBroadcastList(button.url) ?? 'ссылка';
+    }
+    return broadcastButtonEffectOf(button.action);
+  }
+
+  String? broadcastSuggestedLabel(BroadcastButtonAction action, {Launch? launch}) {
+    final label = switch (action) {
+      BroadcastButtonAction.payFull =>
+        launch == null
+            ? buttonPayFull
+            : '$buttonPayFull (${formatRubSpaced(launch.priceFullKopecks, unit: 'руб.')})',
+      BroadcastButtonAction.payDeposit =>
+        launch != null && launch.hasDepositOption
+            ? '$buttonPayDeposit (${formatRubSpaced(launch.depositKopecks, unit: 'руб.')})'
+            : buttonPayDeposit,
+      BroadcastButtonAction.payRemainder => buttonPayRemainder,
+      BroadcastButtonAction.enroll => buttonEnrollInline,
+      BroadcastButtonAction.url => 'Открыть',
+    };
+    if (label.length > BroadcastButton.maxLabelLength) {
+      return null;
+    }
+    return label;
+  }
+
+  String broadcastRemoveButtonLabel(String label) {
+    const prefix = 'Убрать: ';
+    final room = BroadcastButton.maxLabelLength - prefix.length;
+    final clipped = label.length <= room ? label : '${label.substring(0, room - 1)}…';
+    return '$prefix$clipped';
   }
 
   String adminBroadcastEmptyRejected() {
@@ -1285,6 +1493,13 @@ final class MessageTemplates {
     return '${participantListLabel(segment)} ($count)';
   }
 
+  static BroadcastButtonAction? buttonActionFromCallback(String data) {
+    if (!data.startsWith(cbBroadcastButtonAction)) {
+      return null;
+    }
+    return BroadcastButtonAction.fromCode(data.substring(cbBroadcastButtonAction.length));
+  }
+
   static BroadcastSegment? segmentFromCallback(String data) {
     if (!data.startsWith(cbBroadcastSegment)) {
       return null;
@@ -1332,6 +1547,17 @@ final class MessageTemplates {
       return text;
     }
     return '${text.substring(0, 200)}…';
+  }
+
+  String? _clipBroadcastList(String? raw) {
+    final text = raw?.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+    if (text.length <= 80) {
+      return text;
+    }
+    return '${text.substring(0, 80)}…';
   }
 
   String deepLink(String payload) {

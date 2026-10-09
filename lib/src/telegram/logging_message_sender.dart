@@ -176,12 +176,14 @@ final class LoggingMessageSender implements MessageSender {
     required int fromChatId,
     required int messageId,
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final copiedId = await _inner.copyMessage(
       chatId: chatId,
       fromChatId: fromChatId,
       messageId: messageId,
       disableNotification: disableNotification,
+      replyMarkup: replyMarkup,
     );
     await _safeAppend(
       chatId: chatId,

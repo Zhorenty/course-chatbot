@@ -666,6 +666,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
     required int fromChatId,
     required int messageId,
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final payload = await _post(
       'copyMessage',
@@ -674,6 +675,7 @@ final class TelegramClient implements MessageSender, ChannelApi {
         'from_chat_id': fromChatId,
         'message_id': messageId,
         'disable_notification': disableNotification,
+        if (replyMarkup != null) 'reply_markup': replyMarkup,
       },
     );
     final result = payload['result'];

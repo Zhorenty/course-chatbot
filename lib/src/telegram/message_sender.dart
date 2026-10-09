@@ -78,6 +78,7 @@ abstract interface class MessageSender {
     required int fromChatId,
     required int messageId,
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   });
 
   /// Copies 1–100 messages. A media group stays an album when all its ids are passed.

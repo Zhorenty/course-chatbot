@@ -198,11 +198,72 @@ extension MessageTemplatesRich on MessageTemplates {
         '$selectedBlock';
   }
 
+  String adminBroadcastComposeRich(List<BroadcastDraftPart> parts, {String? notice}) {
+    final note = notice?.trim();
+    final noticeHtml = note == null || note.isEmpty ? '' : richP(escapeHtml(note));
+    if (parts.isEmpty) {
+      return '${richH2('Сообщения')}'
+          '$noticeHtml'
+          '${richP('Пришли их по порядку: текст, фото, видео, кружок или голосовое. Каждое станет отдельным сообщением. Альбом из нескольких фото или видео уйдёт одним альбомом.')}'
+          '${richP('Кнопки потом встанут на последнее сообщение.')}';
+    }
+    return '${richH2('Сообщения')}'
+        '$noticeHtml'
+        '${richP('Сейчас ${parts.length}.')}'
+        '${richOl(<String>[for (final part in parts) escapeHtml(broadcastPartLine(part))])}'
+        '${richP('Пришли ещё, если нужно. «Далее» — подписи и действия кнопок.')}';
+  }
+
+  String adminBroadcastButtonsRich(
+    List<BroadcastButton> buttons, {
+    required bool albumBlocksButtons,
+  }) {
+    final list = buttons.isEmpty
+        ? '${richP('Пока без кнопок. Можно добавить несколько: у каждой свой текст и своё действие.')}${richP('Они встанут столбиком под последним сообщением.')}'
+        : '${richOl(<String>[for (final button in buttons) '«${escapeHtml(button.label)}» — ${escapeHtml(broadcastButtonEffect(button))}'])}${richP('На последнем сообщении, сверху вниз.')}';
+    final album = albumBlocksButtons
+        ? richP(
+            'Последнее сообщение — альбом, на него кнопки не вешаются. Пришли следом текст, фото или видео — кнопки встанут на него.',
+          )
+        : '';
+    return '${richH2('Кнопки')}$list$album';
+  }
+
+  String adminBroadcastButtonActionsRich() {
+    return '${richH2('Куда ведёт кнопка')}'
+        '${richP('Сначала действие, следующим шагом — текст на кнопке.')}'
+        '${richUl(<String>[for (final action in BroadcastButtonAction.values) '${escapeHtml(broadcastButtonActionTitle(action))} — ${escapeHtml(broadcastButtonActionHint(action))}'])}';
+  }
+
+  String adminBroadcastButtonLabelRich(
+    BroadcastButtonAction action, {
+    required String? suggestion,
+    String? notice,
+  }) {
+    final note = notice?.trim();
+    final suggestionLine = suggestion == null || suggestion.isEmpty
+        ? ''
+        : richP('Можно оставить: ${escapeHtml(suggestion)}');
+    return '${richH2('Текст кнопки')}'
+        '${note == null || note.isEmpty ? '' : richP(escapeHtml(note))}'
+        '${richP('Действие: ${escapeHtml(broadcastButtonEffectOf(action))}.')}'
+        '${richP('Напиши подпись как на кнопке, до ${BroadcastButton.maxLabelLength} символов.')}'
+        '$suggestionLine';
+  }
+
+  String adminBroadcastButtonUrlRich({String? notice}) {
+    final note = notice?.trim();
+    return '${richH2('Адрес кнопки')}'
+        '${note == null || note.isEmpty ? '' : richP(escapeHtml(note))}'
+        '${richP('Пришли ссылку http или https. Следующим сообщением будет подпись на кнопке.')}';
+  }
+
   String adminBroadcastPreviewRich({
     required Iterable<BroadcastSegment> segments,
     required int recipientCount,
-    required BroadcastContentKind kind,
-    String? previewText,
+    required List<BroadcastDraftPart> parts,
+    required List<BroadcastButton> buttons,
+    required bool canSend,
     int optOutCount = 0,
     bool excludeOptOut = false,
   }) {
@@ -212,10 +273,23 @@ extension MessageTemplatesRich on MessageTemplates {
         : excludeOptOut
         ? '«Не писать» в выборке: $optOutCount — не включены'
         : '«Не писать» в выборке: $optOutCount — будут включены';
-    final preview = previewText?.trim();
+    final buttonLine = buttons.isEmpty
+        ? 'без кнопок'
+        : buttons
+              .map(
+                (button) =>
+                    '«${escapeHtml(button.label)}» — ${escapeHtml(broadcastButtonEffect(button))}',
+              )
+              .join('<br>');
+    final tail = canSend
+        ? richP('Выше — как это увидят.')
+        : richP(
+            'Кнопки собраны, но последнее сообщение — альбом. Пришли текст следом, и они встанут на него.',
+          );
     return '${richH2('Превью')}'
-        '${richTable(<(String, String)>[(segmentWord, escapeHtml(broadcastSegmentsLabel(segments))), ('Получателей', '<b>$recipientCount</b>'), if (optOutLine != null) ('Отписка', optOutLine), ('Содержимое', escapeHtml(broadcastContentKindLabel(kind)))])}'
-        '${preview == null || preview.isEmpty ? '' : richQuote(escapeHtml(_clipBroadcastPreview(preview)))}';
+        '${richTable(<(String, String)>[(segmentWord, escapeHtml(broadcastSegmentsLabel(segments))), ('Получателей', '<b>$recipientCount</b>'), ('Сообщений', '${parts.length}'), if (optOutLine != null) ('Отписка', optOutLine), ('Кнопки', buttonLine)])}'
+        '${richOl(<String>[for (final part in parts) escapeHtml(broadcastPartLine(part))])}'
+        '$tail';
   }
 
   String adminIncomingUserMessageRich({

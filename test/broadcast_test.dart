@@ -102,6 +102,10 @@ void main() {
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Привет поток', messageId: 41),
     );
 
+    expect(harness.sender.copies, isEmpty);
+    expect(harness.sender.messages.last.text, contains('Привет поток'));
+    await _toPreview(harness);
+
     expect(harness.sender.copies, hasLength(1));
     expect(harness.sender.copies.single.chatId, 1);
     expect(harness.sender.copies.single.fromChatId, 1);
@@ -130,6 +134,7 @@ void main() {
       BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Только гайд', messageId: 42),
     );
+    await _toPreview(harness);
     await _confirmBroadcast(harness);
 
     expect(
@@ -169,6 +174,7 @@ void main() {
       BroadcastSegment.magnet,
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Тот же черновик', messageId: 44),
     );
+    await _toPreview(harness);
     await harness.handlers.handle(
       privateCallbackUpdate(
         callbackId: 'br',
@@ -207,14 +213,14 @@ void main() {
       privateDocumentUpdate(chatId: 1, userId: 1, fileId: 'not-a-guide', messageId: 51),
     );
     expect(harness.course.activeLaunch()?.leadMagnetFileId, 'file-guide');
-    expect(harness.sender.copies.last.messageId, 51);
+    expect(harness.sender.copies, isEmpty);
     expect(harness.sender.messages.last.text, contains('файл'));
 
     await harness.handlers.handle(
       privateVideoUpdate(chatId: 1, userId: 1, caption: 'ролик', messageId: 52),
     );
     expect(harness.course.activeLaunch()?.leadMagnetFileId, 'file-guide');
-    expect(harness.sender.copies.last.messageId, 52);
+    expect(harness.sender.copies, isEmpty);
     expect(harness.sender.messages.last.text, contains('видео'));
     expect(
       harness.sender.messages.any((m) => m.text.contains('Сохранить этот файл как гайд')),
@@ -244,6 +250,7 @@ void main() {
       privatePhotoUpdate(chatId: 1, userId: 1, caption: 'Подпись к фото', messageId: 61),
     );
     expect(harness.sender.messages.last.text, contains('Подпись к фото'));
+    await _toPreview(harness);
     expect(harness.sender.copies.single.messageId, 61);
     await _confirmBroadcast(harness);
     final sent = harness.sender.copies.where((c) => c.chatId == 10).toList();
@@ -252,18 +259,31 @@ void main() {
     expect(sent.single.messageId, 61);
   });
 
-  test('album is rejected and nobody is sent the broadcast', () async {
+  test('album is kept as one group and copied together', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _openBroadcast(harness);
     await _pickSegment(harness, BroadcastSegment.magnet);
     await harness.handlers.handle(
-      privatePhotoUpdate(chatId: 1, userId: 1, mediaGroupId: 'grp-1', caption: 'альбом'),
+      privatePhotoUpdate(chatId: 1, userId: 1, messageId: 41, mediaGroupId: 'grp-1'),
     );
-    expect(harness.sender.messages.last.text, contains('не альбом'));
+    await harness.handlers.handle(
+      privatePhotoUpdate(
+        chatId: 1,
+        userId: 1,
+        messageId: 42,
+        mediaGroupId: 'grp-1',
+        caption: 'альбом',
+      ),
+    );
     expect(harness.sender.copies, isEmpty);
+    await harness.handlers.flushPendingBroadcastAlbums();
+    expect(harness.sender.messages.last.text, contains('альбом'));
+    await _toPreview(harness);
     await _confirmBroadcast(harness);
-    expect(harness.sender.copies.any((c) => c.chatId == 10), isFalse);
-    expect(harness.sender.messages.last.text, contains('Сначала пришли'));
+
+    final sent = harness.sender.copiedBatches.where((batch) => batch.chatId == 10).toList();
+    expect(sent, hasLength(1));
+    expect(sent.single.messageIds, <int>[41, 42]);
   });
 
   test('empty message without attachment is rejected', () async {
@@ -289,7 +309,7 @@ void main() {
     expect(data, isNot(contains('bg')));
   });
 
-  test('last message wins for the draft', () async {
+  test('several messages are copied in the order they were added', () async {
     _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
     await _draftBroadcast(
       harness,
@@ -299,22 +319,24 @@ void main() {
     await harness.handlers.handle(
       privatePhotoUpdate(chatId: 1, userId: 1, caption: 'второй', messageId: 72),
     );
+    await _toPreview(harness);
     await _confirmBroadcast(harness);
     expect(
       harness.sender.copies.where((c) => c.chatId == 10).map((c) => c.messageId).toList(),
-      <int>[72],
+      <int>[71, 72],
     );
+    expect(harness.sender.copies.where((c) => c.chatId == 10).first.replyMarkup, isNull);
   });
 
   test('flow copyWith can clear broadcast draft fields', () {
     const state = PrivateFlowState(
       step: PrivateFlowStep.adminBroadcastCompose,
-      broadcastMessageId: 5,
-      broadcastPreviewText: 'x',
+      broadcastParts: <BroadcastDraftPart>[
+        BroadcastDraftPart(messageIds: <int>[5], kind: BroadcastContentKind.text, previewText: 'x'),
+      ],
     );
-    final cleared = state.copyWith(broadcastMessageId: null, broadcastPreviewText: null);
-    expect(cleared.broadcastMessageId, isNull);
-    expect(cleared.broadcastPreviewText, isNull);
+    final cleared = state.copyWith(broadcastParts: const <BroadcastDraftPart>[]);
+    expect(cleared.broadcastParts, isEmpty);
     expect(cleared.step, PrivateFlowStep.adminBroadcastCompose);
   });
 
@@ -345,6 +367,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Двум сегментам', messageId: 81),
     );
+    await _toPreview(harness);
     await _confirmBroadcast(harness);
 
     expect(
@@ -388,6 +411,7 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Всем сегментам', messageId: 91),
     );
+    await _toPreview(harness);
     expect(harness.sender.messages.last.text, contains('все сегменты'));
     await _confirmBroadcast(harness);
     expect(
@@ -405,10 +429,168 @@ void main() {
     await harness.handlers.handle(
       privateMessageUpdate(chatId: 1, userId: 1, text: 'Без дубля', messageId: 82),
     );
+    await _toPreview(harness);
     expect(harness.sender.messages.last.text, contains('Получателей'));
     expect(harness.sender.messages.last.text, contains('<b>2</b>'));
     await _confirmBroadcast(harness);
     expect(harness.sender.copies.where((c) => c.chatId == 10), hasLength(1));
+  });
+
+  test('each button keeps its own label and action', () async {
+    _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
+    await _draftBroadcast(
+      harness,
+      BroadcastSegment.magnet,
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Кружок следом', messageId: 81),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Выбирайте формат', messageId: 82),
+    );
+    await _openButtons(harness);
+    await _addBroadcastButton(
+      harness,
+      action: BroadcastButtonAction.payFull,
+      label: 'Оплатить курс целиком 19000',
+    );
+    await _addBroadcastButton(
+      harness,
+      action: BroadcastButtonAction.payDeposit,
+      label: 'Начать с пробной недели 5000',
+    );
+    await _addBroadcastButton(
+      harness,
+      action: BroadcastButtonAction.url,
+      url: 'https://example.com/a',
+    );
+    expect(harness.sender.messages.last.text, contains('Оплатить курс целиком 19000'));
+    expect(harness.sender.messages.last.text, contains('полная оплата'));
+    expect(harness.sender.messages.last.text, contains('https://example.com/a'));
+
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bi0',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbBroadcastButtonRemove}0',
+      ),
+    );
+    expect(harness.sender.messages.last.text, isNot(contains('Оплатить курс целиком 19000')));
+    expect(harness.sender.messages.last.text, contains('Начать с пробной недели 5000'));
+
+    await _finishButtons(harness);
+    await _confirmBroadcast(harness);
+
+    final sent = harness.sender.copies.where((copy) => copy.chatId == 10).toList();
+    expect(sent.map((copy) => copy.messageId).toList(), <int>[81, 82]);
+    expect(sent.first.replyMarkup, isNull);
+    final rows = sent.last.replyMarkup?['inline_keyboard'] as List<dynamic>;
+    expect(rows, hasLength(2));
+    expect((rows[0] as List).single['text'], 'Начать с пробной недели 5000');
+    expect((rows[0] as List).single['callback_data'], MessageTemplates.cbPayDeposit);
+    expect((rows[1] as List).single['url'], 'https://example.com/a');
+    expect((rows[1] as List).single['text'], 'Открыть');
+  });
+
+  test('suggested remainder label is kept and a long label is rejected', () async {
+    _seed(harness, 10, phase: FunnelPhase.depositPaid);
+    await _draftBroadcast(
+      harness,
+      BroadcastSegment.deposit,
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Остаток', messageId: 90),
+    );
+    await _openButtons(harness);
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbBroadcastAddButton,
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bjr',
+        chatId: 1,
+        userId: 1,
+        data:
+            '${MessageTemplates.cbBroadcastButtonAction}${BroadcastButtonAction.payRemainder.code}',
+      ),
+    );
+    expect(harness.sender.messages.last.text, contains('Внести остаток сейчас'));
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'я' * 70, messageId: 91),
+    );
+    expect(harness.sender.messages.last.text, contains('До 64 символов'));
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bh',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbBroadcastKeepLabel,
+      ),
+    );
+    await _finishButtons(harness);
+    await _confirmBroadcast(harness);
+    final sent = harness.sender.copies.where((copy) => copy.chatId == 10).single;
+    final button = ((sent.replyMarkup?['inline_keyboard'] as List).single as List).single as Map;
+    expect(button['text'], 'Внести остаток сейчас');
+    expect(button['callback_data'], MessageTemplates.cbPayRemainderOwn);
+  });
+
+  test('buttons do not send while the last message is an album', () async {
+    _seed(harness, 10, phase: FunnelPhase.warming, magnet: now);
+    await _openBroadcast(harness);
+    await _pickSegment(harness, BroadcastSegment.magnet);
+    await harness.handlers.handle(
+      privatePhotoUpdate(chatId: 1, userId: 1, messageId: 41, mediaGroupId: 'grp-btn'),
+    );
+    await harness.handlers.handle(
+      privatePhotoUpdate(chatId: 1, userId: 1, messageId: 42, mediaGroupId: 'grp-btn'),
+    );
+    await harness.handlers.flushPendingBroadcastAlbums();
+    await _openButtons(harness);
+    await _addBroadcastButton(harness, action: BroadcastButtonAction.enroll, label: 'К курсу');
+    await _finishButtons(harness);
+    expect(harness.sender.messages.last.text, contains('альбом'));
+    expect(
+      _inlineCallbackData(harness.sender.messages.last.replyMarkup),
+      isNot(contains(MessageTemplates.cbBroadcastSend)),
+    );
+    await _confirmBroadcast(harness);
+    expect(harness.sender.copiedBatches.any((batch) => batch.chatId == 10), isFalse);
+  });
+
+  test('a bad url stays on the address step', () async {
+    await _openBroadcast(harness);
+    await _pickSegment(harness, BroadcastSegment.started);
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'Текст', messageId: 7),
+    );
+    await _openButtons(harness);
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bk',
+        chatId: 1,
+        userId: 1,
+        data: MessageTemplates.cbBroadcastAddButton,
+      ),
+    );
+    await harness.handlers.handle(
+      privateCallbackUpdate(
+        callbackId: 'bju',
+        chatId: 1,
+        userId: 1,
+        data: '${MessageTemplates.cbBroadcastButtonAction}${BroadcastButtonAction.url.code}',
+      ),
+    );
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: 'не ссылка', messageId: 8),
+    );
+    expect(harness.sender.messages.last.text, contains('Нужна ссылка http или https'));
+    expect(
+      _inlineCallbackData(harness.sender.messages.last.replyMarkup),
+      contains(MessageTemplates.cbBroadcastOpenButtons),
+    );
   });
 }
 
@@ -482,6 +664,76 @@ Future<void> _draftBroadcast(
   await _openBroadcast(harness);
   await _pickSegment(harness, segment);
   await harness.handlers.handle(payload);
+}
+
+Future<void> _openButtons(HandlerHarness harness) {
+  return harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bq',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastComposeDone,
+    ),
+  );
+}
+
+Future<void> _finishButtons(HandlerHarness harness) {
+  return harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bd',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastButtonsDone,
+    ),
+  );
+}
+
+Future<void> _toPreview(HandlerHarness harness) async {
+  await _openButtons(harness);
+  await _finishButtons(harness);
+}
+
+Future<void> _addBroadcastButton(
+  HandlerHarness harness, {
+  required BroadcastButtonAction action,
+  String? label,
+  String? url,
+}) async {
+  await harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bk-${action.code}',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastAddButton,
+    ),
+  );
+  await harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bj-${action.code}',
+      chatId: 1,
+      userId: 1,
+      data: '${MessageTemplates.cbBroadcastButtonAction}${action.code}',
+    ),
+  );
+  if (url != null) {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: url, messageId: 500),
+    );
+  }
+  if (label != null) {
+    await harness.handlers.handle(
+      privateMessageUpdate(chatId: 1, userId: 1, text: label, messageId: 501),
+    );
+    return;
+  }
+  await harness.handlers.handle(
+    privateCallbackUpdate(
+      callbackId: 'bh',
+      chatId: 1,
+      userId: 1,
+      data: MessageTemplates.cbBroadcastKeepLabel,
+    ),
+  );
 }
 
 Future<void> _confirmBroadcast(HandlerHarness harness) {

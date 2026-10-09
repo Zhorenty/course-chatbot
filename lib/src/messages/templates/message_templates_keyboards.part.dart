@@ -487,13 +487,156 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(rows);
   }
 
-  Map<String, Object?> broadcastConfirmKeyboard({bool excludeOptOut = false}) {
+  Map<String, Object?> broadcastComposeKeyboard({required bool hasParts}) {
     return inlineKeyboard(<List<Map<String, Object?>>>[
+      if (hasParts)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastContinue,
+            'callback_data': MessageTemplates.cbBroadcastComposeDone,
+            'style': 'primary',
+          },
+        ],
+      if (hasParts)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastDropPart,
+            'callback_data': MessageTemplates.cbBroadcastDropPart,
+          },
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastOtherSegment,
+            'callback_data': MessageTemplates.cbBroadcastOtherSegment,
+          },
+        ],
       <Map<String, Object?>>[
         <String, Object?>{
-          'text': MessageTemplates.buttonAdminBroadcastSend,
-          'callback_data': MessageTemplates.cbBroadcastSend,
-          'style': 'success',
+          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'callback_data': MessageTemplates.cbBroadcastCancel,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> broadcastButtonsKeyboard(List<BroadcastButton> buttons) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (var i = 0; i < buttons.length; i++)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': broadcastRemoveButtonLabel(buttons[i].label),
+            'callback_data': '${MessageTemplates.cbBroadcastButtonRemove}$i',
+          },
+        ],
+      if (buttons.length < BroadcastButton.maxCount)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastAddButton,
+            'callback_data': MessageTemplates.cbBroadcastAddButton,
+            'style': 'primary',
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': buttons.isEmpty
+              ? MessageTemplates.buttonAdminBroadcastSkipButtons
+              : MessageTemplates.buttonAdminBroadcastContinue,
+          'callback_data': MessageTemplates.cbBroadcastButtonsDone,
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBroadcastToMessages,
+          'callback_data': MessageTemplates.cbBroadcastBackToMessages,
+        },
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBroadcastCancel,
+          'callback_data': MessageTemplates.cbBroadcastCancel,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> broadcastButtonActionKeyboard() {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final action in BroadcastButtonAction.values)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': broadcastButtonActionTitle(action),
+            'callback_data': '${MessageTemplates.cbBroadcastButtonAction}${action.code}',
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBack,
+          'callback_data': MessageTemplates.cbBroadcastOpenButtons,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> broadcastButtonLabelKeyboard({required bool canKeep}) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      if (canKeep)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastKeepLabel,
+            'callback_data': MessageTemplates.cbBroadcastKeepLabel,
+            'style': 'primary',
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBack,
+          'callback_data': MessageTemplates.cbBroadcastOpenButtons,
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> broadcastButtonUrlKeyboard() {
+    return broadcastButtonLabelKeyboard(canKeep: false);
+  }
+
+  Map<String, Object?>? broadcastOutboundKeyboard(List<BroadcastButton> buttons) {
+    if (buttons.isEmpty) {
+      return null;
+    }
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final button in buttons) <Map<String, Object?>>[_broadcastOutboundButton(button)],
+    ]);
+  }
+
+  Map<String, Object?> _broadcastOutboundButton(BroadcastButton button) {
+    if (button.action == BroadcastButtonAction.url) {
+      return <String, Object?>{'text': button.label, 'url': button.url, 'style': 'primary'};
+    }
+    final callback = switch (button.action) {
+      BroadcastButtonAction.payFull => MessageTemplates.cbPayFull,
+      BroadcastButtonAction.payDeposit => MessageTemplates.cbPayDeposit,
+      BroadcastButtonAction.payRemainder => MessageTemplates.cbPayRemainderOwn,
+      BroadcastButtonAction.enroll => MessageTemplates.cbEnroll,
+      BroadcastButtonAction.url => '',
+    };
+    return <String, Object?>{'text': button.label, 'callback_data': callback, 'style': 'primary'};
+  }
+
+  Map<String, Object?> broadcastConfirmKeyboard({bool excludeOptOut = false, bool canSend = true}) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      if (canSend)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminBroadcastSend,
+            'callback_data': MessageTemplates.cbBroadcastSend,
+            'style': 'success',
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBroadcastButtons,
+          'callback_data': MessageTemplates.cbBroadcastOpenButtons,
+        },
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminBroadcastMessages,
+          'callback_data': MessageTemplates.cbBroadcastBackToMessages,
         },
       ],
       <Map<String, Object?>>[

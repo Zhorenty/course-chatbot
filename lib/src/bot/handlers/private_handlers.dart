@@ -48,6 +48,7 @@ part 'private/private_handlers_start.part.dart';
 part 'private/private_handlers_funnel.part.dart';
 part 'private/private_handlers_checkout.part.dart';
 part 'private/private_handlers_admin.part.dart';
+part 'private/private_handlers_admin_broadcast.part.dart';
 part 'private/private_handlers_admin_catalog.part.dart';
 part 'private/private_handlers_admin_links.part.dart';
 part 'private/private_handlers_chat_member.part.dart';
@@ -113,11 +114,17 @@ final class PrivateHandlers implements PaymentResultNotifier {
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Map<int, _PendingDozhimAlbum> _pendingDozhimAlbums = <int, _PendingDozhimAlbum>{};
   final Map<int, Timer> _dozhimAlbumTimers = <int, Timer>{};
+  final Map<int, _PendingBroadcastAlbum> _pendingBroadcastAlbums = <int, _PendingBroadcastAlbum>{};
+  final Map<int, Timer> _broadcastAlbumTimers = <int, Timer>{};
   DateTime? _lastGuideMissingAlertAt;
 
   Future<void> flushPendingDozhimAlbums() => _flushPendingDozhimAlbums();
 
   void cancelPendingDozhimAlbums() => _cancelAllPendingDozhimAlbums();
+
+  Future<void> flushPendingBroadcastAlbums() => _flushPendingBroadcastAlbums();
+
+  void cancelPendingBroadcastAlbums() => _cancelPendingBroadcastAlbums();
 
   Launch? get _launch => _course.activeLaunch();
 

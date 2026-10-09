@@ -666,19 +666,25 @@ void main() {
   });
 
   test('course /start sends Nastya then the course card', () async {
-    await harness.handlers.handle(
+    final extra = HandlerHarness();
+    await extra.init(
+      webinarAt: DateTime.utc(2026, 10, 20, 16),
+      nowProvider: () => DateTime.utc(2026, 10, 9, 6),
+    );
+    addTearDown(extra.dispose);
+    await extra.handlers.handle(
       privateMessageUpdate(chatId: 42, userId: 42, text: '/start tg_announce'),
     );
-    expect(harness.sender.messages, hasLength(2));
-    expect(harness.sender.messages.first.text, contains('Привет'));
-    expect(harness.sender.messages.first.text, contains('Анастасия Дубовскова'));
-    expect(harness.sender.messages.last.text, contains('Запуск'));
-    expect(harness.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
+    expect(extra.sender.messages, hasLength(2));
+    expect(extra.sender.messages.first.text, contains('Привет'));
+    expect(extra.sender.messages.first.text, contains('Анастасия Дубовскова'));
+    expect(extra.sender.messages.last.text, contains('Запуск'));
+    expect(extra.sender.messages.any((m) => m.text.contains('Меню внизу')), isFalse);
     expect(
-      _replyButtonTexts(harness.sender.messages.first.replyMarkup),
+      _replyButtonTexts(extra.sender.messages.first.replyMarkup),
       contains(MessageTemplates.buttonGuide),
     );
-    expect(_inlineButtonTexts(harness.sender.messages.last.replyMarkup), isNotEmpty);
+    expect(_inlineButtonTexts(extra.sender.messages.last.replyMarkup), isNotEmpty);
   });
 
   test('admin card button from incoming notice opens the person card', () async {

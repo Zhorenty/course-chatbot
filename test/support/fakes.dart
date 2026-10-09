@@ -216,6 +216,7 @@ final class FakeMessageSender implements MessageSender {
     required int fromChatId,
     required int messageId,
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final error = throwOnCopy;
     if (error != null) {
@@ -227,6 +228,7 @@ final class FakeMessageSender implements MessageSender {
         fromChatId: fromChatId,
         messageId: messageId,
         disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
       ),
     );
     return 2000 + copies.length;
@@ -398,12 +400,14 @@ final class CopiedMessage {
     required this.fromChatId,
     required this.messageId,
     this.disableNotification = true,
+    this.replyMarkup,
   });
 
   final int chatId;
   final int fromChatId;
   final int messageId;
   final bool disableNotification;
+  final Map<String, Object?>? replyMarkup;
 }
 
 final class CopiedMessages {
