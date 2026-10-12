@@ -234,6 +234,28 @@ void main() {
     expect(nextAfternoon.checkoutOpen, isFalse);
   });
 
+  test('12 Oct stream keeps full price open after sales end until 15 Oct 23:59', () {
+    final launch = testLaunch(courseStartAt: DateTime.utc(2026, 10, 12));
+    final during = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 13, 12));
+    expect(during.phase, SalesPhase.closed);
+    expect(during.lateFullOpen, isTrue);
+    expect(during.checkoutOpen, isFalse);
+    expect(during.canBuy, isFalse);
+    final lastSecond = LaunchSales.quote(launch, rsvp: false, now: LaunchSales.lateFullPriceEndsAt);
+    expect(lastSecond.lateFullOpen, isTrue);
+    final nextDay = LaunchSales.quote(launch, rsvp: false, now: DateTime.utc(2026, 10, 15, 21));
+    expect(nextDay.phase, SalesPhase.closed);
+    expect(nextDay.lateFullOpen, isFalse);
+    final other = testLaunch(
+      courseStartAt: DateTime.utc(2026, 11, 1),
+      salesEndAt: DateTime.utc(2026, 10, 1),
+    );
+    final otherClosed = LaunchSales.quote(other, rsvp: false, now: DateTime.utc(2026, 10, 13, 12));
+    expect(otherClosed.phase, SalesPhase.closed);
+    expect(otherClosed.lateFullOpen, isFalse);
+    expect(otherClosed.checkoutOpen, isFalse);
+  });
+
   test('parseRubStringToKopecks avoids binary float drift', () {
     expect(parseRubStringToKopecks('10000.00'), 1000000);
     expect(parseRubStringToKopecks('19.99'), 1999);

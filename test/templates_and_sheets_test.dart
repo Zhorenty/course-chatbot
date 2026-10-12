@@ -569,6 +569,49 @@ void main() {
       contains(MessageTemplates.buttonContinuePay),
     );
 
+    final lateFull = testLaunch(
+      id: 5,
+      productId: 1,
+      code: 'launch-5',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+    );
+    final lateQuote = LaunchSales.quote(lateFull, rsvp: false, now: DateTime.utc(2026, 10, 13, 12));
+    final lateText = templates.enrollOptions(
+      lateFull,
+      quote: lateQuote,
+      rsvpOpen: true,
+      hasOpenCheckout: true,
+    );
+    expect(
+      lateText,
+      'Курс уже начался, старт 12 октября. Однако вы еще можете присоединиться! '
+      'До 15 октября можно оплатить программу по старой стоимости.\n'
+      'Если столкнулись с трудностями, пишите нам, обязательно поможем!',
+    );
+    final lateMarkup = templates.enrollKeyboard(
+      lateFull,
+      quote: lateQuote,
+      rsvpOpen: true,
+      continueOrderId: 9,
+    );
+    expect(_inlineButtonTexts(lateMarkup), <String>[MessageTemplates.buttonJoinCourse]);
+    final lateButton =
+        ((lateMarkup['inline_keyboard'] as List<dynamic>).single as List<dynamic>).single as Map;
+    expect(lateButton['callback_data'], MessageTemplates.cbPayFull);
+    expect(lateButton.containsKey('url'), isFalse);
+    final afterLate = LaunchSales.quote(lateFull, rsvp: false, now: DateTime.utc(2026, 10, 15, 21));
+    expect(templates.enrollOptions(lateFull, quote: afterLate), contains('Запись закрыта'));
+    expect(
+      _inlineButtonTexts(templates.enrollKeyboard(lateFull, quote: afterLate, rsvpOpen: false)),
+      isEmpty,
+    );
+
     expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('ХХ:ХХ')));
     expect(templates.warmupStep('warmup_0', launch: launch), contains('⏰ Время: 19:00 мск'));
     expect(templates.warmupStep('warmup_0', launch: launch), isNot(contains('прикрепим позже')));

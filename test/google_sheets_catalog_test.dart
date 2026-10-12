@@ -1312,6 +1312,14 @@ void main() {
       );
       expect(gateway.looksBySheetId[tab.sheetId]?.hideGridlines, isTrue);
       expect(gateway.looksBySheetId[tab.sheetId]?.notes, hasLength(5));
+      final stages = <String>[
+        for (final row in seeded)
+          if (row.isNotEmpty) row.first.toString(),
+      ];
+      expect(
+        stages.indexOf(CopySheet.lateFullStage),
+        lessThan(stages.indexOf('продажи этого потока закончились')),
+      );
 
       seeded[CopySheet.defaultHeaderRow + 1][1] = 'правили руками';
       await sync.sync();
@@ -1320,6 +1328,41 @@ void main() {
         'правили руками',
       );
       expect(gateway.deletedSheetIds, isEmpty);
+    });
+
+    test('ТЕКСТЫ appends the late full letter and keeps edited cells', () async {
+      gateway.sheets = <GoogleSheetsSheetInfo>[
+        const GoogleSheetsSheetInfo(title: CoursesSheet.tabTitle, sheetId: CoursesSheet.sheetId),
+        const GoogleSheetsSheetInfo(title: CopySheet.tabTitle, sheetId: 5),
+      ];
+      gateway.nextSheetId = 6;
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      gateway.valuesBySheetId[5] = CopySheet.withChrome(
+        dataRows: <List<Object?>>[
+          CopySheet.padded(<Object?>['правили руками этап', 'правили руками', '', '', '']),
+          CopySheet.padded(const <Object?>[]),
+        ],
+      );
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
+      await sync.sync();
+      final sheet = gateway.valuesBySheetId[5]!;
+      expect(sheet[CopySheet.defaultHeaderRow + 1][1], 'правили руками');
+      final lateRows = sheet.where((row) => row.contains(CopySheet.lateFullStage)).toList();
+      expect(lateRows, hasLength(1));
+      expect(lateRows.single[1].toString(), contains('До 15 октября'));
+      expect(lateRows.single[2], '');
+      expect(lateRows.single[3], 'присоединиться к курсу');
+      expect(lateRows.single[4].toString(), contains('ЮKassa'));
+      await sync.sync();
+      expect(
+        gateway.valuesBySheetId[5]!.where((row) => row.contains(CopySheet.lateFullStage)),
+        hasLength(1),
+      );
+      expect(gateway.valuesBySheetId[5]![CopySheet.defaultHeaderRow + 1][1], 'правили руками');
     });
   });
 }

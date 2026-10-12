@@ -75,6 +75,7 @@ final class MessageTemplates {
   static const String buttonHelp = 'Помощь';
   static const String buttonOptOut = 'Отписаться от рассылки';
   static const String buttonPayFull = 'Оплатить курс целиком';
+  static const String buttonJoinCourse = 'присоединиться к курсу';
   static const String buttonPayFullPromo = 'Оплатить курс по специальной цене';
   static const String buttonPayDeposit = 'Бронь места, предоплата';
   static const String buttonPayRemainder = 'Внести остаток сейчас';
@@ -459,6 +460,11 @@ final class MessageTemplates {
           ),
         );
       case SalesPhase.closed:
+        if (quote.lateFullOpen) {
+          return 'Курс уже начался, старт $start. Однако вы еще можете присоединиться! '
+              'До 15 октября можно оплатить программу по старой стоимости.\n'
+              'Если столкнулись с трудностями, пишите нам, обязательно поможем!';
+        }
         if (hasOpenCheckout) {
           return '<b>Запись закрыта</b>\n\n'
               'Продажи этого потока закончились. Старт $start. '

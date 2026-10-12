@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/domain/admin_payment_status.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';
+import 'package:course_chatbot/src/domain/sales_window.dart';
 import 'package:course_chatbot/src/payments/payment_gateway.dart';
 import 'package:test/test.dart';
 
@@ -660,6 +661,79 @@ void main() {
       kind: PaymentKind.full,
     );
     expect(rsvp.priceFullKopecks, 1900000);
+  });
+
+  test('full price stays open after sales end until 15 Oct and deposit stays closed', () async {
+    var now = DateTime.utc(2026, 10, 13, 12);
+    final extra = HandlerHarness();
+    await extra.init(
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      nowProvider: () => now,
+    );
+    addTearDown(extra.dispose);
+    extra.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
+    extra.course.ensureUser(userId: 43, now: DateTime.utc(2026, 10, 1));
+    extra.course.ensureUser(userId: 44, now: DateTime.utc(2026, 10, 1));
+    final launch = extra.course.activeLaunch()!;
+    final full = extra.checkout.startOrReuseOrder(
+      userId: 42,
+      launch: launch,
+      kind: PaymentKind.full,
+    );
+    expect(full.priceFullKopecks, 1900000);
+    expect(
+      () => extra.checkout.startOrReuseOrder(userId: 43, launch: launch, kind: PaymentKind.deposit),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.salesClosed,
+        ),
+      ),
+    );
+
+    now = LaunchSales.lateFullPriceEndsAt;
+    expect(
+      extra.checkout
+          .startOrReuseOrder(userId: 43, launch: launch, kind: PaymentKind.full)
+          .priceFullKopecks,
+      1900000,
+    );
+
+    now = DateTime.utc(2026, 10, 15, 21);
+    expect(
+      () => extra.checkout.startOrReuseOrder(userId: 44, launch: launch, kind: PaymentKind.full),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.salesClosed,
+        ),
+      ),
+    );
+
+    final other = HandlerHarness();
+    await other.init(
+      courseStartAt: DateTime.utc(2026, 11, 1),
+      salesEndAt: DateTime.utc(2026, 10, 1),
+      nowProvider: () => DateTime.utc(2026, 10, 13, 12),
+    );
+    addTearDown(other.dispose);
+    other.course.ensureUser(userId: 42, now: DateTime.utc(2026, 10, 1));
+    final otherLaunch = other.course.activeLaunch()!;
+    expect(
+      () =>
+          other.checkout.startOrReuseOrder(userId: 42, launch: otherLaunch, kind: PaymentKind.full),
+      throwsA(
+        isA<CheckoutBlockedException>().having(
+          (error) => error.reason,
+          'reason',
+          CheckoutBlockReason.salesClosed,
+        ),
+      ),
+    );
   });
 
   test('admin promo-paid status records the promo price and issues the invite', () async {

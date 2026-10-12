@@ -92,6 +92,17 @@ extension MessageTemplateKeyboards on MessageTemplates {
     bool webinarStarted = false,
     int? continueOrderId,
   }) {
+    if (quote.lateFullOpen) {
+      return inlineKeyboard(<List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonJoinCourse,
+            'callback_data': MessageTemplates.cbPayFull,
+            'style': 'primary',
+          },
+        ],
+      ]);
+    }
     final rows = <List<Map<String, Object?>>>[];
     if (!quote.rsvp && rsvpOpen) {
       rows.add(<Map<String, Object?>>[

@@ -849,6 +849,16 @@ final class GoogleSheetsCatalogSync {
       seeded = true;
       rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
       parsed = CopySheetParser.parse(rows);
+    } else {
+      final appended = await _appendMissingCopyEntry(
+        title: tab.title,
+        rows: rows,
+        entry: _lateFullCopyEntry(),
+      );
+      if (appended) {
+        rows = await _gateway.getValues('$quoted!A1:Z').timeout(requestTimeout);
+        parsed = CopySheetParser.parse(rows);
+      }
     }
 
     final headerAt = CopySheetParser.headerRowIndex(rows) ?? CopySheet.defaultHeaderRow;
@@ -869,6 +879,63 @@ final class GoogleSheetsCatalogSync {
       l.w('${CopySheet.tabTitle} catalog look failed: $error', stackTrace);
     }
     l.i('${CopySheet.tabTitle} catalog synced. letters=${parsed.rowCount} seeded=$seeded');
+  }
+
+  CopySheetEntry _lateFullCopyEntry() {
+    for (final entry in CopySheet.entries()) {
+      if (entry.stage == CopySheet.lateFullStage) {
+        return entry;
+      }
+    }
+    throw StateError('Missing ${CopySheet.lateFullStage} copy row.');
+  }
+
+  /// Writes the late-full letter into the first blank row. Filled cells stay.
+  Future<bool> _appendMissingCopyEntry({
+    required String title,
+    required List<List<Object?>> rows,
+    required CopySheetEntry entry,
+  }) async {
+    final headerAt = CopySheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return false;
+    }
+    final headerIndex = CopySheetParser.headerIndexMap(rows[headerAt]);
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final stage = CopySheetParser.cellOf(rows[i], headerIndex, CopySheet.stage);
+      if (stage == entry.stage) {
+        return false;
+      }
+    }
+    var targetAt = rows.length;
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      if (_copyRowBlank(rows[i])) {
+        targetAt = i;
+        break;
+      }
+    }
+    if (targetAt == 0) {
+      return false;
+    }
+    final cells = CopySheet.padded(entry.toCells());
+    final quoted = quoteA1SheetTitle(title);
+    await _gateway
+        .updateValues(
+          a1Range: '$quoted!A${targetAt + 1}',
+          rows: <List<Object?>>[cells],
+          valueInputOption: 'USER_ENTERED',
+        )
+        .timeout(requestTimeout);
+    return true;
+  }
+
+  bool _copyRowBlank(List<Object?> row) {
+    for (final cell in row) {
+      if (cell != null && cell.toString().trim().isNotEmpty) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Writes built-in start links that are not on the sheet yet. Existing rows stay.

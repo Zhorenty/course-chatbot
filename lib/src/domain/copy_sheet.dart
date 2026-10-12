@@ -13,6 +13,8 @@ abstract final class CopySheet {
   static const String button = 'button';
   static const String leadsTo = 'leads_to';
 
+  static const String lateFullStage = 'продажи курса закончились (после 12 октября)';
+
   static const String title = 'Курс · Тексты';
   static const String titleAside = 'Выгрузка один раз';
   static const String hint =
@@ -383,6 +385,15 @@ abstract final class CopySheet {
       const CopySheetEntry(
         stage: 'написал свой текст, фото или файл',
         body: 'Передал админу. Напишет тебе в личные сообщения.',
+      ),
+      const CopySheetEntry(
+        stage: lateFullStage,
+        body:
+            'Курс уже начался, старт {старт потока}. Однако вы еще можете присоединиться! '
+            'До 15 октября можно оплатить программу по старой стоимости.\n'
+            'Если столкнулись с трудностями, пишите нам, обязательно поможем!',
+        button: 'присоединиться к курсу',
+        leadsTo: 'касса ЮKassa на 19 000 ₽, при сбое кассы сообщение администратору',
       ),
       const CopySheetEntry(
         stage: 'продажи этого потока закончились',

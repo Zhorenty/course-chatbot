@@ -114,7 +114,8 @@ final class CheckoutService {
     if (existing != null && existing.launchId == launch.id && _shouldReuse(existing, kind)) {
       return _repriceUnpaid(existing, launch);
     }
-    if (kind != PaymentKind.remainder && !quote.checkoutOpen) {
+    final lateFullCharge = kind == PaymentKind.full && quote.lateFullOpen;
+    if (kind != PaymentKind.remainder && !quote.checkoutOpen && !lateFullCharge) {
       throw CheckoutBlockedException(
         quote.phase == SalesPhase.closed
             ? CheckoutBlockReason.salesClosed

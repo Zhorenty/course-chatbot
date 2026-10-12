@@ -7,6 +7,10 @@ import 'package:course_chatbot/src/domain/moscow_time.dart';
 /// During promo the bot kassa stays closed for everyone: RSVP get the special
 /// price via an external checkout link, the rest wait. Full / deposit via the
 /// bot kassa open after promo.
+///
+/// One-off for the stream that starts 12 Oct 2026: after [Launch.salesEndAt],
+/// full price stays open until 23:59:59 Moscow on 15 Oct 2026. Deposit and
+/// selling drip stay closed. [SalesQuote.lateFullOpen] is that window.
 enum SalesPhase { preSales, promo, regular, closed }
 
 final class LaunchSales {
@@ -17,10 +21,17 @@ final class LaunchSales {
   static const Duration liveWindow = Duration(hours: 4);
   static const int defaultWebinarHourMoscow = 19;
 
+  /// Moscow calendar day the one-off late full-price stream starts.
+  static final DateTime lateFullStreamStartDay = DateTime.utc(2026, 10, 12);
+
+  /// Last instant full price stays open after sales end: 23:59:59 Moscow on 15 Oct 2026.
+  static final DateTime lateFullPriceEndsAt = MoscowTime.endOfMoscowDay(DateTime.utc(2026, 10, 15));
+
   static SalesQuote quote(Launch launch, {required bool rsvp, required DateTime now}) {
     return SalesQuote(
       phase: phaseOf(launch, now),
       rsvp: rsvp,
+      lateFullOpen: lateFullPriceOpen(launch, now),
       priceFullKopecks: launch.priceFullKopecks,
       pricePromoKopecks: launch.pricePromoKopecks,
       webinarAt: launch.webinarAt,
@@ -30,6 +41,18 @@ final class LaunchSales {
       salesEndAt: launch.salesEndAt,
       courseStartAt: launch.courseStartAt,
     );
+  }
+
+  /// Full price only, after sales end, for the 12 Oct 2026 stream, through 15 Oct 23:59:59 Moscow.
+  static bool lateFullPriceOpen(Launch launch, DateTime now) {
+    if (phaseOf(launch, now) != SalesPhase.closed) {
+      return false;
+    }
+    final startDay = MoscowTime.calendarDate(launch.courseStartAt);
+    if (startDay != lateFullStreamStartDay) {
+      return false;
+    }
+    return !now.toUtc().isAfter(lateFullPriceEndsAt);
   }
 
   static DateTime salesOpenAt(Launch launch) => launch.salesStartAt.toUtc();
@@ -85,6 +108,7 @@ final class SalesQuote {
   const SalesQuote({
     required this.phase,
     required this.rsvp,
+    required this.lateFullOpen,
     required this.priceFullKopecks,
     required this.pricePromoKopecks,
     required this.webinarAt,
@@ -97,6 +121,9 @@ final class SalesQuote {
 
   final SalesPhase phase;
   final bool rsvp;
+
+  /// Full YooKassa price after sales end. Deposit stays on [checkoutOpen].
+  final bool lateFullOpen;
   final int priceFullKopecks;
   final int pricePromoKopecks;
   final DateTime webinarAt;
