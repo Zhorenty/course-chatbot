@@ -12,6 +12,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/funnel.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/telegram/retry.dart';
 import 'package:googleapis/sheets/v4.dart';
@@ -481,6 +482,11 @@ final class GoogleSheetsCatalogSync {
         }
       }(),
     ]);
+    try {
+      await syncLetterButtons();
+    } on Object catch (error, stackTrace) {
+      l.w('Letter button sync failed: $error', stackTrace);
+    }
     return outcomes.first! as CatalogSyncResult;
   }
 
@@ -1130,6 +1136,158 @@ final class GoogleSheetsCatalogSync {
       return null;
     }
     return trimmed;
+  }
+
+  /// Reads the button columns of the active launch. Letter bodies stay untouched.
+  Future<void> syncLetterButtons() async {
+    final launch = _catalog.activeLaunch();
+    if (launch == null) {
+      return;
+    }
+    final sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    final tab = _sheetByTitle(sheets, CopySheet.tabTitle);
+    if (tab == null) {
+      return;
+    }
+    final rows = await _gateway
+        .getValues('${quoteA1SheetTitle(tab.title)}!A1:Z')
+        .timeout(requestTimeout);
+    final headerAt = CopySheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return;
+    }
+    final index = CopySheetParser.headerIndexMap(rows[headerAt]);
+    final buttonCol = index[CopySheet.button];
+    final leadsCol = index[CopySheet.leadsTo];
+    if (buttonCol == null || leadsCol == null) {
+      return;
+    }
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final stage = CopySheetParser.cellOf(rows[i], index, CopySheet.stage);
+      if (stage == null) {
+        continue;
+      }
+      final spec = LetterButtons.specByStage(stage);
+      if (spec == null) {
+        continue;
+      }
+      final label = CopySheetParser.cellOf(rows[i], index, CopySheet.button);
+      final leads = CopySheetParser.cellOf(rows[i], index, CopySheet.leadsTo);
+      final read = LetterButtons.readCells(label: label, leadsTo: leads);
+      if (read.kind != LetterCellKind.button || read.button == null) {
+        continue;
+      }
+      final parsed = read.button!;
+      final effective = _sameLetterButton(parsed, spec.button) ? spec.button : parsed;
+      if (_sameLetterButton(parsed, spec.button)) {
+        _catalog.deleteLetterButton(launchId: launch.id, letterKey: spec.key);
+      } else {
+        _catalog.upsertLetterButton(launchId: launch.id, letterKey: spec.key, button: parsed);
+      }
+      await _writeLetterCells(
+        title: tab.title,
+        rowIndex: i,
+        buttonCol: buttonCol,
+        leadsCol: leadsCol,
+        currentLabel: label,
+        currentLeads: leads,
+        button: effective,
+      );
+    }
+  }
+
+  /// Writes the two button cells for one letter. Does not read the sheet back.
+  Future<void> pushLetterButton({required int launchId, required String letterKey}) async {
+    final spec = LetterButtons.specByKey(letterKey);
+    if (spec == null) {
+      return;
+    }
+    final sheets = await _gateway.describeSheets().timeout(requestTimeout);
+    final tab = _sheetByTitle(sheets, CopySheet.tabTitle);
+    if (tab == null) {
+      return;
+    }
+    final rows = await _gateway
+        .getValues('${quoteA1SheetTitle(tab.title)}!A1:Z')
+        .timeout(requestTimeout);
+    final headerAt = CopySheetParser.headerRowIndex(rows);
+    if (headerAt == null) {
+      return;
+    }
+    final index = CopySheetParser.headerIndexMap(rows[headerAt]);
+    final buttonCol = index[CopySheet.button];
+    final leadsCol = index[CopySheet.leadsTo];
+    if (buttonCol == null || leadsCol == null) {
+      return;
+    }
+    for (var i = headerAt + 1; i < rows.length; i++) {
+      final stage = CopySheetParser.cellOf(rows[i], index, CopySheet.stage);
+      if (stage != spec.stage) {
+        continue;
+      }
+      final stored = _catalog.letterButton(launchId: launchId, letterKey: letterKey);
+      await _writeLetterCells(
+        title: tab.title,
+        rowIndex: i,
+        buttonCol: buttonCol,
+        leadsCol: leadsCol,
+        currentLabel: CopySheetParser.cellOf(rows[i], index, CopySheet.button),
+        currentLeads: CopySheetParser.cellOf(rows[i], index, CopySheet.leadsTo),
+        button: stored ?? spec.button,
+      );
+      return;
+    }
+  }
+
+  Future<void> _writeLetterCells({
+    required String title,
+    required int rowIndex,
+    required int buttonCol,
+    required int leadsCol,
+    required String? currentLabel,
+    required String? currentLeads,
+    required LetterButton button,
+  }) async {
+    if (rowIndex <= 0) {
+      return;
+    }
+    final desiredLabel = button.label;
+    final desiredLeads = LetterButtons.leadsToPhrase(button.action, url: button.url);
+    if ((currentLabel ?? '') != desiredLabel) {
+      await _writeCopyCell(
+        title: title,
+        rowIndex: rowIndex,
+        column: buttonCol,
+        value: desiredLabel,
+      );
+    }
+    if ((currentLeads ?? '') != desiredLeads) {
+      await _writeCopyCell(title: title, rowIndex: rowIndex, column: leadsCol, value: desiredLeads);
+    }
+  }
+
+  Future<void> _writeCopyCell({
+    required String title,
+    required int rowIndex,
+    required int column,
+    required String value,
+  }) {
+    final letter = CoursesSheet.columnLetter(column);
+    return _gateway
+        .updateValues(
+          a1Range: '${quoteA1SheetTitle(title)}!$letter${rowIndex + 1}',
+          rows: <List<Object?>>[
+            <Object?>[value],
+          ],
+          valueInputOption: 'RAW',
+        )
+        .timeout(requestTimeout);
+  }
+
+  bool _sameLetterButton(LetterButton left, LetterButton right) {
+    return left.action == right.action &&
+        left.label == right.label &&
+        (left.url ?? '') == (right.url ?? '');
   }
 
   bool _shouldRetry(Object error) {

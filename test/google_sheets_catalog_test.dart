@@ -9,6 +9,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/copy_sheet.dart';
 import 'package:course_chatbot/src/domain/courses_sheet.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
@@ -1356,13 +1357,93 @@ void main() {
       expect(lateRows.single[1].toString(), contains('До 15 октября'));
       expect(lateRows.single[2], '');
       expect(lateRows.single[3], 'присоединиться к курсу');
-      expect(lateRows.single[4].toString(), contains('ЮKassa'));
+      expect(lateRows.single[4], 'полная оплата');
       await sync.sync();
       expect(
         gateway.valuesBySheetId[5]!.where((row) => row.contains(CopySheet.lateFullStage)),
         hasLength(1),
       );
       expect(gateway.valuesBySheetId[5]![CopySheet.defaultHeaderRow + 1][1], 'правили руками');
+    });
+
+    test('ТЕКСТЫ button columns become the active launch buttons', () async {
+      gateway.valuesBySheetId[CoursesSheet.sheetId] = CoursesSheet.seedRows();
+      final sync = GoogleSheetsCatalogSync(
+        gateway: gateway,
+        catalog: course,
+        fallbackChannelId: _seedChannelId,
+      );
+      await sync.sync();
+      final launch = course.activeLaunch()!;
+      final tab = gateway.sheets.firstWhere((sheet) => sheet.title == CopySheet.tabTitle);
+      final sheet = gateway.valuesBySheetId[tab.sheetId]!;
+      List<Object?> rowOf(String stage) {
+        return sheet.firstWhere((row) => row.isNotEmpty && row.first == stage);
+      }
+
+      final regular = rowOf('нажал на Записаться на курс, обычная цена');
+      expect(regular[1].toString(), contains('Запись на курс'));
+      expect(regular[4], 'полная оплата и предоплата');
+      expect(course.letterButton(launchId: launch.id, letterKey: 'enroll_regular'), isNull);
+
+      final warmup = rowOf('Нажал "Получить гайд", сразу после выдачи гайда');
+      final body = warmup[1];
+      expect(warmup[3], 'Хочу на мастер-класс');
+      expect(warmup[4], 'запись на мастер-класс');
+
+      warmup[3] = 'Внести задаток';
+      warmup[4] = 'предоплата';
+      await sync.sync();
+      final stored = course.letterButton(launchId: launch.id, letterKey: 'warmup_0');
+      expect(stored?.action, LetterButtonAction.payDeposit);
+      expect(stored?.label, 'Внести задаток');
+      expect(warmup[1], body);
+      expect(warmup[4], 'предоплата');
+
+      await sync.sync();
+      expect(
+        course.letterButton(launchId: launch.id, letterKey: 'warmup_0')?.label,
+        'Внести задаток',
+      );
+
+      warmup[3] = 'Жми';
+      warmup[4] = 'свой сценарий, не трогать';
+      await sync.sync();
+      expect(
+        course.letterButton(launchId: launch.id, letterKey: 'warmup_0')?.action,
+        LetterButtonAction.payDeposit,
+      );
+      expect(warmup[3], 'Жми');
+      expect(warmup[4], 'свой сценарий, не трогать');
+
+      warmup[3] = '';
+      warmup[4] = '';
+      await sync.sync();
+      expect(
+        course.letterButton(launchId: launch.id, letterKey: 'warmup_0')?.label,
+        'Внести задаток',
+      );
+      expect(warmup[3], '');
+      expect(warmup[4], '');
+
+      course.deleteLetterButton(launchId: launch.id, letterKey: 'warmup_0');
+      expect(course.letterButton(launchId: launch.id, letterKey: 'warmup_0'), isNull);
+      course.upsertLetterButton(
+        launchId: launch.id,
+        letterKey: 'warmup_0',
+        button: const LetterButton(
+          action: LetterButtonAction.payFull,
+          label: 'Оплатить курс целиком',
+        ),
+      );
+      await sync.pushLetterButton(launchId: launch.id, letterKey: 'warmup_0');
+      final pushed = gateway.valuesBySheetId[tab.sheetId]!.firstWhere(
+        (row) => row.isNotEmpty && row.first == 'Нажал "Получить гайд", сразу после выдачи гайда',
+      );
+      expect(pushed[1], body);
+      expect(pushed[3], 'Оплатить курс целиком');
+      expect(pushed[4], 'полная оплата');
+      expect(gateway.valuesBySheetId[tab.sheetId]!.first.first, CopySheet.title);
     });
   });
 }

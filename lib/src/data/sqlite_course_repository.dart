@@ -20,6 +20,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/payment.dart';

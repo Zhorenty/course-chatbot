@@ -36,6 +36,7 @@ enum PrivateFlowStep {
   adminCatalogCreateActive,
   adminCatalogCreateConfirm,
   adminCatalogEditValue,
+  adminCatalogLetterUrl,
   adminCatalogDozhim,
   adminCatalogDozhimCompose,
   adminSheetsHub,

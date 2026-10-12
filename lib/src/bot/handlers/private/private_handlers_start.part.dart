@@ -65,11 +65,18 @@ extension _PrivateHandlersStart on PrivateHandlers {
   }
 
   Future<bool> _sendHelp(PrivateMessageContext context) {
+    final launch = _launch;
+    final custom = launch == null
+        ? null
+        : _templates.letterButtonKeyboard(
+            _course.letterButton(launchId: launch.id, letterKey: 'help'),
+            launch,
+          );
     return _send(
       context,
       _templates.help(),
       richHtml: _templates.helpRich(),
-      replyMarkup: _templates.helpKeyboard(),
+      replyMarkup: custom ?? _templates.helpKeyboard(),
     );
   }
 

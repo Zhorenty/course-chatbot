@@ -315,7 +315,7 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
         'Открой слот, чтобы заменить текст или вернуть шаблон.';
   }
 
-  String adminCatalogAskSlot(LaunchCopySlotKey slot, {Launch? launch}) {
+  String adminCatalogAskSlot(LaunchCopySlotKey slot, {Launch? launch, LetterButton? button}) {
     final current = launch?.copy.htmlOf(slot)?.trim();
     final preview = (current == null || current.isEmpty)
         ? LaunchCopyDefaults.htmlOf(slot)
@@ -323,8 +323,47 @@ extension MessageTemplatesAdminCatalog on MessageTemplates {
     final mediaHint = slot.allowsMedia
         ? '\n\nМожно прислать текст, фото или файл — сохраню как письмо этого слота.'
         : '\n\nПришли новый текст. Жирный, курсив и абзацы сохранятся.';
+    final spec = LetterButtons.specBySlot(slot);
+    final buttonBlock = spec == null ? '' : '\n\n${adminCatalogLetterButtonLine(spec, button)}';
     return '<b>${escapeHtml(slot.adminLabel)}</b>$mediaHint\n\n'
-        'Сейчас:\n$preview';
+        'Сейчас:\n$preview$buttonBlock';
+  }
+
+  String adminCatalogLetterButtonLine(LetterSpec spec, LetterButton? button) {
+    final shown = button ?? spec.button;
+    final source = button == null ? 'как в сценарии' : 'своя';
+    final name = shown.hidesButton || shown.label.trim().isEmpty ? 'без кнопки' : shown.label;
+    final phrase = LetterButtons.leadsToPhrase(shown.action, url: shown.url);
+    return 'Кнопка ($source): ${escapeHtml(name)}\nКуда ведёт: ${escapeHtml(phrase)}';
+  }
+
+  String adminCatalogLetterActionTitle(LetterButtonAction action) {
+    return switch (action) {
+      LetterButtonAction.payFull => 'Полная оплата',
+      LetterButtonAction.payDeposit => 'Предоплата',
+      LetterButtonAction.payRemainder => 'Оплата остатка',
+      LetterButtonAction.enroll => 'Карточка курса',
+      LetterButtonAction.rsvp => 'Запись на мастер-класс',
+      LetterButtonAction.webinar => 'Ссылка на эфир',
+      LetterButtonAction.promo => 'Оплата спеццены',
+      LetterButtonAction.channel => 'Канал курса',
+      LetterButtonAction.optOut => 'Отписка от рассылки',
+      LetterButtonAction.url => 'Своя ссылка',
+      LetterButtonAction.none => 'Без кнопки',
+      LetterButtonAction.payChoice => 'Полная оплата и предоплата',
+    };
+  }
+
+  String adminCatalogAskLetterButton() {
+    return 'Какое действие вешает кнопка под этим письмом?';
+  }
+
+  String adminCatalogAskLetterUrl() {
+    return 'Пришли ссылку, которая откроется по кнопке. Нужен адрес https://…';
+  }
+
+  String adminCatalogLetterUrlRejected() {
+    return 'Это не ссылка. Пришли адрес, который начинается с http:// или https://.';
   }
 
   String adminCatalogConfirmDelete(Launch launch) {

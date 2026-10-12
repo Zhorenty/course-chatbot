@@ -152,6 +152,73 @@ extension MessageTemplateKeyboards on MessageTemplates {
     return inlineKeyboard(rows);
   }
 
+  /// Replaces the built-in keyboard when a letter has a stored button.
+  /// Null keeps the scenario keyboard.
+  Map<String, Object?>? letterButtonKeyboard(LetterButton? button, Launch launch) {
+    if (button == null || button.keepsBuiltinKeyboard) {
+      return null;
+    }
+    if (button.hidesButton) {
+      return const <String, Object?>{};
+    }
+    final cell = _letterOutboundButton(button, launch);
+    if (cell == null) {
+      return const <String, Object?>{};
+    }
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      <Map<String, Object?>>[cell],
+    ]);
+  }
+
+  Map<String, Object?>? _letterOutboundButton(LetterButton button, Launch launch) {
+    final label = button.label.trim().isEmpty
+        ? LetterButtons.defaultLabel(button.action)
+        : button.label.trim();
+    if (label.isEmpty) {
+      return null;
+    }
+    final url = switch (button.action) {
+      LetterButtonAction.webinar => launch.resolvedWebinarUrl,
+      LetterButtonAction.promo => launch.resolvedPromoCheckoutUrl,
+      LetterButtonAction.url => button.url,
+      _ => null,
+    };
+    if (button.action == LetterButtonAction.webinar ||
+        button.action == LetterButtonAction.promo ||
+        button.action == LetterButtonAction.url) {
+      if (url == null || url.isEmpty) {
+        return <String, Object?>{
+          'text': label,
+          'callback_data': MessageTemplates.cbEnroll,
+          'style': 'primary',
+        };
+      }
+      return <String, Object?>{'text': label, 'url': url, 'style': 'primary'};
+    }
+    final callback = switch (button.action) {
+      LetterButtonAction.payFull => MessageTemplates.cbPayFull,
+      LetterButtonAction.payDeposit => MessageTemplates.cbPayDeposit,
+      LetterButtonAction.payRemainder => MessageTemplates.cbPayRemainderOwn,
+      LetterButtonAction.enroll => MessageTemplates.cbEnroll,
+      LetterButtonAction.rsvp => MessageTemplates.cbRsvp,
+      LetterButtonAction.channel => MessageTemplates.cbEnroll,
+      LetterButtonAction.optOut => MessageTemplates.cbOptOut,
+      LetterButtonAction.none ||
+      LetterButtonAction.payChoice ||
+      LetterButtonAction.webinar ||
+      LetterButtonAction.promo ||
+      LetterButtonAction.url => null,
+    };
+    if (callback == null) {
+      return null;
+    }
+    return <String, Object?>{
+      'text': label,
+      'callback_data': callback,
+      'style': button.action == LetterButtonAction.optOut ? 'danger' : 'primary',
+    };
+  }
+
   Map<String, Object?>? warmupKeyboard(
     String stepKey, {
     required Launch launch,
@@ -824,10 +891,50 @@ extension MessageTemplateKeyboards on MessageTemplates {
           ),
         },
       ],
+      if (LetterButtons.specBySlot(slot) != null)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageTemplates.buttonAdminCatalogLetter,
+            'callback_data': MessageTemplates.catalogSlotData(
+              MessageTemplates.cbCatalogLetterButton,
+              launchId,
+              slot,
+            ),
+          },
+        ],
       <Map<String, Object?>>[
         <String, Object?>{
           'text': MessageTemplates.buttonAdminCatalogBack,
           'callback_data': MessageTemplates.catalogSegmentData(launchId, slot.segment),
+        },
+      ],
+    ]);
+  }
+
+  Map<String, Object?> adminCatalogLetterButtonKeyboard(int launchId, LaunchCopySlotKey slot) {
+    return inlineKeyboard(<List<Map<String, Object?>>>[
+      for (final action in LetterButtonAction.editable)
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': adminCatalogLetterActionTitle(action),
+            'callback_data':
+                '${MessageTemplates.cbCatalogLetterAction}$launchId:${slot.token}:${action.code}',
+          },
+        ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogLetterReset,
+          'callback_data': '${MessageTemplates.cbCatalogLetterAction}$launchId:${slot.token}:-',
+        },
+      ],
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageTemplates.buttonAdminCatalogBack,
+          'callback_data': MessageTemplates.catalogSlotData(
+            MessageTemplates.cbCatalogSlot,
+            launchId,
+            slot,
+          ),
         },
       ],
     ]);

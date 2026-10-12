@@ -215,12 +215,16 @@ final class WarmupNudgeJob {
     final now = _nowProvider();
     final keyboard = launch == null
         ? null
-        : _templates.warmupKeyboard(
-            wave.stepKey,
-            launch: launch,
-            rsvp: wave.rsvp,
-            rsvpOpen: LaunchSales.rsvpOpen(launch, now),
-          );
+        : _templates.letterButtonKeyboard(
+                _course.letterButton(launchId: launch.id, letterKey: wave.stepKey),
+                launch,
+              ) ??
+              _templates.warmupKeyboard(
+                wave.stepKey,
+                launch: launch,
+                rsvp: wave.rsvp,
+                rsvpOpen: LaunchSales.rsvpOpen(launch, now),
+              );
     final dozhim = wave.dozhim;
     if (dozhim != null) {
       final raw = dozhim.payload;
@@ -246,12 +250,16 @@ final class WarmupNudgeJob {
   }) async {
     final keyboard = launch == null
         ? null
-        : _templates.warmupKeyboard(
-            decision.stepKey,
-            launch: launch,
-            rsvp: candidate.webinarRsvp,
-            rsvpOpen: LaunchSales.rsvpOpen(launch, now),
-          );
+        : _templates.letterButtonKeyboard(
+                _course.letterButton(launchId: launch.id, letterKey: decision.stepKey),
+                launch,
+              ) ??
+              _templates.warmupKeyboard(
+                decision.stepKey,
+                launch: launch,
+                rsvp: candidate.webinarRsvp,
+                rsvpOpen: LaunchSales.rsvpOpen(launch, now),
+              );
     for (final message in custom) {
       if (message.stepKey != decision.stepKey) {
         continue;

@@ -15,6 +15,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/order.dart';
 import 'package:course_chatbot/src/domain/participant_list.dart';
@@ -1713,6 +1714,91 @@ void main() {
       ),
       contains('/start'),
     );
+  });
+
+  test('letter button cells name the action and keep a custom label', () {
+    LetterButton read(String? label, String? leadsTo) {
+      final parsed = LetterButtons.readCells(label: label, leadsTo: leadsTo);
+      expect(parsed.kind, LetterCellKind.button);
+      return parsed.button!;
+    }
+
+    expect(
+      read('Записаться на курс', 'ведет на карточку спеццены').action,
+      LetterButtonAction.enroll,
+    );
+    expect(
+      read('Оплатить курс по специальной цене', 'ведет на полную оплату по спеццене').action,
+      LetterButtonAction.promo,
+    );
+    expect(
+      read(LetterButtons.payChoiceLabel, 'ведет на кассу').action,
+      LetterButtonAction.payChoice,
+    );
+    final late = read('присоединиться к курсу', 'касса ЮKassa на 19 000 ₽');
+    expect(late.action, LetterButtonAction.payFull);
+    expect(late.label, 'присоединиться к курсу');
+    expect(LetterButtons.readCells(label: '', leadsTo: '').kind, LetterCellKind.empty);
+    expect(
+      LetterButtons.readCells(label: 'Жми', leadsTo: 'свой сценарий, не трогать').kind,
+      LetterCellKind.unknown,
+    );
+    final custom = read('Внести задаток', 'предоплата');
+    expect(custom.action, LetterButtonAction.payDeposit);
+    expect(custom.label, 'Внести задаток');
+  });
+
+  test('stored letter button replaces the scenario keyboard', () {
+    final templates = MessageTemplates();
+    final launch = testLaunch(
+      id: 5,
+      productId: 1,
+      code: 'launch-5',
+      title: 'Цвет в интерьере',
+      priceFullKopecks: 1900000,
+      depositKopecks: 500000,
+      depositDueDays: 7,
+      courseStartAt: DateTime.utc(2026, 10, 12),
+      webinarAt: DateTime.utc(2026, 10, 5, 16),
+      salesStartAt: DateTime.utc(2026, 10, 5, 16),
+      webinarUrl: 'https://webinar.example',
+      promoCheckoutUrl: 'https://leadpay.example',
+    );
+    expect(templates.letterButtonKeyboard(null, launch), isNull);
+    expect(
+      templates.letterButtonKeyboard(
+        const LetterButton(action: LetterButtonAction.payChoice, label: 'две'),
+        launch,
+      ),
+      isNull,
+    );
+    expect(
+      templates.letterButtonKeyboard(
+        const LetterButton(action: LetterButtonAction.none, label: ''),
+        launch,
+      ),
+      isEmpty,
+    );
+    final deposit = templates.letterButtonKeyboard(
+      const LetterButton(action: LetterButtonAction.payDeposit, label: 'Предоплата'),
+      launch,
+    )!;
+    expect(_inlineButtonTexts(deposit), <String>['Предоплата']);
+    expect(_inlineCallbackData(deposit), <String>[MessageTemplates.cbPayDeposit]);
+    final link = templates.letterButtonKeyboard(
+      const LetterButton(action: LetterButtonAction.url, label: 'Сайт', url: 'https://example.com'),
+      launch,
+    )!;
+    final cell = ((link['inline_keyboard'] as List<dynamic>).single as List<dynamic>).single as Map;
+    expect(cell['text'], 'Сайт');
+    expect(cell['url'], 'https://example.com');
+    final promo = templates.letterButtonKeyboard(
+      const LetterButton(action: LetterButtonAction.promo, label: 'Спеццена'),
+      launch,
+    )!;
+    final promoCell =
+        ((promo['inline_keyboard'] as List<dynamic>).single as List<dynamic>).single as Map;
+    expect(promoCell['url'], 'https://leadpay.example');
   });
 }
 

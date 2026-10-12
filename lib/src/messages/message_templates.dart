@@ -12,6 +12,7 @@ import 'package:course_chatbot/src/domain/funnel.dart';
 import 'package:course_chatbot/src/domain/funnel_analytics.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/links_sheet.dart';
 import 'package:course_chatbot/src/domain/money.dart';
 import 'package:course_chatbot/src/domain/moscow_time.dart';
@@ -140,6 +141,8 @@ final class MessageTemplates {
   static const String buttonAdminCatalogParams = '⚙️ Параметры';
   static const String buttonAdminCatalogReplaceSlot = '✏️ Заменить';
   static const String buttonAdminCatalogResetSlot = '↩️ На шаблон';
+  static const String buttonAdminCatalogLetter = '🔘 Кнопка';
+  static const String buttonAdminCatalogLetterReset = 'Как в сценарии';
   static const String buttonAdminCatalogReplaceGuide = '📘 Заменить гайд';
   static const String buttonAdminCatalogAttachGuide = '📘 Прикрепить гайд';
   static const String buttonAdminCatalogDozhim = '📣 Дожим';
@@ -242,6 +245,8 @@ final class MessageTemplates {
   static const String cbCatalogDozhimOpen = 'czo:';
   static const String cbCatalogDozhimReplace = 'czr:';
   static const String cbCatalogDozhimDelete = 'czx:';
+  static const String cbCatalogLetterButton = 'cbl:';
+  static const String cbCatalogLetterAction = 'cba:';
   static const String cbLinksMenu = 'lm';
   static const String cbLinksNew = 'ln';
   static const String cbLinksOpen = 'lo:';
@@ -1398,6 +1403,24 @@ final class MessageTemplates {
       return null;
     }
     return (id: id, slot: slot);
+  }
+
+  static ({int id, LaunchCopySlotKey slot, String code})? catalogLetterActionFromCallback(
+    String data,
+  ) {
+    if (!data.startsWith(cbCatalogLetterAction)) {
+      return null;
+    }
+    final parts = data.substring(cbCatalogLetterAction.length).split(':');
+    if (parts.length != 3) {
+      return null;
+    }
+    final id = int.tryParse(parts[0]);
+    final slot = LaunchCopySlotKey.fromToken(parts[1]);
+    if (id == null || slot == null || parts[2].isEmpty) {
+      return null;
+    }
+    return (id: id, slot: slot, code: parts[2]);
   }
 
   static String catalogDozhimItemData(String prefix, int launchId, int id) {

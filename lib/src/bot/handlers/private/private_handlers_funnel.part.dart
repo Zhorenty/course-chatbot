@@ -143,12 +143,14 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
             rsvp: enrollment.webinarRsvp,
           ),
           media: _templates.warmupMedia(WarmupService.firstStepKey, launch: launch),
-          replyMarkup: _templates.warmupKeyboard(
-            WarmupService.firstStepKey,
-            launch: launch,
-            rsvp: enrollment.webinarRsvp,
-            rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
-          ),
+          replyMarkup:
+              _letterMarkup(launch, 'warmup_0') ??
+              _templates.warmupKeyboard(
+                WarmupService.firstStepKey,
+                launch: launch,
+                rsvp: enrollment.webinarRsvp,
+                rsvpOpen: LaunchSales.rsvpOpen(launch, _nowProvider()),
+              ),
         ),
       );
     } on Object catch (error, stackTrace) {
@@ -200,13 +202,16 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       webinarStarted: webinarStarted,
       hasOpenCheckout: continueOrderId != null,
     );
-    final markup = _templates.enrollKeyboard(
-      launch,
-      quote: quote,
-      rsvpOpen: rsvpOpen,
-      webinarStarted: webinarStarted,
-      continueOrderId: continueOrderId,
-    );
+    final letterKey = _enrollLetterKey(quote);
+    final markup =
+        (letterKey == null ? null : _letterMarkup(launch, letterKey)) ??
+        _templates.enrollKeyboard(
+          launch,
+          quote: quote,
+          rsvpOpen: rsvpOpen,
+          webinarStarted: webinarStarted,
+          continueOrderId: continueOrderId,
+        );
     if (text.trim().isEmpty && markup.isEmpty) {
       return true;
     }
@@ -279,7 +284,9 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       return _send(
         context,
         _templates.depositSucceeded(order, launch: launch),
-        replyMarkup: _templates.remainderKeyboard(order.id),
+        replyMarkup:
+            (launch == null ? null : _letterMarkup(launch, 'deposit_paid')) ??
+            _templates.remainderKeyboard(order.id),
       );
     }
     final link = access?.inviteLink?.trim();
@@ -293,7 +300,33 @@ extension _PrivateHandlersFunnel on PrivateHandlers {
       context,
       _templates.paymentSucceeded(launch: launch),
       media: _templates.copyMedia(launch, LaunchCopySlotKey.paymentSucceeded),
-      replyMarkup: unjoined ? _templates.unjoinedInviteKeyboard(link) : null,
+      replyMarkup:
+          (launch == null ? null : _letterMarkup(launch, 'paid')) ??
+          (unjoined ? _templates.unjoinedInviteKeyboard(link) : null),
     );
+  }
+
+  Map<String, Object?>? _letterMarkup(Launch? launch, String letterKey) {
+    if (launch == null) {
+      return null;
+    }
+    return _templates.letterButtonKeyboard(
+      _course.letterButton(launchId: launch.id, letterKey: letterKey),
+      launch,
+    );
+  }
+
+  String? _enrollLetterKey(SalesQuote quote) {
+    if (quote.lateFullOpen) {
+      return 'late_full';
+    }
+    if (quote.promoOffer) {
+      return 'enroll_promo';
+    }
+    return switch (quote.phase) {
+      SalesPhase.regular => 'enroll_regular',
+      SalesPhase.closed => 'sales_closed',
+      SalesPhase.preSales || SalesPhase.promo => 'pre_sales',
+    };
   }
 }

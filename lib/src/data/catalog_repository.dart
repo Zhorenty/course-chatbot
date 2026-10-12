@@ -3,6 +3,7 @@ import 'package:course_chatbot/src/domain/catalog.dart';
 import 'package:course_chatbot/src/domain/catalog_admin.dart';
 import 'package:course_chatbot/src/domain/launch_copy.dart';
 import 'package:course_chatbot/src/domain/launch_dozhim.dart';
+import 'package:course_chatbot/src/domain/letter_button.dart';
 import 'package:course_chatbot/src/domain/stored_telegram_message.dart';
 
 abstract interface class CatalogRepository {
@@ -87,6 +88,16 @@ abstract interface class CatalogRepository {
   });
 
   void deleteLaunchCopySlot({required int launchId, required LaunchCopySlotKey slot});
+
+  LetterButton? letterButton({required int launchId, required String letterKey});
+
+  void upsertLetterButton({
+    required int launchId,
+    required String letterKey,
+    required LetterButton button,
+  });
+
+  void deleteLetterButton({required int launchId, required String letterKey});
 
   void seedActiveLaunchCopy();
 

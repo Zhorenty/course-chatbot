@@ -20,6 +20,7 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
         step == PrivateFlowStep.adminCatalogCreateActive ||
         step == PrivateFlowStep.adminCatalogCreateConfirm ||
         step == PrivateFlowStep.adminCatalogEditValue ||
+        step == PrivateFlowStep.adminCatalogLetterUrl ||
         step == PrivateFlowStep.adminCatalogDozhim ||
         step == PrivateFlowStep.adminCatalogDozhimCompose;
   }
@@ -117,6 +118,9 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     }
     if (step == PrivateFlowStep.adminCatalogEditValue) {
       return _captureCatalogEdit(context, rawOverride: rawOverride);
+    }
+    if (step == PrivateFlowStep.adminCatalogLetterUrl) {
+      return _captureCatalogLetterUrl(context, rawOverride: rawOverride);
     }
     if (step == PrivateFlowStep.adminCatalogMenu) {
       final fileId = extractDocumentFileId(context.message);
@@ -968,7 +972,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     );
     return _presentCatalog(
       context,
-      _templates.adminCatalogAskSlot(slot, launch: launch),
+      _templates.adminCatalogAskSlot(
+        slot,
+        launch: launch,
+        button: _slotLetterButton(launch.id, slot),
+      ),
       replyMarkup: _templates.adminCatalogSlotKeyboard(launchId, slot),
     );
   }
@@ -995,7 +1003,11 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
     );
     return _presentCatalog(
       context,
-      _templates.adminCatalogAskSlot(slot, launch: launch),
+      _templates.adminCatalogAskSlot(
+        slot,
+        launch: launch,
+        button: _slotLetterButton(launch.id, slot),
+      ),
       replyMarkup: _templates.adminCatalogSlotKeyboard(launchId, slot),
     );
   }
@@ -1570,6 +1582,130 @@ extension _PrivateHandlersAdminCatalog on PrivateHandlers {
       channelId: channelId,
       leadMagnetFileId: draft?.guideFileId,
     );
+  }
+
+  LetterButton? _slotLetterButton(int launchId, LaunchCopySlotKey slot) {
+    final spec = LetterButtons.specBySlot(slot);
+    if (spec == null) {
+      return null;
+    }
+    return _course.letterButton(launchId: launchId, letterKey: spec.key);
+  }
+
+  Future<bool> _showCatalogLetterButton(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySlotKey? slot,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) || launchId == null || slot == null) {
+      return false;
+    }
+    if (LetterButtons.specBySlot(slot) == null || _course.getLaunch(launchId) == null) {
+      return _showCatalogSlot(context, launchId, slot);
+    }
+    _setCatalogFlow(
+      context.userId!,
+      PrivateFlowStep.adminCatalogMenu,
+      catalogDraft: CatalogWizardDraft(editLaunchId: launchId, editSlot: slot),
+    );
+    return _presentCatalog(
+      context,
+      _templates.adminCatalogAskLetterButton(),
+      replyMarkup: _templates.adminCatalogLetterButtonKeyboard(launchId, slot),
+    );
+  }
+
+  Future<bool> _setCatalogLetterAction(
+    PrivateMessageContext context,
+    int? launchId,
+    LaunchCopySlotKey? slot,
+    String? code,
+  ) async {
+    if (!_adminGate.isConfiguredAdmin(context.userId) ||
+        launchId == null ||
+        slot == null ||
+        code == null) {
+      return false;
+    }
+    final spec = LetterButtons.specBySlot(slot);
+    final launch = _course.getLaunch(launchId);
+    if (spec == null || launch == null) {
+      return _showCatalogSlot(context, launchId, slot);
+    }
+    if (code == '-') {
+      _course.deleteLetterButton(launchId: launchId, letterKey: spec.key);
+      await _pushLetterButton(launch, spec.key);
+      return _showCatalogSlot(context, launchId, slot);
+    }
+    final action = LetterButtonAction.fromCode(code);
+    if (action == null || !LetterButtonAction.editable.contains(action)) {
+      return false;
+    }
+    if (action == LetterButtonAction.url) {
+      _setCatalogFlow(
+        context.userId!,
+        PrivateFlowStep.adminCatalogLetterUrl,
+        catalogDraft: CatalogWizardDraft(editLaunchId: launchId, editSlot: slot),
+      );
+      return _presentCatalog(context, _templates.adminCatalogAskLetterUrl());
+    }
+    if (action == spec.action) {
+      _course.deleteLetterButton(launchId: launchId, letterKey: spec.key);
+    } else {
+      _course.upsertLetterButton(
+        launchId: launchId,
+        letterKey: spec.key,
+        button: LetterButton(action: action, label: LetterButtons.defaultLabel(action)),
+      );
+    }
+    await _pushLetterButton(launch, spec.key);
+    return _showCatalogSlot(context, launchId, slot);
+  }
+
+  Future<bool> _captureCatalogLetterUrl(
+    PrivateMessageContext context, {
+    String? rawOverride,
+  }) async {
+    final flow = _flowByUserId[context.userId!];
+    final launchId = flow?.catalogDraft?.editLaunchId;
+    final slot = flow?.catalogDraft?.editSlot;
+    final text = (rawOverride ?? context.text)?.trim() ?? '';
+    final uri = Uri.tryParse(text);
+    if (uri == null || !_isHttpUrl(uri)) {
+      return _presentCatalog(context, _templates.adminCatalogLetterUrlRejected());
+    }
+    final spec = slot == null ? null : LetterButtons.specBySlot(slot);
+    final launch = launchId == null ? null : _course.getLaunch(launchId);
+    if (spec == null || launch == null) {
+      return _showCatalogSlot(context, launchId, slot);
+    }
+    _course.upsertLetterButton(
+      launchId: launch.id,
+      letterKey: spec.key,
+      button: LetterButton(
+        action: LetterButtonAction.url,
+        label: LetterButtons.defaultLabel(LetterButtonAction.url),
+        url: text,
+      ),
+    );
+    await _pushLetterButton(launch, spec.key);
+    return _showCatalogSlot(context, launch.id, slot);
+  }
+
+  Future<void> _pushLetterButton(Launch launch, String letterKey) async {
+    final sync = _catalogSync;
+    if (sync == null || _course.activeLaunch()?.id != launch.id) {
+      return;
+    }
+    try {
+      await sync.pushLetterButton(launchId: launch.id, letterKey: letterKey);
+    } on Object catch (error, stackTrace) {
+      l.w('Letter button sheet write failed: $error', stackTrace);
+    }
+  }
+
+  bool _isHttpUrl(Uri uri) {
+    return (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
   }
 }
 

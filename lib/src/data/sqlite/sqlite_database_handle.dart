@@ -253,6 +253,16 @@ final class SqliteDatabaseHandle {
       ON launch_dozhim (launch_id, day_index);
     ''');
     db.execute('''
+      CREATE TABLE IF NOT EXISTS launch_letter_buttons (
+        launch_id INTEGER NOT NULL REFERENCES launches(id) ON DELETE CASCADE,
+        letter_key TEXT NOT NULL,
+        action TEXT NOT NULL,
+        label TEXT NOT NULL,
+        url TEXT,
+        PRIMARY KEY (launch_id, letter_key)
+      );
+    ''');
+    db.execute('''
       CREATE TABLE IF NOT EXISTS launch_copy_slots (
         launch_id INTEGER NOT NULL REFERENCES launches(id) ON DELETE CASCADE,
         slot_key TEXT NOT NULL,

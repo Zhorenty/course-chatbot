@@ -419,6 +419,56 @@ mixin _SqliteCatalogStore on _SqliteCourseStore implements CatalogRepository {
   }
 
   @override
+  LetterButton? letterButton({required int launchId, required String letterKey}) {
+    final rows = _db.select(
+      '''
+      SELECT action, label, url FROM launch_letter_buttons
+      WHERE launch_id = ? AND letter_key = ?;
+      ''',
+      <Object?>[launchId, letterKey],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    final action = LetterButtonAction.fromCode(rows.first['action'] as String?);
+    if (action == null) {
+      return null;
+    }
+    return LetterButton(
+      action: action,
+      label: rows.first['label'] as String? ?? '',
+      url: rows.first['url'] as String?,
+    );
+  }
+
+  @override
+  void upsertLetterButton({
+    required int launchId,
+    required String letterKey,
+    required LetterButton button,
+  }) {
+    _db.execute(
+      '''
+      INSERT INTO launch_letter_buttons (launch_id, letter_key, action, label, url)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(launch_id, letter_key) DO UPDATE SET
+        action = excluded.action,
+        label = excluded.label,
+        url = excluded.url;
+      ''',
+      <Object?>[launchId, letterKey, button.action.code, button.label, button.url],
+    );
+  }
+
+  @override
+  void deleteLetterButton({required int launchId, required String letterKey}) {
+    _db.execute(
+      'DELETE FROM launch_letter_buttons WHERE launch_id = ? AND letter_key = ?;',
+      <Object?>[launchId, letterKey],
+    );
+  }
+
+  @override
   void deleteLaunchCopySlot({required int launchId, required LaunchCopySlotKey slot}) {
     _db.execute('DELETE FROM launch_copy_slots WHERE launch_id = ? AND slot_key = ?;', <Object?>[
       launchId,

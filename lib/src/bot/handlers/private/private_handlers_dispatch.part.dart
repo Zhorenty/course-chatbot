@@ -277,6 +277,17 @@ extension _PrivateHandlersDispatch on PrivateHandlers {
       }
       return _adminEnsureAndShowCard(context, targetId);
     }
+    if (data.startsWith(MessageTemplates.cbCatalogLetterAction)) {
+      final parsed = MessageTemplates.catalogLetterActionFromCallback(data);
+      return _setCatalogLetterAction(context, parsed?.id, parsed?.slot, parsed?.code);
+    }
+    if (data.startsWith(MessageTemplates.cbCatalogLetterButton)) {
+      final parsed = MessageTemplates.catalogSlotFromCallback(
+        data,
+        MessageTemplates.cbCatalogLetterButton,
+      );
+      return _showCatalogLetterButton(context, parsed?.id, parsed?.slot);
+    }
     if (data.startsWith(MessageTemplates.cbCatalogSlotReplace)) {
       final parsed = MessageTemplates.catalogSlotFromCallback(
         data,
